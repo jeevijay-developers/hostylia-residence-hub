@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Linkedin, Mail, ArrowRight, Quote } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
+import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
+
 
 export const Route = createFileRoute("/founder")({
   head: () => ({
@@ -25,9 +27,12 @@ function FounderPage() {
           <div className="glass-panel relative overflow-hidden rounded-3xl p-8 md:p-12">
             <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--soft-teal)_30%,transparent),transparent_70%)] blur-2xl" />
             <div className="grid items-center gap-8 md:grid-cols-[auto_1fr]">
-              <div className="grid h-32 w-32 place-items-center rounded-2xl bg-gradient-to-br from-[color:var(--brand-blue)] to-[color:var(--soft-teal)] text-4xl font-extrabold text-white">
-                VP
-              </div>
+              <img
+                src={vikasPhoto.url}
+                alt="Vikas Patel, Founder & CEO of Hostylia"
+                className="h-40 w-40 rounded-2xl object-cover ring-2 ring-[color:var(--soft-teal)]/40 shadow-2xl"
+              />
+
               <div>
                 <div className="text-xs font-semibold uppercase tracking-widest text-gold">Founder & CEO</div>
                 <h2 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Vikas Patel</h2>
