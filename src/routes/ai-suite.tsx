@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Brain, Wallet, BarChart3, Languages, Bot, FileBarChart, Sparkles, ShieldCheck } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import { IllustrationCard } from "@/components/site/IllustrationCard";
+import aiInsights from "@/assets/illustrations/ai-insights.jpg";
 
 export const Route = createFileRoute("/ai-suite")({
   head: () => ({
@@ -34,7 +36,12 @@ function AISuitePage() {
         title="AI-powered residential intelligence"
         desc="Purpose-built AI assistants that turn raw operations data into action."
       />
-      <section className="py-20">
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <IllustrationCard src={aiInsights} alt="AI residential intelligence dashboard with neural network and predictive trend lines" eager className="mx-auto max-w-3xl" />
+        </div>
+      </section>
+      <section className="py-12">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {cards.map((c) => <FeatureCard key={c.title} {...c} tone="teal" />)}

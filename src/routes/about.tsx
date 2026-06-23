@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Target, Heart, ShieldCheck, Sparkles, Building2 } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
+import { IllustrationCard } from "@/components/site/IllustrationCard";
+import buildingHero from "@/assets/illustrations/building-hero.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -26,8 +28,11 @@ function AboutPage() {
         desc="Hostylia is a smart residential operating system, powered by Jeevijay Technologies Private Limited."
       />
       <section className="py-20">
-        <div className="mx-auto max-w-4xl px-4 md:px-6">
-          <SectionHeading eyebrow="Our Mission" title="Make residential operations effortless" desc="We help hostels, schools and institutions run their properties with the same elegance and intelligence as modern SaaS — without the chaos of spreadsheets, paper registers and disconnected tools." />
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <IllustrationCard src={buildingHero} alt="Modern residential tower powered by Hostylia" eager />
+          <div>
+            <SectionHeading eyebrow="Our Mission" title="Make residential operations effortless" align="left" desc="We help hostels, schools and institutions run their properties with the same elegance and intelligence as modern SaaS — without the chaos of spreadsheets, paper registers and disconnected tools." />
+          </div>
         </div>
       </section>
       <section className="border-y border-dark-border py-20">
