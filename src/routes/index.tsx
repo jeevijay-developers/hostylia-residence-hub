@@ -387,9 +387,12 @@ function FounderSection() {
         <div className="glass-panel relative overflow-hidden rounded-3xl p-8 md:p-12">
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--soft-teal)_30%,transparent),transparent_70%)] blur-2xl" />
           <div className="grid items-center gap-8 md:grid-cols-[auto_1fr]">
-            <div className="grid h-28 w-28 place-items-center rounded-2xl bg-gradient-to-br from-[color:var(--brand-blue)] to-[color:var(--soft-teal)] text-3xl font-extrabold text-white">
-              VP
-            </div>
+            <img
+              src={vikasPhoto.url}
+              alt="Vikas Patel, Founder & CEO of Hostylia"
+              className="h-32 w-32 rounded-2xl object-cover ring-2 ring-[color:var(--soft-teal)]/40 shadow-xl"
+            />
+
             <div>
               <div className="text-xs font-semibold uppercase tracking-widest text-gold">Founder</div>
               <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Vikas Patel</h3>
