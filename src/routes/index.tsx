@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
