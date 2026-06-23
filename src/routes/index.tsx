@@ -9,6 +9,7 @@ import {
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
+import { VideoTestimonials } from "@/components/site/VideoTestimonials";
 import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
 import inventoryStatus from "@/assets/illustrations/inventory-status.jpg";
@@ -44,6 +45,7 @@ function HomePage() {
       <RoleDashboards />
       <AISuite />
       <FounderSection />
+      <VideoTestimonials />
       <PricingPreview />
       <FinalCTA />
     </div>
