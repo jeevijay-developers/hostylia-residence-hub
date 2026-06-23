@@ -4,10 +4,14 @@ import {
   LayoutGrid, Users, BedDouble, ShieldCheck, IndianRupee, MessageSquareWarning, BellRing, ScanLine,
   Briefcase, Wallet, UserCog, Calculator, User, UserCheck,
   Brain, Sparkles, BarChart3, FileBarChart, Bot, Languages,
-  LogIn, Clock, ShieldAlert, ListChecks, Check,
+  LogIn, Clock, ShieldAlert, ListChecks, Check, Rocket, Settings2, LineChart, Lock,
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import {
+  MockOccupancyDashboard, MockFinanceDashboard, MockComplaintBoard, MockParentApp,
+  StatBand, BenefitList, TestimonialCard,
+} from "@/components/site/HtmlMockups";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import { VideoTestimonials } from "@/components/site/VideoTestimonials";
 import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
