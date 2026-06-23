@@ -465,8 +465,8 @@ function FounderSection() {
 
 function PricingPreview() {
   const plans = [
-    { name: "Starter", price: "₹29", desc: "For single hostels getting started.", features: ["Up to 100 beds", "Core operations", "Email support"] },
-    { name: "Professional", price: "₹49", desc: "For growing properties and small chains.", features: ["Unlimited beds", "AI Suite included", "Priority support"], featured: true },
+    { name: "Starter", price: "₹115", desc: "For single hostels getting started.", features: ["Up to 100 beds", "Core operations", "Email support"] },
+    { name: "Professional", price: "₹140", desc: "For growing properties and small chains.", features: ["Unlimited beds", "AI Suite included", "Priority support"], featured: true },
     { name: "Enterprise", price: "Custom", desc: "For multi-property owners and institutions.", features: ["Multi-property roll-up", "SSO and SLAs", "Dedicated success manager"] },
   ];
   return (
