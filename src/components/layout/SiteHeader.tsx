@@ -78,7 +78,7 @@ export function SiteHeader() {
                 <Menu size={20} />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-sm overflow-y-auto border-l-dark-border bg-navy p-0 text-white">
+            <SheetContent side="right" className="w-full max-w-sm overflow-y-auto border-l border-dark-border bg-navy p-0 text-white">
               <MobileNav onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>

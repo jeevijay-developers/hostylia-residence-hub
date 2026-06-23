@@ -53,7 +53,7 @@ export function MegaMenuSolutions({ onNavigate }: { onNavigate?: () => void }) {
                     className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-white/5"
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklab,var(--brand-blue)_22%,transparent)] text-soft-teal">
-                      <item.icon className="h-4.5 w-4.5" size={18} />
+                      <item.icon size={18} />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-white group-hover:text-soft-teal">{item.label}</span>
