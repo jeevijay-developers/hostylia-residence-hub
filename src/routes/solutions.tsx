@@ -9,6 +9,10 @@ import { IllustrationCard } from "@/components/site/IllustrationCard";
 import propertyBooking from "@/assets/illustrations/property-booking.jpg";
 import servicesPanel from "@/assets/illustrations/services-panel.jpg";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
+import {
+  MockRoomBooking, MockParentApp, MockOccupancyDashboard, MockSecurityLog,
+  StatBand, BenefitList, TestimonialCard,
+} from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/solutions")({
   head: () => ({
