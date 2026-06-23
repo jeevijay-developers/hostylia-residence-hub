@@ -95,7 +95,7 @@ const benefits: Record<string, string[]> = {
 };
 
 function FeaturesPage() {
-  const mocks: Record<number, JSX.Element> = {
+  const mocks: Record<number, React.ReactElement> = {
     0: <MockFinanceDashboard />,
     1: <MockFeeReceipt />,
     2: <MockComplaintBoard />,
