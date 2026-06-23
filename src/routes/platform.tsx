@@ -5,6 +5,7 @@ import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import moveOutNotice from "@/assets/illustrations/move-out-notice.jpg";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
+import { MockOccupancyDashboard, StatBand, BenefitList } from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/platform")({
   head: () => ({
@@ -62,7 +63,27 @@ function PlatformPage() {
       </section>
       <section className="py-20">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
-          <IllustrationCard src={moveOutNotice} alt="Move-out lifecycle card showing lock-in and notice periods" />
+          <MockOccupancyDashboard />
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Live Operations</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">A control room for every residence</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Beds, blocks and floors are live objects — not spreadsheets. Owners see real status
+              from anywhere; wardens act on it in the same screen.
+            </p>
+            <BenefitList items={[
+              "Property → Block → Floor → Room → Bed hierarchy.",
+              "Real-time occupancy with vacancy alerts.",
+              "Multi-tenant isolation with single sign-on for chains.",
+              "99.9% uptime SLA on production workloads.",
+            ]} />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <IllustrationCard src={moveOutNotice} alt="Move-out lifecycle card" />
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">Stay Lifecycle</div>
             <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">From onboarding to move-out — fully tracked</h3>
@@ -70,7 +91,23 @@ function PlatformPage() {
               Lock-in periods, notice windows, renewals and exits are modeled end to end. Wardens,
               owners and parents always see the same accurate status.
             </p>
+            <BenefitList items={[
+              "Digital agreements with e-sign and KYC.",
+              "Automated notice and refund calculation.",
+              "Alumni archive with one-click re-onboarding.",
+            ]} />
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-12">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <StatBand stats={[
+            { v: "99.9%", l: "Uptime SLA" },
+            { v: "<200ms", l: "API p95 latency" },
+            { v: "SOC 2", l: "Security posture" },
+            { v: "12+", l: "Open integrations" },
+          ]} />
         </div>
       </section>
 
@@ -87,6 +124,7 @@ function PlatformPage() {
           <IllustrationCard src={buildingHero} alt="Luminous modern residential apartment tower at night" />
         </div>
       </section>
+
       <CTAStrip />
     </div>
   );

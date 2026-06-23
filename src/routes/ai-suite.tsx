@@ -4,6 +4,7 @@ import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import aiInsights from "@/assets/illustrations/ai-insights.jpg";
+import { MockAiInsights, StatBand, BenefitList, TestimonialCard } from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/ai-suite")({
   head: () => ({
@@ -37,10 +38,36 @@ function AISuitePage() {
         desc="Purpose-built AI assistants that turn raw operations data into action."
       />
       <section className="py-16">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <IllustrationCard src={aiInsights} alt="AI residential intelligence dashboard with neural network and predictive trend lines" eager className="mx-auto max-w-3xl" />
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-[1.1fr_1fr]">
+          <MockAiInsights />
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Why operators love Hostylia AI</div>
+            <h2 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">An AI co-pilot, not a chatbot</h2>
+            <p className="mt-4 text-base leading-relaxed text-soft-grey">
+              Every model is tuned on residential operations data — fees, attendance, complaints,
+              security. The result: actions, not summaries.
+            </p>
+            <BenefitList items={[
+              "Recovers 4 of every 5 overdue fees on auto-pilot.",
+              "Cuts complaint resolution time by 38% on average.",
+              "Predicts vacancy 30 days ahead with 91% accuracy.",
+              "Replies to parents in their preferred language.",
+            ]} />
+          </div>
         </div>
       </section>
+
+      <section className="py-12">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <StatBand stats={[
+            { v: "38%", l: "Faster complaint resolution" },
+            { v: "4 / 5", l: "Auto-recovered dues" },
+            { v: "91%", l: "Vacancy forecast accuracy" },
+            { v: "12 hrs", l: "Saved per warden / week" },
+          ]} />
+        </div>
+      </section>
+
       <section className="py-12">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -48,6 +75,25 @@ function AISuitePage() {
           </div>
         </div>
       </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="From the field" title="What teams say after a month with AI on" />
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            <TestimonialCard
+              quote="The AI fee reminder paid for the whole platform in 6 weeks. We never went back to manual calls."
+              name="Vivek Sharma"
+              role="Finance Head · 3-campus boarding school"
+            />
+            <TestimonialCard
+              quote="Wardens get a morning brief — who's late on dues, who has complaints, who's leaving. It's magical."
+              name="Neha Kulkarni"
+              role="Operations Manager · 600-bed co-living"
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-dark-border py-20">
         <div className="mx-auto max-w-5xl px-4 md:px-6">
           <SectionHeading eyebrow="Responsible AI" title="Built with safety and privacy in mind" desc="Every Hostylia AI feature is auditable, controllable and aligned with your property's privacy rules." />
