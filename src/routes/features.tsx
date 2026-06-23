@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   IndianRupee, ReceiptText, CreditCard, Banknote, BellRing, FileBarChart,
