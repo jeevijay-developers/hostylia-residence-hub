@@ -4,6 +4,7 @@ import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import aiInsights from "@/assets/illustrations/ai-insights.jpg";
+import { MockAiInsights, StatBand, BenefitList, TestimonialCard } from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/ai-suite")({
   head: () => ({
