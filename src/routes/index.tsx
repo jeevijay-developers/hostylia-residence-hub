@@ -40,16 +40,23 @@ function HomePage() {
   return (
     <div className="bg-section-dark">
       <Hero />
+      <HeroStats />
       <TrustedFor />
+      <HowItWorks />
       <PropertyHierarchy />
+      <OccupancyLive />
       <FeatureSystem />
       <SecuritySystem />
       <ComplaintFlow />
+      <ComplaintsLive />
       <FeeManagement />
+      <FinanceLive />
       <RoleDashboards />
+      <ParentLive />
       <AISuite />
-      <FounderSection />
+      <TextTestimonials />
       <VideoTestimonials />
+      <FounderSection />
       <PricingPreview />
       <FinalCTA />
     </div>
