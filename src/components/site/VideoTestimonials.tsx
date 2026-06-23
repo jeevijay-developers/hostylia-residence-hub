@@ -24,7 +24,7 @@ const testimonials: Testimonial[] = [
   {
     src: vid1.url,
     poster: p1.url,
-    name: "Operator · Pune",
+    name: "Operator",
     role: "240-bed PG chain",
     quote: "Collections jumped 22% in the first quarter on Hostylia.",
     tag: "Finance",
@@ -32,7 +32,7 @@ const testimonials: Testimonial[] = [
   {
     src: vid2.url,
     poster: p2.url,
-    name: "Warden · Hyderabad",
+    name: "Warden",
     role: "Boarding school",
     quote: "Wardens finally get their evenings back. One screen, every block.",
     tag: "Operations",
@@ -40,7 +40,7 @@ const testimonials: Testimonial[] = [
   {
     src: vid3.url,
     poster: p3.url,
-    name: "Parent · Bengaluru",
+    name: "Parent",
     role: "Student family",
     quote: "I stopped calling the warden. The app tells me everything.",
     tag: "Parent App",
@@ -48,7 +48,7 @@ const testimonials: Testimonial[] = [
   {
     src: vid4.url,
     poster: p4.url,
-    name: "Founder · Delhi NCR",
+    name: "Founder",
     role: "Co-living chain",
     quote: "Hostylia is the only platform we run our portfolio on.",
     tag: "Owner",
