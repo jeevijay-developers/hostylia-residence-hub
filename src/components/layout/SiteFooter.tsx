@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/site/Logo";
-import { Mail, MapPin, Globe } from "lucide-react";
+import { Mail, MapPin, Globe, Phone } from "lucide-react";
 
 const cols = [
   {
@@ -29,8 +29,13 @@ const cols = [
       { label: "About", to: "/about" },
       { label: "Founder", to: "/founder" },
       { label: "Contact", to: "/contact" },
-      { label: "Privacy Policy", to: "/about" },
-      { label: "Terms", to: "/about" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy Policy", to: "/privacy" },
+      { label: "Terms & Conditions", to: "/terms" },
     ],
   },
 ];
@@ -39,7 +44,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-dark-border bg-[#06091A]">
       <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Logo className="h-14 w-auto md:h-16" />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-soft-grey">
@@ -49,7 +54,8 @@ export function SiteFooter() {
             <div className="mt-5 space-y-2 text-sm text-soft-grey">
               <p className="flex items-center gap-2"><Globe size={14} className="text-soft-teal" /> hostylia.com</p>
               <p className="flex items-center gap-2"><Mail size={14} className="text-soft-teal" /> hello@hostylia.com</p>
-              <p className="flex items-start gap-2"><MapPin size={14} className="mt-0.5 text-soft-teal" /> Powered by Jeevijay Technologies Private Limited</p>
+              <p className="flex items-center gap-2"><Phone size={14} className="text-soft-teal" /> +91 86194 83010</p>
+              <p className="flex items-start gap-2"><MapPin size={14} className="mt-0.5 text-soft-teal" /> H No 1, Sai Extension Colony, Bengaluru — Jeevijay Technologies Pvt Ltd</p>
             </div>
           </div>
           {cols.map((col) => (

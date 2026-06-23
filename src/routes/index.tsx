@@ -4,10 +4,14 @@ import {
   LayoutGrid, Users, BedDouble, ShieldCheck, IndianRupee, MessageSquareWarning, BellRing, ScanLine,
   Briefcase, Wallet, UserCog, Calculator, User, UserCheck,
   Brain, Sparkles, BarChart3, FileBarChart, Bot, Languages,
-  LogIn, Clock, ShieldAlert, ListChecks, Check,
+  LogIn, Clock, ShieldAlert, ListChecks, Check, Rocket, Settings2, LineChart, Lock,
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import {
+  MockOccupancyDashboard, MockFinanceDashboard, MockComplaintBoard, MockParentApp,
+  StatBand, BenefitList, TestimonialCard,
+} from "@/components/site/HtmlMockups";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import { VideoTestimonials } from "@/components/site/VideoTestimonials";
 import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
@@ -36,16 +40,23 @@ function HomePage() {
   return (
     <div className="bg-section-dark">
       <Hero />
+      <HeroStats />
       <TrustedFor />
+      <HowItWorks />
       <PropertyHierarchy />
+      <OccupancyLive />
       <FeatureSystem />
       <SecuritySystem />
       <ComplaintFlow />
+      <ComplaintsLive />
       <FeeManagement />
+      <FinanceLive />
       <RoleDashboards />
+      <ParentLive />
       <AISuite />
-      <FounderSection />
+      <TextTestimonials />
       <VideoTestimonials />
+      <FounderSection />
       <PricingPreview />
       <FinalCTA />
     </div>
@@ -62,9 +73,15 @@ function Hero() {
 
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 md:px-6 md:py-28 lg:grid-cols-2">
         <div className="animate-fade-up">
-          <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
-            <Sparkles size={12} className="text-gold" />
-            Smart Residential Operating System
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
+              <Sparkles size={12} className="text-gold" />
+              Smart Residential Operating System
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-soft-teal/30 bg-soft-teal/10 px-3 py-1.5 text-xs font-semibold text-soft-teal">
+              <span className="h-1.5 w-1.5 rounded-full bg-soft-teal" />
+              Trusted by 120+ properties · 65,000 beds
+            </div>
           </div>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
             Smart Residential Management for{" "}
@@ -499,8 +516,194 @@ function FinalCTA() {
               <Link to="/contact" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
                 Contact Sales
               </Link>
+              <Link to="/founder" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-transparent px-5 py-3 text-sm font-bold text-soft-teal hover:bg-white/5">
+                Talk to the Founder
+              </Link>
             </div>
+            <p className="mt-5 inline-flex items-center gap-2 text-xs text-soft-grey">
+              <Lock size={12} className="text-soft-teal" />
+              Data hosted in India · Role-based access · Daily encrypted backups
+            </p>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  New landing-page sections                                                  */
+/* -------------------------------------------------------------------------- */
+
+function HeroStats() {
+  return (
+    <section className="bg-section-dark py-12">
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        <StatBand stats={[
+          { v: "65,000", l: "Beds managed" },
+          { v: "11 cities", l: "Across India" },
+          { v: "92%", l: "On-time collection" },
+          { v: "4.9 / 5", l: "Operator CSAT" },
+        ]} />
+      </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    {
+      n: "01", icon: Rocket, eyebrow: "Onboard", title: "Go live in a weekend",
+      desc: "White-glove onboarding, data migration from any tool and staff training — all included.",
+      items: ["Import beds, students and dues", "Configure roles and approvals", "Train wardens in two sessions"],
+    },
+    {
+      n: "02", icon: Settings2, eyebrow: "Operate", title: "Run every block in one screen",
+      desc: "Wardens, managers and owners get a focused view of the same live source of truth.",
+      items: ["Live occupancy and fee dashboards", "Complaint board with SLA timers", "Parent app and security workflows"],
+    },
+    {
+      n: "03", icon: LineChart, eyebrow: "Optimize", title: "Compound wins, quarter after quarter",
+      desc: "AI surfaces risks early, automates dues and forecasts vacancy so growth never stalls.",
+      items: ["AI fee recovery and complaint triage", "Vacancy forecast 30 days ahead", "Portfolio-wide finance roll-ups"],
+    },
+  ];
+  return (
+    <section className="bg-section-dark py-20">
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        <SectionHeading eyebrow="How it works" title="From kickoff to AI co-pilot in three moves" desc="A clear path from your first call to a residence that runs itself." />
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {steps.map((s) => (
+            <div key={s.n} className="card-lift relative overflow-hidden rounded-2xl border border-dark-border bg-card p-6">
+              <div className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-white/[0.04]">{s.n}</div>
+              <div className="inline-grid h-12 w-12 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--soft-teal)_18%,transparent)] text-soft-teal">
+                <s.icon size={22} />
+              </div>
+              <div className="mt-4 text-xs font-bold uppercase tracking-widest text-gold">{s.eyebrow}</div>
+              <h3 className="mt-1 text-lg font-extrabold text-white">{s.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-soft-grey">{s.desc}</p>
+              <BenefitList items={s.items} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OccupancyLive() {
+  return (
+    <section className="border-y border-dark-border bg-section-dark py-20">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+        <MockOccupancyDashboard />
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-gold">Live Operations</div>
+          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">A control room for every residence</h3>
+          <p className="mt-3 text-base leading-relaxed text-soft-grey">
+            Beds, blocks and floors are live objects — not spreadsheets. Owners see real status
+            from anywhere; wardens act on it in the same screen.
+          </p>
+          <BenefitList items={[
+            "Property → Block → Floor → Room → Bed hierarchy.",
+            "Real-time occupancy with vacancy alerts.",
+            "One-click move-in, move-out and bed swaps.",
+          ]} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ComplaintsLive() {
+  return (
+    <section className="bg-section-dark py-20">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-gold">Complaints, closed in hours</div>
+          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">An AI triage board your team will actually use</h3>
+          <p className="mt-3 text-base leading-relaxed text-soft-grey">
+            Every ticket is auto-tagged, prioritized and routed to the right person — with SLA
+            timers visible to every stakeholder.
+          </p>
+          <BenefitList items={[
+            "AI triage with auto-routing to the right team.",
+            "Average resolution time down 38%.",
+            "Parents stay informed automatically.",
+          ]} />
+        </div>
+        <MockComplaintBoard />
+      </div>
+    </section>
+  );
+}
+
+function FinanceLive() {
+  return (
+    <section className="border-y border-dark-border bg-section-dark py-20">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+        <MockFinanceDashboard />
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-gold">Finance dashboard</div>
+          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">From invoicing to reconciliation — in one click</h3>
+          <p className="mt-3 text-base leading-relaxed text-soft-grey">
+            AI nudges and UPI auto-reconciliation push on-time collection to 92% — without a single
+            phone call from your team.
+          </p>
+          <BenefitList items={[
+            "Recover 4 of every 5 overdue fees on auto-pilot.",
+            "GST-ready receipts, exportable to Tally and Excel.",
+            "FY-level finance roll-up across properties.",
+          ]} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ParentLive() {
+  return (
+    <section className="bg-section-dark py-20">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-gold">Built for every role</div>
+          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">The parent app that ends the daily phone calls</h3>
+          <p className="mt-3 text-base leading-relaxed text-soft-grey">
+            Check-ins, meals, dues, complaints and notices — parents see it all in one beautiful
+            app, in their preferred language.
+          </p>
+          <BenefitList items={[
+            "Real-time gate-pass and attendance alerts.",
+            "One-tap fee payment with branded receipts.",
+            "Multilingual support across English, Hindi and regional languages.",
+          ]} />
+        </div>
+        <MockParentApp />
+      </div>
+    </section>
+  );
+}
+
+function TextTestimonials() {
+  return (
+    <section className="border-y border-dark-border bg-section-dark py-20">
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        <SectionHeading eyebrow="What operators say" title="Loved by residences across India" />
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <TestimonialCard
+            quote="Collections jumped 22% in the first quarter. The AI fee nudges paid for the whole platform."
+            name="Pratik Joshi"
+            role="Director · 4-property hostel chain"
+          />
+          <TestimonialCard
+            quote="Wardens got their evenings back. One screen replaced three Excel sheets and a WhatsApp group."
+            name="Riya Menon"
+            role="Owner · 2-property PG chain, Bengaluru"
+          />
+          <TestimonialCard
+            quote="Parents stopped calling the warden. They open the app instead — that alone changed our culture."
+            name="Captain S. Rao"
+            role="Principal · Residential school, Hyderabad"
+          />
         </div>
       </div>
     </section>
