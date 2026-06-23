@@ -26,9 +26,9 @@ export const Route = createFileRoute("/pricing")({
 });
 
 const plans = [
-  { name: "Starter", price: "₹29", desc: "For single hostels getting started.",
+  { name: "Starter", price: "₹115", desc: "For single hostels getting started.",
     features: ["Up to 100 beds", "Core operations", "Fee collection", "Parent app", "Email support"] },
-  { name: "Professional", price: "₹49", desc: "For growing properties and small chains.", featured: true,
+  { name: "Professional", price: "₹140", desc: "For growing properties and small chains.", featured: true,
     features: ["Unlimited beds", "AI Suite included", "Security workflows", "Owner dashboard", "Priority support"] },
   { name: "Enterprise", price: "Custom", desc: "For multi-property owners and institutions.",
     features: ["Multi-property roll-up", "SSO and SAML", "Custom SLAs", "White-label options", "Dedicated CSM"] },
