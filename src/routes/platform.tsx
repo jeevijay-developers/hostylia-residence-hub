@@ -5,6 +5,7 @@ import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import moveOutNotice from "@/assets/illustrations/move-out-notice.jpg";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
+import { MockOccupancyDashboard, StatBand, BenefitList } from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/platform")({
   head: () => ({
