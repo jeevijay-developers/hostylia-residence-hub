@@ -61,23 +61,78 @@ const groups = [
   ]},
 ];
 
+const benefits: Record<string, string[]> = {
+  Finance: [
+    "UPI, card, netbanking, cash and cheque — one ledger.",
+    "Auto-receipts, GST invoices and parent statements.",
+    "Smart reminders that recover 92% of dues in 7 days.",
+    "Owner P&L, block-wise collection and aging reports.",
+  ],
+  Student: [
+    "Digital admissions with KYC and document vault.",
+    "Room and bed allocation with one-tap swap.",
+    "Lock-in, notice and exit flow tracked end to end.",
+    "Branded student and parent apps for every property.",
+  ],
+  Operations: [
+    "Wardens close attendance in under 3 minutes a day.",
+    "Mess menu, headcount and food waste analytics.",
+    "Notice board reaches 100% of parents — proven.",
+    "Maintenance SLAs with vendor accountability built in.",
+  ],
+  Security: [
+    "Face / QR gate pass with anti-tailgating alerts.",
+    "Live visitor log with host approval.",
+    "Late entry, missing student and emergency triggers.",
+    "Instant parent SMS for every gate event.",
+  ],
+  Analytics: [
+    "Owner dashboard with portfolio-wide roll-ups.",
+    "Occupancy, revenue, complaints — all real-time.",
+    "Exportable to Excel, PDF and your existing BI tool.",
+    "Drill from property to block to bed in one click.",
+  ],
+};
+
 function FeaturesPage() {
+  const mocks: Record<number, JSX.Element> = {
+    0: <MockFinanceDashboard />,
+    1: <MockFeeReceipt />,
+    2: <MockComplaintBoard />,
+    3: <MockSecurityLog />,
+    4: <MockAiInsights />,
+  };
+
   return (
     <div className="bg-section-dark">
       <PageHero
         eyebrow="Features"
         title="A complete operating system for residential properties"
-        desc="Five feature pillars covering every workflow your residence relies on."
+        desc="Five feature pillars — Finance, Student, Operations, Security and Analytics — covering every workflow your residence relies on."
       />
+
+      <section className="py-12">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <StatBand stats={[
+            { v: "92%", l: "On-time collection" },
+            { v: "3 min", l: "Daily attendance" },
+            { v: "100%", l: "Parent reach" },
+            { v: "10k+", l: "Beds managed" },
+          ]} />
+        </div>
+      </section>
+
       {groups.map((g, gi) => {
         const illus: Record<number, { src: string; alt: string }> = {
-          0: { src: collectionChart, alt: "Finance collection chart with pending and received amounts" },
-          1: { src: tenantAgreement, alt: "Resident agreement document with signature and verified badge" },
-          2: { src: servicesPanel, alt: "Operations services panel with meals, wifi and housekeeping icons" },
-          3: { src: duesLock, alt: "Secure dues view with rent and maintenance line items" },
-          4: { src: attendanceOutpass, alt: "Attendance and outpass approval card with check-in and check-out dates" },
+          0: { src: collectionChart, alt: "Finance collection chart" },
+          1: { src: tenantAgreement, alt: "Resident agreement document" },
+          2: { src: servicesPanel, alt: "Operations services panel" },
+          3: { src: duesLock, alt: "Secure dues view" },
+          4: { src: attendanceOutpass, alt: "Attendance and outpass approval" },
         };
         const card = illus[gi];
+        const mock = mocks[gi];
+        const reversed = gi % 2 === 1;
         return (
           <section key={g.title} className="border-b border-dark-border py-20">
             <div className="mx-auto max-w-7xl px-4 md:px-6">
@@ -85,15 +140,32 @@ function FeaturesPage() {
               <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {g.items.map((it) => <FeatureCard key={it.title} icon={it.icon} title={it.title} desc="Configurable workflows with role-based access and audit trails." tone="teal" />)}
               </div>
+
+              {mock && (
+                <div className={`mt-16 grid items-center gap-10 lg:grid-cols-2 ${reversed ? "lg:[&>*:first-child]:order-2" : ""}`}>
+                  <div>{mock}</div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-gold">{g.title} · live mockup</div>
+                    <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">What {g.title.toLowerCase()} looks like inside Hostylia</h3>
+                    <p className="mt-3 text-base leading-relaxed text-soft-grey">
+                      A real screen from the product — not a marketing render. Built for the operator
+                      who runs your residence every single day.
+                    </p>
+                    <BenefitList items={benefits[g.title] ?? []} />
+                  </div>
+                </div>
+              )}
+
               {card && (
-                <div className={`mt-14 grid items-center gap-10 lg:grid-cols-2 ${gi % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""}`}>
+                <div className="mt-12 grid items-center gap-10 lg:grid-cols-2">
                   <IllustrationCard src={card.src} alt={card.alt} />
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-widest text-gold">{g.title} in action</div>
                     <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Built for real residential operations</h3>
                     <p className="mt-3 text-base leading-relaxed text-soft-grey">
                       Every {g.title.toLowerCase()} workflow ships with role-based access, audit
-                      trails and Hostylia's elegant operator experience.
+                      trails and Hostylia's elegant operator experience — designed with wardens,
+                      not for them.
                     </p>
                   </div>
                 </div>
@@ -102,6 +174,30 @@ function FeaturesPage() {
           </section>
         );
       })}
+
+      <section className="border-b border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="Loved by operators" title="Properties that switched, never looked back" />
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            <TestimonialCard
+              quote="We replaced four tools with Hostylia. Our collection went from 78% to 96% in the first quarter."
+              name="Anjali Mehta"
+              role="Owner · 4-property PG chain, Pune"
+            />
+            <TestimonialCard
+              quote="Wardens now close attendance in 3 minutes. Parents stopped calling — they trust the app."
+              name="Father Joseph K."
+              role="Boarding School Principal, Kerala"
+            />
+            <TestimonialCard
+              quote="The AI complaint triage alone saves us 12 hours a week. The reporting is genuinely beautiful."
+              name="Rohit Bansal"
+              role="Operations Head · 1,200-bed dormitory"
+            />
+          </div>
+        </div>
+      </section>
+
       <CTAStrip />
     </div>
   );
