@@ -73,9 +73,15 @@ function Hero() {
 
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 md:px-6 md:py-28 lg:grid-cols-2">
         <div className="animate-fade-up">
-          <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
-            <Sparkles size={12} className="text-gold" />
-            Smart Residential Operating System
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
+              <Sparkles size={12} className="text-gold" />
+              Smart Residential Operating System
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-soft-teal/30 bg-soft-teal/10 px-3 py-1.5 text-xs font-semibold text-soft-teal">
+              <span className="h-1.5 w-1.5 rounded-full bg-soft-teal" />
+              Trusted by 120+ properties · 65,000 beds
+            </div>
           </div>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
             Smart Residential Management for{" "}
