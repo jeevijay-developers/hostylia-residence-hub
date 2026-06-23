@@ -45,6 +45,7 @@ function HomePage() {
       <RoleDashboards />
       <AISuite />
       <FounderSection />
+      <VideoTestimonials />
       <PricingPreview />
       <FinalCTA />
     </div>
