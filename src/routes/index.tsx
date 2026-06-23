@@ -8,7 +8,13 @@ import {
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import { IllustrationCard } from "@/components/site/IllustrationCard";
 import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
+import buildingHero from "@/assets/illustrations/building-hero.jpg";
+import inventoryStatus from "@/assets/illustrations/inventory-status.jpg";
+import duesLock from "@/assets/illustrations/dues-lock.jpg";
+import collectionChart from "@/assets/illustrations/collection-chart.jpg";
+import aiInsights from "@/assets/illustrations/ai-insights.jpg";
 
 
 export const Route = createFileRoute("/")({
@@ -88,8 +94,14 @@ function Hero() {
             ))}
           </div>
         </div>
-        <div className="animate-fade-up">
-          <HeroDashboard />
+        <div className="animate-fade-up relative">
+          <div className="absolute inset-0 -z-0 overflow-hidden rounded-3xl opacity-40">
+            <img src={buildingHero} alt="" aria-hidden className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-transparent" />
+          </div>
+          <div className="relative z-10">
+            <HeroDashboard />
+          </div>
         </div>
       </div>
     </section>
@@ -177,6 +189,19 @@ function PropertyHierarchy() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          <IllustrationCard src={inventoryStatus} alt="Inventory status — vacant, on hold, occupied and on notice rooms" />
+          <div className="flex flex-col justify-center">
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Live Inventory</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Every bed, every status — at a glance</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Filter by block or floor, see vacant, on-hold, occupied and on-notice beds in one
+              colored grid, and assign tenants in a tap. Hostylia turns your inventory into a
+              live, visual control room.
+            </p>
           </div>
         </div>
       </div>
@@ -336,6 +361,11 @@ function FeeManagement() {
           </div>
         </div>
       </div>
+
+      <div className="mx-auto mt-16 grid max-w-7xl gap-6 px-4 md:px-6 lg:grid-cols-2">
+        <IllustrationCard src={collectionChart} alt="Collection report chart with pending and received amounts" />
+        <IllustrationCard src={duesLock} alt="Secure resident dues card with rent and maintenance line items" />
+      </div>
     </section>
   );
 }
@@ -374,8 +404,11 @@ function AISuite() {
     <section className="bg-section-dark py-20">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <SectionHeading eyebrow="Hostylia AI Suite" title="AI-powered residential intelligence" desc="Models tuned for residential operations, from complaint triage to fee recovery." />
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((it) => <FeatureCard key={it.title} {...it} tone="teal" />)}
+        <div className="mt-12 grid items-center gap-8 lg:grid-cols-[1fr_1.1fr]">
+          <IllustrationCard src={aiInsights} alt="AI residential intelligence dashboard with occupancy gauge and predictive insights" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {items.map((it) => <FeatureCard key={it.title} {...it} tone="teal" />)}
+          </div>
         </div>
       </div>
     </section>

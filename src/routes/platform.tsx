@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Cpu, Cloud, Shield, Layers, Smartphone, Database, Plug, Lock, Globe, Zap } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
+import { IllustrationCard } from "@/components/site/IllustrationCard";
+import moveOutNotice from "@/assets/illustrations/move-out-notice.jpg";
+import buildingHero from "@/assets/illustrations/building-hero.jpg";
 
 export const Route = createFileRoute("/platform")({
   head: () => ({
@@ -55,6 +58,33 @@ function PlatformPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+      <section className="py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <IllustrationCard src={moveOutNotice} alt="Move-out lifecycle card showing lock-in and notice periods" />
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Stay Lifecycle</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">From onboarding to move-out — fully tracked</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Lock-in periods, notice windows, renewals and exits are modeled end to end. Wardens,
+              owners and parents always see the same accurate status.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-[1.1fr_1fr]">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Engineered for Scale</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">A platform that grows with your portfolio</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              From a single hostel to a national chain, Hostylia's architecture is built for high
+              availability, fast performance and secure multi-tenant isolation.
+            </p>
+          </div>
+          <IllustrationCard src={buildingHero} alt="Luminous modern residential apartment tower at night" />
         </div>
       </section>
       <CTAStrip />
