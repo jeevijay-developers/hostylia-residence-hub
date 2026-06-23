@@ -27,7 +27,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-dark-border bg-[color-mix(in_oklab,var(--navy)_85%,transparent)] backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 md:px-6">
-        <Logo className="h-9 w-auto md:h-10" />
+        <Logo className="h-12 w-auto md:h-14" />
 
         <nav className="hidden items-center justify-center gap-1 lg:flex">
           {navItems.map((item) => {
