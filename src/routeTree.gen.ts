@@ -10,7 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SolutionsRouteImport } from './routes/solutions'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as FounderRouteImport } from './routes/founder'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BookDemoRouteImport } from './routes/book-demo'
+import { Route as AiSuiteRouteImport } from './routes/ai-suite'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SolutionsRoute = SolutionsRouteImport.update({
@@ -18,9 +25,44 @@ const SolutionsRoute = SolutionsRouteImport.update({
   path: '/solutions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformRoute = PlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FounderRoute = FounderRouteImport.update({
+  id: '/founder',
+  path: '/founder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeaturesRoute = FeaturesRouteImport.update({
   id: '/features',
   path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookDemoRoute = BookDemoRouteImport.update({
+  id: '/book-demo',
+  path: '/book-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiSuiteRoute = AiSuiteRouteImport.update({
+  id: '/ai-suite',
+  path: '/ai-suite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,31 +73,90 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/ai-suite': typeof AiSuiteRoute
+  '/book-demo': typeof BookDemoRoute
+  '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/founder': typeof FounderRoute
+  '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
   '/solutions': typeof SolutionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/ai-suite': typeof AiSuiteRoute
+  '/book-demo': typeof BookDemoRoute
+  '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/founder': typeof FounderRoute
+  '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
   '/solutions': typeof SolutionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/ai-suite': typeof AiSuiteRoute
+  '/book-demo': typeof BookDemoRoute
+  '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/founder': typeof FounderRoute
+  '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
   '/solutions': typeof SolutionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/features' | '/solutions'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/ai-suite'
+    | '/book-demo'
+    | '/contact'
+    | '/features'
+    | '/founder'
+    | '/platform'
+    | '/pricing'
+    | '/solutions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/features' | '/solutions'
-  id: '__root__' | '/' | '/features' | '/solutions'
+  to:
+    | '/'
+    | '/about'
+    | '/ai-suite'
+    | '/book-demo'
+    | '/contact'
+    | '/features'
+    | '/founder'
+    | '/platform'
+    | '/pricing'
+    | '/solutions'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/ai-suite'
+    | '/book-demo'
+    | '/contact'
+    | '/features'
+    | '/founder'
+    | '/platform'
+    | '/pricing'
+    | '/solutions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  AiSuiteRoute: typeof AiSuiteRoute
+  BookDemoRoute: typeof BookDemoRoute
+  ContactRoute: typeof ContactRoute
   FeaturesRoute: typeof FeaturesRoute
+  FounderRoute: typeof FounderRoute
+  PlatformRoute: typeof PlatformRoute
+  PricingRoute: typeof PricingRoute
   SolutionsRoute: typeof SolutionsRoute
 }
 
@@ -68,11 +169,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SolutionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform': {
+      id: '/platform'
+      path: '/platform'
+      fullPath: '/platform'
+      preLoaderRoute: typeof PlatformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/founder': {
+      id: '/founder'
+      path: '/founder'
+      fullPath: '/founder'
+      preLoaderRoute: typeof FounderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/features': {
       id: '/features'
       path: '/features'
       fullPath: '/features'
       preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book-demo': {
+      id: '/book-demo'
+      path: '/book-demo'
+      fullPath: '/book-demo'
+      preLoaderRoute: typeof BookDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-suite': {
+      id: '/ai-suite'
+      path: '/ai-suite'
+      fullPath: '/ai-suite'
+      preLoaderRoute: typeof AiSuiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +237,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  AiSuiteRoute: AiSuiteRoute,
+  BookDemoRoute: BookDemoRoute,
+  ContactRoute: ContactRoute,
   FeaturesRoute: FeaturesRoute,
+  FounderRoute: FounderRoute,
+  PlatformRoute: PlatformRoute,
+  PricingRoute: PricingRoute,
   SolutionsRoute: SolutionsRoute,
 }
 export const routeTree = rootRouteImport
