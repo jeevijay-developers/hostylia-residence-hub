@@ -14,6 +14,10 @@ import servicesPanel from "@/assets/illustrations/services-panel.jpg";
 import attendanceOutpass from "@/assets/illustrations/attendance-outpass.jpg";
 import duesLock from "@/assets/illustrations/dues-lock.jpg";
 import collectionChart from "@/assets/illustrations/collection-chart.jpg";
+import {
+  MockFinanceDashboard, MockComplaintBoard, MockSecurityLog, MockParentApp,
+  MockAiInsights, MockFeeReceipt, StatBand, TestimonialCard, BenefitList,
+} from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/features")({
   head: () => ({
