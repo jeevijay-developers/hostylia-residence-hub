@@ -1,8 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Send, Clock, ShieldCheck, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import { PageHero } from "@/components/site/PageHero";
+import { PageHero, CTAStrip } from "@/components/site/PageHero";
+import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
+import {
+  MockParentApp,
+  MockComplaintBoard,
+  StatBand,
+  BenefitList,
+  TestimonialCard,
+} from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -32,6 +40,7 @@ function ContactPage() {
   return (
     <div className="bg-section-dark">
       <PageHero eyebrow="Contact" title="Let's talk residential operations" desc="Tell us about your property and we'll get back to you within one business day." />
+
       <section className="py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 md:px-6 lg:grid-cols-[1fr_1.3fr]">
           <div className="space-y-4">
@@ -53,6 +62,85 @@ function ContactPage() {
           </form>
         </div>
       </section>
+
+      <section className="border-t border-dark-border py-12">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <StatBand stats={[
+            { v: "< 1 day", l: "Average response time" },
+            { v: "24 × 7", l: "Live ops monitoring" },
+            { v: "11 cities", l: "On-ground partners" },
+            { v: "4.9 / 5", l: "Support CSAT" },
+          ]} />
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <MockParentApp />
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Built for every stakeholder</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">From owners to parents — one team, one app</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Whether you're an owner exploring Hostylia, a warden onboarding tomorrow or a parent
+              with a question — our team responds within hours, not days.
+            </p>
+            <BenefitList items={[
+              "Dedicated residential ops specialists, not generic helpdesk.",
+              "WhatsApp, email and phone — your channel, your timing.",
+              "On-ground partners in 11 Indian cities.",
+            ]} />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Support that ships</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Every ticket tracked, every promise kept</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              We use the same complaint board our customers do. Your request is triaged, assigned and
+              followed up automatically — with full visibility for you.
+            </p>
+            <BenefitList items={[
+              "SLA-backed response and resolution timers.",
+              "Auto-escalation to the right specialist team.",
+              "Status updates on email and WhatsApp.",
+            ]} />
+          </div>
+          <MockComplaintBoard />
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="What you get" title="Support without the runaround" />
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <FeatureCard icon={Clock} title="Same-day response" desc="Every message gets a human reply within one business day." />
+            <FeatureCard icon={ShieldCheck} title="Secure intake" desc="Property and student data is encrypted from the first message." tone="blue" />
+            <FeatureCard icon={MessageSquare} title="WhatsApp first" desc="Talk to us on the channel your team already lives in." tone="gold" />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="In their words" title="Why operators stay" />
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            <TestimonialCard
+              quote="Their team gets residential ops. We don't have to explain the basics — we just get to solutions."
+              name="Sneha Iyer"
+              role="Operations Lead · 900-bed boarding school"
+            />
+            <TestimonialCard
+              quote="We've shipped product changes we requested within the same quarter. That's rare."
+              name="Mohit Bansal"
+              role="Co-founder · Co-living chain, Delhi NCR"
+            />
+          </div>
+        </div>
+      </section>
+      <CTAStrip />
     </div>
   );
 }

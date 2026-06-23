@@ -1,8 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Sparkles, ShieldCheck, Headphones, Layers } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
-import { SectionHeading } from "@/components/site/Primitives";
+import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  MockFeeReceipt,
+  MockFinanceDashboard,
+  StatBand,
+  BenefitList,
+  TestimonialCard,
+} from "@/components/site/HtmlMockups";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -38,6 +45,7 @@ function PricingPage() {
   return (
     <div className="bg-section-dark">
       <PageHero eyebrow="Pricing" title="Simple pricing, per student per month" desc="Pick a plan that matches your residential operations." />
+
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="grid gap-5 md:grid-cols-3">
@@ -62,6 +70,88 @@ function PricingPage() {
           </div>
         </div>
       </section>
+
+      <section className="border-t border-dark-border py-12">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <StatBand stats={[
+            { v: "92%", l: "On-time fee collection" },
+            { v: "6 weeks", l: "Average payback period" },
+            { v: "12 hrs", l: "Saved per warden / week" },
+            { v: "4.9 / 5", l: "Operator satisfaction" },
+          ]} />
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <MockFinanceDashboard />
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Returns on day one</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Pricing that pays for itself</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Most properties recover the full subscription cost within the first collection cycle —
+              automated reminders, UPI auto-reconciliation and AI nudges close the gaps manual
+              processes miss.
+            </p>
+            <BenefitList items={[
+              "Recover 4 of every 5 overdue fees on auto-pilot.",
+              "Cut reconciliation time from days to minutes.",
+              "Owner dashboard with FY-level finance roll-up.",
+              "Unlimited UPI and gateway transactions.",
+            ]} />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-gold">Loved by parents</div>
+            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">A premium receipt — every single time</h3>
+            <p className="mt-3 text-base leading-relaxed text-soft-grey">
+              Parents pay in a tap and instantly get a branded receipt, GST-ready and stored
+              forever in their app. No more "did the payment go through?" calls.
+            </p>
+            <BenefitList items={[
+              "UPI, cards, net-banking, cash and cheque — auto-reconciled.",
+              "GST-ready receipts and ledgers, exportable to Tally and Excel.",
+              "Multi-currency support for international campuses.",
+            ]} />
+          </div>
+          <MockFeeReceipt />
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="Every plan includes" title="The essentials, on the house" />
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <FeatureCard icon={Sparkles} title="Onboarding included" desc="White-glove setup with data migration and staff training." tone="gold" />
+            <FeatureCard icon={ShieldCheck} title="Enterprise-grade security" desc="SSO, RBAC, audit logs and daily backups." tone="blue" />
+            <FeatureCard icon={Headphones} title="Human support" desc="Real residential ops specialists, not generic helpdesk." />
+            <FeatureCard icon={Layers} title="Unlimited admins" desc="Owners, managers and wardens — no per-seat fees." tone="green" />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-dark-border py-20">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <SectionHeading eyebrow="Real numbers" title="What operators report after switching" />
+          <div className="mt-12 grid gap-5 md:grid-cols-2">
+            <TestimonialCard
+              quote="Hostylia paid for itself in the first month. The AI fee reminders alone recovered ₹6.4 lakh we'd written off."
+              name="Pratik Joshi"
+              role="Director · 4-property hostel chain"
+            />
+            <TestimonialCard
+              quote="We moved from a ₹2,000/month tool to Hostylia and saw ROI in 5 weeks. The pricing is honest and the value is obvious."
+              name="Anjali Verma"
+              role="Founder · 220-bed PG, Pune"
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-dark-border py-20">
         <div className="mx-auto max-w-3xl px-4 md:px-6">
           <SectionHeading eyebrow="FAQ" title="Pricing questions, answered" />
