@@ -578,7 +578,7 @@ function HowItWorks() {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {steps.map((s) => (
             <div key={s.n} className="card-lift relative overflow-hidden rounded-2xl border border-dark-border bg-card p-6">
-              <div className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-white/[0.04]">{s.n}</div>
+              <div className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-white/[0.04]" aria-hidden>{s.n}</div>
               <div className="inline-grid h-12 w-12 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--soft-teal)_18%,transparent)] text-soft-teal">
                 <s.icon size={22} />
               </div>

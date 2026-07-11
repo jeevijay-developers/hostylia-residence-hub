@@ -50,7 +50,7 @@ function TermsPage() {
           <LegalTocNav items={TOC} />
 
           <article className="min-w-0">
-            <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5 text-sm text-soft-grey">
+            <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5 text-sm text-white/90">
               This page is maintained by <strong className="text-white">Jeevijay Technologies Private Limited</strong> to describe the terms on which Hostylia is provided. It is not legal advice — please consult counsel before relying on it for any specific compliance purpose.
             </div>
 
