@@ -1,0 +1,23 @@
+# Hostylia
+
+> Smart residential operating system for hostels, boarding schools, student housing, PGs and co-living — one platform for rooms, fees, attendance, complaints and security.
+
+Hostylia is a cloud-based property management platform built specifically for residential properties that house students and young professionals. It unifies room and bed inventory, student records, fee collection, complaint tracking, parent communication, security workflows and AI-powered insights into a single dashboard.
+
+## Pages
+
+- [Home](/): Overview of the platform, key features, live dashboards, testimonials and pricing preview.
+- [About](/about): Company story, mission, traction metrics and the team behind Hostylia.
+- [Features](/features): Detailed breakdown of property management, student management, room allocation, warden controls, fee billing, complaint tracking, parent communication and security workflows.
+- [Solutions](/solutions): Use-cases tailored for hostels, boarding schools, student housing and multi-property owners.
+- [Platform](/platform): Interactive walkthrough of the platform interface, dashboards and reporting tools.
+- [AI Suite](/ai-suite): AI-powered features including predictive occupancy, smart fee reminders, sentiment analysis and automated reporting.
+- [Pricing](/pricing): Transparent pricing plans per student per month, with Starter and Professional tiers.
+- [Book a Demo](/book-demo): Schedule a live product demonstration with the Hostylia team.
+- [Contact](/contact): Get in touch with sales, support or partnership inquiries.
+- [Founder](/founder): Message from the founder, vision and journey of building Hostylia.
+
+## Optional
+
+- [Privacy Policy](/privacy): Data privacy practices and policy for Hostylia users.
+- [Terms & Conditions](/terms): Terms of service and legal conditions for using the platform.
