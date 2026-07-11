@@ -31,7 +31,10 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Rooms, students, wardens, parents, fees, attendance, complaints and security — unified." },
       { property: "og:url", content: "/" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [
+      { rel: "canonical", href: "/" },
+      { rel: "preload", as: "image", href: buildingHero, fetchpriority: "high" },
+    ],
   }),
   component: HomePage,
 });
@@ -115,7 +118,7 @@ function Hero() {
         </div>
         <div className="animate-fade-up relative">
           <div className="absolute inset-0 -z-0 overflow-hidden rounded-3xl opacity-40">
-            <img src={buildingHero} alt="" aria-hidden className="h-full w-full object-cover" />
+            <img src={buildingHero} alt="" aria-hidden className="h-full w-full object-cover" width="1440" height="960" fetchPriority="high" />
             <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-transparent" />
           </div>
           <div className="relative z-10">
