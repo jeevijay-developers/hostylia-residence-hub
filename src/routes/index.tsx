@@ -118,7 +118,7 @@ function Hero() {
         </div>
         <div className="animate-fade-up relative">
           <div className="absolute inset-0 -z-0 overflow-hidden rounded-3xl opacity-40">
-            <img src={buildingHero} alt="" aria-hidden className="h-full w-full object-cover" />
+            <img src={buildingHero} alt="" aria-hidden className="h-full w-full object-cover" width="1440" height="960" fetchpriority="high" />
             <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-transparent" />
           </div>
           <div className="relative z-10">
