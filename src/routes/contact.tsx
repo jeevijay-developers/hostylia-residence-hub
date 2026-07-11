@@ -156,7 +156,7 @@ function InfoCard({ icon: Icon, title, value }: { icon: any; title: string; valu
 }
 
 function Field({ label, name, type = "text", placeholder, required, textarea }: { label: string; name: string; type?: string; placeholder?: string; required?: boolean; textarea?: boolean }) {
-  const cls = "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] px-3 py-2.5 text-sm text-white placeholder:text-soft-grey/60 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
+  const cls = "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] px-3 py-2.5 text-sm text-white placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
   return (
     <label className={textarea ? "mt-4 block" : "block"}>
       <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">{label}</span>
