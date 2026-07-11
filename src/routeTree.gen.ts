@@ -21,6 +21,7 @@ import { Route as BookDemoRouteImport } from './routes/book-demo'
 import { Route as AiSuiteRouteImport } from './routes/ai-suite'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -82,6 +83,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapXmlRoute = SitemapXmlRouteImport.update({
+  id: '/sitemap/xml',
+  path: '/sitemap/xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/sitemap/xml': typeof SitemapXmlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/sitemap/xml': typeof SitemapXmlRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/sitemap/xml': typeof SitemapXmlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/solutions'
     | '/terms'
+    | '/sitemap/xml'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/solutions'
     | '/terms'
+    | '/sitemap/xml'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/solutions'
     | '/terms'
+    | '/sitemap/xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SolutionsRoute: typeof SolutionsRoute
   TermsRoute: typeof TermsRoute
+  SitemapXmlRoute: typeof SitemapXmlRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap/xml': {
+      id: '/sitemap/xml'
+      path: '/sitemap/xml'
+      fullPath: '/sitemap/xml'
+      preLoaderRoute: typeof SitemapXmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -288,17 +308,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SolutionsRoute: SolutionsRoute,
   TermsRoute: TermsRoute,
+  SitemapXmlRoute: SitemapXmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
