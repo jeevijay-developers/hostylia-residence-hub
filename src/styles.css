@@ -14,7 +14,9 @@
   --radius-4xl: calc(var(--radius) + 16px);
 
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
+  /* shadcn semantic tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -35,7 +37,19 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Hostylia brand */
+  /* Hostylia semantic status tokens */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  /* Hostylia decorative brand tokens (gradients / logo only — never button fills) */
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-cyan: var(--brand-cyan);
+
+  /* Legacy marketing-site brand tokens (kept so existing landing pages don't break) */
   --color-navy: var(--navy);
   --color-indigo-deep: var(--indigo-deep);
   --color-brand-blue: var(--brand-blue);
@@ -67,10 +81,45 @@
   }
 }
 
+/* =====================================================================
+   :root = LIGHT MODE (default, per Design.md)
+   ===================================================================== */
 :root {
   --radius: 0.75rem;
 
-  /* Brand tokens */
+  /* Hostylia brand — Design.md */
+  --background: #F6F8F8;
+  --foreground: #0A141E;
+  --card: #FFFFFF;
+  --card-foreground: #0A141E;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A141E;
+  --primary: #00696F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #00609C;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F0F3F3;
+  --muted-foreground: #51606B;
+  --accent: #00609C;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #DCE4E7;
+  --input: #CBD6DA;
+  --ring: #00D8CC;
+
+  --success: #15803D;
+  --success-foreground: #FFFFFF;
+  --warning: #B45309;
+  --warning-foreground: #FFFFFF;
+  --info: #00609C;
+  --info-foreground: #FFFFFF;
+
+  --brand-teal: #00B4B4;
+  --brand-cyan: #00D8CC;
+
+  /* Legacy marketing tokens — retained so existing landing pages
+     (which run in a .dark scope, see __root.tsx) render unchanged. */
   --navy: #070B18;
   --indigo-deep: #111B3D;
   --brand-blue: #0E6BA8;
@@ -80,27 +129,38 @@
   --soft-grey: #B8C0CC;
   --light-bg: #F7F8FB;
   --dark-border: #263247;
+}
 
-  /* Dark-by-default semantic mapping */
-  --background: #070B18;
-  --foreground: #FFFFFF;
-  --card: #111827;
-  --card-foreground: #FFFFFF;
-  --popover: #0F1730;
-  --popover-foreground: #FFFFFF;
-  --primary: #0E6BA8;
-  --primary-foreground: #FFFFFF;
-  --secondary: #111B3D;
+/* =====================================================================
+   .dark = DARK MODE overrides (Design.md dark palette)
+   ===================================================================== */
+.dark {
+  --background: #0A141E;
+  --foreground: #E5EDF0;
+  --card: #111E2A;
+  --card-foreground: #E5EDF0;
+  --popover: #111E2A;
+  --popover-foreground: #E5EDF0;
+  --primary: #2AB3AB;
+  --primary-foreground: #0A141E;
+  --secondary: #00609C;
   --secondary-foreground: #FFFFFF;
-  --muted: #111827;
-  --muted-foreground: #B8C0CC;
-  --accent: #4FB7A8;
-  --accent-foreground: #070B18;
-  --destructive: #E55353;
-  --destructive-foreground: #FFFFFF;
-  --border: #263247;
-  --input: #263247;
-  --ring: #4FB7A8;
+  --muted: #111E2A;
+  --muted-foreground: #94A7B2;
+  --accent: #2AB3AB;
+  --accent-foreground: #0A141E;
+  --destructive: #F87171;
+  --destructive-foreground: #0A141E;
+  --border: #1C2B38;
+  --input: #1C2B38;
+  --ring: #00D8CC;
+
+  --success: #34D399;
+  --success-foreground: #0A141E;
+  --warning: #FBBF24;
+  --warning-foreground: #0A141E;
+  --info: #60A5FA;
+  --info-foreground: #0A141E;
 }
 
 @layer base {
