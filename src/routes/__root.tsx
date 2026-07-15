@@ -130,19 +130,48 @@ function ScrollToTop() {
   return null;
 }
 
+// Routes that belong to the app (auth flow + authenticated shells) render
+// WITHOUT the marketing chrome and WITHOUT the `dark` wrapper — they're the
+// product surface, styled with the light-mode semantic tokens by default.
+const APP_ROUTE_PREFIXES = [
+  "/login",
+  "/verify-otp",
+  "/access-pending",
+  "/post-login",
+  "/super-admin",
+  "/admin",
+  "/warden",
+  "/student",
+  "/parent",
+];
+
+function isAppRoute(pathname: string): boolean {
+  return APP_ROUTE_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const appRoute = isAppRoute(pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ScrollToTop />
-      <div className="dark flex min-h-screen flex-col bg-background text-foreground">
-        <SiteHeader />
-        <main className="flex-1">
+      {appRoute ? (
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
           <Outlet />
-        </main>
-        <SiteFooter />
-      </div>
+        </div>
+      ) : (
+        <div className="dark flex min-h-screen flex-col bg-background text-foreground">
+          <SiteHeader />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          <SiteFooter />
+        </div>
+      )}
       <Toaster />
     </QueryClientProvider>
   );
