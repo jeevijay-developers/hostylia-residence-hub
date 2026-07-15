@@ -125,6 +125,14 @@
   --brand-teal: #00B4B4;
   --brand-cyan: #00D8CC;
 
+  /* Bed-status palette — Design.md Sec 4.3 (light mode only for now) */
+  --bed-vacant: #8A98A0;
+  --bed-occupied: #15803D;
+  --bed-maintenance: #B45309;
+  --bed-blocked: #DC2626;
+
+
+
   /* Legacy marketing tokens — retained so existing landing pages
      (which run in a .dark scope, see __root.tsx) render unchanged. */
   --navy: #070B18;
