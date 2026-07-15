@@ -17,90 +17,107 @@ export type Database = {
       audit_logs: {
         Row: {
           action: string
-          actor_id: string | null
-          context: Json
-          id: number
-          new_data: Json | null
-          occurred_at: string
-          old_data: Json | null
-          organization_id: string | null
-          record_id: string | null
-          table_name: string
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          effective_user_id: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: unknown
+          metadata: Json
+          property_id: string | null
+          request_id: string | null
+          support_session_id: string | null
           tenant_id: string | null
+          user_agent: string | null
         }
         Insert: {
           action: string
-          actor_id?: string | null
-          context?: Json
-          id?: number
-          new_data?: Json | null
-          occurred_at?: string
-          old_data?: Json | null
-          organization_id?: string | null
-          record_id?: string | null
-          table_name: string
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          effective_user_id?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          property_id?: string | null
+          request_id?: string | null
+          support_session_id?: string | null
           tenant_id?: string | null
+          user_agent?: string | null
         }
         Update: {
           action?: string
-          actor_id?: string | null
-          context?: Json
-          id?: number
-          new_data?: Json | null
-          occurred_at?: string
-          old_data?: Json | null
-          organization_id?: string | null
-          record_id?: string | null
-          table_name?: string
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          effective_user_id?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          property_id?: string | null
+          request_id?: string | null
+          support_session_id?: string | null
           tenant_id?: string | null
+          user_agent?: string | null
         }
         Relationships: []
       }
       organizations: {
         Row: {
+          billing_email: string | null
+          billing_phone: string | null
           created_at: string
+          deleted_at: string | null
+          gstin: string | null
           id: string
-          metadata: Json
+          legal_name: string | null
           name: string
-          parent_id: string | null
-          slug: string
+          pan_last4: string | null
+          registered_address: Json | null
           status: string
           tenant_id: string
-          type: string
           updated_at: string
         }
         Insert: {
+          billing_email?: string | null
+          billing_phone?: string | null
           created_at?: string
+          deleted_at?: string | null
+          gstin?: string | null
           id?: string
-          metadata?: Json
+          legal_name?: string | null
           name: string
-          parent_id?: string | null
-          slug: string
+          pan_last4?: string | null
+          registered_address?: Json | null
           status?: string
           tenant_id: string
-          type?: string
           updated_at?: string
         }
         Update: {
+          billing_email?: string | null
+          billing_phone?: string | null
           created_at?: string
+          deleted_at?: string | null
+          gstin?: string | null
           id?: string
-          metadata?: Json
+          legal_name?: string | null
           name?: string
-          parent_id?: string | null
-          slug?: string
+          pan_last4?: string | null
+          registered_address?: Json | null
           status?: string
           tenant_id?: string
-          type?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "organizations_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "organizations_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -117,12 +134,13 @@ export type Database = {
           created_at: string
           currency: string
           description: string | null
-          features: Json
           id: string
           is_active: boolean
-          limits: Json
+          max_properties: number | null
+          max_staff_seats: number | null
           name: string
-          price_cents: number
+          price_paise: number
+          trial_days: number
           updated_at: string
         }
         Insert: {
@@ -131,12 +149,13 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
-          features?: Json
           id?: string
           is_active?: boolean
-          limits?: Json
+          max_properties?: number | null
+          max_staff_seats?: number | null
           name: string
-          price_cents?: number
+          price_paise?: number
+          trial_days?: number
           updated_at?: string
         }
         Update: {
@@ -145,135 +164,142 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
-          features?: Json
           id?: string
           is_active?: boolean
-          limits?: Json
+          max_properties?: number | null
+          max_staff_seats?: number | null
           name?: string
-          price_cents?: number
+          price_paise?: number
+          trial_days?: number
           updated_at?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
-          avatar_url: string | null
+          avatar_path: string | null
           created_at: string
-          default_organization_id: string | null
-          display_name: string | null
           email: string | null
-          full_name: string | null
+          full_name: string
           id: string
+          last_active_at: string | null
           locale: string
-          metadata: Json
           phone: string | null
-          tenant_id: string | null
+          preferred_name: string | null
+          status: string
           updated_at: string
-          user_id: string
         }
         Insert: {
-          avatar_url?: string | null
+          avatar_path?: string | null
           created_at?: string
-          default_organization_id?: string | null
-          display_name?: string | null
           email?: string | null
-          full_name?: string | null
-          id?: string
+          full_name: string
+          id: string
+          last_active_at?: string | null
           locale?: string
-          metadata?: Json
           phone?: string | null
-          tenant_id?: string | null
+          preferred_name?: string | null
+          status?: string
           updated_at?: string
-          user_id: string
         }
         Update: {
-          avatar_url?: string | null
+          avatar_path?: string | null
           created_at?: string
-          default_organization_id?: string | null
-          display_name?: string | null
           email?: string | null
-          full_name?: string | null
+          full_name?: string
           id?: string
+          last_active_at?: string | null
           locale?: string
-          metadata?: Json
           phone?: string | null
-          tenant_id?: string | null
+          preferred_name?: string | null
+          status?: string
           updated_at?: string
-          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_default_organization_id_fkey"
-            columns: ["default_organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       properties: {
         Row: {
-          address_line1: string | null
-          address_line2: string | null
-          capacity: number
-          city: string | null
-          code: string | null
-          country: string | null
+          address_line_1: string
+          address_line_2: string | null
+          brand_primary_color: string | null
+          brand_secondary_color: string | null
+          city: string
+          country_code: string
           created_at: string
+          deleted_at: string | null
+          email: string | null
+          gender_policy: string
           id: string
-          metadata: Json
+          landmark: string | null
+          latitude: number | null
+          logo_path: string | null
+          longitude: number | null
           name: string
           organization_id: string
-          postal_code: string | null
+          phone: string | null
+          postal_code: string
           property_type: string
-          state: string | null
+          settings: Json
+          slug: string
+          state: string
           status: string
           tenant_id: string
           timezone: string
           updated_at: string
         }
         Insert: {
-          address_line1?: string | null
-          address_line2?: string | null
-          capacity?: number
-          city?: string | null
-          code?: string | null
-          country?: string | null
+          address_line_1: string
+          address_line_2?: string | null
+          brand_primary_color?: string | null
+          brand_secondary_color?: string | null
+          city: string
+          country_code?: string
           created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          gender_policy?: string
           id?: string
-          metadata?: Json
+          landmark?: string | null
+          latitude?: number | null
+          logo_path?: string | null
+          longitude?: number | null
           name: string
           organization_id: string
-          postal_code?: string | null
+          phone?: string | null
+          postal_code: string
           property_type?: string
-          state?: string | null
+          settings?: Json
+          slug: string
+          state: string
           status?: string
           tenant_id: string
           timezone?: string
           updated_at?: string
         }
         Update: {
-          address_line1?: string | null
-          address_line2?: string | null
-          capacity?: number
-          city?: string | null
-          code?: string | null
-          country?: string | null
+          address_line_1?: string
+          address_line_2?: string | null
+          brand_primary_color?: string | null
+          brand_secondary_color?: string | null
+          city?: string
+          country_code?: string
           created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          gender_policy?: string
           id?: string
-          metadata?: Json
+          landmark?: string | null
+          latitude?: number | null
+          logo_path?: string | null
+          longitude?: number | null
           name?: string
           organization_id?: string
-          postal_code?: string | null
+          phone?: string | null
+          postal_code?: string
           property_type?: string
-          state?: string | null
+          settings?: Json
+          slug?: string
+          state?: string
           status?: string
           tenant_id?: string
           timezone?: string
@@ -299,19 +325,28 @@ export type Database = {
       rate_limits: {
         Row: {
           bucket_key: string
-          count: number
+          counter: number
+          created_at: string
+          expires_at: string
+          id: string
           updated_at: string
           window_start: string
         }
         Insert: {
           bucket_key: string
-          count?: number
+          counter?: number
+          created_at?: string
+          expires_at: string
+          id?: string
           updated_at?: string
-          window_start?: string
+          window_start: string
         }
         Update: {
           bucket_key?: string
-          count?: number
+          counter?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
           updated_at?: string
           window_start?: string
         }
@@ -319,58 +354,57 @@ export type Database = {
       }
       subscriptions: {
         Row: {
-          cancel_at: string | null
-          canceled_at: string | null
+          cancel_at_period_end: boolean
+          cancelled_at: string | null
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
           id: string
-          metadata: Json
-          organization_id: string | null
           plan_id: string
+          provider: string | null
+          provider_customer_ref: string | null
+          provider_subscription_ref: string | null
+          starts_at: string
           status: string
           tenant_id: string
           trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
-          cancel_at?: string | null
-          canceled_at?: string | null
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          metadata?: Json
-          organization_id?: string | null
           plan_id: string
+          provider?: string | null
+          provider_customer_ref?: string | null
+          provider_subscription_ref?: string | null
+          starts_at: string
           status?: string
           tenant_id: string
           trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
-          cancel_at?: string | null
-          canceled_at?: string | null
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          metadata?: Json
-          organization_id?: string | null
           plan_id?: string
+          provider?: string | null
+          provider_customer_ref?: string | null
+          provider_subscription_ref?: string | null
+          starts_at?: string
           status?: string
           tenant_id?: string
           trial_ends_at?: string | null
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "subscriptions_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "subscriptions_plan_id_fkey"
             columns: ["plan_id"]
@@ -389,30 +423,48 @@ export type Database = {
       }
       tenants: {
         Row: {
+          cancelled_at: string | null
           created_at: string
+          default_currency: string
+          default_locale: string
+          display_name: string
           id: string
-          metadata: Json
-          name: string
+          legal_name: string | null
+          onboarding_status: string
           slug: string
           status: string
+          suspended_at: string | null
+          timezone: string
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
           created_at?: string
+          default_currency?: string
+          default_locale?: string
+          display_name: string
           id?: string
-          metadata?: Json
-          name: string
+          legal_name?: string | null
+          onboarding_status?: string
           slug: string
           status?: string
+          suspended_at?: string | null
+          timezone?: string
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
           created_at?: string
+          default_currency?: string
+          default_locale?: string
+          display_name?: string
           id?: string
-          metadata?: Json
-          name?: string
+          legal_name?: string | null
+          onboarding_status?: string
           slug?: string
           status?: string
+          suspended_at?: string | null
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
