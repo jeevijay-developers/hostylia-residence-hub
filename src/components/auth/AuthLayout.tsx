@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import logoAsset from "@/assets/hostylia-logo.png";
+import logoAsset from "@/assets/hostylia-logo.png.asset.json";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex items-center justify-center px-4 pt-8 pb-4 sm:pt-12">
         <Link to="/" className="inline-flex items-center gap-2" aria-label="Hostylia home">
-          <img src={logoAsset} alt="Hostylia" className="h-8 w-auto" />
+          <img src={logoAsset.url} alt="Hostylia" className="h-8 w-auto" />
         </Link>
       </header>
 
