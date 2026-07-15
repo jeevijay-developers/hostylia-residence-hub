@@ -1,0 +1,67 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है…",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "send": "भेजें",
+    "back": "वापस",
+    "signOut": "साइन आउट"
+  },
+  "language": {
+    "label": "भाषा",
+    "english": "English",
+    "hindi": "हिन्दी"
+  },
+  "auth": {
+    "termsPrefix": "जारी रखकर, आप Hostylia की",
+    "terms": "शर्तें",
+    "and": "और",
+    "privacy": "गोपनीयता नीति",
+    "loginTitle": "फिर से स्वागत है",
+    "loginSubtitle": "अपने डैशबोर्ड पर जाने के लिए साइन इन करें।",
+    "tabPhone": "फ़ोन OTP",
+    "tabEmail": "ईमेल और पासवर्ड",
+    "phoneLabel": "फ़ोन नंबर",
+    "phoneHelp": "हम इस नंबर पर 6-अंकों का कोड भेजेंगे।",
+    "sendCode": "कोड भेजें",
+    "emailLabel": "ईमेल",
+    "passwordLabel": "पासवर्ड",
+    "signIn": "साइन इन"
+  },
+  "parent": {
+    "shellTitle": "अभिभावक पोर्टल",
+    "tabs": {
+      "home": "होम",
+      "attendance": "उपस्थिति",
+      "complaints": "शिकायतें",
+      "messages": "संदेश",
+      "profile": "प्रोफ़ाइल"
+    },
+    "childSwitcher": "बच्चा चुनें",
+    "snapshot": {
+      "propertyLabel": "संपत्ति",
+      "statusLabel": "स्थिति",
+      "bedLabel": "बेड",
+      "feesTitle": "फ़ीस",
+      "feesSoon": "फ़ीस ट्रैकिंग जल्द ही आ रही है।"
+    },
+    "attendance": {
+      "title": "उपस्थिति",
+      "emptyTitle": "अभी तक कोई उपस्थिति नहीं",
+      "emptyBody": "जब आपका हॉस्टल इसे सक्रिय करेगा, तब उपस्थिति ट्रैकिंग शुरू होगी।"
+    },
+    "complaints": {
+      "title": "शिकायतें",
+      "emptyTitle": "कोई शिकायत दर्ज नहीं",
+      "emptyBody": "आपके बच्चे के लिए दर्ज की गई शिकायतें यहाँ दिखेंगी।"
+    },
+    "messages": {
+      "title": "संदेश",
+      "pickChild": "वार्डन से चैट खोलने के लिए एक बच्चा चुनें।",
+      "startPlaceholder": "अपना संदेश लिखें…",
+      "systemJoined": "वार्डन के साथ बातचीत शुरू हुई।",
+      "noWarden": "इस संपत्ति के लिए अभी कोई वार्डन नहीं है। कृपया बाद में पुनः प्रयास करें।"
+    },
+    "noChildren": "आपके खाते से अभी तक कोई बच्चा जुड़ा नहीं है। कृपया हॉस्टल से संपर्क करें।"
+  }
+}

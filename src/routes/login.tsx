@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
+
 
 const loginSearchSchema = z.object({
   mode: z.enum(["phone", "email"]).optional(),
@@ -22,9 +24,11 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { mode } = Route.useSearch();
+  const { t } = useTranslation();
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to continue to Hostylia.">
+    <AuthLayout title={t("auth.loginTitle")} subtitle={t("auth.loginSubtitle")}>
       <LoginForm defaultMode={mode ?? "phone"} />
     </AuthLayout>
   );
 }
+

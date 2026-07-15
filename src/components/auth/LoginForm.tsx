@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -21,13 +22,14 @@ import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 type Mode = "phone" | "email";
 
 export function LoginForm({ defaultMode = "phone" as Mode }: { defaultMode?: Mode }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>(defaultMode);
 
   return (
     <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="phone" className="min-h-11">Phone OTP</TabsTrigger>
-        <TabsTrigger value="email" className="min-h-11">Email &amp; Password</TabsTrigger>
+        <TabsTrigger value="phone" className="min-h-11">{t("auth.tabPhone")}</TabsTrigger>
+        <TabsTrigger value="email" className="min-h-11">{t("auth.tabEmail")}</TabsTrigger>
       </TabsList>
       <TabsContent value="phone" className="mt-6">
         <PhoneForm />
@@ -40,6 +42,7 @@ export function LoginForm({ defaultMode = "phone" as Mode }: { defaultMode?: Mod
 }
 
 function PhoneForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -67,7 +70,7 @@ function PhoneForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <Label htmlFor="phone">Phone number</Label>
+        <Label htmlFor="phone">{t("auth.phoneLabel")}</Label>
         <Input
           id="phone"
           type="tel"
@@ -81,18 +84,19 @@ function PhoneForm() {
         {errors.phone ? (
           <p className="text-sm text-destructive" role="alert">{errors.phone.message}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">We'll send a 6-digit code to this number.</p>
+          <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
       </div>
       <Button type="submit" disabled={submitting} className="min-h-11 w-full">
         {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Send code
+        {t("auth.sendCode")}
       </Button>
     </form>
   );
 }
 
 function EmailForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -127,7 +131,7 @@ function EmailForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("auth.emailLabel")}</Label>
         <Input
           id="email"
           type="email"
@@ -142,7 +146,7 @@ function EmailForm() {
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("auth.passwordLabel")}</Label>
         <Input
           id="password"
           type="password"
@@ -157,7 +161,7 @@ function EmailForm() {
       </div>
       <Button type="submit" disabled={submitting} className="min-h-11 w-full">
         {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Sign in
+        {t("auth.signIn")}
       </Button>
     </form>
   );
