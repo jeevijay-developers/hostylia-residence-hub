@@ -36,7 +36,7 @@ export function RoleRedirect() {
         .eq("is_active", true)
         .limit(1);
       if (platformRows && platformRows.length > 0) {
-        if (!cancelled) navigate({ to: "/super-admin" });
+        if (!cancelled) navigate({ to: "/super-admin/dashboard" });
         return;
       }
 
@@ -74,7 +74,7 @@ export function RoleRedirect() {
           .eq("phone", normalized)
           .limit(1);
         if (guardianRows && guardianRows.length > 0) {
-          if (!cancelled) navigate({ to: "/parent" });
+          if (!cancelled) navigate({ to: "/parent/overview" });
           return;
         }
         if (!cancelled) navigate({ to: "/access-pending" });
