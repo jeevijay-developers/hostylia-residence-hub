@@ -49,6 +49,13 @@
   --color-brand-teal: var(--brand-teal);
   --color-brand-cyan: var(--brand-cyan);
 
+  /* Bed status tokens (Design.md Sec 4.3) — always pair with an icon, never colour-only */
+  --color-bed-vacant: var(--bed-vacant);
+  --color-bed-occupied: var(--bed-occupied);
+  --color-bed-maintenance: var(--bed-maintenance);
+  --color-bed-blocked: var(--bed-blocked);
+
+
   /* Legacy marketing-site brand tokens (kept so existing landing pages don't break) */
   --color-navy: var(--navy);
   --color-indigo-deep: var(--indigo-deep);
