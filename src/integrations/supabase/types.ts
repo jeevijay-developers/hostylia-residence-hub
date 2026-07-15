@@ -71,6 +71,69 @@ export type Database = {
         }
         Relationships: []
       }
+      guardians: {
+        Row: {
+          address: Json | null
+          created_at: string
+          deleted_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          occupation: string | null
+          phone: string
+          portal_access_enabled: boolean
+          profile_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          occupation?: string | null
+          phone: string
+          portal_access_enabled?: boolean
+          profile_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          occupation?: string | null
+          phone?: string
+          portal_access_enabled?: boolean
+          profile_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardians_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardians_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           billing_email: string | null
@@ -172,6 +235,39 @@ export type Database = {
           price_paise?: number
           trial_days?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_role_assignments: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          revoked_at: string | null
+          revoked_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -352,6 +448,138 @@ export type Database = {
         }
         Relationships: []
       }
+      role_assignments: {
+        Row: {
+          block_id: string | null
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          property_id: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          block_id?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          property_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          block_id?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          property_id?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_assignments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_guardians: {
+        Row: {
+          can_approve_gate_pass: boolean
+          can_pay_fees: boolean
+          can_view_attendance: boolean
+          can_view_complaints: boolean
+          can_view_gate_events: boolean
+          created_by: string | null
+          guardian_id: string
+          id: string
+          is_emergency_contact: boolean
+          is_primary: boolean
+          linked_at: string
+          portal_access_enabled: boolean
+          relationship: string
+          student_id: string
+          tenant_id: string
+          unlinked_at: string | null
+        }
+        Insert: {
+          can_approve_gate_pass?: boolean
+          can_pay_fees?: boolean
+          can_view_attendance?: boolean
+          can_view_complaints?: boolean
+          can_view_gate_events?: boolean
+          created_by?: string | null
+          guardian_id: string
+          id?: string
+          is_emergency_contact?: boolean
+          is_primary?: boolean
+          linked_at?: string
+          portal_access_enabled?: boolean
+          relationship: string
+          student_id: string
+          tenant_id: string
+          unlinked_at?: string | null
+        }
+        Update: {
+          can_approve_gate_pass?: boolean
+          can_pay_fees?: boolean
+          can_view_attendance?: boolean
+          can_view_complaints?: boolean
+          can_view_gate_events?: boolean
+          created_by?: string | null
+          guardian_id?: string
+          id?: string
+          is_emergency_contact?: boolean
+          is_primary?: boolean
+          linked_at?: string
+          portal_access_enabled?: boolean
+          relationship?: string
+          student_id?: string
+          tenant_id?: string
+          unlinked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_guardians_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_guardians_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -421,6 +649,53 @@ export type Database = {
           },
         ]
       }
+      tenant_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          joined_at: string | null
+          revoked_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
+          revoked_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          joined_at?: string | null
+          revoked_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           cancelled_at: string | null
@@ -482,9 +757,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_user_role: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "SUPER_ADMIN"
+        | "HOSTEL_ADMIN"
+        | "ACCOUNTANT"
+        | "WARDEN"
+        | "STUDENT"
+        | "PARENT"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -611,6 +896,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "SUPER_ADMIN",
+        "HOSTEL_ADMIN",
+        "ACCOUNTANT",
+        "WARDEN",
+        "STUDENT",
+        "PARENT",
+      ],
+    },
   },
 } as const
