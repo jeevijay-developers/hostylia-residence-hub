@@ -467,6 +467,115 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          left_at: string | null
+          participant_role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          left_at?: string | null
+          participant_role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          left_at?: string | null
+          participant_role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          conversation_type: string
+          created_at: string
+          created_by: string
+          id: string
+          property_id: string
+          status: string
+          student_id: string | null
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_type: string
+          created_at?: string
+          created_by: string
+          id?: string
+          property_id: string
+          status?: string
+          student_id?: string | null
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_type?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          property_id?: string
+          status?: string
+          student_id?: string | null
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           checksum: string | null
@@ -674,6 +783,77 @@ export type Database = {
           },
           {
             foreignKeyName: "guardians_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string | null
+          conversation_id: string
+          deleted_at: string | null
+          document_id: string | null
+          edited_at: string | null
+          id: string
+          message_type: string
+          property_id: string
+          sender_user_id: string
+          sent_at: string
+          tenant_id: string
+        }
+        Insert: {
+          body?: string | null
+          conversation_id: string
+          deleted_at?: string | null
+          document_id?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string
+          property_id: string
+          sender_user_id: string
+          sent_at?: string
+          tenant_id: string
+        }
+        Update: {
+          body?: string | null
+          conversation_id?: string
+          deleted_at?: string | null
+          document_id?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string
+          property_id?: string
+          sender_user_id?: string
+          sent_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1495,6 +1675,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_conversation: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: {
           p_bucket_key: string
