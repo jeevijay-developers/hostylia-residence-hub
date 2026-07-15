@@ -28,6 +28,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as R403RouteImport } from './routes/403'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApplyPropertySlugRouteImport } from './routes/apply.$propertySlug'
 import { Route as AuthenticatedWardenRouteImport } from './routes/_authenticated/warden'
 import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
 import { Route as AuthenticatedStudentRouteImport } from './routes/_authenticated/student'
@@ -136,6 +137,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplyPropertySlugRoute = ApplyPropertySlugRouteImport.update({
+  id: '/apply/$propertySlug',
+  path: '/apply/$propertySlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWardenRoute = AuthenticatedWardenRouteImport.update({
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/student': typeof AuthenticatedStudentRouteWithChildren
   '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/student': typeof AuthenticatedStudentRouteWithChildren
   '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/_authenticated/student': typeof AuthenticatedStudentRouteWithChildren
   '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/_authenticated/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/_authenticated/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
@@ -357,6 +366,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/super-admin'
     | '/warden'
+    | '/apply/$propertySlug'
     | '/accountant/dashboard'
     | '/admin/dashboard'
     | '/admin/properties'
@@ -392,6 +402,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/super-admin'
     | '/warden'
+    | '/apply/$propertySlug'
     | '/accountant/dashboard'
     | '/admin/dashboard'
     | '/admin/properties'
@@ -428,6 +439,7 @@ export interface FileRouteTypes {
     | '/_authenticated/student'
     | '/_authenticated/super-admin'
     | '/_authenticated/warden'
+    | '/apply/$propertySlug'
     | '/_authenticated/accountant/dashboard'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/properties'
@@ -459,6 +471,7 @@ export interface RootRouteChildren {
   SolutionsRoute: typeof SolutionsRoute
   TermsRoute: typeof TermsRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
+  ApplyPropertySlugRoute: typeof ApplyPropertySlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -594,6 +607,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply/$propertySlug': {
+      id: '/apply/$propertySlug'
+      path: '/apply/$propertySlug'
+      fullPath: '/apply/$propertySlug'
+      preLoaderRoute: typeof ApplyPropertySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/warden': {
@@ -840,6 +860,7 @@ const rootRouteChildren: RootRouteChildren = {
   SolutionsRoute: SolutionsRoute,
   TermsRoute: TermsRoute,
   VerifyOtpRoute: VerifyOtpRoute,
+  ApplyPropertySlugRoute: ApplyPropertySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
