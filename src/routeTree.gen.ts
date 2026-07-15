@@ -9,20 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PostLoginRouteImport } from './routes/post-login'
 import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as FounderRouteImport } from './routes/founder'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BookDemoRouteImport } from './routes/book-demo'
 import { Route as AiSuiteRouteImport } from './routes/ai-suite'
+import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VerifyOtpRoute = VerifyOtpRouteImport.update({
+  id: '/verify-otp',
+  path: '/verify-otp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -48,9 +57,19 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostLoginRoute = PostLoginRouteImport.update({
+  id: '/post-login',
+  path: '/post-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlatformRoute = PlatformRouteImport.update({
   id: '/platform',
   path: '/platform',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FounderRoute = FounderRouteImport.update({
@@ -78,6 +97,11 @@ const AiSuiteRoute = AiSuiteRouteImport.update({
   path: '/ai-suite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessPendingRoute = AccessPendingRouteImport.update({
+  id: '/access-pending',
+  path: '/access-pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -92,115 +116,150 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/founder': typeof FounderRoute
+  '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
+  '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-otp': typeof VerifyOtpRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/founder': typeof FounderRoute
+  '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
+  '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-otp': typeof VerifyOtpRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
   '/founder': typeof FounderRoute
+  '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
+  '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-otp': typeof VerifyOtpRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
+    | '/access-pending'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
     | '/features'
     | '/founder'
+    | '/login'
     | '/platform'
+    | '/post-login'
     | '/pricing'
     | '/privacy'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-otp'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/access-pending'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
     | '/features'
     | '/founder'
+    | '/login'
     | '/platform'
+    | '/post-login'
     | '/pricing'
     | '/privacy'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-otp'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/access-pending'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
     | '/features'
     | '/founder'
+    | '/login'
     | '/platform'
+    | '/post-login'
     | '/pricing'
     | '/privacy'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-otp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccessPendingRoute: typeof AccessPendingRoute
   AiSuiteRoute: typeof AiSuiteRoute
   BookDemoRoute: typeof BookDemoRoute
   ContactRoute: typeof ContactRoute
   FeaturesRoute: typeof FeaturesRoute
   FounderRoute: typeof FounderRoute
+  LoginRoute: typeof LoginRoute
   PlatformRoute: typeof PlatformRoute
+  PostLoginRoute: typeof PostLoginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SolutionsRoute: typeof SolutionsRoute
   TermsRoute: typeof TermsRoute
+  VerifyOtpRoute: typeof VerifyOtpRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-otp': {
+      id: '/verify-otp'
+      path: '/verify-otp'
+      fullPath: '/verify-otp'
+      preLoaderRoute: typeof VerifyOtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -236,11 +295,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/post-login': {
+      id: '/post-login'
+      path: '/post-login'
+      fullPath: '/post-login'
+      preLoaderRoute: typeof PostLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/platform': {
       id: '/platform'
       path: '/platform'
       fullPath: '/platform'
       preLoaderRoute: typeof PlatformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/founder': {
@@ -278,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiSuiteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/access-pending': {
+      id: '/access-pending'
+      path: '/access-pending'
+      fullPath: '/access-pending'
+      preLoaderRoute: typeof AccessPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -298,17 +378,21 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccessPendingRoute: AccessPendingRoute,
   AiSuiteRoute: AiSuiteRoute,
   BookDemoRoute: BookDemoRoute,
   ContactRoute: ContactRoute,
   FeaturesRoute: FeaturesRoute,
   FounderRoute: FounderRoute,
+  LoginRoute: LoginRoute,
   PlatformRoute: PlatformRoute,
+  PostLoginRoute: PostLoginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SolutionsRoute: SolutionsRoute,
   TermsRoute: TermsRoute,
+  VerifyOtpRoute: VerifyOtpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
