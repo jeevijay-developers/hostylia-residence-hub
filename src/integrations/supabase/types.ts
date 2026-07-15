@@ -14,6 +14,255 @@ export type Database = {
   }
   public: {
     Tables: {
+      agreements: {
+        Row: {
+          allocation_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          document_id: string | null
+          id: string
+          property_id: string
+          sent_at: string | null
+          signature_evidence: Json
+          signature_method: string | null
+          signed_at: string | null
+          signed_by_user_id: string | null
+          status: string
+          student_id: string
+          template_version: string
+          tenant_id: string
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          allocation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_id?: string | null
+          id?: string
+          property_id: string
+          sent_at?: string | null
+          signature_evidence?: Json
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by_user_id?: string | null
+          status?: string
+          student_id: string
+          template_version: string
+          tenant_id: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          allocation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_id?: string | null
+          id?: string
+          property_id?: string
+          sent_at?: string | null
+          signature_evidence?: Json
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by_user_id?: string | null
+          status?: string
+          student_id?: string
+          template_version?: string
+          tenant_id?: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreements_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreements_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agreements_allocation"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      allocations: {
+        Row: {
+          activated_at: string | null
+          actual_end_date: string | null
+          agreement_id: string | null
+          bed_id: string
+          billing_cycle_day: number | null
+          block_id: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deposit_snapshot_paise: number
+          expected_end_date: string | null
+          fee_plan_id: string | null
+          floor_id: string
+          id: string
+          lock_in_until: string | null
+          notice_period_days: number
+          property_id: string
+          rent_snapshot_paise: number
+          room_id: string
+          start_date: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          actual_end_date?: string | null
+          agreement_id?: string | null
+          bed_id: string
+          billing_cycle_day?: number | null
+          block_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deposit_snapshot_paise?: number
+          expected_end_date?: string | null
+          fee_plan_id?: string | null
+          floor_id: string
+          id?: string
+          lock_in_until?: string | null
+          notice_period_days?: number
+          property_id: string
+          rent_snapshot_paise: number
+          room_id: string
+          start_date: string
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          actual_end_date?: string | null
+          agreement_id?: string | null
+          bed_id?: string
+          billing_cycle_day?: number | null
+          block_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deposit_snapshot_paise?: number
+          expected_end_date?: string | null
+          fee_plan_id?: string | null
+          floor_id?: string
+          id?: string
+          lock_in_until?: string | null
+          notice_period_days?: number
+          property_id?: string
+          rent_snapshot_paise?: number
+          room_id?: string
+          start_date?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocations_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -211,6 +460,93 @@ export type Database = {
           },
           {
             foreignKeyName: "blocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          document_type: string
+          id: string
+          mime_type: string
+          original_filename: string
+          owner_id: string
+          owner_type: string
+          property_id: string | null
+          rejection_reason: string | null
+          size_bytes: number | null
+          status: string
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          document_type: string
+          id?: string
+          mime_type: string
+          original_filename: string
+          owner_id: string
+          owner_type: string
+          property_id?: string | null
+          rejection_reason?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          document_type?: string
+          id?: string
+          mime_type?: string
+          original_filename?: string
+          owner_id?: string
+          owner_type?: string
+          property_id?: string | null
+          rejection_reason?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+          tenant_id?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -862,6 +1198,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_student_guardians_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_guardians_guardian_id_fkey"
             columns: ["guardian_id"]
             isOneToOne: false
@@ -870,6 +1213,112 @@ export type Database = {
           },
           {
             foreignKeyName: "student_guardians_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          academic_institute: string | null
+          academic_year: string | null
+          admission_number: string
+          course_name: string | null
+          created_at: string
+          created_by: string | null
+          date_of_birth: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          is_minor: boolean
+          joined_at: string | null
+          metadata: Json
+          moved_out_at: string | null
+          phone: string | null
+          photo_path: string | null
+          portal_access_enabled: boolean
+          profile_id: string | null
+          property_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_institute?: string | null
+          academic_year?: string | null
+          admission_number: string
+          course_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          is_minor?: boolean
+          joined_at?: string | null
+          metadata?: Json
+          moved_out_at?: string | null
+          phone?: string | null
+          photo_path?: string | null
+          portal_access_enabled?: boolean
+          profile_id?: string | null
+          property_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_institute?: string | null
+          academic_year?: string | null
+          admission_number?: string
+          course_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          is_minor?: boolean
+          joined_at?: string | null
+          metadata?: Json
+          moved_out_at?: string | null
+          phone?: string | null
+          photo_path?: string | null
+          portal_access_enabled?: boolean
+          profile_id?: string | null
+          property_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1054,6 +1503,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      earliest_move_out_date: {
+        Args: { p_allocation_id: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1065,6 +1518,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      provisional_refund_paise: {
+        Args: { p_allocation_id: string }
+        Returns: number
       }
       warden_can_read_property: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
