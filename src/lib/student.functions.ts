@@ -363,7 +363,7 @@ export const previewMoveOut = createServerFn({ method: "POST" })
 const registerDocSchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid().nullable(),
-  owner_type: z.enum(["STUDENT", "GUARDIAN", "ALLOCATION", "PROPERTY"]),
+  owner_type: z.enum(["STUDENT", "GUARDIAN", "ALLOCATION", "PROPERTY", "COMPLAINT"]),
   owner_id: z.string().uuid(),
   document_type: z.string().min(1).max(40),
   storage_bucket: z.string().min(1),

@@ -36,8 +36,10 @@ import { Route as AuthenticatedParentRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountantRouteImport } from './routes/_authenticated/accountant'
 import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_authenticated/warden.daily-brief'
+import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
 import { Route as AuthenticatedStudentHomeRouteImport } from './routes/_authenticated/student.home'
+import { Route as AuthenticatedStudentComplaintsRouteImport } from './routes/_authenticated/student.complaints'
 import { Route as AuthenticatedParentOverviewRouteImport } from './routes/_authenticated/parent.overview'
 import { Route as AuthenticatedParentMessagesRouteImport } from './routes/_authenticated/parent.messages'
 import { Route as AuthenticatedParentComplaintsRouteImport } from './routes/_authenticated/parent.complaints'
@@ -45,6 +47,7 @@ import { Route as AuthenticatedParentAttendanceRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin.students'
 import { Route as AuthenticatedAdminPropertiesRouteImport } from './routes/_authenticated/admin.properties'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated/admin.allocations'
 import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
@@ -187,6 +190,12 @@ const AuthenticatedWardenDailyBriefRoute =
     path: '/daily-brief',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedWardenComplaintsRoute =
+  AuthenticatedWardenComplaintsRouteImport.update({
+    id: '/complaints',
+    path: '/complaints',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedSuperAdminDashboardRoute =
   AuthenticatedSuperAdminDashboardRouteImport.update({
     id: '/dashboard',
@@ -197,6 +206,12 @@ const AuthenticatedStudentHomeRoute =
   AuthenticatedStudentHomeRouteImport.update({
     id: '/home',
     path: '/home',
+    getParentRoute: () => AuthenticatedStudentRoute,
+  } as any)
+const AuthenticatedStudentComplaintsRoute =
+  AuthenticatedStudentComplaintsRouteImport.update({
+    id: '/complaints',
+    path: '/complaints',
     getParentRoute: () => AuthenticatedStudentRoute,
   } as any)
 const AuthenticatedParentOverviewRoute =
@@ -239,6 +254,12 @@ const AuthenticatedAdminDashboardRoute =
   AuthenticatedAdminDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminComplaintsRoute =
+  AuthenticatedAdminComplaintsRouteImport.update({
+    id: '/complaints',
+    path: '/complaints',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminAllocationsRoute =
@@ -306,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
@@ -313,8 +335,10 @@ export interface FileRoutesByFullPath {
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/parent/messages': typeof AuthenticatedParentMessagesRoute
   '/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
@@ -349,6 +373,7 @@ export interface FileRoutesByTo {
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
@@ -356,8 +381,10 @@ export interface FileRoutesByTo {
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/parent/messages': typeof AuthenticatedParentMessagesRoute
   '/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
@@ -394,6 +421,7 @@ export interface FileRoutesById {
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/_authenticated/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/_authenticated/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
@@ -401,8 +429,10 @@ export interface FileRoutesById {
   '/_authenticated/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/_authenticated/parent/messages': typeof AuthenticatedParentMessagesRoute
   '/_authenticated/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/_authenticated/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/_authenticated/student/home': typeof AuthenticatedStudentHomeRoute
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/_authenticated/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
@@ -439,6 +469,7 @@ export interface FileRouteTypes {
     | '/apply/$propertySlug'
     | '/accountant/dashboard'
     | '/admin/allocations'
+    | '/admin/complaints'
     | '/admin/dashboard'
     | '/admin/properties'
     | '/admin/students'
@@ -446,8 +477,10 @@ export interface FileRouteTypes {
     | '/parent/complaints'
     | '/parent/messages'
     | '/parent/overview'
+    | '/student/complaints'
     | '/student/home'
     | '/super-admin/dashboard'
+    | '/warden/complaints'
     | '/warden/daily-brief'
     | '/admin/students/$id'
     | '/admin/properties/$id/setup'
@@ -482,6 +515,7 @@ export interface FileRouteTypes {
     | '/apply/$propertySlug'
     | '/accountant/dashboard'
     | '/admin/allocations'
+    | '/admin/complaints'
     | '/admin/dashboard'
     | '/admin/properties'
     | '/admin/students'
@@ -489,8 +523,10 @@ export interface FileRouteTypes {
     | '/parent/complaints'
     | '/parent/messages'
     | '/parent/overview'
+    | '/student/complaints'
     | '/student/home'
     | '/super-admin/dashboard'
+    | '/warden/complaints'
     | '/warden/daily-brief'
     | '/admin/students/$id'
     | '/admin/properties/$id/setup'
@@ -526,6 +562,7 @@ export interface FileRouteTypes {
     | '/apply/$propertySlug'
     | '/_authenticated/accountant/dashboard'
     | '/_authenticated/admin/allocations'
+    | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/properties'
     | '/_authenticated/admin/students'
@@ -533,8 +570,10 @@ export interface FileRouteTypes {
     | '/_authenticated/parent/complaints'
     | '/_authenticated/parent/messages'
     | '/_authenticated/parent/overview'
+    | '/_authenticated/student/complaints'
     | '/_authenticated/student/home'
     | '/_authenticated/super-admin/dashboard'
+    | '/_authenticated/warden/complaints'
     | '/_authenticated/warden/daily-brief'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/properties/$id/setup'
@@ -756,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenDailyBriefRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
+    '/_authenticated/warden/complaints': {
+      id: '/_authenticated/warden/complaints'
+      path: '/complaints'
+      fullPath: '/warden/complaints'
+      preLoaderRoute: typeof AuthenticatedWardenComplaintsRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
     '/_authenticated/super-admin/dashboard': {
       id: '/_authenticated/super-admin/dashboard'
       path: '/dashboard'
@@ -768,6 +814,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/student/home'
       preLoaderRoute: typeof AuthenticatedStudentHomeRouteImport
+      parentRoute: typeof AuthenticatedStudentRoute
+    }
+    '/_authenticated/student/complaints': {
+      id: '/_authenticated/student/complaints'
+      path: '/complaints'
+      fullPath: '/student/complaints'
+      preLoaderRoute: typeof AuthenticatedStudentComplaintsRouteImport
       parentRoute: typeof AuthenticatedStudentRoute
     }
     '/_authenticated/parent/overview': {
@@ -817,6 +870,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/complaints': {
+      id: '/_authenticated/admin/complaints'
+      path: '/complaints'
+      fullPath: '/admin/complaints'
+      preLoaderRoute: typeof AuthenticatedAdminComplaintsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/allocations': {
@@ -929,6 +989,7 @@ const AuthenticatedAdminStudentsRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
+  AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminPropertiesRoute: typeof AuthenticatedAdminPropertiesRouteWithChildren
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRouteWithChildren
@@ -936,6 +997,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAllocationsRoute: AuthenticatedAdminAllocationsRoute,
+  AuthenticatedAdminComplaintsRoute: AuthenticatedAdminComplaintsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminPropertiesRoute:
     AuthenticatedAdminPropertiesRouteWithChildren,
@@ -963,10 +1025,12 @@ const AuthenticatedParentRouteWithChildren =
   AuthenticatedParentRoute._addFileChildren(AuthenticatedParentRouteChildren)
 
 interface AuthenticatedStudentRouteChildren {
+  AuthenticatedStudentComplaintsRoute: typeof AuthenticatedStudentComplaintsRoute
   AuthenticatedStudentHomeRoute: typeof AuthenticatedStudentHomeRoute
 }
 
 const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
+  AuthenticatedStudentComplaintsRoute: AuthenticatedStudentComplaintsRoute,
   AuthenticatedStudentHomeRoute: AuthenticatedStudentHomeRoute,
 }
 
@@ -989,10 +1053,12 @@ const AuthenticatedSuperAdminRouteWithChildren =
   )
 
 interface AuthenticatedWardenRouteChildren {
+  AuthenticatedWardenComplaintsRoute: typeof AuthenticatedWardenComplaintsRoute
   AuthenticatedWardenDailyBriefRoute: typeof AuthenticatedWardenDailyBriefRoute
 }
 
 const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
+  AuthenticatedWardenComplaintsRoute: AuthenticatedWardenComplaintsRoute,
   AuthenticatedWardenDailyBriefRoute: AuthenticatedWardenDailyBriefRoute,
 }
 

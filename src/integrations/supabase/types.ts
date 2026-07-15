@@ -467,6 +467,215 @@ export type Database = {
           },
         ]
       }
+      complaint_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_priority: string
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          sla_minutes: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_priority?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          sla_minutes: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_priority?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          sla_minutes?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaint_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complaints: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          bed_id: string | null
+          block_id: string | null
+          category_id: string
+          closed_at: string | null
+          complaint_number: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string
+          id: string
+          priority: string
+          property_id: string
+          rating: number | null
+          rating_comment: string | null
+          reopen_until: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          room_id: string | null
+          sla_breached_at: string | null
+          sla_due_at: string
+          status: string
+          student_id: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          bed_id?: string | null
+          block_id?: string | null
+          category_id: string
+          closed_at?: string | null
+          complaint_number: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description: string
+          id?: string
+          priority?: string
+          property_id: string
+          rating?: number | null
+          rating_comment?: string | null
+          reopen_until?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          room_id?: string | null
+          sla_breached_at?: string | null
+          sla_due_at: string
+          status?: string
+          student_id: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          bed_id?: string | null
+          block_id?: string | null
+          category_id?: string
+          closed_at?: string | null
+          complaint_number?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string
+          id?: string
+          priority?: string
+          property_id?: string
+          rating?: number | null
+          rating_comment?: string | null
+          reopen_until?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          room_id?: string | null
+          sla_breached_at?: string | null
+          sla_due_at?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaints_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -1690,6 +1899,11 @@ export type Database = {
       earliest_move_out_date: {
         Args: { p_allocation_id: string }
         Returns: string
+      }
+      fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
+      fn_seed_default_complaint_categories: {
+        Args: { p_property_id: string }
+        Returns: undefined
       }
       get_user_role: {
         Args: { p_tenant_id: string; p_user_id: string }
