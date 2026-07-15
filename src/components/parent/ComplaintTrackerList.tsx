@@ -1,15 +1,32 @@
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ComplaintCard } from "@/components/complaints/ComplaintCard";
+import { useComplaints } from "@/lib/complaint";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// TODO(Phase 7): swap the empty state for a real fetch of the `complaints`
-// table (scoped to this student). Kept as a stub so Phase 7 only needs to plug
-// in `useQuery` here — do not rebuild.
-export function ComplaintTrackerList(_props: { studentId: string }) {
+/**
+ * Parent read-only complaint view for one linked student.
+ * RLS enforces the guardian link + `can_view_complaints` — this component
+ * simply fetches; if the guardian flag is off, the parent page frame
+ * hides the section entirely (per `requirePermission`).
+ */
+export function ComplaintTrackerList({ studentId }: { studentId: string }) {
   const { t } = useTranslation();
+  const q = useComplaints({ studentId });
+
+  if (q.isLoading) return <Skeleton className="h-32 w-full" />;
+  const list = q.data ?? [];
+  if (list.length === 0) {
+    return (
+      <EmptyState
+        title={t("parent.complaints.emptyTitle")}
+        description={t("parent.complaints.emptyBody")}
+      />
+    );
+  }
   return (
-    <EmptyState
-      title={t("parent.complaints.emptyTitle")}
-      description={t("parent.complaints.emptyBody")}
-    />
+    <div className="space-y-3">
+      {list.map((c) => <ComplaintCard key={c.id} complaint={c} />)}
+    </div>
   );
 }
