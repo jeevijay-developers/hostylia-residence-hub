@@ -1,0 +1,67 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "send": "Send",
+    "back": "Back",
+    "signOut": "Sign out"
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "hindi": "हिन्दी"
+  },
+  "auth": {
+    "termsPrefix": "By continuing, you agree to Hostylia's",
+    "terms": "Terms",
+    "and": "and",
+    "privacy": "Privacy Policy",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to continue to your dashboard.",
+    "tabPhone": "Phone OTP",
+    "tabEmail": "Email & Password",
+    "phoneLabel": "Phone number",
+    "phoneHelp": "We'll send a 6-digit code to this number.",
+    "sendCode": "Send code",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "signIn": "Sign in"
+  },
+  "parent": {
+    "shellTitle": "Parent portal",
+    "tabs": {
+      "home": "Home",
+      "attendance": "Attendance",
+      "complaints": "Complaints",
+      "messages": "Messages",
+      "profile": "Profile"
+    },
+    "childSwitcher": "Select child",
+    "snapshot": {
+      "propertyLabel": "Property",
+      "statusLabel": "Status",
+      "bedLabel": "Bed",
+      "feesTitle": "Fees",
+      "feesSoon": "Fee tracking is coming soon."
+    },
+    "attendance": {
+      "title": "Attendance",
+      "emptyTitle": "No attendance yet",
+      "emptyBody": "Attendance tracking starts once your hostel activates it."
+    },
+    "complaints": {
+      "title": "Complaints",
+      "emptyTitle": "No complaints logged",
+      "emptyBody": "Complaints raised for your child will appear here."
+    },
+    "messages": {
+      "title": "Messages",
+      "pickChild": "Choose a child to open a chat with the warden.",
+      "startPlaceholder": "Type your message…",
+      "systemJoined": "Conversation started with the warden.",
+      "noWarden": "No warden is assigned to this property yet. Please try again later."
+    },
+    "noChildren": "No linked children on your account yet. Please contact the hostel."
+  }
+}
