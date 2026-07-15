@@ -165,7 +165,7 @@ export const decideRefund = createServerFn({ method: "POST" })
     const { data: out, error } = await supabase.rpc("fn_approve_refund", {
       p_refund_id: data.refund_id,
       p_decision: data.decision,
-      p_reason: data.reason || null,
+      p_reason: data.reason || undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const, refund: out };
