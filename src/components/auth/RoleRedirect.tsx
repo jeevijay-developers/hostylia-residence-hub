@@ -36,7 +36,7 @@ export function RoleRedirect() {
         .eq("is_active", true)
         .limit(1);
       if (platformRows && platformRows.length > 0) {
-        if (!cancelled) navigate({ to: "/super-admin" });
+        if (!cancelled) navigate({ to: "/super-admin/dashboard" });
         return;
       }
 
@@ -74,7 +74,7 @@ export function RoleRedirect() {
           .eq("phone", normalized)
           .limit(1);
         if (guardianRows && guardianRows.length > 0) {
-          if (!cancelled) navigate({ to: "/parent" });
+          if (!cancelled) navigate({ to: "/parent/overview" });
           return;
         }
         if (!cancelled) navigate({ to: "/access-pending" });
@@ -103,25 +103,27 @@ export function RoleRedirect() {
 }
 
 type RoleDestination =
-  | "/super-admin"
-  | "/admin"
-  | "/warden"
-  | "/student"
-  | "/parent";
+  | "/super-admin/dashboard"
+  | "/admin/dashboard"
+  | "/accountant/dashboard"
+  | "/warden/daily-brief"
+  | "/student/home"
+  | "/parent/overview";
 
 function destinationForRole(role: string | null | undefined): RoleDestination | null {
   switch (role) {
     case "SUPER_ADMIN":
-      return "/super-admin";
+      return "/super-admin/dashboard";
     case "HOSTEL_ADMIN":
+      return "/admin/dashboard";
     case "ACCOUNTANT":
-      return "/admin";
+      return "/accountant/dashboard";
     case "WARDEN":
-      return "/warden";
+      return "/warden/daily-brief";
     case "STUDENT":
-      return "/student";
+      return "/student/home";
     case "PARENT":
-      return "/parent";
+      return "/parent/overview";
     default:
       return null;
   }

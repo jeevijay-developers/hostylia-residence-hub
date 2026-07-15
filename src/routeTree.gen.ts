@@ -25,6 +25,7 @@ import { Route as BookDemoRouteImport } from './routes/book-demo'
 import { Route as AiSuiteRouteImport } from './routes/ai-suite'
 import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as R403RouteImport } from './routes/403'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWardenRouteImport } from './routes/_authenticated/warden'
@@ -32,6 +33,13 @@ import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authentic
 import { Route as AuthenticatedStudentRouteImport } from './routes/_authenticated/student'
 import { Route as AuthenticatedParentRouteImport } from './routes/_authenticated/parent'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAccountantRouteImport } from './routes/_authenticated/accountant'
+import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_authenticated/warden.daily-brief'
+import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
+import { Route as AuthenticatedStudentHomeRouteImport } from './routes/_authenticated/student.home'
+import { Route as AuthenticatedParentOverviewRouteImport } from './routes/_authenticated/parent.overview'
+import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
 
 const VerifyOtpRoute = VerifyOtpRouteImport.update({
   id: '/verify-otp',
@@ -113,6 +121,11 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const R403Route = R403RouteImport.update({
+  id: '/403',
+  path: '/403',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -147,9 +160,51 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAccountantRoute = AuthenticatedAccountantRouteImport.update({
+  id: '/accountant',
+  path: '/accountant',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWardenDailyBriefRoute =
+  AuthenticatedWardenDailyBriefRouteImport.update({
+    id: '/daily-brief',
+    path: '/daily-brief',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedSuperAdminDashboardRoute =
+  AuthenticatedSuperAdminDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedStudentHomeRoute =
+  AuthenticatedStudentHomeRouteImport.update({
+    id: '/home',
+    path: '/home',
+    getParentRoute: () => AuthenticatedStudentRoute,
+  } as any)
+const AuthenticatedParentOverviewRoute =
+  AuthenticatedParentOverviewRouteImport.update({
+    id: '/overview',
+    path: '/overview',
+    getParentRoute: () => AuthenticatedParentRoute,
+  } as any)
+const AuthenticatedAdminDashboardRoute =
+  AuthenticatedAdminDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAccountantDashboardRoute =
+  AuthenticatedAccountantDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
@@ -166,14 +221,22 @@ export interface FileRoutesByFullPath {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
-  '/admin': typeof AuthenticatedAdminRoute
-  '/parent': typeof AuthenticatedParentRoute
-  '/student': typeof AuthenticatedStudentRoute
-  '/super-admin': typeof AuthenticatedSuperAdminRoute
-  '/warden': typeof AuthenticatedWardenRoute
+  '/accountant': typeof AuthenticatedAccountantRouteWithChildren
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/parent': typeof AuthenticatedParentRouteWithChildren
+  '/student': typeof AuthenticatedStudentRouteWithChildren
+  '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
+  '/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/student/home': typeof AuthenticatedStudentHomeRoute
+  '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
@@ -190,16 +253,24 @@ export interface FileRoutesByTo {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
-  '/admin': typeof AuthenticatedAdminRoute
-  '/parent': typeof AuthenticatedParentRoute
-  '/student': typeof AuthenticatedStudentRoute
-  '/super-admin': typeof AuthenticatedSuperAdminRoute
-  '/warden': typeof AuthenticatedWardenRoute
+  '/accountant': typeof AuthenticatedAccountantRouteWithChildren
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/parent': typeof AuthenticatedParentRouteWithChildren
+  '/student': typeof AuthenticatedStudentRouteWithChildren
+  '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
+  '/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/student/home': typeof AuthenticatedStudentHomeRoute
+  '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
@@ -216,16 +287,24 @@ export interface FileRoutesById {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/parent': typeof AuthenticatedParentRoute
-  '/_authenticated/student': typeof AuthenticatedStudentRoute
-  '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRoute
-  '/_authenticated/warden': typeof AuthenticatedWardenRoute
+  '/_authenticated/accountant': typeof AuthenticatedAccountantRouteWithChildren
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/parent': typeof AuthenticatedParentRouteWithChildren
+  '/_authenticated/student': typeof AuthenticatedStudentRouteWithChildren
+  '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
+  '/_authenticated/warden': typeof AuthenticatedWardenRouteWithChildren
+  '/_authenticated/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/_authenticated/parent/overview': typeof AuthenticatedParentOverviewRoute
+  '/_authenticated/student/home': typeof AuthenticatedStudentHomeRoute
+  '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/_authenticated/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/403'
     | '/about'
     | '/access-pending'
     | '/ai-suite'
@@ -242,14 +321,22 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/accountant'
     | '/admin'
     | '/parent'
     | '/student'
     | '/super-admin'
     | '/warden'
+    | '/accountant/dashboard'
+    | '/admin/dashboard'
+    | '/parent/overview'
+    | '/student/home'
+    | '/super-admin/dashboard'
+    | '/warden/daily-brief'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/403'
     | '/about'
     | '/access-pending'
     | '/ai-suite'
@@ -266,15 +353,23 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/accountant'
     | '/admin'
     | '/parent'
     | '/student'
     | '/super-admin'
     | '/warden'
+    | '/accountant/dashboard'
+    | '/admin/dashboard'
+    | '/parent/overview'
+    | '/student/home'
+    | '/super-admin/dashboard'
+    | '/warden/daily-brief'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/403'
     | '/about'
     | '/access-pending'
     | '/ai-suite'
@@ -291,16 +386,24 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/_authenticated/accountant'
     | '/_authenticated/admin'
     | '/_authenticated/parent'
     | '/_authenticated/student'
     | '/_authenticated/super-admin'
     | '/_authenticated/warden'
+    | '/_authenticated/accountant/dashboard'
+    | '/_authenticated/admin/dashboard'
+    | '/_authenticated/parent/overview'
+    | '/_authenticated/student/home'
+    | '/_authenticated/super-admin/dashboard'
+    | '/_authenticated/warden/daily-brief'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  R403Route: typeof R403Route
   AboutRoute: typeof AboutRoute
   AccessPendingRoute: typeof AccessPendingRoute
   AiSuiteRoute: typeof AiSuiteRoute
@@ -433,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/403': {
+      id: '/403'
+      path: '/403'
+      fullPath: '/403'
+      preLoaderRoute: typeof R403RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -482,23 +592,148 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/accountant': {
+      id: '/_authenticated/accountant'
+      path: '/accountant'
+      fullPath: '/accountant'
+      preLoaderRoute: typeof AuthenticatedAccountantRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/warden/daily-brief': {
+      id: '/_authenticated/warden/daily-brief'
+      path: '/daily-brief'
+      fullPath: '/warden/daily-brief'
+      preLoaderRoute: typeof AuthenticatedWardenDailyBriefRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/super-admin/dashboard': {
+      id: '/_authenticated/super-admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/super-admin/dashboard'
+      preLoaderRoute: typeof AuthenticatedSuperAdminDashboardRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/student/home': {
+      id: '/_authenticated/student/home'
+      path: '/home'
+      fullPath: '/student/home'
+      preLoaderRoute: typeof AuthenticatedStudentHomeRouteImport
+      parentRoute: typeof AuthenticatedStudentRoute
+    }
+    '/_authenticated/parent/overview': {
+      id: '/_authenticated/parent/overview'
+      path: '/overview'
+      fullPath: '/parent/overview'
+      preLoaderRoute: typeof AuthenticatedParentOverviewRouteImport
+      parentRoute: typeof AuthenticatedParentRoute
+    }
+    '/_authenticated/admin/dashboard': {
+      id: '/_authenticated/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/accountant/dashboard': {
+      id: '/_authenticated/accountant/dashboard'
+      path: '/dashboard'
+      fullPath: '/accountant/dashboard'
+      preLoaderRoute: typeof AuthenticatedAccountantDashboardRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
   }
 }
 
+interface AuthenticatedAccountantRouteChildren {
+  AuthenticatedAccountantDashboardRoute: typeof AuthenticatedAccountantDashboardRoute
+}
+
+const AuthenticatedAccountantRouteChildren: AuthenticatedAccountantRouteChildren =
+  {
+    AuthenticatedAccountantDashboardRoute:
+      AuthenticatedAccountantDashboardRoute,
+  }
+
+const AuthenticatedAccountantRouteWithChildren =
+  AuthenticatedAccountantRoute._addFileChildren(
+    AuthenticatedAccountantRouteChildren,
+  )
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedParentRouteChildren {
+  AuthenticatedParentOverviewRoute: typeof AuthenticatedParentOverviewRoute
+}
+
+const AuthenticatedParentRouteChildren: AuthenticatedParentRouteChildren = {
+  AuthenticatedParentOverviewRoute: AuthenticatedParentOverviewRoute,
+}
+
+const AuthenticatedParentRouteWithChildren =
+  AuthenticatedParentRoute._addFileChildren(AuthenticatedParentRouteChildren)
+
+interface AuthenticatedStudentRouteChildren {
+  AuthenticatedStudentHomeRoute: typeof AuthenticatedStudentHomeRoute
+}
+
+const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
+  AuthenticatedStudentHomeRoute: AuthenticatedStudentHomeRoute,
+}
+
+const AuthenticatedStudentRouteWithChildren =
+  AuthenticatedStudentRoute._addFileChildren(AuthenticatedStudentRouteChildren)
+
+interface AuthenticatedSuperAdminRouteChildren {
+  AuthenticatedSuperAdminDashboardRoute: typeof AuthenticatedSuperAdminDashboardRoute
+}
+
+const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren =
+  {
+    AuthenticatedSuperAdminDashboardRoute:
+      AuthenticatedSuperAdminDashboardRoute,
+  }
+
+const AuthenticatedSuperAdminRouteWithChildren =
+  AuthenticatedSuperAdminRoute._addFileChildren(
+    AuthenticatedSuperAdminRouteChildren,
+  )
+
+interface AuthenticatedWardenRouteChildren {
+  AuthenticatedWardenDailyBriefRoute: typeof AuthenticatedWardenDailyBriefRoute
+}
+
+const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
+  AuthenticatedWardenDailyBriefRoute: AuthenticatedWardenDailyBriefRoute,
+}
+
+const AuthenticatedWardenRouteWithChildren =
+  AuthenticatedWardenRoute._addFileChildren(AuthenticatedWardenRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedParentRoute: typeof AuthenticatedParentRoute
-  AuthenticatedStudentRoute: typeof AuthenticatedStudentRoute
-  AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRoute
-  AuthenticatedWardenRoute: typeof AuthenticatedWardenRoute
+  AuthenticatedAccountantRoute: typeof AuthenticatedAccountantRouteWithChildren
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedParentRoute: typeof AuthenticatedParentRouteWithChildren
+  AuthenticatedStudentRoute: typeof AuthenticatedStudentRouteWithChildren
+  AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRouteWithChildren
+  AuthenticatedWardenRoute: typeof AuthenticatedWardenRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedParentRoute: AuthenticatedParentRoute,
-  AuthenticatedStudentRoute: AuthenticatedStudentRoute,
-  AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRoute,
-  AuthenticatedWardenRoute: AuthenticatedWardenRoute,
+  AuthenticatedAccountantRoute: AuthenticatedAccountantRouteWithChildren,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedParentRoute: AuthenticatedParentRouteWithChildren,
+  AuthenticatedStudentRoute: AuthenticatedStudentRouteWithChildren,
+  AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRouteWithChildren,
+  AuthenticatedWardenRoute: AuthenticatedWardenRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -507,6 +742,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  R403Route: R403Route,
   AboutRoute: AboutRoute,
   AccessPendingRoute: AccessPendingRoute,
   AiSuiteRoute: AiSuiteRoute,
