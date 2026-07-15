@@ -140,6 +140,7 @@ export const initiateRefund = createServerFn({ method: "POST" })
         property_id: pay.property_id,
         student_id: pay.student_id,
         payment_id: data.payment_id,
+        refund_number: "",
         amount_paise: data.amount_paise,
         reason: data.reason,
         mode: data.mode,
