@@ -92,6 +92,7 @@ export const recordManualPayment = createServerFn({ method: "POST" })
         property_id: inv.property_id,
         student_id: inv.student_id,
         invoice_id: data.invoice_id,
+        payment_number: "",
         mode: data.mode,
         amount_paise: data.amount_paise,
         status: "CAPTURED",
