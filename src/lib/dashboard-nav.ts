@@ -79,11 +79,12 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
-    { label: "Payments", to: "/parent/payments", icon: CreditCard },
     { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
-    { label: "Activity", to: "/parent/activity", icon: Activity },
-    { label: "Profile", to: "/parent/profile", icon: User },
+    { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
+    { label: "Messages", to: "/parent/messages", icon: BellRing },
+    { label: "Payments", to: "/parent/payments", icon: CreditCard },
   ],
+
 };
 
 export const NOTIFICATION_ICON = BellRing;
