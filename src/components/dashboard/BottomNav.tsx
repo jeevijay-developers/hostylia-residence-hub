@@ -15,7 +15,7 @@ export function BottomNav({ items }: BottomNavProps) {
       className="sticky bottom-0 z-30 border-t border-border bg-card"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto grid h-16 max-w-md grid-cols-5">
+      <ul className="mx-auto grid h-16 max-w-md auto-cols-fr grid-flow-col">
         {items.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
