@@ -25,7 +25,13 @@ import { Route as BookDemoRouteImport } from './routes/book-demo'
 import { Route as AiSuiteRouteImport } from './routes/ai-suite'
 import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWardenRouteImport } from './routes/_authenticated/warden'
+import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
+import { Route as AuthenticatedStudentRouteImport } from './routes/_authenticated/student'
+import { Route as AuthenticatedParentRouteImport } from './routes/_authenticated/parent'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const VerifyOtpRoute = VerifyOtpRouteImport.update({
   id: '/verify-otp',
@@ -107,10 +113,39 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWardenRoute = AuthenticatedWardenRouteImport.update({
+  id: '/warden',
+  path: '/warden',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSuperAdminRoute = AuthenticatedSuperAdminRouteImport.update({
+  id: '/super-admin',
+  path: '/super-admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStudentRoute = AuthenticatedStudentRouteImport.update({
+  id: '/student',
+  path: '/student',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedParentRoute = AuthenticatedParentRouteImport.update({
+  id: '/parent',
+  path: '/parent',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -131,6 +166,11 @@ export interface FileRoutesByFullPath {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/parent': typeof AuthenticatedParentRoute
+  '/student': typeof AuthenticatedStudentRoute
+  '/super-admin': typeof AuthenticatedSuperAdminRoute
+  '/warden': typeof AuthenticatedWardenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,10 +190,16 @@ export interface FileRoutesByTo {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/parent': typeof AuthenticatedParentRoute
+  '/student': typeof AuthenticatedStudentRoute
+  '/super-admin': typeof AuthenticatedSuperAdminRoute
+  '/warden': typeof AuthenticatedWardenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
   '/ai-suite': typeof AiSuiteRoute
@@ -170,6 +216,11 @@ export interface FileRoutesById {
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
   '/verify-otp': typeof VerifyOtpRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/parent': typeof AuthenticatedParentRoute
+  '/_authenticated/student': typeof AuthenticatedStudentRoute
+  '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRoute
+  '/_authenticated/warden': typeof AuthenticatedWardenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +242,11 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/admin'
+    | '/parent'
+    | '/student'
+    | '/super-admin'
+    | '/warden'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,9 +266,15 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/admin'
+    | '/parent'
+    | '/student'
+    | '/super-admin'
+    | '/warden'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/about'
     | '/access-pending'
     | '/ai-suite'
@@ -229,10 +291,16 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/verify-otp'
+    | '/_authenticated/admin'
+    | '/_authenticated/parent'
+    | '/_authenticated/student'
+    | '/_authenticated/super-admin'
+    | '/_authenticated/warden'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AccessPendingRoute: typeof AccessPendingRoute
   AiSuiteRoute: typeof AiSuiteRoute
@@ -365,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -372,11 +447,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/warden': {
+      id: '/_authenticated/warden'
+      path: '/warden'
+      fullPath: '/warden'
+      preLoaderRoute: typeof AuthenticatedWardenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/super-admin': {
+      id: '/_authenticated/super-admin'
+      path: '/super-admin'
+      fullPath: '/super-admin'
+      preLoaderRoute: typeof AuthenticatedSuperAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/student': {
+      id: '/_authenticated/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof AuthenticatedStudentRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/parent': {
+      id: '/_authenticated/parent'
+      path: '/parent'
+      fullPath: '/parent'
+      preLoaderRoute: typeof AuthenticatedParentRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedParentRoute: typeof AuthenticatedParentRoute
+  AuthenticatedStudentRoute: typeof AuthenticatedStudentRoute
+  AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRoute
+  AuthenticatedWardenRoute: typeof AuthenticatedWardenRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedParentRoute: AuthenticatedParentRoute,
+  AuthenticatedStudentRoute: AuthenticatedStudentRoute,
+  AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRoute,
+  AuthenticatedWardenRoute: AuthenticatedWardenRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AccessPendingRoute: AccessPendingRoute,
   AiSuiteRoute: AiSuiteRoute,
