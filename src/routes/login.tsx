@@ -22,9 +22,11 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { mode } = Route.useSearch();
+  const { t } = require("react-i18next").useTranslation();
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to continue to Hostylia.">
+    <AuthLayout title={t("auth.loginTitle")} subtitle={t("auth.loginSubtitle")}>
       <LoginForm defaultMode={mode ?? "phone"} />
     </AuthLayout>
   );
 }
+
