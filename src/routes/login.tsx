@@ -24,7 +24,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { mode } = Route.useSearch();
-  const { t } = require("react-i18next").useTranslation();
+  const { t } = useTranslation();
   return (
     <AuthLayout title={t("auth.loginTitle")} subtitle={t("auth.loginSubtitle")}>
       <LoginForm defaultMode={mode ?? "phone"} />
