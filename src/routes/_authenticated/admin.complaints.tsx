@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/admin/complaints")({
 const STATUSES = ["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_STUDENT","RESOLVED","CLOSED","REOPENED","CANCELLED"];
 
 function AdminComplaintsPage() {
-  const propId = usePropertyStore((s) => s.propertyId);
+  const propId = usePropertyStore((s) => s.activePropertyId);
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [block, setBlock] = useState("ALL");
