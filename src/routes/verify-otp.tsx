@@ -9,6 +9,7 @@ import { OtpInput } from "@/components/auth/OtpInput";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
+import { linkGuardianProfileOnLogin } from "@/lib/parent-link.functions";
 import {
   maskPhone,
   otpCodeSchema,
