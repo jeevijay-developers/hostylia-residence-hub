@@ -58,6 +58,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
     { label: "Invoices", to: "/accountant/invoices", icon: FileText },
     { label: "Payments", to: "/accountant/payments", icon: CreditCard },
+    { label: "Refunds", to: "/accountant/refunds", icon: Receipt },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart },
   ],
 };
@@ -80,6 +81,7 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
     { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
+    { label: "Payments", to: "/parent/payments", icon: Receipt },
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
     { label: "Messages", to: "/parent/messages", icon: BellRing },
   ],

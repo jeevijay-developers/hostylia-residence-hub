@@ -785,6 +785,83 @@ export type Database = {
           },
         ]
       }
+      deposit_ledger_entries: {
+        Row: {
+          allocation_id: string
+          amount_paise: number
+          created_at: string
+          created_by: string | null
+          description: string
+          direction: string
+          entry_type: string
+          id: string
+          property_id: string
+          reference_id: string | null
+          reference_type: string | null
+          student_id: string
+          tenant_id: string
+        }
+        Insert: {
+          allocation_id: string
+          amount_paise: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          direction: string
+          entry_type: string
+          id?: string
+          property_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          student_id: string
+          tenant_id: string
+        }
+        Update: {
+          allocation_id?: string
+          amount_paise?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          direction?: string
+          entry_type?: string
+          id?: string
+          property_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          student_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_ledger_entries_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deposit_ledger_entries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deposit_ledger_entries_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deposit_ledger_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           checksum: string | null
@@ -865,6 +942,160 @@ export type Database = {
           },
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_plan_components: {
+        Row: {
+          amount_paise: number
+          component_type: string
+          created_at: string
+          display_order: number
+          fee_plan_id: string
+          id: string
+          is_active: boolean
+          is_refundable: boolean
+          is_taxable: boolean
+          name: string
+          property_id: string
+          tax_rate_basis_points: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          component_type: string
+          created_at?: string
+          display_order?: number
+          fee_plan_id: string
+          id?: string
+          is_active?: boolean
+          is_refundable?: boolean
+          is_taxable?: boolean
+          name: string
+          property_id: string
+          tax_rate_basis_points?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          component_type?: string
+          created_at?: string
+          display_order?: number
+          fee_plan_id?: string
+          id?: string
+          is_active?: boolean
+          is_refundable?: boolean
+          is_taxable?: boolean
+          name?: string
+          property_id?: string
+          tax_rate_basis_points?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_plan_components_fee_plan_id_fkey"
+            columns: ["fee_plan_id"]
+            isOneToOne: false
+            referencedRelation: "fee_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_plan_components_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_plan_components_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_plans: {
+        Row: {
+          billing_frequency: string
+          code: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          deleted_by: string | null
+          due_day: number
+          effective_from: string
+          effective_until: string | null
+          grace_period_days: number
+          id: string
+          late_fee_type: string
+          late_fee_value: number
+          name: string
+          property_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          billing_frequency: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          due_day: number
+          effective_from: string
+          effective_until?: string | null
+          grace_period_days?: number
+          id?: string
+          late_fee_type?: string
+          late_fee_value?: number
+          name: string
+          property_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          billing_frequency?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          due_day?: number
+          effective_from?: string
+          effective_until?: string | null
+          grace_period_days?: number
+          id?: string
+          late_fee_type?: string
+          late_fee_value?: number
+          name?: string
+          property_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_plans_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_plans_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -999,6 +1230,153 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          allocation_id: string | null
+          balance_paise: number
+          billing_period_end: string | null
+          billing_period_start: string | null
+          buyer_gstin_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          deleted_by: string | null
+          discount_paise: number
+          due_date: string
+          fee_plan_id: string | null
+          gst_invoice: boolean
+          id: string
+          invoice_number: string
+          issue_date: string
+          issued_at: string | null
+          late_fee_paise: number
+          notes: string | null
+          paid_paise: number
+          property_id: string
+          refunded_paise: number
+          seller_gstin_snapshot: string | null
+          status: string
+          student_id: string
+          subtotal_paise: number
+          tax_paise: number
+          tenant_id: string
+          total_paise: number
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          allocation_id?: string | null
+          balance_paise: number
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          buyer_gstin_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          discount_paise?: number
+          due_date: string
+          fee_plan_id?: string | null
+          gst_invoice?: boolean
+          id?: string
+          invoice_number: string
+          issue_date: string
+          issued_at?: string | null
+          late_fee_paise?: number
+          notes?: string | null
+          paid_paise?: number
+          property_id: string
+          refunded_paise?: number
+          seller_gstin_snapshot?: string | null
+          status?: string
+          student_id: string
+          subtotal_paise: number
+          tax_paise?: number
+          tenant_id: string
+          total_paise: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          allocation_id?: string | null
+          balance_paise?: number
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          buyer_gstin_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          discount_paise?: number
+          due_date?: string
+          fee_plan_id?: string | null
+          gst_invoice?: boolean
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          issued_at?: string | null
+          late_fee_paise?: number
+          notes?: string | null
+          paid_paise?: number
+          property_id?: string
+          refunded_paise?: number
+          seller_gstin_snapshot?: string | null
+          status?: string
+          student_id?: string
+          subtotal_paise?: number
+          tax_paise?: number
+          tenant_id?: string
+          total_paise?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_fee_plan_id_fkey"
+            columns: ["fee_plan_id"]
+            isOneToOne: false
+            referencedRelation: "fee_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string | null
@@ -1119,6 +1497,200 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "organizations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_orders: {
+        Row: {
+          amount_paise: number
+          created_at: string
+          created_by_user_id: string
+          currency: string
+          expires_at: string | null
+          id: string
+          idempotency_key: string
+          invoice_id: string | null
+          property_id: string
+          provider: string
+          provider_order_ref: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          created_at?: string
+          created_by_user_id: string
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          idempotency_key: string
+          invoice_id?: string | null
+          property_id: string
+          provider: string
+          provider_order_ref: string
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          created_at?: string
+          created_by_user_id?: string
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          idempotency_key?: string
+          invoice_id?: string | null
+          property_id?: string
+          provider?: string
+          provider_order_ref?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_orders_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_paise: number
+          cheque_date: string | null
+          created_at: string
+          currency: string
+          id: string
+          invoice_id: string | null
+          metadata: Json
+          mode: string
+          notes: string | null
+          offline_reference: string | null
+          paid_at: string | null
+          payment_number: string
+          payment_order_id: string | null
+          property_id: string
+          provider: string | null
+          provider_order_ref: string | null
+          provider_payment_ref: string | null
+          recorded_by: string | null
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          cheque_date?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json
+          mode: string
+          notes?: string | null
+          offline_reference?: string | null
+          paid_at?: string | null
+          payment_number: string
+          payment_order_id?: string | null
+          property_id: string
+          provider?: string | null
+          provider_order_ref?: string | null
+          provider_payment_ref?: string | null
+          recorded_by?: string | null
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          cheque_date?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_id?: string | null
+          metadata?: Json
+          mode?: string
+          notes?: string | null
+          offline_reference?: string | null
+          paid_at?: string | null
+          payment_number?: string
+          payment_order_id?: string | null
+          property_id?: string
+          provider?: string | null
+          provider_order_ref?: string | null
+          provider_payment_ref?: string | null
+          recorded_by?: string | null
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: false
+            referencedRelation: "payment_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1383,6 +1955,110 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          mode: string
+          payment_id: string
+          property_id: string
+          provider_refund_ref: string | null
+          reason: string
+          refund_number: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          decision_reason?: string | null
+          expected_completion_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          initiated_at?: string
+          initiated_by: string
+          mode: string
+          payment_id: string
+          property_id: string
+          provider_refund_ref?: string | null
+          reason: string
+          refund_number: string
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          decision_reason?: string | null
+          expected_completion_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          initiated_at?: string
+          initiated_by?: string
+          mode?: string
+          payment_id?: string
+          property_id?: string
+          provider_refund_ref?: string | null
+          reason?: string
+          refund_number?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_assignments: {
         Row: {
@@ -1879,6 +2555,42 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          error: string | null
+          event_id: string
+          event_type: string | null
+          id: string
+          payload: Json
+          processed_at: string | null
+          provider: string
+          received_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          event_id: string
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider: string
+          received_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          event_id?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1900,6 +2612,40 @@ export type Database = {
         Args: { p_allocation_id: string }
         Returns: string
       }
+      fn_approve_refund: {
+        Args: { p_decision: string; p_reason?: string; p_refund_id: string }
+        Returns: {
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          mode: string
+          payment_id: string
+          property_id: string
+          provider_refund_ref: string | null
+          reason: string
+          refund_number: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_generate_invoices: { Args: never; Returns: number }
       fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
       fn_seed_default_complaint_categories: {
         Args: { p_property_id: string }
@@ -1915,6 +2661,22 @@ export type Database = {
           _tenant_id: string
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_finance_staff: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_hostel_admin: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_owning_student: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_paying_parent: {
+        Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
       provisional_refund_paise: {
