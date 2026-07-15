@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 import { PropertySwitcher } from "./PropertySwitcher";
-import logoAsset from "@/assets/hostylia-logo.png";
+import logoAsset from "@/assets/hostylia-logo.png.asset.json";
 
 interface SidebarProps {
   items: NavItem[];
@@ -26,7 +26,7 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
     >
       <div className="flex items-center gap-2 border-b border-border px-4 py-4">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logoAsset} alt="Hostylia" className="h-7 w-auto shrink-0" />
+          <img src={logoAsset.url} alt="Hostylia" className="h-7 w-auto shrink-0" />
           {!collapsed && (
             <span className="font-display text-sm font-semibold text-foreground">
               Hostylia
