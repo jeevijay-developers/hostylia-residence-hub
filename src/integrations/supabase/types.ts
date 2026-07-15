@@ -71,6 +71,217 @@ export type Database = {
         }
         Relationships: []
       }
+      beds: {
+        Row: {
+          block_id: string | null
+          code: string
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          floor_id: string
+          id: string
+          maintenance_until: string | null
+          notes: string | null
+          property_id: string
+          rent_override_paise: number | null
+          room_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_id?: string | null
+          code: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          floor_id: string
+          id?: string
+          maintenance_until?: string | null
+          notes?: string | null
+          property_id: string
+          rent_override_paise?: number | null
+          room_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_id?: string | null
+          code?: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          floor_id?: string
+          id?: string
+          maintenance_until?: string | null
+          notes?: string | null
+          property_id?: string
+          rent_override_paise?: number | null
+          room_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beds_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocks: {
+        Row: {
+          code: string | null
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          gender_policy: string | null
+          id: string
+          name: string
+          property_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          gender_policy?: string | null
+          id?: string
+          name: string
+          property_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          gender_policy?: string | null
+          id?: string
+          name?: string
+          property_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      floors: {
+        Row: {
+          block_id: string | null
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          floor_number: number | null
+          id: string
+          layout_metadata: Json
+          name: string
+          property_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          floor_number?: number | null
+          id?: string
+          layout_metadata?: Json
+          name: string
+          property_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          floor_number?: number | null
+          id?: string
+          layout_metadata?: Json
+          name?: string
+          property_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "floors_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "floors_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "floors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guardians: {
         Row: {
           address: Json | null
@@ -508,6 +719,92 @@ export type Database = {
           },
         ]
       }
+      rooms: {
+        Row: {
+          amenities: Json
+          base_rent_paise: number | null
+          block_id: string | null
+          capacity: number
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          floor_id: string
+          id: string
+          notes: string | null
+          property_id: string
+          room_number: string
+          room_type: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amenities?: Json
+          base_rent_paise?: number | null
+          block_id?: string | null
+          capacity: number
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          floor_id: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          room_number: string
+          room_type?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amenities?: Json
+          base_rent_paise?: number | null
+          block_id?: string | null
+          capacity?: number
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          floor_id?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          room_number?: string
+          room_type?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_guardians: {
         Row: {
           can_approve_gate_pass: boolean
@@ -760,6 +1057,27 @@ export type Database = {
       get_user_role: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_tenant_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      warden_can_read_property: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      warden_can_write_scope: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
