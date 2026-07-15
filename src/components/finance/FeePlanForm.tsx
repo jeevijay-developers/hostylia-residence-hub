@@ -18,7 +18,7 @@ export function FeePlanForm({ propertyId }: { propertyId: string }) {
   const qc = useQueryClient();
   const submit = useServerFn(upsertFeePlan);
   const form = useForm<FeePlanFormInput>({
-    resolver: zodResolver(feePlanFormSchema),
+    resolver: zodResolver(feePlanFormSchema) as never,
     defaultValues: {
       property_id: propertyId,
       name: "",
