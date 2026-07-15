@@ -139,12 +139,14 @@ const APP_ROUTE_PREFIXES = [
   "/access-pending",
   "/post-login",
   "/403",
+  "/apply",
   "/super-admin",
   "/admin",
   "/accountant",
   "/warden",
   "/student",
   "/parent",
+
 ];
 
 function isAppRoute(pathname: string): boolean {
