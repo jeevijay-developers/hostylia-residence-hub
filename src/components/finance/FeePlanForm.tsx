@@ -50,7 +50,7 @@ export function FeePlanForm({ propertyId }: { propertyId: string }) {
 
   return (
     <form
-      onSubmit={form.handleSubmit((v) => m.mutate(v))}
+      onSubmit={form.handleSubmit((v) => m.mutate(v as FeePlanFormInput))}
       className="space-y-4 rounded-md border border-border bg-card p-4"
     >
       <div className="grid gap-3 sm:grid-cols-2">
