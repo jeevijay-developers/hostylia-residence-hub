@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import logoAsset from "@/assets/hostylia-logo.png.asset.json";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -13,12 +15,17 @@ interface AuthLayoutProps {
  * Mobile-first, centered card on larger screens. Light mode only.
  */
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+  const { t, i18n } = useTranslation();
+  const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-center px-4 pt-8 pb-4 sm:pt-12">
+    <div className="flex min-h-screen flex-col bg-background text-foreground" lang={langAttr}>
+      <header className="relative flex items-center justify-center px-4 pt-8 pb-4 sm:pt-12">
         <Link to="/" className="inline-flex items-center gap-2" aria-label="Hostylia home">
           <img src={logoAsset.url} alt="Hostylia" className="h-8 w-auto" />
         </Link>
+        <div className="absolute right-3 top-6 sm:top-10">
+          <LanguageSwitcher />
+        </div>
       </header>
 
       <main className="flex flex-1 items-start justify-center px-4 pb-12 sm:items-center">
@@ -35,13 +42,14 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
             {children}
           </div>
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            By continuing, you agree to Hostylia's{" "}
-            <Link to="/terms" className="underline hover:text-foreground">Terms</Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+            {t("auth.termsPrefix")}{" "}
+            <Link to="/terms" className="underline hover:text-foreground">{t("auth.terms")}</Link>{" "}
+            {t("auth.and")}{" "}
+            <Link to="/privacy" className="underline hover:text-foreground">{t("auth.privacy")}</Link>.
           </p>
         </div>
       </main>
     </div>
   );
 }
+
