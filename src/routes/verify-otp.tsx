@@ -64,6 +64,13 @@ function VerifyOtpPage() {
         setInlineError(error.message);
         return;
       }
+      // Backfill guardians.profile_id for parents whose phone matches an
+      // existing guardian record (created by admin ahead of first login).
+      try {
+        await linkGuardianProfileOnLogin();
+      } catch (e) {
+        console.warn("guardian backfill failed", e);
+      }
       navigate({ to: "/post-login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Verification failed. Please try again.");
