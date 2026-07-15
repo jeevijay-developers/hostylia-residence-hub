@@ -319,7 +319,41 @@ export const moveOutAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => moveOutSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+
+    const { data: allocBefore, error: qErr } = await supabase
+      .from("allocations")
+      .select("id, tenant_id, property_id, student_id, deposit_snapshot_paise")
+      .eq("id", data.allocation_id)
+      .single();
+    if (qErr || !allocBefore) throw new Error("Allocation not found");
+
+    // Compute unpaid balances against the deposit and post an ADJUSTMENT/DEDUCTION
+    const { data: openInvs } = await supabase
+      .from("invoices")
+      .select("balance_paise")
+      .eq("allocation_id", data.allocation_id)
+      .not("status", "in", "(VOID,PAID,REFUNDED)")
+      .is("deleted_at", null);
+    const dues = (openInvs ?? []).reduce((s, i) => s + (i.balance_paise ?? 0), 0);
+
+    if (dues > 0) {
+      const capped = Math.min(dues, allocBefore.deposit_snapshot_paise ?? 0);
+      if (capped > 0) {
+        await supabase.from("deposit_ledger_entries").insert({
+          tenant_id: allocBefore.tenant_id,
+          property_id: allocBefore.property_id,
+          student_id: allocBefore.student_id,
+          allocation_id: allocBefore.id,
+          entry_type: "DEDUCTION",
+          amount_paise: capped,
+          direction: "DEBIT",
+          reference_type: "MOVE_OUT",
+          description: `Deducted outstanding dues from deposit at move-out (${data.actual_end_date})`,
+          created_by: userId,
+        });
+      }
+    }
 
     const { data: alloc, error: aErr } = await supabase
       .from("allocations")
