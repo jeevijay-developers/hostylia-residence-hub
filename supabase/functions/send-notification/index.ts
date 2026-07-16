@@ -211,6 +211,9 @@ function renderTemplate(key: string, vars: Record<string, unknown>): string {
     fee_reminder_parent: "Reminder: invoice {{invoice_number}} for your child is due {{due_date}}.",
     payment_receipt: "Receipt {{payment_number}} for ₹{{amount_rupees}} received. Thank you.",
     notice_broadcast: "{{title}} — {{body}}",
+    gate_event: "Gate {{direction}} recorded for pass {{pass_number}}.",
+    late_entry: "Late entry on pass {{pass_number}}.",
+    visitor_gate: "Visitor {{name}} — {{direction}}.",
   };
   let s = T[key] ?? key;
   const merged: Record<string, unknown> = { ...vars };
