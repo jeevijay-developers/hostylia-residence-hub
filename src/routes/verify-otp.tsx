@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 import { linkGuardianProfileOnLogin } from "@/lib/parent-link.functions";
+import { activateMyInvites } from "@/lib/admin-staff.functions";
 import {
   maskPhone,
   otpCodeSchema,
@@ -70,6 +71,11 @@ function VerifyOtpPage() {
         await linkGuardianProfileOnLogin();
       } catch (e) {
         console.warn("guardian backfill failed", e);
+      }
+      try {
+        await activateMyInvites();
+      } catch (e) {
+        console.warn("invite activation failed", e);
       }
       navigate({ to: "/post-login" });
     } catch (err) {

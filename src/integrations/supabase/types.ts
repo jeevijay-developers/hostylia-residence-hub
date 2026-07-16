@@ -2638,6 +2638,47 @@ export type Database = {
           },
         ]
       }
+      plan_features: {
+        Row: {
+          configuration: Json
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          limit_value: number | null
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          configuration?: Json
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          limit_value?: number | null
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          configuration?: Json
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          limit_value?: number | null
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           billing_interval: string
@@ -3400,6 +3441,112 @@ export type Database = {
           },
         ]
       }
+      support_sessions: {
+        Row: {
+          access_mode: string
+          consent_recorded: boolean
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          expires_at: string
+          id: string
+          reason: string
+          started_at: string
+          super_admin_user_id: string
+          support_reference: string | null
+          target_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          access_mode: string
+          consent_recorded?: boolean
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at: string
+          id?: string
+          reason: string
+          started_at: string
+          super_admin_user_id: string
+          support_reference?: string | null
+          target_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          access_mode?: string
+          consent_recorded?: boolean
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string
+          started_at?: string
+          super_admin_user_id?: string
+          support_reference?: string | null
+          target_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_feature_overrides: {
+        Row: {
+          configuration: Json
+          created_at: string
+          created_by: string
+          enabled: boolean
+          expires_at: string | null
+          feature_key: string
+          id: string
+          limit_value: number | null
+          reason: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          configuration?: Json
+          created_at?: string
+          created_by: string
+          enabled: boolean
+          expires_at?: string | null
+          feature_key: string
+          id?: string
+          limit_value?: number | null
+          reason: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          configuration?: Json
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          expires_at?: string | null
+          feature_key?: string
+          id?: string
+          limit_value?: number | null
+          reason?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_feature_overrides_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_memberships: {
         Row: {
           created_at: string
@@ -3828,6 +3975,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_effective_feature: {
+        Args: { _feature_key: string; _tenant_id: string }
+        Returns: Json
+      }
+      fn_end_support_session: {
+        Args: { _reason: string; _session_id: string }
+        Returns: {
+          access_mode: string
+          consent_recorded: boolean
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          expires_at: string
+          id: string
+          reason: string
+          started_at: string
+          super_admin_user_id: string
+          support_reference: string | null
+          target_user_id: string
+          tenant_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "support_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       fn_enqueue_in_app_notification: {
         Args: {
           p_event_type: string
@@ -3841,6 +4016,7 @@ export type Database = {
         Returns: string
       }
       fn_generate_invoices: { Args: never; Returns: number }
+      fn_get_platform_metrics: { Args: never; Returns: Json }
       fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
       fn_seed_default_complaint_categories: {
         Args: { p_property_id: string }
@@ -3875,6 +4051,7 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       provisional_refund_paise: {
         Args: { p_allocation_id: string }
         Returns: number

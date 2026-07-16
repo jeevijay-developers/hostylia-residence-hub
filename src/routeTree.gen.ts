@@ -42,7 +42,11 @@ import { Route as AuthenticatedWardenGateRouteImport } from './routes/_authentic
 import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_authenticated/warden.daily-brief'
 import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
 import { Route as AuthenticatedWardenAttendanceRouteImport } from './routes/_authenticated/warden.attendance'
+import { Route as AuthenticatedSuperAdminTenantsRouteImport } from './routes/_authenticated/super-admin.tenants'
+import { Route as AuthenticatedSuperAdminImpersonationRouteImport } from './routes/_authenticated/super-admin.impersonation'
+import { Route as AuthenticatedSuperAdminFeatureFlagsRouteImport } from './routes/_authenticated/super-admin.feature-flags'
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
+import { Route as AuthenticatedSuperAdminBillingRouteImport } from './routes/_authenticated/super-admin.billing'
 import { Route as AuthenticatedStudentNoticesRouteImport } from './routes/_authenticated/student.notices'
 import { Route as AuthenticatedStudentMessRouteImport } from './routes/_authenticated/student.mess'
 import { Route as AuthenticatedStudentHomeRouteImport } from './routes/_authenticated/student.home'
@@ -55,6 +59,8 @@ import { Route as AuthenticatedParentMessagesRouteImport } from './routes/_authe
 import { Route as AuthenticatedParentComplaintsRouteImport } from './routes/_authenticated/parent.complaints'
 import { Route as AuthenticatedParentAttendanceRouteImport } from './routes/_authenticated/parent.attendance'
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin.students'
+import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 import { Route as AuthenticatedAdminPropertiesRouteImport } from './routes/_authenticated/admin.properties'
 import { Route as AuthenticatedAdminNoticesRouteImport } from './routes/_authenticated/admin.notices'
@@ -245,10 +251,34 @@ const AuthenticatedWardenAttendanceRoute =
     path: '/attendance',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedSuperAdminTenantsRoute =
+  AuthenticatedSuperAdminTenantsRouteImport.update({
+    id: '/tenants',
+    path: '/tenants',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminImpersonationRoute =
+  AuthenticatedSuperAdminImpersonationRouteImport.update({
+    id: '/impersonation',
+    path: '/impersonation',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminFeatureFlagsRoute =
+  AuthenticatedSuperAdminFeatureFlagsRouteImport.update({
+    id: '/feature-flags',
+    path: '/feature-flags',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
 const AuthenticatedSuperAdminDashboardRoute =
   AuthenticatedSuperAdminDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminBillingRoute =
+  AuthenticatedSuperAdminBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
 const AuthenticatedStudentNoticesRoute =
@@ -321,6 +351,17 @@ const AuthenticatedAdminStudentsRoute =
   AuthenticatedAdminStudentsRouteImport.update({
     id: '/students',
     path: '/students',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminStaffRoute = AuthenticatedAdminStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminReportsRoute =
@@ -482,6 +523,8 @@ export interface FileRoutesByFullPath {
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
   '/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
@@ -494,7 +537,11 @@ export interface FileRoutesByFullPath {
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/student/mess': typeof AuthenticatedStudentMessRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
+  '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
@@ -548,6 +595,8 @@ export interface FileRoutesByTo {
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
   '/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
@@ -560,7 +609,11 @@ export interface FileRoutesByTo {
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/student/mess': typeof AuthenticatedStudentMessRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
+  '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
@@ -617,6 +670,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
   '/_authenticated/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
   '/_authenticated/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/_authenticated/parent/complaints': typeof AuthenticatedParentComplaintsRoute
@@ -629,7 +684,11 @@ export interface FileRoutesById {
   '/_authenticated/student/home': typeof AuthenticatedStudentHomeRoute
   '/_authenticated/student/mess': typeof AuthenticatedStudentMessRoute
   '/_authenticated/student/notices': typeof AuthenticatedStudentNoticesRoute
+  '/_authenticated/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
+  '/_authenticated/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/_authenticated/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/_authenticated/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/_authenticated/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/_authenticated/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
@@ -686,6 +745,8 @@ export interface FileRouteTypes {
     | '/admin/notices'
     | '/admin/properties'
     | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/staff'
     | '/admin/students'
     | '/parent/attendance'
     | '/parent/complaints'
@@ -698,7 +759,11 @@ export interface FileRouteTypes {
     | '/student/home'
     | '/student/mess'
     | '/student/notices'
+    | '/super-admin/billing'
     | '/super-admin/dashboard'
+    | '/super-admin/feature-flags'
+    | '/super-admin/impersonation'
+    | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
     | '/warden/daily-brief'
@@ -752,6 +817,8 @@ export interface FileRouteTypes {
     | '/admin/notices'
     | '/admin/properties'
     | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/staff'
     | '/admin/students'
     | '/parent/attendance'
     | '/parent/complaints'
@@ -764,7 +831,11 @@ export interface FileRouteTypes {
     | '/student/home'
     | '/student/mess'
     | '/student/notices'
+    | '/super-admin/billing'
     | '/super-admin/dashboard'
+    | '/super-admin/feature-flags'
+    | '/super-admin/impersonation'
+    | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
     | '/warden/daily-brief'
@@ -820,6 +891,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/notices'
     | '/_authenticated/admin/properties'
     | '/_authenticated/admin/reports'
+    | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/staff'
     | '/_authenticated/admin/students'
     | '/_authenticated/parent/attendance'
     | '/_authenticated/parent/complaints'
@@ -832,7 +905,11 @@ export interface FileRouteTypes {
     | '/_authenticated/student/home'
     | '/_authenticated/student/mess'
     | '/_authenticated/student/notices'
+    | '/_authenticated/super-admin/billing'
     | '/_authenticated/super-admin/dashboard'
+    | '/_authenticated/super-admin/feature-flags'
+    | '/_authenticated/super-admin/impersonation'
+    | '/_authenticated/super-admin/tenants'
     | '/_authenticated/warden/attendance'
     | '/_authenticated/warden/complaints'
     | '/_authenticated/warden/daily-brief'
@@ -1106,11 +1183,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenAttendanceRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
+    '/_authenticated/super-admin/tenants': {
+      id: '/_authenticated/super-admin/tenants'
+      path: '/tenants'
+      fullPath: '/super-admin/tenants'
+      preLoaderRoute: typeof AuthenticatedSuperAdminTenantsRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/impersonation': {
+      id: '/_authenticated/super-admin/impersonation'
+      path: '/impersonation'
+      fullPath: '/super-admin/impersonation'
+      preLoaderRoute: typeof AuthenticatedSuperAdminImpersonationRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/feature-flags': {
+      id: '/_authenticated/super-admin/feature-flags'
+      path: '/feature-flags'
+      fullPath: '/super-admin/feature-flags'
+      preLoaderRoute: typeof AuthenticatedSuperAdminFeatureFlagsRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
     '/_authenticated/super-admin/dashboard': {
       id: '/_authenticated/super-admin/dashboard'
       path: '/dashboard'
       fullPath: '/super-admin/dashboard'
       preLoaderRoute: typeof AuthenticatedSuperAdminDashboardRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/billing': {
+      id: '/_authenticated/super-admin/billing'
+      path: '/billing'
+      fullPath: '/super-admin/billing'
+      preLoaderRoute: typeof AuthenticatedSuperAdminBillingRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
     '/_authenticated/student/notices': {
@@ -1195,6 +1300,20 @@ declare module '@tanstack/react-router' {
       path: '/students'
       fullPath: '/admin/students'
       preLoaderRoute: typeof AuthenticatedAdminStudentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/staff': {
+      id: '/_authenticated/admin/staff'
+      path: '/staff'
+      fullPath: '/admin/staff'
+      preLoaderRoute: typeof AuthenticatedAdminStaffRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/reports': {
@@ -1441,6 +1560,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminNoticesRoute: typeof AuthenticatedAdminNoticesRoute
   AuthenticatedAdminPropertiesRoute: typeof AuthenticatedAdminPropertiesRouteWithChildren
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRouteWithChildren
 }
 
@@ -1453,6 +1574,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPropertiesRoute:
     AuthenticatedAdminPropertiesRouteWithChildren,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRouteWithChildren,
 }
 
@@ -1500,13 +1623,23 @@ const AuthenticatedStudentRouteWithChildren =
   AuthenticatedStudentRoute._addFileChildren(AuthenticatedStudentRouteChildren)
 
 interface AuthenticatedSuperAdminRouteChildren {
+  AuthenticatedSuperAdminBillingRoute: typeof AuthenticatedSuperAdminBillingRoute
   AuthenticatedSuperAdminDashboardRoute: typeof AuthenticatedSuperAdminDashboardRoute
+  AuthenticatedSuperAdminFeatureFlagsRoute: typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  AuthenticatedSuperAdminImpersonationRoute: typeof AuthenticatedSuperAdminImpersonationRoute
+  AuthenticatedSuperAdminTenantsRoute: typeof AuthenticatedSuperAdminTenantsRoute
 }
 
 const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren =
   {
+    AuthenticatedSuperAdminBillingRoute: AuthenticatedSuperAdminBillingRoute,
     AuthenticatedSuperAdminDashboardRoute:
       AuthenticatedSuperAdminDashboardRoute,
+    AuthenticatedSuperAdminFeatureFlagsRoute:
+      AuthenticatedSuperAdminFeatureFlagsRoute,
+    AuthenticatedSuperAdminImpersonationRoute:
+      AuthenticatedSuperAdminImpersonationRoute,
+    AuthenticatedSuperAdminTenantsRoute: AuthenticatedSuperAdminTenantsRoute,
   }
 
 const AuthenticatedSuperAdminRouteWithChildren =

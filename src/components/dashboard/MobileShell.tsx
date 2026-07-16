@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { RoleGuard } from "./RoleGuard";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import type { AppRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -20,6 +21,7 @@ export function MobileShell({ allow, navItems, children }: MobileShellProps) {
   return (
     <RoleGuard allow={allow}>
       <div className="flex min-h-screen flex-col bg-background" lang={langAttr}>
+        <ImpersonationBanner />
         <MobileHeader />
         <main className="flex-1 px-4 py-5 sm:px-6">
           <div className="mx-auto w-full max-w-2xl">{children ?? <Outlet />}</div>
