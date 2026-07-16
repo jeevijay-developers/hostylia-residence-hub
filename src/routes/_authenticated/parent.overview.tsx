@@ -22,7 +22,7 @@ function ParentOverviewPage() {
             <section className="space-y-2">
               <h2 className="text-sm font-semibold text-foreground">Recent notices</h2>
               <NoticeFeed
-                tenantId={child.tenant_id}
+                tenantId={null}
                 propertyId={child.property_id}
                 audienceFilter={["ALL", "PARENTS"]}
               />
