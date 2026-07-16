@@ -109,7 +109,7 @@ export const decideGatePass = createServerFn({ method: "POST" })
     delete (patch as { _raw_token?: string })._raw_token;
 
     const { data: updated, error: uErr } = await supabase
-      .from("gate_passes").update(patch).eq("id", data.pass_id).select("*").single();
+      .from("gate_passes").update(patch as never).eq("id", data.pass_id).select("*").single();
     if (uErr) throw new Error(uErr.message);
 
     await supabase.from("gate_pass_approvals").insert({
