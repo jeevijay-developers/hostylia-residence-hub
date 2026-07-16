@@ -192,7 +192,8 @@ export const updatePropertySettings = createServerFn({ method: "POST" })
       .single();
     if (!prop) throw new Error("property not found");
     await assertAdmin(supabase, userId, prop.tenant_id);
-    const merged = { ...(prop.settings ?? {}), ...data.settings };
+    const existing = (typeof prop.settings === "object" && prop.settings !== null ? prop.settings : {}) as Record<string, any>;
+    const merged = { ...existing, ...data.settings };
     const { error } = await supabase
       .from("properties")
       .update({ settings: merged })
