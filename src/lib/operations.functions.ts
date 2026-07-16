@@ -20,6 +20,7 @@ const createPassSchema = z.object({
   destination: z.string().max(200).optional(),
   out_at: z.string(),
   expected_in_at: z.string(),
+  qr_token_hash: z.string().length(64),
 });
 
 export const createGatePass = createServerFn({ method: "POST" })
@@ -48,6 +49,8 @@ export const createGatePass = createServerFn({ method: "POST" })
         expected_in_at: data.expected_in_at,
         status: initialStatus,
         requires_parent_approval: requiresParent,
+        qr_token_hash: data.qr_token_hash,
+        qr_expires_at: data.expected_in_at,
         created_by: userId,
       })
       .select("*")
