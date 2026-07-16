@@ -18,7 +18,7 @@ FROM public.beds b
 JOIN public.rooms r ON r.id = b.room_id
 JOIN public.floors f ON f.id = b.floor_id
 WHERE b.tenant_id = '11111111-1111-1111-1111-111111111111'
-  AND b.property_id = '11111111-1111-1111-1111-11111111p001'
+  AND b.property_id = '11111111-1111-1111-1111-11111111a001'
   AND b.deleted_at IS NULL
 ORDER BY f.floor_number, r.room_number, b.code;
 
@@ -35,7 +35,7 @@ SELECT status,
        SUM(balance_paise) AS balance
 FROM public.invoices
 WHERE tenant_id = '11111111-1111-1111-1111-111111111111'
-  AND property_id = '11111111-1111-1111-1111-11111111p001'
+  AND property_id = '11111111-1111-1111-1111-11111111a001'
   AND status IN ('ISSUED','PARTIALLY_PAID','OVERDUE')
   AND deleted_at IS NULL
 GROUP BY 1, 2;

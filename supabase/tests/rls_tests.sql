@@ -100,11 +100,11 @@ ROLLBACK;
 BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden Block A only
 -- Should see students in Block A (5 in rooms r001-r003) + not moved-out student 08
-SELECT pg_temp.assert_ge((SELECT count(*) FROM public.students WHERE property_id='11111111-1111-1111-1111-11111111p001'), 1, 'WardenA can see property A1 students');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.students WHERE property_id='11111111-1111-1111-1111-11111111a001'), 1, 'WardenA can see property A1 students');
 -- Cannot write attendance for Block B students
 SELECT pg_temp.assert_throws(
   $sql$INSERT INTO public.attendance (tenant_id, property_id, block_id, student_id, attendance_date, status, marked_by)
-       VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111p001','11111111-1111-1111-1111-11111111b002','11111111-1111-1111-1111-111111110007', current_date - 1, 'PRESENT','00000000-0000-0000-0000-000000000011')$sql$,
+       VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b002','11111111-1111-1111-1111-111111110007', current_date - 1, 'PRESENT','00000000-0000-0000-0000-000000000011')$sql$,
   'WardenA_BlockA cannot insert attendance into Block B');
 ROLLBACK;
 
@@ -142,7 +142,7 @@ ROLLBACK;
 BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- accountant_A initiated refund
 SELECT pg_temp.assert_throws(
-  $sql$SELECT public.fn_approve_refund('11111111-1111-1111-1111-11111111rf01','APPROVED','Trying self approve')$sql$,
+  $sql$SELECT public.fn_approve_refund('11111111-1111-1111-1111-11111111cf01','APPROVED','Trying self approve')$sql$,
   'Refund initiator cannot self-approve (via fn_approve_refund)');
 -- Also: an accountant (non-HOSTEL_ADMIN) cannot approve at all
 ROLLBACK;
@@ -151,7 +151,7 @@ BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN (not initiator)
 -- Would succeed but we ROLLBACK to keep fixture intact
 DO $$ BEGIN
-  PERFORM public.fn_approve_refund('11111111-1111-1111-1111-11111111rf01','APPROVED','Second-signer approval');
+  PERFORM public.fn_approve_refund('11111111-1111-1111-1111-11111111cf01','APPROVED','Second-signer approval');
   RAISE NOTICE 'OK  [Refund maker-checker: HOSTEL_ADMIN can approve someone else''s refund]';
 END $$;
 ROLLBACK;
@@ -194,12 +194,12 @@ BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- admin so RLS UPDATE passes; trigger still fires
 SELECT pg_temp.assert_throws(
   $sql$UPDATE public.gate_passes SET parent_approved_by='00000000-0000-0000-0000-000000000041', parent_approved_at=now()
-       WHERE id='11111111-1111-1111-1111-11111111gp02'$sql$,
+       WHERE id='11111111-1111-1111-1111-11111111da02'$sql$,
   'Non-approver parent cannot approve gate pass');
 -- Parent 01 IS a valid approver for student 01, but gp02 belongs to student 02 → still invalid
 SELECT pg_temp.assert_throws(
   $sql$UPDATE public.gate_passes SET parent_approved_by='00000000-0000-0000-0000-000000000040', parent_approved_at=now()
-       WHERE id='11111111-1111-1111-1111-11111111gp02'$sql$,
+       WHERE id='11111111-1111-1111-1111-11111111da02'$sql$,
   'Approver parent for a different student is rejected');
 ROLLBACK;
 
@@ -209,11 +209,11 @@ ROLLBACK;
 BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
 -- cp05 has reopen_until = now()+44h → within window, should succeed
-UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111cp05';
+UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05';
 -- Force reopen_until into the past and try again → must fail
-UPDATE public.complaints SET status='RESOLVED', resolved_at=now()-interval '3 days', reopen_until=now()-interval '1 day' WHERE id='11111111-1111-1111-1111-11111111cp05';
+UPDATE public.complaints SET status='RESOLVED', resolved_at=now()-interval '3 days', reopen_until=now()-interval '1 day' WHERE id='11111111-1111-1111-1111-11111111ca05';
 SELECT pg_temp.assert_throws(
-  $sql$UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111cp05'$sql$,
+  $sql$UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05'$sql$,
   'Complaint reopen rejected after 48h window');
 ROLLBACK;
 
