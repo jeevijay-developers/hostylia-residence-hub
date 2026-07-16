@@ -92,22 +92,28 @@ export const inviteStaff = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw rErr;
 
-    // Fire invite notification (IN_APP always; email/sms if configured)
-    try {
-      await supabase.functions.invoke("send-notification", {
-        body: {
-          tenant_id: data.tenant_id,
-          property_id: data.property_id ?? null,
-          recipient_user_id: inviteeId,
-          event_type: "STAFF_INVITE",
-          template_key: "staff_invite",
-          channels: ["IN_APP", data.email ? "EMAIL" : "SMS"],
-          payload: { role: data.role },
-          idempotency_key: `staff_invite:${ra.id}`,
-        },
-      });
-    } catch {
-      /* delivery is best-effort */
+    // Fire invite notification (IN_APP + email/SMS if configured); best-effort.
+    const channels: Array<"IN_APP" | "EMAIL" | "SMS"> = ["IN_APP", data.email ? "EMAIL" : "SMS"];
+    for (const ch of channels) {
+      const recipient: Record<string, string | undefined> = {};
+      if (ch === "IN_APP") recipient.userId = inviteeId;
+      if (ch === "EMAIL") recipient.email = data.email ?? undefined;
+      if (ch === "SMS") recipient.phone = data.phone ?? undefined;
+      if (!recipient.userId && !recipient.email && !recipient.phone) continue;
+      try {
+        await supabase.functions.invoke("send-notification", {
+          body: {
+            channel: ch,
+            templateKey: "staff_invite",
+            recipient,
+            variables: { role: data.role },
+            eventType: "STAFF_INVITE",
+            tenantId: data.tenant_id,
+            propertyId: data.property_id ?? undefined,
+            referenceId: ra.id,
+          },
+        });
+      } catch { /* best-effort */ }
     }
 
     return { role_assignment_id: ra.id, invitee_id: inviteeId };
