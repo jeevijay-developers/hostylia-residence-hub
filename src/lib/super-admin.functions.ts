@@ -175,14 +175,13 @@ export const startSupportSession = createServerFn({ method: "POST" })
     try {
       await supabase.functions.invoke("send-notification", {
         body: {
-          tenant_id: data.tenant_id,
-          property_id: null,
-          recipient_user_id: data.target_user_id,
-          event_type: "SUPPORT_SESSION_STARTED",
-          template_key: "support_session_started",
-          channels: ["IN_APP"],
-          payload: { session_id: row.id, expires_at: row.expires_at, access_mode: data.access_mode, reason: data.reason },
-          idempotency_key: `support:start:${row.id}`,
+          channel: "IN_APP",
+          templateKey: "support_session_started",
+          recipient: { userId: data.target_user_id },
+          variables: { session_id: row.id, expires_at: row.expires_at, access_mode: data.access_mode, reason: data.reason },
+          eventType: "SUPPORT_SESSION_STARTED",
+          tenantId: data.tenant_id,
+          referenceId: row.id,
         },
       });
     } catch { /* best-effort */ }
