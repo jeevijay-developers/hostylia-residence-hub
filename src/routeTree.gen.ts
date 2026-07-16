@@ -45,6 +45,7 @@ import { Route as AuthenticatedWardenAttendanceRouteImport } from './routes/_aut
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
 import { Route as AuthenticatedStudentNoticesRouteImport } from './routes/_authenticated/student.notices'
 import { Route as AuthenticatedStudentHomeRouteImport } from './routes/_authenticated/student.home'
+import { Route as AuthenticatedStudentGatePassRouteImport } from './routes/_authenticated/student.gate-pass'
 import { Route as AuthenticatedStudentFeesRouteImport } from './routes/_authenticated/student.fees'
 import { Route as AuthenticatedStudentComplaintsRouteImport } from './routes/_authenticated/student.complaints'
 import { Route as AuthenticatedParentPaymentsRouteImport } from './routes/_authenticated/parent.payments'
@@ -259,6 +260,12 @@ const AuthenticatedStudentHomeRoute =
   AuthenticatedStudentHomeRouteImport.update({
     id: '/home',
     path: '/home',
+    getParentRoute: () => AuthenticatedStudentRoute,
+  } as any)
+const AuthenticatedStudentGatePassRoute =
+  AuthenticatedStudentGatePassRouteImport.update({
+    id: '/gate-pass',
+    path: '/gate-pass',
     getParentRoute: () => AuthenticatedStudentRoute,
   } as any)
 const AuthenticatedStudentFeesRoute =
@@ -476,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/parent/payments': typeof AuthenticatedParentPaymentsRoute
   '/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/student/fees': typeof AuthenticatedStudentFeesRoute
+  '/student/gate-pass': typeof AuthenticatedStudentGatePassRoute
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
@@ -540,6 +548,7 @@ export interface FileRoutesByTo {
   '/parent/payments': typeof AuthenticatedParentPaymentsRoute
   '/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/student/fees': typeof AuthenticatedStudentFeesRoute
+  '/student/gate-pass': typeof AuthenticatedStudentGatePassRoute
   '/student/home': typeof AuthenticatedStudentHomeRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
@@ -607,6 +616,7 @@ export interface FileRoutesById {
   '/_authenticated/parent/payments': typeof AuthenticatedParentPaymentsRoute
   '/_authenticated/student/complaints': typeof AuthenticatedStudentComplaintsRoute
   '/_authenticated/student/fees': typeof AuthenticatedStudentFeesRoute
+  '/_authenticated/student/gate-pass': typeof AuthenticatedStudentGatePassRoute
   '/_authenticated/student/home': typeof AuthenticatedStudentHomeRoute
   '/_authenticated/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
@@ -674,6 +684,7 @@ export interface FileRouteTypes {
     | '/parent/payments'
     | '/student/complaints'
     | '/student/fees'
+    | '/student/gate-pass'
     | '/student/home'
     | '/student/notices'
     | '/super-admin/dashboard'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/parent/payments'
     | '/student/complaints'
     | '/student/fees'
+    | '/student/gate-pass'
     | '/student/home'
     | '/student/notices'
     | '/super-admin/dashboard'
@@ -804,6 +816,7 @@ export interface FileRouteTypes {
     | '/_authenticated/parent/payments'
     | '/_authenticated/student/complaints'
     | '/_authenticated/student/fees'
+    | '/_authenticated/student/gate-pass'
     | '/_authenticated/student/home'
     | '/_authenticated/student/notices'
     | '/_authenticated/super-admin/dashboard'
@@ -1099,6 +1112,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/student/home'
       preLoaderRoute: typeof AuthenticatedStudentHomeRouteImport
+      parentRoute: typeof AuthenticatedStudentRoute
+    }
+    '/_authenticated/student/gate-pass': {
+      id: '/_authenticated/student/gate-pass'
+      path: '/gate-pass'
+      fullPath: '/student/gate-pass'
+      preLoaderRoute: typeof AuthenticatedStudentGatePassRouteImport
       parentRoute: typeof AuthenticatedStudentRoute
     }
     '/_authenticated/student/fees': {
@@ -1441,6 +1461,7 @@ const AuthenticatedParentRouteWithChildren =
 interface AuthenticatedStudentRouteChildren {
   AuthenticatedStudentComplaintsRoute: typeof AuthenticatedStudentComplaintsRoute
   AuthenticatedStudentFeesRoute: typeof AuthenticatedStudentFeesRoute
+  AuthenticatedStudentGatePassRoute: typeof AuthenticatedStudentGatePassRoute
   AuthenticatedStudentHomeRoute: typeof AuthenticatedStudentHomeRoute
   AuthenticatedStudentNoticesRoute: typeof AuthenticatedStudentNoticesRoute
 }
@@ -1448,6 +1469,7 @@ interface AuthenticatedStudentRouteChildren {
 const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
   AuthenticatedStudentComplaintsRoute: AuthenticatedStudentComplaintsRoute,
   AuthenticatedStudentFeesRoute: AuthenticatedStudentFeesRoute,
+  AuthenticatedStudentGatePassRoute: AuthenticatedStudentGatePassRoute,
   AuthenticatedStudentHomeRoute: AuthenticatedStudentHomeRoute,
   AuthenticatedStudentNoticesRoute: AuthenticatedStudentNoticesRoute,
 }
