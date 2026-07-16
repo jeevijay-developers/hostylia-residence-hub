@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import logoAsset from "@/assets/hostylia-logo.png.asset.json";
 
 export function MobileHeader() {
