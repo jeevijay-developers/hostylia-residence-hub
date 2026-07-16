@@ -43,6 +43,7 @@ import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_aut
 import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
 import { Route as AuthenticatedWardenAttendanceRouteImport } from './routes/_authenticated/warden.attendance'
 import { Route as AuthenticatedSuperAdminTenantsRouteImport } from './routes/_authenticated/super-admin.tenants'
+import { Route as AuthenticatedSuperAdminImpersonationRouteImport } from './routes/_authenticated/super-admin.impersonation'
 import { Route as AuthenticatedSuperAdminFeatureFlagsRouteImport } from './routes/_authenticated/super-admin.feature-flags'
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
 import { Route as AuthenticatedSuperAdminBillingRouteImport } from './routes/_authenticated/super-admin.billing'
@@ -254,6 +255,12 @@ const AuthenticatedSuperAdminTenantsRoute =
   AuthenticatedSuperAdminTenantsRouteImport.update({
     id: '/tenants',
     path: '/tenants',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminImpersonationRoute =
+  AuthenticatedSuperAdminImpersonationRouteImport.update({
+    id: '/impersonation',
+    path: '/impersonation',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
 const AuthenticatedSuperAdminFeatureFlagsRoute =
@@ -533,6 +540,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -604,6 +612,7 @@ export interface FileRoutesByTo {
   '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -678,6 +687,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/_authenticated/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  '/_authenticated/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/_authenticated/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/_authenticated/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -752,6 +762,7 @@ export interface FileRouteTypes {
     | '/super-admin/billing'
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
+    | '/super-admin/impersonation'
     | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
@@ -823,6 +834,7 @@ export interface FileRouteTypes {
     | '/super-admin/billing'
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
+    | '/super-admin/impersonation'
     | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
@@ -896,6 +908,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/billing'
     | '/_authenticated/super-admin/dashboard'
     | '/_authenticated/super-admin/feature-flags'
+    | '/_authenticated/super-admin/impersonation'
     | '/_authenticated/super-admin/tenants'
     | '/_authenticated/warden/attendance'
     | '/_authenticated/warden/complaints'
@@ -1175,6 +1188,13 @@ declare module '@tanstack/react-router' {
       path: '/tenants'
       fullPath: '/super-admin/tenants'
       preLoaderRoute: typeof AuthenticatedSuperAdminTenantsRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/impersonation': {
+      id: '/_authenticated/super-admin/impersonation'
+      path: '/impersonation'
+      fullPath: '/super-admin/impersonation'
+      preLoaderRoute: typeof AuthenticatedSuperAdminImpersonationRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
     '/_authenticated/super-admin/feature-flags': {
@@ -1606,6 +1626,7 @@ interface AuthenticatedSuperAdminRouteChildren {
   AuthenticatedSuperAdminBillingRoute: typeof AuthenticatedSuperAdminBillingRoute
   AuthenticatedSuperAdminDashboardRoute: typeof AuthenticatedSuperAdminDashboardRoute
   AuthenticatedSuperAdminFeatureFlagsRoute: typeof AuthenticatedSuperAdminFeatureFlagsRoute
+  AuthenticatedSuperAdminImpersonationRoute: typeof AuthenticatedSuperAdminImpersonationRoute
   AuthenticatedSuperAdminTenantsRoute: typeof AuthenticatedSuperAdminTenantsRoute
 }
 
@@ -1616,6 +1637,8 @@ const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren
       AuthenticatedSuperAdminDashboardRoute,
     AuthenticatedSuperAdminFeatureFlagsRoute:
       AuthenticatedSuperAdminFeatureFlagsRoute,
+    AuthenticatedSuperAdminImpersonationRoute:
+      AuthenticatedSuperAdminImpersonationRoute,
     AuthenticatedSuperAdminTenantsRoute: AuthenticatedSuperAdminTenantsRoute,
   }
 
