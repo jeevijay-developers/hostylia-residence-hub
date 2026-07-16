@@ -50,6 +50,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Allocations", to: "/admin/allocations", icon: CalendarCheck },
     { label: "Finance", to: "/admin/finance", icon: Wallet },
     { label: "Complaints", to: "/admin/complaints", icon: MessageSquareWarning },
+    { label: "Notices", to: "/admin/notices", icon: BellRing },
     { label: "Staff", to: "/admin/staff", icon: UserCog },
     { label: "Reports", to: "/admin/reports", icon: FileBarChart },
     { label: "Settings", to: "/admin/settings", icon: Settings },
