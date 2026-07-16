@@ -119,7 +119,7 @@ export const decideGatePass = createServerFn({ method: "POST" })
       reason: data.reason ?? null,
     });
 
-    return { pass: updated, qr_token: rawToken ?? null };
+    return { pass: updated };
   });
 
 const scanSchema = z.object({
