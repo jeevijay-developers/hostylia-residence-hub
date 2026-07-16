@@ -177,7 +177,7 @@ export const scanGatePass = createServerFn({ method: "POST" })
       data.direction === "OUT"
         ? { status: "ACTIVE", actual_out_at: now }
         : { status: "COMPLETED", actual_in_at: now };
-    await supabase.from("gate_passes").update(passPatch).eq("id", gp.id);
+    await supabase.from("gate_passes").update(passPatch as never).eq("id", gp.id);
 
     // Notify parent(s)
     try {
