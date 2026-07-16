@@ -6,11 +6,8 @@
 -- =============================================================================
 BEGIN;
 
--- Clean prior seed (only rows we own by fixed IDs).
--- We rely on ON DELETE CASCADE from tenants down.
-DELETE FROM public.tenants WHERE id IN
-  ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222');
-DELETE FROM auth.users WHERE id::text LIKE '00000000-0000-0000-0000-0000000000%';
+-- NOTE: this seed uses INSERT ... ON CONFLICT DO NOTHING where possible; run
+-- against an empty DB. To re-seed, drop the two seed tenants manually first.
 
 -- ---------- auth.users ---------------------------------------------------
 INSERT INTO auth.users (id, email, phone, raw_user_meta_data)
