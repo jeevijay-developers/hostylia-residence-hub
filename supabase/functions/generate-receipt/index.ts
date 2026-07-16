@@ -62,10 +62,42 @@ Deno.serve(async (req) => {
       verification_status: "PENDING",
     });
 
-    // TODO(delivery): WhatsApp/email delivery not wired — Phase 2 flagged
-    // Twilio as pending manual setup. Once a provider (Twilio/MSG91/Resend)
-    // is configured, POST the receipt URL to the student/parent here.
-    console.log("[generate-receipt] TODO deliver receipt for", pay.payment_number);
+    // Dispatch notifications via unified sender (Phase 10).
+    try {
+      const { data: student } = await admin
+        .from("students").select("id, profile_id").eq("id", pay.student_id).maybeSingle();
+
+      const dispatch = async (opts: { channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL"; userId?: string; phone?: string }) => {
+        await admin.functions.invoke("send-notification", {
+          body: {
+            channel: opts.channel,
+            templateKey: "payment_receipt",
+            recipient: { userId: opts.userId, phone: opts.phone },
+            variables: { payment_number: pay.payment_number, amount_paise: pay.amount_paise },
+            eventType: "PAYMENT_RECEIPT",
+            tenantId: pay.tenant_id,
+            propertyId: pay.property_id,
+            referenceId: pay.id,
+          },
+        });
+      };
+      if (student?.profile_id) await dispatch({ channel: "IN_APP", userId: student.profile_id });
+      // Parents with can_pay_fees
+      const { data: gs } = await admin
+        .from("student_guardians")
+        .select("can_pay_fees, guardians(profile_id, phone)")
+        .eq("student_id", pay.student_id)
+        .is("unlinked_at", null);
+      for (const g of gs ?? []) {
+        if (!g.can_pay_fees) continue;
+        const uid = (g as any).guardians?.profile_id ?? undefined;
+        const phone = (g as any).guardians?.phone ?? undefined;
+        if (uid) await dispatch({ channel: "IN_APP", userId: uid });
+        if (phone) await dispatch({ channel: "WHATSAPP", phone });
+      }
+    } catch (e) {
+      console.warn("[generate-receipt] notify failed", e);
+    }
 
     return json({ ok: true, path }, 200, cors);
   } catch (e) {

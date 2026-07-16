@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Topbar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -46,14 +47,7 @@ export function Topbar() {
         <span>Search…</span>
       </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Notifications"
-        className="relative min-h-10 min-w-10"
-      >
-        <Bell className="h-4 w-4" />
-      </Button>
+      <NotificationBell />
 
       <DropdownMenu>
         <DropdownMenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
