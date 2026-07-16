@@ -4,6 +4,7 @@ import { Outlet } from "@tanstack/react-router";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { RoleGuard } from "./RoleGuard";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { useResolvedRole, type AppRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
 
