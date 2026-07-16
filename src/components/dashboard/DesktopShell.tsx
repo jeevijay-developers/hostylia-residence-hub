@@ -24,6 +24,7 @@ export function DesktopShell({
   const { data } = useResolvedRole();
   return (
     <RoleGuard allow={allow}>
+      <ImpersonationBanner />
       <div className="flex min-h-screen bg-muted/30">
         <Sidebar
           items={navItems}
