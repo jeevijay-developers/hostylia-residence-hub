@@ -15,6 +15,7 @@ export function MobileHeader() {
         <img src={logoAsset.url} alt="Hostylia" className="h-6 w-auto" />
       </Link>
       <div className="flex items-center gap-1">
+        <NotificationBell />
         <LanguageSwitcher />
         <Button
           variant="ghost"
