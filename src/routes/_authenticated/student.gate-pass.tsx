@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,16 +8,33 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
-import { createGatePass, decideGatePass } from "@/lib/operations.functions";
+import { createGatePass } from "@/lib/operations.functions";
 
 export const Route = createFileRoute("/_authenticated/student/gate-pass")({
   component: StudentGatePassPage,
 });
+
+const TOKEN_STORE_KEY = "hostylia.gate-tokens";
+function loadTokens(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? "{}"); } catch { return {}; }
+}
+function saveToken(passId: string, token: string) {
+  const t = loadTokens(); t[passId] = token;
+  localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify(t));
+}
+function randomHex(len = 24): string {
+  const b = new Uint8Array(len);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 function StudentGatePassPage() {
   const role = useResolvedRole();
@@ -49,12 +66,20 @@ function StudentGatePassPage() {
   const [destination, setDestination] = useState("");
   const [outAt, setOutAt] = useState("");
   const [inAt, setInAt] = useState("");
-  const [issuedTokens, setIssuedTokens] = useState<Record<string, string>>({}); // pass_id -> token
 
   const createMut = useMutation({
     mutationFn: async () => {
       if (!studentQ.data?.id) throw new Error("Student profile missing");
-      return create({ data: { student_id: studentQ.data.id, reason, destination, out_at: new Date(outAt).toISOString(), expected_in_at: new Date(inAt).toISOString() } });
+      const token = randomHex(24);
+      const hash = await sha256Hex(token);
+      const res = await create({ data: {
+        student_id: studentQ.data.id, reason, destination,
+        out_at: new Date(outAt).toISOString(), expected_in_at: new Date(inAt).toISOString(),
+        qr_token_hash: hash,
+      } });
+      const pass = res as unknown as { id: string };
+      saveToken(pass.id, token);
+      return pass;
     },
     onSuccess: () => { toast.success("Requested"); setReason(""); setDestination(""); setOutAt(""); setInAt(""); qc.invalidateQueries({ queryKey: ["my-passes"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -78,43 +103,45 @@ function StudentGatePassPage() {
 
       <div className="space-y-2">
         <div className="text-sm font-medium">My Passes</div>
-        {(passesQ.data ?? []).map((p) => (
-          <PassCard key={p.id} pass={p} rawToken={issuedTokens[p.id]} onTokenIssued={(t) => setIssuedTokens((prev) => ({ ...prev, [p.id]: t }))} />
-        ))}
+        {(passesQ.data ?? []).map((p) => <PassCard key={p.id} pass={p} />)}
         {passesQ.data?.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>}
       </div>
     </div>
   );
 }
 
-function PassCard({ pass, rawToken }: { pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string; qr_token_hash: string | null }; rawToken: string | undefined; onTokenIssued: (t: string) => void }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  if (rawToken && !qrDataUrl) {
-    QRCode.toDataURL(JSON.stringify({ id: pass.id, t: rawToken })).then(setQrDataUrl).catch(() => null);
-  }
+function PassCard({ pass }: { pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string } }) {
+  const [qr, setQr] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+    const t = loadTokens()[pass.id];
+    if (!t) return;
+    setToken(t);
+    if (pass.status === "APPROVED" || pass.status === "ACTIVE") {
+      QRCode.toDataURL(JSON.stringify({ id: pass.id, t })).then(setQr).catch(() => null);
+    }
+  }, [pass.id, pass.status]);
   return (
-    <Card>
-      <CardContent className="p-3 space-y-2">
-        <div className="flex justify-between">
-          <div>
-            <div className="font-medium">{pass.pass_number}</div>
-            <div className="text-xs text-muted-foreground">{pass.reason} · {new Date(pass.out_at).toLocaleString()} → {new Date(pass.expected_in_at).toLocaleString()}</div>
-          </div>
-          <Badge variant="secondary">{pass.status}</Badge>
+    <Card><CardContent className="p-3 space-y-2">
+      <div className="flex justify-between">
+        <div>
+          <div className="font-medium">{pass.pass_number}</div>
+          <div className="text-xs text-muted-foreground">{pass.reason} · {new Date(pass.out_at).toLocaleString()} → {new Date(pass.expected_in_at).toLocaleString()}</div>
         </div>
-        {pass.status === "APPROVED" && pass.qr_token_hash && !rawToken && (
-          <p className="text-xs text-muted-foreground">QR issued at approval. Ask the warden if the token isn't visible here — it is only shown once, right after approval.</p>
-        )}
-        {rawToken && (
-          <div className="flex items-center gap-3">
-            {qrDataUrl && <img src={qrDataUrl} alt="Gate pass QR" className="h-32 w-32" />}
-            <div className="text-xs break-all">
-              <div className="font-mono">Pass ID: {pass.id}</div>
-              <div className="font-mono">Token: {rawToken}</div>
-            </div>
+        <Badge variant="secondary">{pass.status}</Badge>
+      </div>
+      {qr && (
+        <div className="flex items-center gap-3">
+          <img src={qr} alt="Gate pass QR" className="h-32 w-32" />
+          <div className="text-xs break-all font-mono">
+            <div>Pass: {pass.id}</div>
+            <div>Token: {token}</div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+      {!token && pass.status === "APPROVED" && (
+        <p className="text-xs text-muted-foreground">QR unavailable on this device (token was stored on the device where you created the pass).</p>
+      )}
+    </CardContent></Card>
   );
 }
