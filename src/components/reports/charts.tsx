@@ -8,11 +8,11 @@ import { formatInr } from "@/lib/finance";
  * (success/warning/destructive/info) — never brand teal for status series.
  */
 const TOKEN = {
-  success: "hsl(var(--success))",
-  warning: "hsl(var(--warning))",
-  destructive: "hsl(var(--destructive))",
-  info: "hsl(var(--info))",
-  muted: "hsl(var(--muted-foreground))",
+  success: "var(--success)",
+  warning: "var(--warning)",
+  destructive: "var(--destructive)",
+  info: "var(--info)",
+  muted: "var(--muted-foreground)",
 };
 
 export function OccupancyChart({ data }: { data: Array<{ block_name: string; occupancy_pct: number }> }) {
