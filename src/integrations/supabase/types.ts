@@ -263,6 +263,83 @@ export type Database = {
           },
         ]
       }
+      attendance: {
+        Row: {
+          attendance_date: string
+          block_id: string | null
+          id: string
+          marked_at: string
+          marked_by: string
+          notes: string | null
+          property_id: string
+          session: string
+          source: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attendance_date: string
+          block_id?: string | null
+          id?: string
+          marked_at?: string
+          marked_by: string
+          notes?: string | null
+          property_id: string
+          session?: string
+          source?: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attendance_date?: string
+          block_id?: string | null
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          notes?: string | null
+          property_id?: string
+          session?: string
+          source?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1103,6 +1180,131 @@ export type Database = {
           },
         ]
       }
+      feedback_responses: {
+        Row: {
+          answers: Json
+          id: string
+          property_id: string
+          respondent_user_id: string
+          student_id: string | null
+          submitted_at: string
+          survey_id: string
+          tenant_id: string
+        }
+        Insert: {
+          answers: Json
+          id?: string
+          property_id: string
+          respondent_user_id: string
+          student_id?: string | null
+          submitted_at?: string
+          survey_id: string
+          tenant_id: string
+        }
+        Update: {
+          answers?: Json
+          id?: string
+          property_id?: string
+          respondent_user_id?: string
+          student_id?: string | null
+          submitted_at?: string
+          survey_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_responses_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_responses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_surveys: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          ends_at: string | null
+          id: string
+          property_id: string
+          questions: Json
+          starts_at: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_at?: string | null
+          id?: string
+          property_id: string
+          questions: Json
+          starts_at?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_at?: string | null
+          id?: string
+          property_id?: string
+          questions?: Json
+          starts_at?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_surveys_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_surveys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       floors: {
         Row: {
           block_id: string | null
@@ -1160,6 +1362,277 @@ export type Database = {
           },
           {
             foreignKeyName: "floors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gate_events: {
+        Row: {
+          block_id: string | null
+          created_at: string
+          device_id: string | null
+          direction: string
+          event_at: string
+          gate_pass_id: string | null
+          id: string
+          idempotency_key: string
+          is_late: boolean
+          method: string
+          notes: string | null
+          property_id: string
+          recorded_by: string
+          student_id: string | null
+          tenant_id: string
+          visitor_id: string | null
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          direction: string
+          event_at?: string
+          gate_pass_id?: string | null
+          id?: string
+          idempotency_key: string
+          is_late?: boolean
+          method?: string
+          notes?: string | null
+          property_id: string
+          recorded_by: string
+          student_id?: string | null
+          tenant_id: string
+          visitor_id?: string | null
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          direction?: string
+          event_at?: string
+          gate_pass_id?: string | null
+          id?: string
+          idempotency_key?: string
+          is_late?: boolean
+          method?: string
+          notes?: string | null
+          property_id?: string
+          recorded_by?: string
+          student_id?: string | null
+          tenant_id?: string
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gate_events_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_events_gate_pass_id_fkey"
+            columns: ["gate_pass_id"]
+            isOneToOne: false
+            referencedRelation: "gate_passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_events_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gate_pass_approvals: {
+        Row: {
+          approver_type: string
+          approver_user_id: string
+          created_at: string
+          decision: string
+          gate_pass_id: string
+          id: string
+          property_id: string
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          approver_type: string
+          approver_user_id: string
+          created_at?: string
+          decision: string
+          gate_pass_id: string
+          id?: string
+          property_id: string
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          approver_type?: string
+          approver_user_id?: string
+          created_at?: string
+          decision?: string
+          gate_pass_id?: string
+          id?: string
+          property_id?: string
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gate_pass_approvals_gate_pass_id_fkey"
+            columns: ["gate_pass_id"]
+            isOneToOne: false
+            referencedRelation: "gate_passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_pass_approvals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_pass_approvals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gate_passes: {
+        Row: {
+          actual_in_at: string | null
+          actual_out_at: string | null
+          block_id: string | null
+          created_at: string
+          created_by: string | null
+          decision_reason: string | null
+          deleted_at: string | null
+          destination: string | null
+          expected_in_at: string
+          id: string
+          out_at: string
+          parent_approved_at: string | null
+          parent_approved_by: string | null
+          pass_number: string
+          property_id: string
+          qr_expires_at: string | null
+          qr_token_hash: string | null
+          reason: string
+          requires_parent_approval: boolean
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+          warden_approved_at: string | null
+          warden_approved_by: string | null
+        }
+        Insert: {
+          actual_in_at?: string | null
+          actual_out_at?: string | null
+          block_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_reason?: string | null
+          deleted_at?: string | null
+          destination?: string | null
+          expected_in_at: string
+          id?: string
+          out_at: string
+          parent_approved_at?: string | null
+          parent_approved_by?: string | null
+          pass_number: string
+          property_id: string
+          qr_expires_at?: string | null
+          qr_token_hash?: string | null
+          reason: string
+          requires_parent_approval?: boolean
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+          warden_approved_at?: string | null
+          warden_approved_by?: string | null
+        }
+        Update: {
+          actual_in_at?: string | null
+          actual_out_at?: string | null
+          block_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_reason?: string | null
+          deleted_at?: string | null
+          destination?: string | null
+          expected_in_at?: string
+          id?: string
+          out_at?: string
+          parent_approved_at?: string | null
+          parent_approved_by?: string | null
+          pass_number?: string
+          property_id?: string
+          qr_expires_at?: string | null
+          qr_token_hash?: string | null
+          reason?: string
+          requires_parent_approval?: boolean
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+          warden_approved_at?: string | null
+          warden_approved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gate_passes_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_passes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_passes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gate_passes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1370,6 +1843,253 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          mess_menu_id: string
+          property_id: string
+          rating: number
+          student_id: string
+          tenant_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          mess_menu_id: string
+          property_id: string
+          rating: number
+          student_id: string
+          tenant_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          mess_menu_id?: string
+          property_id?: string
+          rating?: number
+          student_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_feedback_mess_menu_id_fkey"
+            columns: ["mess_menu_id"]
+            isOneToOne: false
+            referencedRelation: "mess_menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_feedback_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_feedback_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_headcounts: {
+        Row: {
+          actual_count: number | null
+          created_at: string
+          expected_count: number
+          id: string
+          mess_menu_id: string
+          property_id: string
+          recorded_at: string | null
+          recorded_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_count?: number | null
+          created_at?: string
+          expected_count?: number
+          id?: string
+          mess_menu_id: string
+          property_id: string
+          recorded_at?: string | null
+          recorded_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_count?: number | null
+          created_at?: string
+          expected_count?: number
+          id?: string
+          mess_menu_id?: string
+          property_id?: string
+          recorded_at?: string | null
+          recorded_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_headcounts_mess_menu_id_fkey"
+            columns: ["mess_menu_id"]
+            isOneToOne: false
+            referencedRelation: "mess_menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_headcounts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_headcounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_menu_items: {
+        Row: {
+          allergen_notes: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_vegetarian: boolean | null
+          item_name: string
+          mess_menu_id: string
+          property_id: string
+          tenant_id: string
+        }
+        Insert: {
+          allergen_notes?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_vegetarian?: boolean | null
+          item_name: string
+          mess_menu_id: string
+          property_id: string
+          tenant_id: string
+        }
+        Update: {
+          allergen_notes?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_vegetarian?: boolean | null
+          item_name?: string
+          mess_menu_id?: string
+          property_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_menu_items_mess_menu_id_fkey"
+            columns: ["mess_menu_id"]
+            isOneToOne: false
+            referencedRelation: "mess_menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_menu_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_menu_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_menus: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          meal: string
+          menu_date: string
+          notes: string | null
+          property_id: string
+          published_at: string | null
+          published_by: string | null
+          status: string
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meal: string
+          menu_date: string
+          notes?: string | null
+          property_id: string
+          published_at?: string | null
+          published_by?: string | null
+          status?: string
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meal?: string
+          menu_date?: string
+          notes?: string | null
+          property_id?: string
+          published_at?: string | null
+          published_by?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_menus_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_menus_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2774,6 +3494,108 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      visitors: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          checked_in_at: string | null
+          checked_out_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          expected_at: string | null
+          host_student_id: string
+          id: string
+          id_document_id: string | null
+          name: string
+          phone: string
+          photo_document_id: string | null
+          property_id: string
+          purpose: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expected_at?: string | null
+          host_student_id: string
+          id?: string
+          id_document_id?: string | null
+          name: string
+          phone: string
+          photo_document_id?: string | null
+          property_id: string
+          purpose: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expected_at?: string | null
+          host_student_id?: string
+          id?: string
+          id_document_id?: string | null
+          name?: string
+          phone?: string
+          photo_document_id?: string | null
+          property_id?: string
+          purpose?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitors_host_student_id_fkey"
+            columns: ["host_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitors_id_document_id_fkey"
+            columns: ["id_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitors_photo_document_id_fkey"
+            columns: ["photo_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitors_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_events: {
         Row: {
