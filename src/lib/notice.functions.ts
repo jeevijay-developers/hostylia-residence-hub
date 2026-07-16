@@ -78,15 +78,16 @@ export const publishNotice = createServerFn({ method: "POST" })
           : ["ACCOUNTANT"];
       const { data: ras } = await supabaseAdmin
         .from("role_assignments")
-        .select("user_id, profiles(phone, email)")
+        .select("user_id")
         .eq("tenant_id", data.tenant_id)
         .in("role", roles as never[])
         .is("revoked_at", null);
-      for (const r of ras ?? []) recipients.push({
-        user_id: r.user_id as string,
-        phone: (r as any).profiles?.phone,
-        email: (r as any).profiles?.email,
-      });
+      const userIds = Array.from(new Set((ras ?? []).map((r) => r.user_id).filter(Boolean))) as string[];
+      if (userIds.length) {
+        const { data: profiles } = await supabaseAdmin
+          .from("profiles").select("id, phone, email").in("id", userIds);
+        for (const p of profiles ?? []) recipients.push({ user_id: p.id, phone: p.phone, email: p.email });
+      }
     }
 
     // Dispatch (dedup users)
