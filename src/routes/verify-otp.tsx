@@ -72,6 +72,11 @@ function VerifyOtpPage() {
       } catch (e) {
         console.warn("guardian backfill failed", e);
       }
+      try {
+        await activateMyInvites();
+      } catch (e) {
+        console.warn("invite activation failed", e);
+      }
       navigate({ to: "/post-login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Verification failed. Please try again.");
