@@ -1565,6 +1565,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_aging"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_orders_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -1666,6 +1673,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_aging"
             referencedColumns: ["id"]
           },
           {
@@ -2593,7 +2607,148 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_complaint_sla_summary: {
+        Row: {
+          assigned_to: string | null
+          breached: number | null
+          category_id: string | null
+          property_id: string | null
+          resolved_total: number | null
+          resolved_within_sla: number | null
+          sla_compliance_pct: number | null
+          tenant_id: string | null
+          total_complaints: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaints_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_invoice_aging: {
+        Row: {
+          aging_bucket: string | null
+          balance_paise: number | null
+          days_overdue: number | null
+          due_date: string | null
+          id: string | null
+          invoice_number: string | null
+          issue_date: string | null
+          paid_paise: number | null
+          property_id: string | null
+          status: string | null
+          student_id: string | null
+          tenant_id: string | null
+          total_paise: number | null
+        }
+        Insert: {
+          aging_bucket?: never
+          balance_paise?: number | null
+          days_overdue?: never
+          due_date?: string | null
+          id?: string | null
+          invoice_number?: string | null
+          issue_date?: string | null
+          paid_paise?: number | null
+          property_id?: string | null
+          status?: string | null
+          student_id?: string | null
+          tenant_id?: string | null
+          total_paise?: number | null
+        }
+        Update: {
+          aging_bucket?: never
+          balance_paise?: number | null
+          days_overdue?: never
+          due_date?: string | null
+          id?: string | null
+          invoice_number?: string | null
+          issue_date?: string | null
+          paid_paise?: number | null
+          property_id?: string | null
+          status?: string | null
+          student_id?: string | null
+          tenant_id?: string | null
+          total_paise?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_occupancy_summary: {
+        Row: {
+          block_id: string | null
+          blocked_beds: number | null
+          maintenance_beds: number | null
+          occupancy_pct: number | null
+          occupied_beds: number | null
+          property_id: string | null
+          tenant_id: string | null
+          total_beds: number | null
+          vacant_beds: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beds_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_conversation: {
