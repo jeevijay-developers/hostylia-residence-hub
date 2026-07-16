@@ -90,11 +90,10 @@ Deno.serve(async (req) => {
         .is("unlinked_at", null);
       for (const g of gs ?? []) {
         if (!g.can_pay_fees) continue;
-        const uid = (g as any).guardians?.profile_id ?? null;
-        if (uid) await dispatch(uid, "IN_APP");
-        // SMS/WhatsApp attempt — dispatcher returns PROVIDER_NOT_CONFIGURED cleanly when Twilio isn't set.
-        const phone = (g as any).guardians?.phone;
-        if (phone) await dispatch(uid, "WHATSAPP");
+        const uid = (g as any).guardians?.profile_id ?? undefined;
+        const phone = (g as any).guardians?.phone ?? undefined;
+        if (uid) await dispatch({ channel: "IN_APP", userId: uid });
+        if (phone) await dispatch({ channel: "WHATSAPP", phone });
       }
     } catch (e) {
       console.warn("[generate-receipt] notify failed", e);
