@@ -37,6 +37,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAccountantRouteImport } from './routes/_authenticated/accountant'
 import { Route as AuthenticatedWardenReportsRouteImport } from './routes/_authenticated/warden.reports'
 import { Route as AuthenticatedWardenNoticesRouteImport } from './routes/_authenticated/warden.notices'
+import { Route as AuthenticatedWardenMessRouteImport } from './routes/_authenticated/warden.mess'
 import { Route as AuthenticatedWardenGateRouteImport } from './routes/_authenticated/warden.gate'
 import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_authenticated/warden.daily-brief'
 import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
@@ -214,6 +215,11 @@ const AuthenticatedWardenNoticesRoute =
     path: '/notices',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedWardenMessRoute = AuthenticatedWardenMessRouteImport.update({
+  id: '/mess',
+  path: '/mess',
+  getParentRoute: () => AuthenticatedWardenRoute,
+} as any)
 const AuthenticatedWardenGateRoute = AuthenticatedWardenGateRouteImport.update({
   id: '/gate',
   path: '/gate',
@@ -477,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
@@ -540,6 +547,7 @@ export interface FileRoutesByTo {
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
@@ -606,6 +614,7 @@ export interface FileRoutesById {
   '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/_authenticated/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
   '/_authenticated/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/_authenticated/warden/mess': typeof AuthenticatedWardenMessRoute
   '/_authenticated/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/_authenticated/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/_authenticated/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
@@ -672,6 +681,7 @@ export interface FileRouteTypes {
     | '/warden/complaints'
     | '/warden/daily-brief'
     | '/warden/gate'
+    | '/warden/mess'
     | '/warden/notices'
     | '/warden/reports'
     | '/admin/finance/fee-plans'
@@ -735,6 +745,7 @@ export interface FileRouteTypes {
     | '/warden/complaints'
     | '/warden/daily-brief'
     | '/warden/gate'
+    | '/warden/mess'
     | '/warden/notices'
     | '/warden/reports'
     | '/admin/finance/fee-plans'
@@ -800,6 +811,7 @@ export interface FileRouteTypes {
     | '/_authenticated/warden/complaints'
     | '/_authenticated/warden/daily-brief'
     | '/_authenticated/warden/gate'
+    | '/_authenticated/warden/mess'
     | '/_authenticated/warden/notices'
     | '/_authenticated/warden/reports'
     | '/_authenticated/admin/finance/fee-plans'
@@ -1031,6 +1043,13 @@ declare module '@tanstack/react-router' {
       path: '/notices'
       fullPath: '/warden/notices'
       preLoaderRoute: typeof AuthenticatedWardenNoticesRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/mess': {
+      id: '/_authenticated/warden/mess'
+      path: '/mess'
+      fullPath: '/warden/mess'
+      preLoaderRoute: typeof AuthenticatedWardenMessRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
     '/_authenticated/warden/gate': {
@@ -1456,6 +1475,7 @@ interface AuthenticatedWardenRouteChildren {
   AuthenticatedWardenComplaintsRoute: typeof AuthenticatedWardenComplaintsRoute
   AuthenticatedWardenDailyBriefRoute: typeof AuthenticatedWardenDailyBriefRoute
   AuthenticatedWardenGateRoute: typeof AuthenticatedWardenGateRoute
+  AuthenticatedWardenMessRoute: typeof AuthenticatedWardenMessRoute
   AuthenticatedWardenNoticesRoute: typeof AuthenticatedWardenNoticesRoute
   AuthenticatedWardenReportsRoute: typeof AuthenticatedWardenReportsRoute
 }
@@ -1465,6 +1485,7 @@ const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
   AuthenticatedWardenComplaintsRoute: AuthenticatedWardenComplaintsRoute,
   AuthenticatedWardenDailyBriefRoute: AuthenticatedWardenDailyBriefRoute,
   AuthenticatedWardenGateRoute: AuthenticatedWardenGateRoute,
+  AuthenticatedWardenMessRoute: AuthenticatedWardenMessRoute,
   AuthenticatedWardenNoticesRoute: AuthenticatedWardenNoticesRoute,
   AuthenticatedWardenReportsRoute: AuthenticatedWardenReportsRoute,
 }
