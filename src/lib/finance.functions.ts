@@ -204,27 +204,23 @@ export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ property_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: invs, error } = await supabase
-      .from("invoices")
-      .select("total_paise, paid_paise, balance_paise, status, due_date, issue_date")
-      .eq("property_id", data.property_id)
-      .is("deleted_at", null);
+    // Phase 9: aging math is centralised in v_invoice_aging so this page
+    // and /admin/reports agree exactly on every number.
+    const { data: rows, error } = await supabase
+      .from("v_invoice_aging" as never)
+      .select("total_paise, paid_paise, balance_paise, aging_bucket, status" as never)
+      .eq("property_id", data.property_id);
     if (error) throw new Error(error.message);
 
-    const today = Date.now();
     let totalIssued = 0, totalCollected = 0, totalOutstanding = 0;
-    const aging = { current: 0, "0-30": 0, "31-60": 0, "60+": 0 };
-    for (const i of invs || []) {
+    const aging = { current: 0, "0-30": 0, "31-60": 0, "60+": 0 } as Record<string, number>;
+    for (const i of (rows ?? []) as any[]) {
       if (i.status === "VOID") continue;
       totalIssued += i.total_paise;
       totalCollected += i.paid_paise;
-      totalOutstanding += i.balance_paise;
-      if (i.balance_paise > 0) {
-        const days = Math.floor((today - new Date(i.due_date).getTime()) / 86400000);
-        if (days <= 0) aging.current += i.balance_paise;
-        else if (days <= 30) aging["0-30"] += i.balance_paise;
-        else if (days <= 60) aging["31-60"] += i.balance_paise;
-        else aging["60+"] += i.balance_paise;
+      if (i.balance_paise > 0 && i.aging_bucket !== "paid") {
+        aging[i.aging_bucket] = (aging[i.aging_bucket] ?? 0) + i.balance_paise;
+        totalOutstanding += i.balance_paise;
       }
     }
     return {
