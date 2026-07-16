@@ -96,20 +96,14 @@ export const decideGatePass = createServerFn({ method: "POST" })
         patch.status = "REJECTED";
         patch.decision_reason = data.reason ?? null;
       } else {
-        // Issue QR token
-        const raw = randomToken(24);
-        const hash = await sha256Hex(raw);
+        // QR token hash was set at creation; approval just finalizes status.
         patch.warden_approved_by = userId;
         patch.warden_approved_at = now;
         patch.status = "APPROVED";
-        patch.qr_token_hash = hash;
-        patch.qr_expires_at = gp.expected_in_at;
-        (patch as Record<string, string>)._raw_token = raw;
       }
     }
 
-    const rawToken = (patch as { _raw_token?: string })._raw_token;
-    delete (patch as { _raw_token?: string })._raw_token;
+
 
     const { data: updated, error: uErr } = await supabase
       .from("gate_passes").update(patch as never).eq("id", data.pass_id).select("*").single();
