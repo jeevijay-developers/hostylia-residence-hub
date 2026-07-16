@@ -67,13 +67,12 @@ Deno.serve(async (req) => {
       const { data: student } = await admin
         .from("students").select("id, profile_id").eq("id", pay.student_id).maybeSingle();
 
-      const dispatch = async (userId: string | null, channel: "IN_APP" | "SMS" | "WHATSAPP") => {
-        if (channel === "IN_APP" && !userId) return;
+      const dispatch = async (opts: { channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL"; userId?: string; phone?: string }) => {
         await admin.functions.invoke("send-notification", {
           body: {
-            channel,
+            channel: opts.channel,
             templateKey: "payment_receipt",
-            recipient: { userId: userId ?? undefined },
+            recipient: { userId: opts.userId, phone: opts.phone },
             variables: { payment_number: pay.payment_number, amount_paise: pay.amount_paise },
             eventType: "PAYMENT_RECEIPT",
             tenantId: pay.tenant_id,
@@ -82,7 +81,7 @@ Deno.serve(async (req) => {
           },
         });
       };
-      if (student?.profile_id) await dispatch(student.profile_id, "IN_APP");
+      if (student?.profile_id) await dispatch({ channel: "IN_APP", userId: student.profile_id });
       // Parents with can_pay_fees
       const { data: gs } = await admin
         .from("student_guardians")
