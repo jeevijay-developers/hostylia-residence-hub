@@ -40,8 +40,9 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   SUPER_ADMIN: [
     { label: "Dashboard", to: "/super-admin/dashboard", icon: LayoutDashboard },
     { label: "Tenants", to: "/super-admin/tenants", icon: Boxes },
-    { label: "Subscriptions", to: "/super-admin/subscriptions", icon: CreditCard },
-    { label: "Support", to: "/super-admin/support", icon: LifeBuoy },
+    { label: "Billing", to: "/super-admin/billing", icon: CreditCard },
+    { label: "Feature Flags", to: "/super-admin/feature-flags", icon: Activity },
+    { label: "Impersonation", to: "/super-admin/impersonation", icon: LifeBuoy },
   ],
   HOSTEL_ADMIN: [
     { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
