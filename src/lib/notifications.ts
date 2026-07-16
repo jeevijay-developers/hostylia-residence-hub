@@ -64,18 +64,19 @@ export async function markAllRead(ids: string[]) {
 
 export function useTenantNotices(tenantId: string | null | undefined, propertyId?: string | null) {
   const qc = useQueryClient();
+  const key = tenantId ?? propertyId ?? null;
   const query = useQuery({
     queryKey: ["notices", tenantId, propertyId],
-    enabled: !!tenantId,
+    enabled: !!(tenantId || propertyId),
     queryFn: async () => {
       let q = supabase
         .from("notices")
         .select("*")
-        .eq("tenant_id", tenantId!)
         .eq("status", "PUBLISHED")
         .is("deleted_at", null)
         .order("published_at", { ascending: false })
         .limit(50);
+      if (tenantId) q = q.eq("tenant_id", tenantId);
       if (propertyId) q = q.eq("property_id", propertyId);
       const { data, error } = await q;
       if (error) throw error;
@@ -84,19 +85,20 @@ export function useTenantNotices(tenantId: string | null | undefined, propertyId
   });
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!key) return;
+    const filter = tenantId ? `tenant_id=eq.${tenantId}` : `property_id=eq.${propertyId}`;
     const channel = supabase
-      .channel(`notices-${tenantId}`)
+      .channel(`notices-${key}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "notices", filter: `tenant_id=eq.${tenantId}` },
+        { event: "*", schema: "public", table: "notices", filter },
         () => qc.invalidateQueries({ queryKey: ["notices"] }),
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tenantId, propertyId, qc]);
+  }, [key, tenantId, propertyId, qc]);
 
   return query;
 }
