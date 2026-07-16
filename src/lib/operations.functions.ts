@@ -73,7 +73,7 @@ export const decideGatePass = createServerFn({ method: "POST" })
     if (error || !gp) throw new Error("Pass not found");
 
     const now = new Date().toISOString();
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, string | null> = {};
     if (data.role === "PARENT") {
       if (gp.status !== "PENDING_PARENT") throw new Error("Not awaiting parent approval");
       if (data.decision === "REJECTED") {
@@ -101,7 +101,7 @@ export const decideGatePass = createServerFn({ method: "POST" })
         patch.status = "APPROVED";
         patch.qr_token_hash = hash;
         patch.qr_expires_at = gp.expected_in_at;
-        (patch as { _raw_token?: string })._raw_token = raw;
+        (patch as Record<string, string>)._raw_token = raw;
       }
     }
 
