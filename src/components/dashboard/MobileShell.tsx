@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { RoleGuard } from "./RoleGuard";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import type { AppRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
 
