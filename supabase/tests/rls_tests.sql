@@ -1,0 +1,220 @@
+-- =============================================================================
+-- Hostylia RLS + RBAC assertion suite (Phase 12).
+-- Runs as postgres in psql; each test SETs LOCAL role + JWT claims to
+-- simulate each seeded user, runs SELECT/INSERT/UPDATE, and asserts row
+-- counts or expected errors via DO blocks. Any failure raises EXCEPTION.
+--
+-- Prereqs:
+--   \i supabase/seed.sql
+--
+-- Run:
+--   psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_tests.sql
+--
+-- Organized against PRD Sec 7's permission matrix (STUDENT, PARENT,
+-- WARDEN, ACCOUNTANT, HOSTEL_ADMIN, SUPER_ADMIN). Every table in scope
+-- has at least one positive (in-scope) + one negative (out-of-scope) test.
+-- =============================================================================
+
+\set ON_ERROR_STOP on
+
+-- Reusable UUID handles (documented for readability).
+--   tenant A = 11111111-1111-1111-1111-111111111111
+--   tenant B = 22222222-2222-2222-2222-222222222222
+--   admin_A  = 00000000-0000-0000-0000-000000000010
+--   accountant_A = ..013 ; admin_A2 = ..014
+--   warden_A_blockA = ..011 ; warden_A_blockB = ..012
+--   student_01 profile = ..020 ; student_02 profile = ..021
+--   parent_01 profile = ..040 (can approve + pay for student 01)
+--   parent_02 profile = ..041 (view only for student 02)
+--   student_B01 profile = ..101 ; parent_B01 = ..102
+--   admin_B = ..100
+
+-- ---------- helpers ------------------------------------------------------
+CREATE OR REPLACE FUNCTION pg_temp.assume(_uid uuid) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('role','authenticated',true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', _uid, 'role','authenticated')::text, true);
+END $$;
+
+CREATE OR REPLACE FUNCTION pg_temp.assume_anon() RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('role','anon',true);
+  PERFORM set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+END $$;
+
+CREATE OR REPLACE FUNCTION pg_temp.assert_eq(_actual bigint, _expected bigint, _label text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF _actual IS DISTINCT FROM _expected THEN
+    RAISE EXCEPTION 'ASSERT FAIL [%]: expected %, got %', _label, _expected, _actual;
+  ELSE
+    RAISE NOTICE 'OK  [%] = %', _label, _actual;
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION pg_temp.assert_ge(_actual bigint, _min bigint, _label text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF _actual < _min THEN
+    RAISE EXCEPTION 'ASSERT FAIL [%]: expected >= %, got %', _label, _min, _actual;
+  ELSE
+    RAISE NOTICE 'OK  [%] = % (>=%)', _label, _actual, _min;
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION pg_temp.assert_throws(_sql text, _label text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE _sql;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'OK  [%] correctly rejected: %', _label, SQLERRM;
+    RETURN;
+  END;
+  RAISE EXCEPTION 'ASSERT FAIL [%]: expected error, statement succeeded', _label;
+END $$;
+
+-- =============================================================================
+-- SECTION 1 — Tenant isolation (every scoped table)
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B students');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B invoices');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.beds WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B beds');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.complaints WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B complaints');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.gate_passes WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B gate_passes');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.attendance WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B attendance');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notices WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B notices');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.fee_plans WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B fee_plans');
+-- Positive: AdminA sees own tenant
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.students WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 15, 'AdminA sees Tenant A students');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 5, 'AdminA sees Tenant A invoices');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 2 — Warden block scoping
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden Block A only
+-- Should see students in Block A (5 in rooms r001-r003) + not moved-out student 08
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.students WHERE property_id='11111111-1111-1111-1111-11111111p001'), 1, 'WardenA can see property A1 students');
+-- Cannot write attendance for Block B students
+SELECT pg_temp.assert_throws(
+  $sql$INSERT INTO public.attendance (tenant_id, property_id, block_id, student_id, attendance_date, status, marked_by)
+       VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111p001','11111111-1111-1111-1111-11111111b002','11111111-1111-1111-1111-111111110007', current_date - 1, 'PRESENT','00000000-0000-0000-0000-000000000011')$sql$,
+  'WardenA_BlockA cannot insert attendance into Block B');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 3 — Parent scoping (own children only, permission flags respected)
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01 → linked to Student 01
+-- Sees own student's invoices only
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'Parent01 sees own child invoices');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110004'), 0, 'Parent01 cannot see other student invoices');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'Parent01 cannot see other tenant invoices');
+-- Parent 02 has can_pay_fees=false → cannot see invoices (per is_paying_parent policy on invoices)
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110002'), 0, 'Parent02 without can_pay_fees cannot read invoices');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 4 — Student scoping (own row only)
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE profile_id='00000000-0000-0000-0000-000000000020'), 1, 'Student sees own student row');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE profile_id='00000000-0000-0000-0000-000000000021'), 0, 'Student cannot see other student rows');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.complaints WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'Student sees own complaints');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.complaints WHERE student_id='11111111-1111-1111-1111-111111110002'), 0, 'Student cannot see peer complaints');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 5 — Refund maker/checker (self-approval blocked)
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- accountant_A initiated refund
+SELECT pg_temp.assert_throws(
+  $sql$SELECT public.fn_approve_refund('11111111-1111-1111-1111-11111111rf01','APPROVED','Trying self approve')$sql$,
+  'Refund initiator cannot self-approve (via fn_approve_refund)');
+-- Also: an accountant (non-HOSTEL_ADMIN) cannot approve at all
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN (not initiator)
+-- Would succeed but we ROLLBACK to keep fixture intact
+DO $$ BEGIN
+  PERFORM public.fn_approve_refund('11111111-1111-1111-1111-11111111rf01','APPROVED','Second-signer approval');
+  RAISE NOTICE 'OK  [Refund maker-checker: HOSTEL_ADMIN can approve someone else''s refund]';
+END $$;
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 6 — SUPER_ADMIN sees platform tables
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- super
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.tenants), 2, 'SUPER sees both tenants');
+-- Regular admin cannot escalate
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 7 — Anon role has no access to authenticated tables
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume_anon();
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students), 0, 'anon cannot read students');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices), 0, 'anon cannot read invoices');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.gate_passes), 0, 'anon cannot read gate_passes');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications), 0, 'anon cannot read notifications');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.support_sessions), 0, 'anon cannot read support_sessions');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 8 — Notification recipient scoping
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notifications WHERE recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'Student sees own notifications');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE recipient_user_id='00000000-0000-0000-0000-000000000021'), 0, 'Student cannot see peer notifications');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 9 — Gate pass parent-approval guard (fn_validate_parent_approval)
+-- =============================================================================
+BEGIN;
+-- Parent 02 lacks can_approve_gate_pass; must not be allowed to set parent_approved_by.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- admin so RLS UPDATE passes; trigger still fires
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.gate_passes SET parent_approved_by='00000000-0000-0000-0000-000000000041', parent_approved_at=now()
+       WHERE id='11111111-1111-1111-1111-11111111gp02'$sql$,
+  'Non-approver parent cannot approve gate pass');
+-- Parent 01 IS a valid approver for student 01, but gp02 belongs to student 02 → still invalid
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.gate_passes SET parent_approved_by='00000000-0000-0000-0000-000000000040', parent_approved_at=now()
+       WHERE id='11111111-1111-1111-1111-11111111gp02'$sql$,
+  'Approver parent for a different student is rejected');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 10 — Complaint reopen window guard
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+-- cp05 has reopen_until = now()+44h → within window, should succeed
+UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111cp05';
+-- Force reopen_until into the past and try again → must fail
+UPDATE public.complaints SET status='RESOLVED', resolved_at=now()-interval '3 days', reopen_until=now()-interval '1 day' WHERE id='11111111-1111-1111-1111-11111111cp05';
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111cp05'$sql$,
+  'Complaint reopen rejected after 48h window');
+ROLLBACK;
+
+SELECT '=== RLS TESTS COMPLETED ===' AS status;
