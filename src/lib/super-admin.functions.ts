@@ -216,14 +216,13 @@ export const endSupportSession = createServerFn({ method: "POST" })
     try {
       await supabase.functions.invoke("send-notification", {
         body: {
-          tenant_id: (row as any).tenant_id,
-          property_id: null,
-          recipient_user_id: (row as any).target_user_id,
-          event_type: "SUPPORT_SESSION_ENDED",
-          template_key: "support_session_ended",
-          channels: ["IN_APP"],
-          payload: { session_id: data.session_id, reason: data.reason },
-          idempotency_key: `support:end:${data.session_id}`,
+          channel: "IN_APP",
+          templateKey: "support_session_ended",
+          recipient: { userId: (row as any).target_user_id },
+          variables: { session_id: data.session_id, reason: data.reason },
+          eventType: "SUPPORT_SESSION_ENDED",
+          tenantId: (row as any).tenant_id,
+          referenceId: data.session_id,
         },
       });
     } catch { /* best-effort */ }
