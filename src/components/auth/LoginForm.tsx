@@ -119,6 +119,12 @@ function EmailForm() {
         toast.error(error.message);
         return;
       }
+      try {
+        const { activateMyInvites } = await import("@/lib/admin-staff.functions");
+        await activateMyInvites();
+      } catch (e) {
+        console.warn("invite activation failed", e);
+      }
       navigate({ to: "/post-login" });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
