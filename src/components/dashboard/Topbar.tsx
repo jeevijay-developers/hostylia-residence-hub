@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Topbar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
