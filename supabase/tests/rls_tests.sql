@@ -217,4 +217,71 @@ SELECT pg_temp.assert_throws(
   'Complaint reopen rejected after 48h window');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION 11 — Phase 13 hardening: tenants / organizations / properties /
+-- subscriptions cross-tenant isolation + tenants status-column trigger guard.
+--
+-- Sandbox note: this section requires seeded auth.users rows for
+-- admin_A (..010) and admin_B (..100) because role_assignments FKs
+-- into auth.users. The Phase 12 seed is expected to create these.
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+
+-- Cross-tenant SELECT on the tightened tables must return zero.
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.properties    WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B properties');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.organizations WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B organizations');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.subscriptions WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B subscriptions');
+-- Tenant row for B must also be filtered out (SELECT scope no longer includes is_tenant_member of other tenants).
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.tenants WHERE id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B row');
+
+-- Positive: own tenant remains fully visible.
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.properties    WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A properties');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.organizations WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A organizations');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.subscriptions WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A subscription');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.tenants       WHERE id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees own tenant row');
+
+-- Cross-tenant UPDATE on tenants must affect 0 rows (RLS filters), not raise.
+WITH u AS (
+  UPDATE public.tenants SET display_name='HACKED-BY-A'
+   WHERE id='22222222-2222-2222-2222-222222222222'
+   RETURNING 1
+)
+SELECT pg_temp.assert_eq((SELECT count(*) FROM u), 0, 'AdminA update against Tenant B affects 0 rows');
+
+-- Status-column trigger: HOSTEL_ADMIN must NOT be able to change status/onboarding/suspended_at/cancelled_at on own tenant.
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.tenants SET status='SUSPENDED' WHERE id='11111111-1111-1111-1111-111111111111'$sql$,
+  'HOSTEL_ADMIN blocked from changing tenants.status');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.tenants SET onboarding_status='PENDING' WHERE id='11111111-1111-1111-1111-111111111111'$sql$,
+  'HOSTEL_ADMIN blocked from changing tenants.onboarding_status');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.tenants SET suspended_at=now() WHERE id='11111111-1111-1111-1111-111111111111'$sql$,
+  'HOSTEL_ADMIN blocked from setting tenants.suspended_at');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.tenants SET cancelled_at=now() WHERE id='11111111-1111-1111-1111-111111111111'$sql$,
+  'HOSTEL_ADMIN blocked from setting tenants.cancelled_at');
+
+-- Benign column change (display_name) on own tenant must still succeed for HOSTEL_ADMIN.
+UPDATE public.tenants SET display_name = display_name WHERE id='11111111-1111-1111-1111-111111111111';
+
+-- Plans: HOSTEL_ADMIN cannot mutate SaaS pricing.
+DO $$ DECLARE r int; BEGIN
+  UPDATE public.plans SET price_paise = price_paise + 0 WHERE 1=1;
+  GET DIAGNOSTICS r = ROW_COUNT;
+  IF r <> 0 THEN
+    RAISE EXCEPTION 'ASSERT FAIL [HOSTEL_ADMIN cannot write plans]: expected 0 rows, got %', r;
+  END IF;
+  RAISE NOTICE 'OK  [HOSTEL_ADMIN cannot write plans] rows_affected=0';
+END $$;
+ROLLBACK;
+
+-- SUPER_ADMIN counter-check: status column changes must succeed.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- SUPER_ADMIN
+UPDATE public.tenants SET status='SUSPENDED', suspended_at=now() WHERE id='11111111-1111-1111-1111-111111111111';
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.tenants WHERE id='11111111-1111-1111-1111-111111111111' AND status='SUSPENDED'), 1, 'SUPER_ADMIN can change tenants.status');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;
