@@ -4017,6 +4017,10 @@ export type Database = {
       }
       fn_generate_invoices: { Args: never; Returns: number }
       fn_get_platform_metrics: { Args: never; Returns: Json }
+      fn_is_acting_as_student_only: {
+        Args: { _tenant: string }
+        Returns: boolean
+      }
       fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
       fn_seed_default_complaint_categories: {
         Args: { p_property_id: string }
