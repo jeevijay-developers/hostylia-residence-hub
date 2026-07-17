@@ -4027,6 +4027,10 @@ export type Database = {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_any_tenant_role: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_tenant_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4052,6 +4056,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_member: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       provisional_refund_paise: {
         Args: { p_allocation_id: string }
         Returns: number
