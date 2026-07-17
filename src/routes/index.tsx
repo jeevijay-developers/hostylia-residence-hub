@@ -14,7 +14,7 @@ import {
 } from "@/components/site/HtmlMockups";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import { VideoTestimonials } from "@/components/site/VideoTestimonials";
-import vikasPhoto from "@/assets/vikas-patel.jpeg.asset.json";
+import vikasPhoto from "@/assets/vikas-patel.jpeg";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
 import inventoryStatus from "@/assets/illustrations/inventory-status.jpg";
 import duesLock from "@/assets/illustrations/dues-lock.jpg";
@@ -445,7 +445,7 @@ function FounderSection() {
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--soft-teal)_30%,transparent),transparent_70%)] blur-2xl" />
           <div className="grid items-center gap-8 md:grid-cols-[auto_1fr]">
             <img
-              src={vikasPhoto.url}
+              src={vikasPhoto}
               alt="Vikas Patel, Founder & CEO of Hostylia"
               className="h-32 w-32 rounded-2xl object-cover ring-2 ring-[color:var(--soft-teal)]/40 shadow-xl"
             />

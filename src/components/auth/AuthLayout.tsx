@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import logoAsset from "@/assets/hostylia-logo.png.asset.json";
+import logoAsset from "@/assets/hostylia-logo.png";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface AuthLayoutProps {
@@ -21,7 +21,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col bg-background text-foreground" lang={langAttr}>
       <header className="relative flex items-center justify-center px-4 pt-8 pb-4 sm:pt-12">
         <Link to="/" className="inline-flex items-center gap-2" aria-label="Hostylia home">
-          <img src={logoAsset.url} alt="Hostylia" className="h-8 w-auto" />
+          <img src={logoAsset} alt="Hostylia" className="h-8 w-auto" />
         </Link>
         <div className="absolute right-3 top-6 sm:top-10">
           <LanguageSwitcher />

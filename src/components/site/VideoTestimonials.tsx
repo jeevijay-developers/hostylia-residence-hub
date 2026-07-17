@@ -2,14 +2,14 @@ import { useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX, Quote, Star } from "lucide-react";
 import { SectionHeading } from "@/components/site/Primitives";
 
-import vid1 from "@/assets/testimonials/testimonial-1.mp4.asset.json";
-import vid2 from "@/assets/testimonials/testimonial-2.mp4.asset.json";
-import vid3 from "@/assets/testimonials/testimonial-3.mp4.asset.json";
-import vid4 from "@/assets/testimonials/testimonial-4.mp4.asset.json";
-import p1 from "@/assets/testimonials/testimonial-poster-1.jpg.asset.json";
-import p2 from "@/assets/testimonials/testimonial-poster-2.jpg.asset.json";
-import p3 from "@/assets/testimonials/testimonial-poster-3.jpg.asset.json";
-import p4 from "@/assets/testimonials/testimonial-poster-4.jpg.asset.json";
+import vid1 from "@/assets/testimonials/testimonial-1.mp4";
+import vid2 from "@/assets/testimonials/testimonial-2.mp4";
+import vid3 from "@/assets/testimonials/testimonial-3.mp4";
+import vid4 from "@/assets/testimonials/testimonial-4.mp4";
+import p1 from "@/assets/testimonials/testimonial-poster-1.jpg";
+import p2 from "@/assets/testimonials/testimonial-poster-2.jpg";
+import p3 from "@/assets/testimonials/testimonial-poster-3.jpg";
+import p4 from "@/assets/testimonials/testimonial-poster-4.jpg";
 
 type Testimonial = {
   src: string;
@@ -22,32 +22,32 @@ type Testimonial = {
 
 const testimonials: Testimonial[] = [
   {
-    src: vid1.url,
-    poster: p1.url,
+    src: vid1,
+    poster: p1,
     name: "Operator",
     role: "240-bed PG chain",
     quote: "Collections jumped 22% in the first quarter on Hostylia.",
     tag: "Finance",
   },
   {
-    src: vid2.url,
-    poster: p2.url,
+    src: vid2,
+    poster: p2,
     name: "Warden",
     role: "Boarding school",
     quote: "Wardens finally get their evenings back. One screen, every block.",
     tag: "Operations",
   },
   {
-    src: vid3.url,
-    poster: p3.url,
+    src: vid3,
+    poster: p3,
     name: "Parent",
     role: "Student family",
     quote: "I stopped calling the warden. The app tells me everything.",
     tag: "Parent App",
   },
   {
-    src: vid4.url,
-    poster: p4.url,
+    src: vid4,
+    poster: p4,
     name: "Founder",
     role: "Co-living chain",
     quote: "Hostylia is the only platform we run our portfolio on.",
