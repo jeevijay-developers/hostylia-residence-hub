@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Send } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -95,7 +96,9 @@ function MenuCard({ menu, submittedRating, student, onSubmitted }: { menu: { id:
             ))}
           </div>
           <Textarea placeholder="Comment (optional)" value={comment} onChange={(e) => setComment(e.target.value)} rows={2} />
-          <Button size="sm" onClick={() => submitMut.mutate()} disabled={submitMut.isPending}>Submit</Button>
+          <Button size="sm" onClick={() => submitMut.mutate()} disabled={submitMut.isPending}>
+            <Send className="h-4 w-4" /> Submit
+          </Button>
         </div>
       )}
     </CardContent></Card>

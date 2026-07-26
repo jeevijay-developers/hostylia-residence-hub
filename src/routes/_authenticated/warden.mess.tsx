@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Send } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,7 @@ function WardenMessPage() {
           </div>
           <Textarea placeholder="One item per line" value={items} onChange={(e) => setItems(e.target.value)} rows={4} />
           <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !items.trim()}>
-            Publish
+            <Send className="h-4 w-4" /> Publish
           </Button>
         </CardContent>
       </Card>

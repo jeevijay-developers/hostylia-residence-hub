@@ -21,14 +21,13 @@ async function fetchResolvedRole(): Promise<ResolvedRole> {
   const user = userData.user;
   if (!user) return { role: null, tenantId: null, userId: null };
 
-  // Platform super admin
-  const { data: platformRows } = await supabase
-    .from("platform_role_assignments")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1);
-  if (platformRows && platformRows.length > 0) {
+  // Platform super admin — platform_role_assignments has no client-readable
+  // RLS policy by design (service_role only); resolve via the SECURITY
+  // DEFINER RPC instead of querying the table directly.
+  const { data: isSuperAdmin } = await supabase.rpc("is_super_admin", {
+    _user_id: user.id,
+  });
+  if (isSuperAdmin) {
     return { role: "SUPER_ADMIN", tenantId: null, userId: user.id };
   }
 

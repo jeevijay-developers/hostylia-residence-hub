@@ -21,7 +21,7 @@ const noticeSchema = z.object({
  */
 export const publishNotice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => noticeSchema.parse(d))
+  .validator((d) => noticeSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const publishing = data.publish_now || !data.publish_at;
@@ -121,7 +121,7 @@ export const publishNotice = createServerFn({ method: "POST" })
 
 export const cancelNotice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("notices")

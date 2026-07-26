@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Save, Upload } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -293,7 +293,7 @@ function PropertySetupPage() {
             onClick={() => saveMut.mutate(form)}
             disabled={saveMut.isPending}
           >
-            Save
+            <Save className="h-4 w-4" /> Save
           </Button>
           <Button
             onClick={async () => {

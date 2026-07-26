@@ -12,7 +12,7 @@ const propertyFilter = z.object({
  */
 export const getOccupancyReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => propertyFilter.parse(d))
+  .validator((d) => propertyFilter.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: rows, error } = await supabase
@@ -44,7 +44,7 @@ export const getOccupancyReport = createServerFn({ method: "POST" })
  */
 export const getAgingReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => propertyFilter.parse(d))
+  .validator((d) => propertyFilter.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: rows, error } = await supabase
@@ -89,7 +89,7 @@ export const getAgingReport = createServerFn({ method: "POST" })
  */
 export const getSlaComplianceReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => propertyFilter.parse(d))
+  .validator((d) => propertyFilter.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: rows, error } = await supabase

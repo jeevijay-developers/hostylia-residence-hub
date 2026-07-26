@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check, Trash2, X } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -91,14 +92,14 @@ function FeatureFlagsPage() {
                   disabled={!newKey || newReason.length < 3}
                   onClick={() => toggle.mutate({ feature_key: newKey, enabled: true, reason: newReason })}
                 >
-                  Enable
+                  <Check className="h-4 w-4" /> Enable
                 </Button>
                 <Button
                   variant="destructive"
                   disabled={!newKey || newReason.length < 3}
                   onClick={() => toggle.mutate({ feature_key: newKey, enabled: false, reason: newReason })}
                 >
-                  Disable
+                  <X className="h-4 w-4" /> Disable
                 </Button>
               </div>
             </div>
@@ -141,7 +142,7 @@ function FeatureFlagsPage() {
                       <td className="px-4 py-2 text-right">
                         {ovr && (
                           <Button size="sm" variant="ghost" onClick={() => removeOverride.mutate(ovr.id)}>
-                            Remove override
+                            <Trash2 className="h-4 w-4" /> Remove override
                           </Button>
                         )}
                       </td>

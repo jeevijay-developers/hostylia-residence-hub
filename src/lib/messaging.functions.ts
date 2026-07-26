@@ -12,7 +12,7 @@ const openInput = z.object({ student_id: z.string().uuid() });
  */
 export const openParentWardenConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((raw: unknown) => openInput.parse(raw))
+  .validator((raw: unknown) => openInput.parse(raw))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -113,7 +113,7 @@ const sendInput = z.object({
 
 export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((raw: unknown) => sendInput.parse(raw))
+  .validator((raw: unknown) => sendInput.parse(raw))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: conv, error: cErr } = await supabase
@@ -136,7 +136,7 @@ export const sendMessage = createServerFn({ method: "POST" })
 
 export const markConversationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((raw: unknown) => z.object({ conversation_id: z.string().uuid() }).parse(raw))
+  .validator((raw: unknown) => z.object({ conversation_id: z.string().uuid() }).parse(raw))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await supabase

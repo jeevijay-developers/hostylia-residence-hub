@@ -107,10 +107,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Default is "dark" (matches stores/theme-store.ts) so a first-time visitor
+// with no saved preference still sees the same navy/gold palette as the
+// marketing site, not a flash of the old light theme.
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var raw = localStorage.getItem("hostylia_theme");
+    var theme = raw ? JSON.parse(raw).state.theme : "dark";
+    if (theme === "dark") document.documentElement.classList.add("dark");
+  } catch (e) {}
+})();
+`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: THEME_INIT_SCRIPT mutates this element's
+    // class before React hydrates, so the class attribute legitimately
+    // differs between the SSR markup and the client's first paint.
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Reads the persisted theme before first paint to avoid a light/dark flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -132,11 +150,19 @@ function ScrollToTop() {
 }
 
 // Routes that belong to the app (auth flow + authenticated shells) render
-// WITHOUT the marketing chrome and WITHOUT the `dark` wrapper — they're the
-// product surface, styled with the light-mode semantic tokens by default.
+// WITHOUT the marketing chrome. Auth-flow routes (login/signup/verify-otp/
+// access-pending/403) force their own dark class via AuthLayout; the rest
+// (dashboards) follow the user's saved preference (see stores/theme-store.ts),
+// which toggles the `.dark` class on <html> — this wrapper never forces a
+// class itself. Marketing routes keep their own bespoke dark theme
+// unconditionally (the `dark` class below is hardcoded, not tied to the
+// user's toggle), since that palette isn't part of the semantic light/dark
+// token system yet.
 const APP_ROUTE_PREFIXES = [
   "/login",
+  "/signup",
   "/verify-otp",
+  "/verify-email",
   "/access-pending",
   "/post-login",
   "/403",

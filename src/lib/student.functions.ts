@@ -43,7 +43,7 @@ function nextAdmissionNumber(): string {
  * validating the property slug + IP rate limit.
  */
 export const submitPublicAdmission = createServerFn({ method: "POST" })
-  .inputValidator((data) => publicAdmissionSchema.parse(data))
+  .validator((data) => publicAdmissionSchema.parse(data))
   .handler(async ({ data }) => {
     const ip = getClientIp();
     const admin = adminClient();
@@ -143,7 +143,7 @@ const bulkImportSchema = z.object({
 
 export const bulkImportStudents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => bulkImportSchema.parse(data))
+  .validator((data) => bulkImportSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const errors: { row: number; error: string }[] = [];
@@ -209,7 +209,7 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
 
 export const createAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => allocationCreateSchema.parse(data))
+  .validator((data) => allocationCreateSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
 
@@ -267,7 +267,7 @@ export const createAllocation = createServerFn({ method: "POST" })
 
 export const acceptAgreementClickwrap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => clickConsentSchema.parse(data))
+  .validator((data) => clickConsentSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const ip = getClientIp();
@@ -317,7 +317,7 @@ const moveOutSchema = z.object({
 
 export const moveOutAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => moveOutSchema.parse(data))
+  .validator((data) => moveOutSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -377,7 +377,7 @@ export const moveOutAllocation = createServerFn({ method: "POST" })
 
 export const previewMoveOut = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ allocation_id: z.string().uuid() }).parse(data))
+  .validator((data) => z.object({ allocation_id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const [{ data: eDate }, { data: refund }] = await Promise.all([
@@ -409,7 +409,7 @@ const registerDocSchema = z.object({
 
 export const registerDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => registerDocSchema.parse(data))
+  .validator((data) => registerDocSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: doc, error } = await supabase

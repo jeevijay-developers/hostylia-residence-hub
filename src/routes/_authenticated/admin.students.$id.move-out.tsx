@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, DoorOpen, Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,7 @@ function MoveOutWizard() {
               <Input id="ae" type="date" value={actualEnd} onChange={(e) => setActualEnd(e.target.value)} />
             </div>
             <Button className="min-h-11" disabled={mut.isPending} onClick={() => mut.mutate()}>
+              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
               Confirm move-out & archive
             </Button>
           </CardContent>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CheckCircle2, PlayCircle } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
@@ -88,13 +89,15 @@ function WardenComplaintRow({ complaint }: { complaint: ComplaintRow }) {
           <>
             {complaint.status === "ASSIGNED" && (
               <Button size="sm" variant="outline" onClick={() => start.mutate()}>
-                Start work
+                <PlayCircle className="h-4 w-4" /> Start work
               </Button>
             )}
             {["ASSIGNED","IN_PROGRESS","WAITING_FOR_STUDENT","REOPENED","OPEN"].includes(complaint.status) && (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm">Resolve</Button>
+                  <Button size="sm">
+                    <CheckCircle2 className="h-4 w-4" /> Resolve
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Resolve complaint</DialogTitle></DialogHeader>
@@ -106,7 +109,7 @@ function WardenComplaintRow({ complaint }: { complaint: ComplaintRow }) {
                   />
                   <DialogFooter>
                     <Button onClick={() => resolve.mutate()} disabled={resolve.isPending}>
-                      Mark resolved
+                      <CheckCircle2 className="h-4 w-4" /> Mark resolved
                     </Button>
                   </DialogFooter>
                 </DialogContent>

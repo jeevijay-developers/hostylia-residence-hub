@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Topbar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -47,6 +48,7 @@ export function Topbar() {
         <span>Search…</span>
       </div>
 
+      <ThemeToggle />
       <NotificationBell />
 
       <DropdownMenu>

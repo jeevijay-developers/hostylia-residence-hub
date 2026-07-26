@@ -20,7 +20,7 @@ const createPassSchema = z.object({
 
 export const createGatePass = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => createPassSchema.parse(d))
+  .validator((d: unknown) => createPassSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: s, error: sErr } = await supabase
@@ -63,7 +63,7 @@ const decisionSchema = z.object({
 
 export const decideGatePass = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => decisionSchema.parse(d))
+  .validator((d: unknown) => decisionSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: gp, error } = await supabase
@@ -126,7 +126,7 @@ const scanSchema = z.object({
 
 export const scanGatePass = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => scanSchema.parse(d))
+  .validator((d: unknown) => scanSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: gp } = await supabase
@@ -230,7 +230,7 @@ const visitorScanSchema = z.object({
 
 export const checkVisitor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => visitorScanSchema.parse(d))
+  .validator((d: unknown) => visitorScanSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: v } = await supabase
@@ -291,7 +291,7 @@ const bulkAttendanceSchema = z.object({
 
 export const bulkMarkAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => bulkAttendanceSchema.parse(d))
+  .validator((d: unknown) => bulkAttendanceSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: prop } = await supabase

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus } from "lucide-react";
+import { ArrowRight, Building2, LayoutGrid, Plus, Settings2 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -189,12 +189,12 @@ function PropertiesListPage() {
                       <div className="flex justify-end gap-2">
                         <Button asChild variant="ghost" size="sm">
                           <Link to="/admin/properties/$id/setup" params={{ id: p.id }}>
-                            Setup
+                            <Settings2 className="h-4 w-4" /> Setup
                           </Link>
                         </Button>
                         <Button asChild variant="ghost" size="sm">
                           <Link to="/admin/properties/$id/structure" params={{ id: p.id }}>
-                            Structure
+                            <LayoutGrid className="h-4 w-4" /> Structure
                           </Link>
                         </Button>
                       </div>
@@ -228,7 +228,7 @@ function PropertiesListPage() {
               onClick={() => createMut.mutate()}
               disabled={!name.trim() || createMut.isPending}
             >
-              Create & continue
+              Create & continue <ArrowRight className="h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>

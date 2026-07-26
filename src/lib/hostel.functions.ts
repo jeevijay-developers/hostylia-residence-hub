@@ -20,7 +20,7 @@ const importInputSchema = z.object({
 
 export const bulkImportStructure = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => importInputSchema.parse(data))
+  .validator((data) => importInputSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { tenant_id, property_id, rows } = data;
@@ -138,7 +138,7 @@ export const bulkImportStructure = createServerFn({ method: "POST" })
 /** Pre-flight validation only — surfaces errors before the user commits. */
 export const validateCsvRows = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) =>
+  .validator((data) =>
     z.object({ rows: z.array(z.unknown()) }).parse(data),
   )
   .handler(async ({ data }) => {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 
 export function PageHero({ eyebrow, title, desc, children }: { eyebrow: string; title: string; desc?: string; children?: ReactNode }) {
   return (
@@ -31,7 +31,7 @@ export function CTAStrip() {
               Book Demo <ArrowRight size={16} />
             </Link>
             <Link to="/contact" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white">
-              Contact Sales
+              <MessageCircle size={16} /> Contact Sales
             </Link>
           </div>
         </div>

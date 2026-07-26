@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
+import { Check, LogIn, LogOut, X } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -75,8 +76,12 @@ function WardenGatePage() {
                   <Badge variant="secondary" className="mt-1">{p.status}</Badge>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })}>Reject</Button>
-                  <Button size="sm" onClick={() => decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })}>Approve</Button>
+                  <Button size="sm" variant="outline" onClick={() => decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })}>
+                    <X className="h-4 w-4" /> Reject
+                  </Button>
+                  <Button size="sm" onClick={() => decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })}>
+                    <Check className="h-4 w-4" /> Approve
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -92,8 +97,12 @@ function WardenGatePage() {
               <Input placeholder="Pass ID (UUID)" value={passIdInput} onChange={(e) => setPassIdInput(e.target.value)} />
               <Input placeholder="QR token" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} />
               <div className="flex gap-2">
-                <Button onClick={() => scanMut.mutate("OUT")} disabled={!passIdInput || !tokenInput}>Check OUT</Button>
-                <Button variant="outline" onClick={() => scanMut.mutate("IN")} disabled={!passIdInput || !tokenInput}>Check IN</Button>
+                <Button onClick={() => scanMut.mutate("OUT")} disabled={!passIdInput || !tokenInput}>
+                  <LogOut className="h-4 w-4" /> Check OUT
+                </Button>
+                <Button variant="outline" onClick={() => scanMut.mutate("IN")} disabled={!passIdInput || !tokenInput}>
+                  <LogIn className="h-4 w-4" /> Check IN
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -117,10 +126,14 @@ function WardenGatePage() {
               </div>
               <div className="flex gap-2">
                 {v.status !== "CHECKED_IN" && v.status !== "CHECKED_OUT" && (
-                  <Button size="sm" onClick={() => visMut.mutate({ visitor_id: v.id, direction: "IN" })}>Check IN</Button>
+                  <Button size="sm" onClick={() => visMut.mutate({ visitor_id: v.id, direction: "IN" })}>
+                    <LogIn className="h-4 w-4" /> Check IN
+                  </Button>
                 )}
                 {v.status === "CHECKED_IN" && (
-                  <Button size="sm" variant="outline" onClick={() => visMut.mutate({ visitor_id: v.id, direction: "OUT" })}>Check OUT</Button>
+                  <Button size="sm" variant="outline" onClick={() => visMut.mutate({ visitor_id: v.id, direction: "OUT" })}>
+                    <LogOut className="h-4 w-4" /> Check OUT
+                  </Button>
                 )}
               </div>
             </CardContent></Card>

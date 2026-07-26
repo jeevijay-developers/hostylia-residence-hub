@@ -38,7 +38,7 @@ export const listAllTenants = createServerFn({ method: "GET" })
 
 export const setTenantStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { tenant_id: string; status: "ACTIVE" | "SUSPENDED" | "CANCELLED" }) => d)
+  .validator((d: { tenant_id: string; status: "ACTIVE" | "SUSPENDED" | "CANCELLED" }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);
@@ -68,10 +68,123 @@ export const listSubscriptionsWithPlan = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const listPlans = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { data, error } = await supabase
+      .from("plans")
+      .select("id,code,name,price_paise,billing_interval,trial_days,is_active")
+      .order("price_paise", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
+  });
+
+// Current subscription (if any) per tenant, keyed by tenant_id — used to
+// pre-select the tenant's existing plan in the assign-subscription dialog.
+export const listCurrentSubscriptionsByTenant = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("id,tenant_id,plan_id,status,current_period_end,created_at")
+      .in("status", ["TRIAL", "ACTIVE", "PAST_DUE", "PAUSED"])
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    // Keep only the most recent current-ish subscription per tenant.
+    const byTenant = new Map<string, (typeof data)[number]>();
+    for (const row of data ?? []) {
+      if (!byTenant.has(row.tenant_id)) byTenant.set(row.tenant_id, row);
+    }
+    return Object.fromEntries(byTenant);
+  });
+
+const assignSubscriptionSchema = z.object({
+  tenant_id: z.string().uuid(),
+  plan_id: z.string().uuid(),
+  status: z.enum(["TRIAL", "ACTIVE"]).default("ACTIVE"),
+  period_days: z.number().int().min(1).max(3650).default(30),
+});
+
+/**
+ * Super-Admin-only manual override: assign or change a specific tenant's
+ * subscription plan directly from the backend, independent of self-serve
+ * checkout — e.g. a comped/custom plan, or a hostel that signed up without
+ * picking one. Updates the tenant's current (TRIAL/ACTIVE/PAST_DUE/PAUSED)
+ * subscription row if one exists, otherwise creates a new one. Gated by the
+ * `subscriptions_write_super` RLS policy (is_super_admin only) in addition
+ * to the explicit assertSuper check.
+ */
+export const assignTenantSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => assignSubscriptionSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+
+    const { data: plan, error: planErr } = await supabase
+      .from("plans")
+      .select("id,trial_days")
+      .eq("id", data.plan_id)
+      .single();
+    if (planErr) throw planErr;
+
+    const now = new Date();
+    const periodEnd = new Date(now.getTime() + data.period_days * 24 * 60 * 60 * 1000);
+    const trialEnd =
+      data.status === "TRIAL" ? new Date(now.getTime() + (plan.trial_days ?? 0) * 24 * 60 * 60 * 1000) : null;
+
+    const { data: existing } = await supabase
+      .from("subscriptions")
+      .select("id")
+      .eq("tenant_id", data.tenant_id)
+      .in("status", ["TRIAL", "ACTIVE", "PAST_DUE", "PAUSED"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const patch = {
+      plan_id: data.plan_id,
+      status: data.status,
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      trial_ends_at: trialEnd ? trialEnd.toISOString() : null,
+      provider: "MANUAL",
+    };
+
+    if (existing && existing.length > 0) {
+      const { error } = await supabase.from("subscriptions").update(patch).eq("id", existing[0].id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("subscriptions").insert({
+        tenant_id: data.tenant_id,
+        starts_at: now.toISOString(),
+        ...patch,
+      });
+      if (error) throw error;
+    }
+
+    // audit_logs has no client-writable INSERT policy (even for super
+    // admins) by design — only service-role can write it.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      tenant_id: data.tenant_id,
+      actor_user_id: userId,
+      action: "SUBSCRIPTION_ASSIGNED_BY_SUPER_ADMIN",
+      entity_type: "subscriptions",
+      entity_id: data.tenant_id,
+      after_data: patch,
+    });
+
+    return { ok: true };
+  });
+
 // -------- Feature flags --------
 export const listTenantFeatures = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { tenant_id: string }) => d)
+  .validator((d: { tenant_id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);
@@ -103,7 +216,7 @@ const overrideSchema = z.object({
 
 export const upsertFeatureOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => overrideSchema.parse(d))
+  .validator((d) => overrideSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);
@@ -126,7 +239,7 @@ export const upsertFeatureOverride = createServerFn({ method: "POST" })
 
 export const deleteFeatureOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => d)
+  .validator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);
@@ -148,7 +261,7 @@ const startSessionSchema = z.object({
 
 export const startSupportSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => startSessionSchema.parse(d))
+  .validator((d) => startSessionSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);
@@ -203,7 +316,7 @@ export const startSupportSession = createServerFn({ method: "POST" })
 
 export const endSupportSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { session_id: string; reason: string }) => d)
+  .validator((d: { session_id: string; reason: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: row, error } = await supabase.rpc("fn_end_support_session", {
@@ -245,7 +358,7 @@ export const listSupportSessions = createServerFn({ method: "GET" })
 
 export const searchUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { q: string }) => d)
+  .validator((d: { q: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertSuper(supabase, userId);

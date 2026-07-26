@@ -313,7 +313,9 @@ function AddBlockDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>Add</Button>
+          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
+            <Plus className="h-4 w-4" /> Add
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -349,7 +351,9 @@ function AddFloorDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>Add</Button>
+          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
+            <Plus className="h-4 w-4" /> Add
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -416,7 +420,9 @@ function AddRoomDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={!number.trim() || mut.isPending}>Add room + beds</Button>
+          <Button onClick={() => mut.mutate()} disabled={!number.trim() || mut.isPending}>
+            <Plus className="h-4 w-4" /> Add room + beds
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

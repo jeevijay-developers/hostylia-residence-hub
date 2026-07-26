@@ -5,7 +5,7 @@ import { z } from "zod";
 // Uses service_role internally, but only returns a narrow set of
 // public-safe fields and only when the property is ACTIVE.
 export const getPublicPropertyBySlug = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
+  .validator((d) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin

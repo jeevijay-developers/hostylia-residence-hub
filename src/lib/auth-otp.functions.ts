@@ -18,7 +18,7 @@ const sendOtpSchema = z.object({
  * Bucket key: `otp:<phone>` — max 5 sends per 10 minutes.
  */
 export const sendPhoneOtp = createServerFn({ method: "POST" })
-  .inputValidator((data) => sendOtpSchema.parse(data))
+  .validator((data) => sendOtpSchema.parse(data))
   .handler(async ({ data }) => {
     const supabase = createClient<Database>(
       process.env.SUPABASE_URL!,

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { UserPlus, Upload, Search } from "lucide-react";
+import { UserPlus, Upload, Search, Eye } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -161,7 +161,9 @@ function StudentsListPage() {
                   <TableCell><StudentStatusBadge status={s.status} /></TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="ghost">
-                      <Link to="/admin/students/$id" params={{ id: s.id }}>Open</Link>
+                      <Link to="/admin/students/$id" params={{ id: s.id }}>
+                        <Eye className="h-4 w-4" /> Open
+                      </Link>
                     </Button>
                   </TableCell>
                 </TableRow>

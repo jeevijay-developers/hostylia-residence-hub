@@ -29,7 +29,7 @@ async function assertAdmin(supabase: any, userId: string, tenantId: string) {
  */
 export const inviteStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => inviteSchema.parse(d))
+  .validator((d) => inviteSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (!data.email && !data.phone) throw new Error("email or phone required");
@@ -121,7 +121,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
 
 export const listStaff = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { tenant_id: string }) => d)
+  .validator((d: { tenant_id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId, data.tenant_id);
@@ -144,7 +144,7 @@ export const listStaff = createServerFn({ method: "GET" })
 
 export const revokeStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { tenant_id: string; role_assignment_id: string }) => d)
+  .validator((d: { tenant_id: string; role_assignment_id: string }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId, data.tenant_id);
@@ -188,7 +188,7 @@ const propSettingsSchema = z.object({
 
 export const updatePropertySettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => propSettingsSchema.parse(d))
+  .validator((d) => propSettingsSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: prop } = await supabase
@@ -219,7 +219,7 @@ const orgSchema = z.object({
 
 export const updateOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => orgSchema.parse(d))
+  .validator((d) => orgSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: org } = await supabase

@@ -5,6 +5,7 @@ import {
   Briefcase, Wallet, UserCog, Calculator, User, UserCheck,
   Brain, Sparkles, BarChart3, FileBarChart, Bot, Languages,
   LogIn, Clock, ShieldAlert, ListChecks, Check, Rocket, Settings2, LineChart, Lock,
+  Compass, MessageCircle,
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/")({
     ],
     links: [
       { rel: "canonical", href: "/" },
-      { rel: "preload", as: "image", href: buildingHero, fetchpriority: "high" },
+      { rel: "preload", as: "image", href: buildingHero, fetchPriority: "high" },
     ],
   }),
   component: HomePage,
@@ -100,7 +101,7 @@ function Hero() {
               Book a Demo <ArrowRight size={16} />
             </Link>
             <Link to="/platform" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
-              Explore Platform
+              <Compass size={16} /> Explore Platform
             </Link>
           </div>
           <div className="mt-8 grid max-w-md grid-cols-3 gap-4 border-t border-dark-border pt-6">
@@ -491,7 +492,7 @@ function PricingPreview() {
                 ))}
               </ul>
               <Link to="/book-demo" className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-white/5 text-white hover:bg-white/10"}`}>
-                Book Demo for Pricing
+                <ArrowRight size={16} /> Book Demo for Pricing
               </Link>
             </div>
           ))}
@@ -517,10 +518,10 @@ function FinalCTA() {
                 Book Demo <ArrowRight size={16} />
               </Link>
               <Link to="/contact" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
-                Contact Sales
+                <MessageCircle size={16} /> Contact Sales
               </Link>
               <Link to="/founder" className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-transparent px-5 py-3 text-sm font-bold text-soft-teal hover:bg-white/5">
-                Talk to the Founder
+                <User size={16} /> Talk to the Founder
               </Link>
             </div>
             <p className="mt-5 inline-flex items-center gap-2 text-xs text-soft-grey">

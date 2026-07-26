@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, ChevronDown } from "lucide-react";
+import { Menu, ChevronDown, CalendarClock, LogIn } from "lucide-react";
 import { Logo } from "@/components/site/Logo";
 import { MegaMenuSolutions } from "./MegaMenuSolutions";
 import { MegaMenuFeatures } from "./MegaMenuFeatures";
@@ -23,6 +24,15 @@ export function SiteHeader() {
   const [openMega, setOpenMega] = useState<null | "solutions" | "features">(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  // click par khula/band toggle
+  const toggleMenu = (mega: "solutions" | "features") => {
+    setOpenMega((cur) => (cur === mega ? null : mega));
+  };
+
+  // page badalne par menu apne aap band
+  useEffect(() => {
+    setOpenMega(null);
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-dark-border bg-[color-mix(in_oklab,var(--navy)_85%,transparent)] backdrop-blur-xl">
@@ -36,17 +46,26 @@ export function SiteHeader() {
               <div
                 key={item.to}
                 className="relative"
-                onMouseEnter={() => item.mega && setOpenMega(item.mega)}
-                onMouseLeave={() => item.mega && setOpenMega(null)}
               >
                 <Link
                   to={item.to}
+                  onClick={(e) => {
+                    if (item.mega) {
+                      e.preventDefault();      // navigation roko
+                      toggleMenu(item.mega);   // dropdown toggle
+                    }
+                  }}
                   className={`group inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     active ? "text-white" : "text-soft-grey hover:text-white"
                   }`}
                 >
                   {item.label}
-                  {item.mega && <ChevronDown size={14} className="opacity-60 transition-transform group-hover:rotate-180" />}
+                  {item.mega && (
+                    <ChevronDown
+                      size={14}
+                      className={`opacity-60 transition-transform ${openMega === item.mega ? "rotate-180" : ""}`}
+                    />
+                  )}
                   {active && (
                     <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gold" aria-hidden />
                   )}
@@ -59,14 +78,16 @@ export function SiteHeader() {
         <div className="flex items-center gap-2 justify-self-end">
           <Link
             to="/book-demo"
-            className="hidden rounded-lg bg-gold px-4 py-2 text-sm font-bold text-navy transition-opacity hover:opacity-90 md:inline-flex"
+            className="hidden items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-navy transition-opacity hover:opacity-90 md:inline-flex"
           >
+            <CalendarClock size={16} />
             Book Demo
           </Link>
           <Link
-            to="/contact"
-            className="hidden rounded-lg border border-dark-border bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
+            to="/login"
+            className="hidden items-center gap-1.5 rounded-lg border border-dark-border bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
           >
+            <LogIn size={16} />
             Sign In
           </Link>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -87,12 +108,11 @@ export function SiteHeader() {
 
       {/* Mega menu overlay */}
       {openMega && (
-        <div
-          className="absolute inset-x-0 top-full hidden lg:block"
-          onMouseEnter={() => setOpenMega(openMega)}
-          onMouseLeave={() => setOpenMega(null)}
-        >
-          <div className="mx-auto max-w-7xl px-4 pt-2 md:px-6">
+        <div className="absolute inset-x-0 top-full hidden lg:block">
+          <div
+            className="mx-auto max-w-7xl px-4 pt-2 md:px-6"
+            onMouseLeave={() => setOpenMega(null)}
+          >
             {openMega === "solutions" ? <MegaMenuSolutions /> : <MegaMenuFeatures />}
           </div>
         </div>

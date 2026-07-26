@@ -10,11 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
  * Resolution order:
  *  1. platform_role_assignments (SUPER_ADMIN) → /super-admin
  *  2. First active tenant_memberships row → get_user_role() RPC → role route
- *  3. Otherwise: guardians.phone match → /parent; unmatched phone → /access-pending
+ *  3. No tenant yet, but signed up with a hostel name → provision a tenant
+ *     (fn_provision_tenant RPC) and land on /admin/dashboard
+ *  4. Otherwise: guardians.phone match → /parent; unmatched phone → /access-pending
  */
 export function RoleRedirect() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,15 +30,13 @@ export function RoleRedirect() {
       }
       const user = userData.user;
 
-      // 1) Platform SUPER_ADMIN check (RLS hides this from clients, so a null
-      //    result here just means "not a super admin" — carry on).
-      const { data: platformRows } = await supabase
-        .from("platform_role_assignments")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1);
-      if (platformRows && platformRows.length > 0) {
+      // 1) Platform SUPER_ADMIN check. platform_role_assignments has no
+      //    client-readable RLS policy by design (service_role only), so this
+      //    must go through the SECURITY DEFINER RPC, not a direct query.
+      const { data: isSuperAdmin } = await supabase.rpc("is_super_admin", {
+        _user_id: user.id,
+      });
+      if (isSuperAdmin) {
         if (!cancelled) navigate({ to: "/super-admin/dashboard" });
         return;
       }
@@ -65,7 +66,29 @@ export function RoleRedirect() {
         }
       }
 
-      // 3) Parent flow: match phone against guardians
+      // 3) No tenant yet — if they signed up as a Hostel Admin (hostel name
+      //    captured at signup), provision their tenant now and send them
+      //    straight to the admin dashboard.
+      const hostelName =
+        (user.user_metadata?.hostel_name as string | undefined) ??
+        (user.user_metadata?.hostelName as string | undefined);
+      if (hostelName && hostelName.trim()) {
+        if (!cancelled) setProvisioning(true);
+        const { data: provisioned, error: provisionErr } = await supabase
+          .rpc("fn_provision_tenant", { p_hostel_name: hostelName })
+          .single();
+        if (provisionErr) {
+          if (!cancelled) {
+            setProvisioning(false);
+            setError(provisionErr.message);
+          }
+          return;
+        }
+        if (!cancelled) navigate({ to: "/admin/dashboard" });
+        return;
+      }
+
+      // 4) Parent flow: match phone against guardians
       if (user.phone) {
         const normalized = user.phone.startsWith("+") ? user.phone : `+${user.phone}`;
         const { data: guardianRows } = await supabase
@@ -77,11 +100,15 @@ export function RoleRedirect() {
           if (!cancelled) navigate({ to: "/parent/overview" });
           return;
         }
-        if (!cancelled) navigate({ to: "/access-pending" });
-        return;
       }
 
-      if (!cancelled) navigate({ to: "/access-pending" });
+      // 5) Fallback — nothing matched yet. If they signed up choosing "I'm a
+      //    student", show student-specific waiting copy instead of the
+      //    default parent-oriented one.
+      const signupRole = user.user_metadata?.signup_role as string | undefined;
+      if (!cancelled) {
+        navigate({ to: "/access-pending", search: signupRole === "STUDENT" ? { as: "student" } : undefined });
+      }
     }
 
     resolve().catch((e) => {
@@ -96,7 +123,9 @@ export function RoleRedirect() {
   return (
     <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
       <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Signing you in…</p>
+      <p className="text-sm text-muted-foreground">
+        {provisioning ? "Setting up your hostel…" : "Signing you in…"}
+      </p>
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
     </div>
   );

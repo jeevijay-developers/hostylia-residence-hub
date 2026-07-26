@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Sparkles, ShieldCheck, Headphones, Layers } from "lucide-react";
+import { ArrowRight, Check, Sparkles, ShieldCheck, Headphones, Layers } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -62,8 +62,8 @@ function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link to="/book-demo" className={`mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-white/5 text-white hover:bg-white/10"}`}>
-                  Book Demo for Pricing
+                <Link to="/book-demo" className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-white/5 text-white hover:bg-white/10"}`}>
+                  <ArrowRight size={16} /> Book Demo for Pricing
                 </Link>
               </div>
             ))}

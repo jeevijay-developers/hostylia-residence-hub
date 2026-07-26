@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { useServerFn } from "@tanstack/react-start";
+import { Loader2, Send } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -97,7 +98,10 @@ function StudentGatePassPage() {
             <Input type="datetime-local" value={outAt} onChange={(e) => setOutAt(e.target.value)} />
             <Input type="datetime-local" value={inAt} onChange={(e) => setInAt(e.target.value)} />
           </div>
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !reason || !outAt || !inAt}>Request</Button>
+          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !reason || !outAt || !inAt}>
+            {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Request
+          </Button>
         </CardContent>
       </Card>
 

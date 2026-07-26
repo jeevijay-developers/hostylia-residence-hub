@@ -1,6 +1,7 @@
 import {
   Building2, Home, Users, School, GraduationCap, BookOpen,
   Hospital, BriefcaseBusiness, Network, Stethoscope, Church, Building,
+  ArrowRight,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
@@ -71,8 +72,8 @@ export function MegaMenuSolutions({ onNavigate }: { onNavigate?: () => void }) {
           <div className="text-sm font-semibold text-white">One platform for every residential property type</div>
           <div className="text-xs text-soft-grey">Unify operations across blocks, floors, rooms and beds.</div>
         </div>
-        <Link to="/solutions" onClick={onNavigate} className="rounded-lg bg-gold px-4 py-2 text-xs font-bold text-navy hover:opacity-90">
-          Explore Solutions
+        <Link to="/solutions" onClick={onNavigate} className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-xs font-bold text-navy hover:opacity-90">
+          Explore Solutions <ArrowRight size={14} />
         </Link>
       </div>
     </div>

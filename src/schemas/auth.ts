@@ -25,6 +25,18 @@ export const otpCodeSchema = z
   .string()
   .regex(/^\d{6}$/, "Enter the 6-digit code");
 
+export const fullNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Enter your full name")
+  .max(80, "Name is too long");
+
+export const hostelNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Enter your hostel / property name")
+  .max(120, "Name is too long");
+
 export const phoneLoginSchema = z.object({
   phone: phoneSchema,
 });
@@ -32,6 +44,66 @@ export const phoneLoginSchema = z.object({
 export const emailLoginSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
+});
+
+/**
+ * Which kind of account is being created. Drives the signup steps shown and,
+ * after first sign-in, whether `RoleRedirect` provisions a tenant
+ * (HOSTEL_ADMIN) or routes to the "ask your hostel to link you" state
+ * (STUDENT). Stored on the auth user as `signup_role` metadata.
+ *
+ * Only these two are self-serve. WARDEN/ACCOUNTANT arrive by staff invite,
+ * PARENT by guardian linkage, SUPER_ADMIN by platform assignment.
+ */
+export const signupRoleSchema = z.enum(["HOSTEL_ADMIN", "STUDENT"]);
+export type SignupRole = z.infer<typeof signupRoleSchema>;
+
+/** Step 2 — who you are. `hostelName` is required only for hostel owners. */
+export const signupIdentitySchema = z
+  .object({
+    role: signupRoleSchema,
+    fullName: fullNameSchema,
+    hostelName: z.string().trim().max(120, "Name is too long").optional(),
+  })
+  .refine(
+    (d) => d.role !== "HOSTEL_ADMIN" || (d.hostelName ?? "").trim().length >= 2,
+    { message: "Enter your hostel / property name", path: ["hostelName"] },
+  );
+
+/** Step 3a — email + password credentials. */
+export const emailCredentialsSchema = z
+  .object({
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+/** Step 3b — phone (OTP) credentials. */
+export const phoneCredentialsSchema = z.object({
+  phone: phoneSchema,
+});
+
+export const emailSignupSchema = z
+  .object({
+    fullName: fullNameSchema,
+    hostelName: hostelNameSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const phoneSignupSchema = z.object({
+  fullName: fullNameSchema,
+  hostelName: hostelNameSchema,
+  phone: phoneSchema,
 });
 
 export const otpVerifySchema = z.object({
@@ -42,6 +114,11 @@ export const otpVerifySchema = z.object({
 export type PhoneLoginInput = z.infer<typeof phoneLoginSchema>;
 export type EmailLoginInput = z.infer<typeof emailLoginSchema>;
 export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
+export type EmailSignupInput = z.infer<typeof emailSignupSchema>;
+export type PhoneSignupInput = z.infer<typeof phoneSignupSchema>;
+export type SignupIdentityInput = z.infer<typeof signupIdentitySchema>;
+export type EmailCredentialsInput = z.infer<typeof emailCredentialsSchema>;
+export type PhoneCredentialsInput = z.infer<typeof phoneCredentialsSchema>;
 
 /** Rate-limit window used for OTP resend cooldown (seconds). */
 export const OTP_RESEND_WINDOW_SECONDS = 600;

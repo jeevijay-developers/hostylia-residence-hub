@@ -73,6 +73,11 @@
   --animate-fade-in: fade-in 0.6s ease-out;
   --animate-fade-up: fade-up 0.7s ease-out;
   --animate-scale-in: scale-in 0.4s ease-out;
+  /* Multi-step form transitions (signup wizard) — directional so going
+     back reads as "back". Eased with a gentle overshoot-free curve. */
+  --animate-step-next: step-next 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-step-prev: step-prev 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -85,6 +90,18 @@
   @keyframes scale-in {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes step-next {
+    from { opacity: 0; transform: translateX(22px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes step-prev {
+    from { opacity: 0; transform: translateX(-22px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
 
@@ -147,35 +164,42 @@
 }
 
 /* =====================================================================
-   .dark = DARK MODE overrides (Design.md dark palette)
+   .dark = DARK MODE overrides
+   Aligned to the marketing/landing palette (navy ground, indigo-deep
+   panels, gold primary CTA, soft-teal accent) so the public site, the
+   auth flow, and the authenticated app all read as one product rather
+   than two design systems. Status colours stay deliberately disjoint
+   from the brand per Design.md Sec 4.2.
    ===================================================================== */
 .dark {
-  --background: #0A141E;
-  --foreground: #E5EDF0;
-  --card: #111E2A;
-  --card-foreground: #E5EDF0;
-  --popover: #111E2A;
-  --popover-foreground: #E5EDF0;
-  --primary: #2AB3AB;
-  --primary-foreground: #0A141E;
-  --secondary: #00609C;
+  --background: #070B18;           /* navy — same ground as the landing page */
+  --foreground: #E9EEF7;
+  --card: #111B3D;                 /* indigo-deep — same panel as marketing cards */
+  --card-foreground: #E9EEF7;
+  --popover: #111B3D;
+  --popover-foreground: #E9EEF7;
+  --primary: #D9A441;              /* gold — matches the site's primary CTA */
+  --primary-foreground: #070B18;
+  --secondary: #0E6BA8;            /* brand blue */
   --secondary-foreground: #FFFFFF;
-  --muted: #111E2A;
-  --muted-foreground: #94A7B2;
-  --accent: #2AB3AB;
-  --accent-foreground: #0A141E;
+  --muted: #0F1730;
+  --muted-foreground: #B8C0CC;     /* soft-grey */
+  /* `accent` is shadcn's subtle hover surface (hover:bg-accent), not a
+     vivid brand colour — keep it a raised navy so hovers stay quiet. */
+  --accent: #17223F;
+  --accent-foreground: #E9EEF7;
   --destructive: #F87171;
-  --destructive-foreground: #0A141E;
-  --border: #1C2B38;
-  --input: #1C2B38;
-  --ring: #00D8CC;
+  --destructive-foreground: #070B18;
+  --border: #263247;               /* dark-border — same as marketing */
+  --input: #263247;
+  --ring: #4FB7A8;                 /* soft-teal focus ring */
 
   --success: #34D399;
-  --success-foreground: #0A141E;
+  --success-foreground: #070B18;
   --warning: #FBBF24;
-  --warning-foreground: #0A141E;
+  --warning-foreground: #070B18;
   --info: #60A5FA;
-  --info-foreground: #0A141E;
+  --info-foreground: #070B18;
 }
 
 @layer base {
@@ -187,10 +211,31 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
   ::selection {
     background: color-mix(in oklab, var(--soft-teal) 40%, transparent);
     color: white;
+  }
+  /* Two-column split layouts (hero, feature rows, etc.) collapse to one
+     column below `lg`, but grid items default to min-width:auto — long
+     headings/paragraphs then force the track wider than the viewport and
+     get silently clipped by an ancestor's overflow-hidden instead of
+     wrapping. Force children to shrink to their track. */
+  .lg\:grid-cols-2 > * {
+    min-width: 0;
+  }
+
+  /* Design.md Sec 8: motion is purposeful, and prefers-reduced-motion is
+     always respected — animated content appears instantly rather than
+     sliding. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

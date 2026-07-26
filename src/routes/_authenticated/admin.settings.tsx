@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Loader2, Save } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
         <Input value={notifyPref} onChange={(e) => setNotifyPref(e.target.value)} placeholder="IN_APP" />
       </div>
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
+        {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         {save.isPending ? "Saving…" : "Save changes"}
       </Button>
     </div>
@@ -161,7 +163,10 @@ function OrgForm({ tenantId }: { tenantId: string }) {
       <div className="space-y-1"><Label>GSTIN</Label><Input value={gstin} onChange={(e) => setGstin(e.target.value)} /></div>
       <div className="space-y-1"><Label>Billing email</Label><Input type="email" value={bEmail} onChange={(e) => setBEmail(e.target.value)} /></div>
       <div className="space-y-1"><Label>Billing phone</Label><Input value={bPhone} onChange={(e) => setBPhone(e.target.value)} /></div>
-      <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? "Saving…" : "Save changes"}</Button>
+      <Button onClick={() => save.mutate()} disabled={save.isPending}>
+        {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        {save.isPending ? "Saving…" : "Save changes"}
+      </Button>
     </div>
   );
 }

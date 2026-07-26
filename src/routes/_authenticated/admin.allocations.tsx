@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BedSingle } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
@@ -175,7 +176,7 @@ function AllocationBoard() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSelectedBed(null)}>Cancel</Button>
             <Button disabled={!studentId || create.isPending} onClick={() => create.mutate()}>
-              Allocate
+              <BedSingle className="h-4 w-4" /> Allocate
             </Button>
           </DialogFooter>
         </DialogContent>

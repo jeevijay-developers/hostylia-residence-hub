@@ -15,7 +15,7 @@ import {
  */
 export const upsertFeePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => feePlanFormSchema.parse(d))
+  .validator((d) => feePlanFormSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -71,7 +71,7 @@ export const upsertFeePlan = createServerFn({ method: "POST" })
  */
 export const recordManualPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => recordPaymentSchema.parse(d))
+  .validator((d) => recordPaymentSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -122,7 +122,7 @@ export const recordManualPayment = createServerFn({ method: "POST" })
  */
 export const initiateRefund = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => initiateRefundSchema.parse(d))
+  .validator((d) => initiateRefundSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: pay, error: pErr } = await supabase
@@ -159,7 +159,7 @@ export const initiateRefund = createServerFn({ method: "POST" })
  */
 export const decideRefund = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => approveRefundSchema.parse(d))
+  .validator((d) => approveRefundSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: out, error } = await supabase.rpc("fn_approve_refund", {
@@ -179,7 +179,7 @@ export const decideRefund = createServerFn({ method: "POST" })
  */
 export const createRazorpayOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => createRazorpayOrderSchema.parse(d))
+  .validator((d) => createRazorpayOrderSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: out, error } = await supabase.functions.invoke("razorpay-create-order", {
@@ -201,7 +201,7 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
  */
 export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ property_id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ property_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     // Phase 9: aging math is centralised in v_invoice_aging so this page
@@ -237,7 +237,7 @@ export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
  */
 export const listPropertyInvoices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({
       property_id: z.string().uuid(),
       status: z.string().optional(),
@@ -264,7 +264,7 @@ const voidSchema = z.object({
 });
 export const voidInvoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => voidSchema.parse(d))
+  .validator((d) => voidSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { error } = await supabase

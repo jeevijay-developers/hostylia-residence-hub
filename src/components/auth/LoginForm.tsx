@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Loader2, LogIn, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -26,18 +27,27 @@ export function LoginForm({ defaultMode = "phone" as Mode }: { defaultMode?: Mod
   const [mode, setMode] = useState<Mode>(defaultMode);
 
   return (
-    <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="phone" className="min-h-11">{t("auth.tabPhone")}</TabsTrigger>
-        <TabsTrigger value="email" className="min-h-11">{t("auth.tabEmail")}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="phone" className="mt-6">
-        <PhoneForm />
-      </TabsContent>
-      <TabsContent value="email" className="mt-6">
-        <EmailForm />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-6">
+      <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
+        <TabsList className="grid h-auto w-full grid-cols-2">
+          <TabsTrigger value="phone" className="min-h-11">{t("auth.tabPhone")}</TabsTrigger>
+          <TabsTrigger value="email" className="min-h-11">{t("auth.tabEmail")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="phone" className="mt-6">
+          <PhoneForm />
+        </TabsContent>
+        <TabsContent value="email" className="mt-6">
+          <EmailForm />
+        </TabsContent>
+      </Tabs>
+
+      <p className="text-center text-sm text-muted-foreground">
+        {t("auth.noAccount")}{" "}
+        <Link to="/signup" className="text-primary underline-offset-4 hover:underline">
+          {t("auth.signUpLink")}
+        </Link>
+      </p>
+    </div>
   );
 }
 
@@ -88,7 +98,7 @@ function PhoneForm() {
         )}
       </div>
       <Button type="submit" disabled={submitting} className="min-h-11 w-full">
-        {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         {t("auth.sendCode")}
       </Button>
     </form>
@@ -153,11 +163,12 @@ function EmailForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">{t("auth.passwordLabel")}</Label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           className="min-h-11"
+          showLabel={t("auth.showPassword")}
+          hideLabel={t("auth.hidePassword")}
           aria-invalid={errors.password ? "true" : undefined}
           {...register("password")}
         />
@@ -166,7 +177,7 @@ function EmailForm() {
         ) : null}
       </div>
       <Button type="submit" disabled={submitting} className="min-h-11 w-full">
-        {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
         {t("auth.signIn")}
       </Button>
     </form>

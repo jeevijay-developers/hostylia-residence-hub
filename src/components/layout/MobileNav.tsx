@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CalendarClock, LogIn } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Logo } from "@/components/site/Logo";
 import { MegaMenuSolutions } from "./MegaMenuSolutions";
@@ -52,15 +53,17 @@ export function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         <Link
           to="/book-demo"
           onClick={onNavigate}
-          className="block rounded-lg bg-gold px-4 py-3 text-center text-sm font-bold text-navy"
+          className="flex items-center justify-center gap-1.5 rounded-lg bg-gold px-4 py-3 text-center text-sm font-bold text-navy"
         >
+          <CalendarClock size={16} />
           Book Demo
         </Link>
         <Link
-          to="/contact"
+          to="/login"
           onClick={onNavigate}
-          className="block rounded-lg border border-dark-border bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dark-border bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white"
         >
+          <LogIn size={16} />
           Sign In
         </Link>
       </div>

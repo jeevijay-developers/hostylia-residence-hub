@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CheckCheck, Loader2, Save } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -67,8 +68,11 @@ function WardenAttendancePage() {
       <PageHeader title="Attendance" description="Bulk-mark: default all Present, flag exceptions." />
       <div className="flex flex-wrap items-center gap-2">
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40" />
-        <Button size="sm" variant="outline" onClick={() => setAllExcept("PRESENT")}>Mark all Present</Button>
+        <Button size="sm" variant="outline" onClick={() => setAllExcept("PRESENT")}>
+          <CheckCheck className="h-4 w-4" /> Mark all Present
+        </Button>
         <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+          {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saveMut.isPending ? "Saving…" : "Save"}
         </Button>
       </div>

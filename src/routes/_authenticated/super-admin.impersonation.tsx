@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Loader2, LogIn, Square } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,7 @@ function ImpersonationPage() {
           </div>
         </div>
         <Button disabled={!canStart || start.isPending} onClick={() => start.mutate()}>
+          {start.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
           {start.isPending ? "Starting…" : "Start session"}
         </Button>
       </div>
@@ -180,7 +182,11 @@ function ImpersonationPage() {
                     {active ? <Badge>Active</Badge> : s.ended_at ? <Badge variant="secondary">Ended</Badge> : <Badge variant="outline">Expired</Badge>}
                   </td>
                   <td className="px-4 py-2 text-right">
-                    {active && (<Button size="sm" variant="destructive" onClick={() => end.mutate(s.id)}>End now</Button>)}
+                    {active && (
+                      <Button size="sm" variant="destructive" onClick={() => end.mutate(s.id)}>
+                        <Square className="h-4 w-4" /> End now
+                      </Button>
+                    )}
                   </td>
                 </tr>
               );

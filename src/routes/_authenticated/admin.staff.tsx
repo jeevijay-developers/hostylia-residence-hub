@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Loader2, Send, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ function AdminStaffPage() {
               onClick={() => invite.mutate()}
               className="w-full"
             >
+              {invite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {invite.isPending ? "Sending…" : "Send invite"}
             </Button>
           </div>
@@ -132,7 +134,7 @@ function AdminStaffPage() {
                 <td className="px-4 py-2 text-right">
                   {!s.revoked_at && s.role !== "HOSTEL_ADMIN" && (
                     <Button size="sm" variant="ghost" onClick={() => revoke.mutate(s.id)}>
-                      Revoke
+                      <UserX className="h-4 w-4" /> Revoke
                     </Button>
                   )}
                 </td>

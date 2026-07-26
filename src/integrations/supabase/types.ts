@@ -4021,6 +4021,13 @@ export type Database = {
         Args: { _tenant: string }
         Returns: boolean
       }
+      fn_provision_tenant: {
+        Args: { p_hostel_name: string }
+        Returns: {
+          already_existed: boolean
+          tenant_id: string
+        }[]
+      }
       fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
       fn_seed_default_complaint_categories: {
         Args: { p_property_id: string }
@@ -4047,8 +4054,24 @@ export type Database = {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_guardian_of_property: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_guardian_of_student: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_hostel_admin: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_own_student: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_own_student_property: {
+        Args: { _property_id: string; _user_id: string }
         Returns: boolean
       }
       is_owning_student: {

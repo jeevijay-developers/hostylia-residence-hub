@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PostLoginRouteImport } from './routes/post-login'
@@ -87,6 +89,11 @@ const VerifyOtpRoute = VerifyOtpRouteImport.update({
   path: '/verify-otp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -100,6 +107,11 @@ const SolutionsRoute = SolutionsRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -500,9 +512,11 @@ export interface FileRoutesByFullPath {
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/accountant': typeof AuthenticatedAccountantRouteWithChildren
   '/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -573,9 +587,11 @@ export interface FileRoutesByTo {
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/accountant': typeof AuthenticatedAccountantRouteWithChildren
   '/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -647,9 +663,11 @@ export interface FileRoutesById {
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/accountant': typeof AuthenticatedAccountantRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
@@ -722,9 +740,11 @@ export interface FileRouteTypes {
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/signup'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-email'
     | '/verify-otp'
     | '/accountant'
     | '/admin'
@@ -795,9 +815,11 @@ export interface FileRouteTypes {
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/signup'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-email'
     | '/verify-otp'
     | '/accountant'
     | '/admin'
@@ -868,9 +890,11 @@ export interface FileRouteTypes {
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/signup'
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
+    | '/verify-email'
     | '/verify-otp'
     | '/_authenticated/accountant'
     | '/_authenticated/admin'
@@ -943,9 +967,11 @@ export interface RootRouteChildren {
   PostLoginRoute: typeof PostLoginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SolutionsRoute: typeof SolutionsRoute
   TermsRoute: typeof TermsRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   ApplyPropertySlugRoute: typeof ApplyPropertySlugRoute
 }
@@ -957,6 +983,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-otp'
       fullPath: '/verify-otp'
       preLoaderRoute: typeof VerifyOtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -978,6 +1011,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -1707,9 +1747,11 @@ const rootRouteChildren: RootRouteChildren = {
   PostLoginRoute: PostLoginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SolutionsRoute: SolutionsRoute,
   TermsRoute: TermsRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   ApplyPropertySlugRoute: ApplyPropertySlugRoute,
 }
