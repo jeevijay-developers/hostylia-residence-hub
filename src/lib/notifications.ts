@@ -25,10 +25,17 @@ export function useMyNotifications() {
   });
 
   useEffect(() => {
+    // The channel is created inside an async callback, so the effect can be torn
+    // down before `sub` is assigned. Without the `cancelled` guard the channel
+    // leaks, and because supabase.channel() returns the existing channel for a
+    // known topic, the next mount gets an already-subscribed channel and throws
+    // "cannot add postgres_changes callbacks ... after subscribe()".
+    let cancelled = false;
     let sub: ReturnType<typeof supabase.channel> | null = null;
+
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      sub = supabase
+      if (cancelled || !data.user) return;
+      const channel = supabase
         .channel(`notif-${data.user.id}`)
         .on(
           "postgres_changes",
@@ -41,8 +48,17 @@ export function useMyNotifications() {
           () => qc.invalidateQueries({ queryKey: ["my-notifications"] }),
         )
         .subscribe();
+
+      // Torn down while subscribing — drop it rather than orphaning the topic.
+      if (cancelled) {
+        supabase.removeChannel(channel);
+        return;
+      }
+      sub = channel;
     });
+
     return () => {
+      cancelled = true;
       if (sub) supabase.removeChannel(sub);
     };
   }, [qc]);
