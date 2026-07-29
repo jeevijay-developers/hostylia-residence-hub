@@ -380,7 +380,7 @@ function EmailCredentialsForm({
   const onSubmit = async (values: EmailCredentialsInput) => {
     setSubmitting(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -390,6 +390,15 @@ function EmailCredentialsForm({
       });
       if (error) {
         toast.error(error.message);
+        return;
+      }
+      // Supabase returns a "success" response for an already-registered,
+      // confirmed email without sending a new confirmation mail (anti
+      // enumeration) — the only client-visible tell is an empty
+      // `identities` array, so surface that as an explicit error instead of
+      // showing the misleading "check your inbox" step.
+      if (data.user && data.user.identities?.length === 0) {
+        toast.error("This email is already registered. Please sign in instead.");
         return;
       }
       onSignedUp(values.email);

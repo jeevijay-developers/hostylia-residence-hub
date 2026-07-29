@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import logoAsset from "@/assets/hostylia-logo.png";
+import { BrandLockup } from "@/components/BrandLockup";
 
 export function MobileHeader() {
   const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
       <Link to="/" className="flex items-center gap-2">
-        <img src={logoAsset} alt="Hostylia" className="h-6 w-auto" />
+        <BrandLockup variant="lockup" className="h-7" />
       </Link>
       <div className="flex items-center gap-1">
         <NotificationBell />

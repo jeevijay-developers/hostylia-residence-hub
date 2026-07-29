@@ -180,6 +180,9 @@ function EmailForm() {
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
         {t("auth.signIn")}
       </Button>
+      <Button asChild type="button" variant="ghost" className="min-h-11 w-full">
+        <Link to="/forgot-password">{t("auth.forgotPasswordLink")}</Link>
+      </Button>
     </form>
   );
 }

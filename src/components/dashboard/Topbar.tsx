@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogOut, Search, UserCog } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut, Search, UserRoundPen } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -18,12 +19,10 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
-import { signOut } from "@/lib/auth";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { EditProfileDialog } from "@/components/dashboard/EditProfileDialog";
-import { useResolvedRole } from "@/lib/user-role";
+import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
+import { signOut } from "@/lib/auth";
 import type { NavItem } from "@/lib/dashboard-nav";
 
 interface TopbarProps {
@@ -35,18 +34,24 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   const crumbs = pathname.split("/").filter(Boolean);
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const { data: resolved } = useResolvedRole();
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+
+  const { data: ownProfile } = useQuery({
+    queryKey: ["own-profile"],
+    queryFn: fetchOwnProfile,
+  });
+  const displayName = ownProfile?.preferred_name || ownProfile?.full_name || "";
+  const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
+    const handler = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setSearchOpen((open) => !open);
       }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, []);
 
   return (
@@ -113,13 +118,13 @@ export function Topbar({ navItems = [] }: TopbarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-          H
+          {avatarInitial}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel>Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
-            <UserCog className="mr-2 h-4 w-4" />
+          <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
+            <UserRoundPen className="mr-2 h-4 w-4" />
             Edit profile
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -134,13 +139,7 @@ export function Topbar({ navItems = [] }: TopbarProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {resolved?.userId && (
-        <EditProfileDialog
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-          userId={resolved.userId}
-        />
-      )}
+      <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
     </header>
   );
 }

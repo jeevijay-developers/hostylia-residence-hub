@@ -15,12 +15,14 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PostLoginRouteImport } from './routes/post-login'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FounderRouteImport } from './routes/founder'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BookDemoRouteImport } from './routes/book-demo'
@@ -75,11 +77,14 @@ import { Route as AuthenticatedAccountantRefundsRouteImport } from './routes/_au
 import { Route as AuthenticatedAccountantPaymentsRouteImport } from './routes/_authenticated/accountant.payments'
 import { Route as AuthenticatedAccountantInvoicesRouteImport } from './routes/_authenticated/accountant.invoices'
 import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
+import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/admin.students.index'
+import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
 import { Route as AuthenticatedAdminFinanceIndexRouteImport } from './routes/_authenticated/admin.finance.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
 import { Route as AuthenticatedAdminFinanceFeePlansRouteImport } from './routes/_authenticated/admin.finance.fee-plans'
+import { Route as AuthenticatedAdminStudentsIdIndexRouteImport } from './routes/_authenticated/admin.students.$id.index'
 import { Route as AuthenticatedAdminStudentsIdMoveOutRouteImport } from './routes/_authenticated/admin.students.$id.move-out'
 import { Route as AuthenticatedAdminPropertiesIdStructureRouteImport } from './routes/_authenticated/admin.properties.$id.structure'
 import { Route as AuthenticatedAdminPropertiesIdSetupRouteImport } from './routes/_authenticated/admin.properties.$id.setup'
@@ -114,6 +119,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -142,6 +152,11 @@ const LoginRoute = LoginRouteImport.update({
 const FounderRoute = FounderRouteImport.update({
   id: '/founder',
   path: '/founder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesRoute = FeaturesRouteImport.update({
@@ -448,6 +463,18 @@ const AuthenticatedAccountantDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAccountantRoute,
   } as any)
+const AuthenticatedAdminStudentsIndexRoute =
+  AuthenticatedAdminStudentsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminStudentsRoute,
+  } as any)
+const AuthenticatedAdminPropertiesIndexRoute =
+  AuthenticatedAdminPropertiesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminFinanceIndexRoute =
   AuthenticatedAdminFinanceIndexRouteImport.update({
     id: '/',
@@ -478,6 +505,12 @@ const AuthenticatedAdminFinanceFeePlansRoute =
     path: '/fee-plans',
     getParentRoute: () => AuthenticatedAdminFinanceRoute,
   } as any)
+const AuthenticatedAdminStudentsIdIndexRoute =
+  AuthenticatedAdminStudentsIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminStudentsIdRoute,
+  } as any)
 const AuthenticatedAdminStudentsIdMoveOutRoute =
   AuthenticatedAdminStudentsIdMoveOutRouteImport.update({
     id: '/move-out',
@@ -506,12 +539,14 @@ export interface FileRoutesByFullPath {
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
@@ -568,9 +603,12 @@ export interface FileRoutesByFullPath {
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
+  '/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -581,12 +619,14 @@ export interface FileRoutesByTo {
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
@@ -609,11 +649,9 @@ export interface FileRoutesByTo {
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
-  '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
   '/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/parent/messages': typeof AuthenticatedParentMessagesRoute
@@ -640,11 +678,13 @@ export interface FileRoutesByTo {
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
-  '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
+  '/admin/students': typeof AuthenticatedAdminStudentsIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/admin/students/$id': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -657,12 +697,14 @@ export interface FileRoutesById {
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/platform': typeof PlatformRoute
   '/post-login': typeof PostLoginRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
@@ -719,9 +761,12 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/_authenticated/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
+  '/_authenticated/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/_authenticated/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/_authenticated/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -734,12 +779,14 @@ export interface FileRouteTypes {
     | '/book-demo'
     | '/contact'
     | '/features'
+    | '/forgot-password'
     | '/founder'
     | '/login'
     | '/platform'
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
     | '/signup'
     | '/sitemap.xml'
     | '/solutions'
@@ -796,9 +843,12 @@ export interface FileRouteTypes {
     | '/admin/finance/pnl'
     | '/admin/students/$id'
     | '/admin/finance/'
+    | '/admin/properties/'
+    | '/admin/students/'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
+    | '/admin/students/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -809,12 +859,14 @@ export interface FileRouteTypes {
     | '/book-demo'
     | '/contact'
     | '/features'
+    | '/forgot-password'
     | '/founder'
     | '/login'
     | '/platform'
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
     | '/signup'
     | '/sitemap.xml'
     | '/solutions'
@@ -837,11 +889,9 @@ export interface FileRouteTypes {
     | '/admin/complaints'
     | '/admin/dashboard'
     | '/admin/notices'
-    | '/admin/properties'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
-    | '/admin/students'
     | '/parent/attendance'
     | '/parent/complaints'
     | '/parent/messages'
@@ -868,11 +918,13 @@ export interface FileRouteTypes {
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
     | '/admin/finance/pnl'
-    | '/admin/students/$id'
     | '/admin/finance'
+    | '/admin/properties'
+    | '/admin/students'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
+    | '/admin/students/$id'
   id:
     | '__root__'
     | '/'
@@ -884,12 +936,14 @@ export interface FileRouteTypes {
     | '/book-demo'
     | '/contact'
     | '/features'
+    | '/forgot-password'
     | '/founder'
     | '/login'
     | '/platform'
     | '/post-login'
     | '/pricing'
     | '/privacy'
+    | '/reset-password'
     | '/signup'
     | '/sitemap.xml'
     | '/solutions'
@@ -946,9 +1000,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/finance/'
+    | '/_authenticated/admin/properties/'
+    | '/_authenticated/admin/students/'
     | '/_authenticated/admin/properties/$id/setup'
     | '/_authenticated/admin/properties/$id/structure'
     | '/_authenticated/admin/students/$id/move-out'
+    | '/_authenticated/admin/students/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -961,12 +1018,14 @@ export interface RootRouteChildren {
   BookDemoRoute: typeof BookDemoRoute
   ContactRoute: typeof ContactRoute
   FeaturesRoute: typeof FeaturesRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   FounderRoute: typeof FounderRoute
   LoginRoute: typeof LoginRoute
   PlatformRoute: typeof PlatformRoute
   PostLoginRoute: typeof PostLoginRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SolutionsRoute: typeof SolutionsRoute
@@ -1020,6 +1079,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -1060,6 +1126,13 @@ declare module '@tanstack/react-router' {
       path: '/founder'
       fullPath: '/founder'
       preLoaderRoute: typeof FounderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features': {
@@ -1440,6 +1513,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountantDashboardRouteImport
       parentRoute: typeof AuthenticatedAccountantRoute
     }
+    '/_authenticated/admin/students/': {
+      id: '/_authenticated/admin/students/'
+      path: '/'
+      fullPath: '/admin/students/'
+      preLoaderRoute: typeof AuthenticatedAdminStudentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminStudentsRoute
+    }
+    '/_authenticated/admin/properties/': {
+      id: '/_authenticated/admin/properties/'
+      path: '/'
+      fullPath: '/admin/properties/'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/finance/': {
       id: '/_authenticated/admin/finance/'
       path: '/'
@@ -1474,6 +1561,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/finance/fee-plans'
       preLoaderRoute: typeof AuthenticatedAdminFinanceFeePlansRouteImport
       parentRoute: typeof AuthenticatedAdminFinanceRoute
+    }
+    '/_authenticated/admin/students/$id/': {
+      id: '/_authenticated/admin/students/$id/'
+      path: '/'
+      fullPath: '/admin/students/$id/'
+      preLoaderRoute: typeof AuthenticatedAdminStudentsIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminStudentsIdRoute
     }
     '/_authenticated/admin/students/$id/move-out': {
       id: '/_authenticated/admin/students/$id/move-out'
@@ -1545,12 +1639,15 @@ const AuthenticatedAdminFinanceRouteWithChildren =
   )
 
 interface AuthenticatedAdminPropertiesRouteChildren {
+  AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
   AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
   AuthenticatedAdminPropertiesIdStructureRoute: typeof AuthenticatedAdminPropertiesIdStructureRoute
 }
 
 const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRouteChildren =
   {
+    AuthenticatedAdminPropertiesIndexRoute:
+      AuthenticatedAdminPropertiesIndexRoute,
     AuthenticatedAdminPropertiesIdSetupRoute:
       AuthenticatedAdminPropertiesIdSetupRoute,
     AuthenticatedAdminPropertiesIdStructureRoute:
@@ -1564,12 +1661,15 @@ const AuthenticatedAdminPropertiesRouteWithChildren =
 
 interface AuthenticatedAdminStudentsIdRouteChildren {
   AuthenticatedAdminStudentsIdMoveOutRoute: typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  AuthenticatedAdminStudentsIdIndexRoute: typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 
 const AuthenticatedAdminStudentsIdRouteChildren: AuthenticatedAdminStudentsIdRouteChildren =
   {
     AuthenticatedAdminStudentsIdMoveOutRoute:
       AuthenticatedAdminStudentsIdMoveOutRoute,
+    AuthenticatedAdminStudentsIdIndexRoute:
+      AuthenticatedAdminStudentsIdIndexRoute,
   }
 
 const AuthenticatedAdminStudentsIdRouteWithChildren =
@@ -1579,12 +1679,14 @@ const AuthenticatedAdminStudentsIdRouteWithChildren =
 
 interface AuthenticatedAdminStudentsRouteChildren {
   AuthenticatedAdminStudentsIdRoute: typeof AuthenticatedAdminStudentsIdRouteWithChildren
+  AuthenticatedAdminStudentsIndexRoute: typeof AuthenticatedAdminStudentsIndexRoute
 }
 
 const AuthenticatedAdminStudentsRouteChildren: AuthenticatedAdminStudentsRouteChildren =
   {
     AuthenticatedAdminStudentsIdRoute:
       AuthenticatedAdminStudentsIdRouteWithChildren,
+    AuthenticatedAdminStudentsIndexRoute: AuthenticatedAdminStudentsIndexRoute,
   }
 
 const AuthenticatedAdminStudentsRouteWithChildren =
@@ -1741,12 +1843,14 @@ const rootRouteChildren: RootRouteChildren = {
   BookDemoRoute: BookDemoRoute,
   ContactRoute: ContactRoute,
   FeaturesRoute: FeaturesRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   FounderRoute: FounderRoute,
   LoginRoute: LoginRoute,
   PlatformRoute: PlatformRoute,
   PostLoginRoute: PostLoginRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SolutionsRoute: SolutionsRoute,

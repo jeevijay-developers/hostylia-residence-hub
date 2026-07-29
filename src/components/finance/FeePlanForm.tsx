@@ -56,11 +56,11 @@ export function FeePlanForm({ propertyId }: { propertyId: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label>Name</Label>
-          <Input {...form.register("name")} />
+          <Input placeholder="e.g. Standard Rent Plan" {...form.register("name")} />
         </div>
         <div>
           <Label>Code</Label>
-          <Input {...form.register("code")} />
+          <Input placeholder="e.g. STD-RENT" {...form.register("code")} />
         </div>
         <div>
           <Label>Billing frequency</Label>
