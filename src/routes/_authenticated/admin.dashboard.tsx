@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Users, Wallet, MessageSquareWarning } from "lucide-react";
 
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
 function AdminDashboardPage() {
   const { data: role } = useResolvedRole();
   const tenantId = role?.tenantId ?? null;
+  const navigate = useNavigate();
 
   const kpis = useQuery({
     queryKey: ["admin-kpis", tenantId],
@@ -46,7 +47,10 @@ function AdminDashboardPage() {
       <EmptyState
         title="Add your first property"
         description="Set up a property to start onboarding students, tracking fees and gate activity."
-        action={{ label: "Add property" }}
+        action={{
+          label: "Add property",
+          onClick: () => navigate({ to: "/admin/properties" }),
+        }}
       />
     </div>
   );

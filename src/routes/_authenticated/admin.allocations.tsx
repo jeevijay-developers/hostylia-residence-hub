@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { BedSingle } from "lucide-react";
+import { BedSingle, LayoutGrid } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
@@ -113,6 +113,15 @@ function AllocationBoard() {
       <PageHeader
         title="Allocations"
         description="Tap a vacant bed to assign an applicant. Bed status flips automatically."
+        actions={
+          effectiveProp ? (
+            <Button asChild variant="outline">
+              <Link to="/admin/properties/$id/structure" params={{ id: effectiveProp }}>
+                <LayoutGrid className="h-4 w-4" /> Manage rooms & beds
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {propertiesQ.data && propertiesQ.data.length > 1 && (

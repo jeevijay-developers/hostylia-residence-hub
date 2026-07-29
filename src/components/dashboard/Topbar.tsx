@@ -1,5 +1,6 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LogOut, Search, UserCog } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -9,14 +10,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { EditProfileDialog } from "@/components/dashboard/EditProfileDialog";
+import { useResolvedRole } from "@/lib/user-role";
+import type { NavItem } from "@/lib/dashboard-nav";
 
-export function Topbar() {
+interface TopbarProps {
+  navItems?: NavItem[];
+}
+
+export function Topbar({ navItems = [] }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
+  const navigate = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { data: resolved } = useResolvedRole();
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
@@ -43,10 +74,39 @@ export function Topbar() {
         </ol>
       </nav>
 
-      <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground md:flex md:w-72">
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground md:flex md:w-72"
+      >
         <Search className="h-4 w-4" />
-        <span>Search…</span>
-      </div>
+        <span className="flex-1 text-left">Search…</span>
+        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+          Ctrl K
+        </kbd>
+      </button>
+
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput placeholder="Search pages…" />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Pages">
+            {navItems.map((item) => (
+              <CommandItem
+                key={item.to}
+                value={item.label}
+                onSelect={() => {
+                  setSearchOpen(false);
+                  navigate({ to: item.to });
+                }}
+              >
+                <item.icon className="mr-2 h-4 w-4" />
+                <span>{item.label}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
 
       <ThemeToggle />
       <NotificationBell />
@@ -58,6 +118,10 @@ export function Topbar() {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel>Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
+            <UserCog className="mr-2 h-4 w-4" />
+            Edit profile
+          </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={async () => {
               await signOut();
@@ -69,6 +133,14 @@ export function Topbar() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {resolved?.userId && (
+        <EditProfileDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          userId={resolved.userId}
+        />
+      )}
     </header>
   );
 }
