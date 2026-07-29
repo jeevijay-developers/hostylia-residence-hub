@@ -77,6 +77,7 @@ import { Route as AuthenticatedAccountantRefundsRouteImport } from './routes/_au
 import { Route as AuthenticatedAccountantPaymentsRouteImport } from './routes/_authenticated/accountant.payments'
 import { Route as AuthenticatedAccountantInvoicesRouteImport } from './routes/_authenticated/accountant.invoices'
 import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
+import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
 import { Route as AuthenticatedAdminFinanceIndexRouteImport } from './routes/_authenticated/admin.finance.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
@@ -460,6 +461,12 @@ const AuthenticatedAccountantDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAccountantRoute,
   } as any)
+const AuthenticatedAdminPropertiesIndexRoute =
+  AuthenticatedAdminPropertiesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminFinanceIndexRoute =
   AuthenticatedAdminFinanceIndexRouteImport.update({
     id: '/',
@@ -582,6 +589,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -625,7 +633,6 @@ export interface FileRoutesByTo {
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -658,6 +665,7 @@ export interface FileRoutesByTo {
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -737,6 +745,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/_authenticated/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/_authenticated/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -816,6 +825,7 @@ export interface FileRouteTypes {
     | '/admin/finance/pnl'
     | '/admin/students/$id'
     | '/admin/finance/'
+    | '/admin/properties/'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
@@ -859,7 +869,6 @@ export interface FileRouteTypes {
     | '/admin/complaints'
     | '/admin/dashboard'
     | '/admin/notices'
-    | '/admin/properties'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
@@ -892,6 +901,7 @@ export interface FileRouteTypes {
     | '/admin/finance/pnl'
     | '/admin/students/$id'
     | '/admin/finance'
+    | '/admin/properties'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
@@ -970,6 +980,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/finance/'
+    | '/_authenticated/admin/properties/'
     | '/_authenticated/admin/properties/$id/setup'
     | '/_authenticated/admin/properties/$id/structure'
     | '/_authenticated/admin/students/$id/move-out'
@@ -1480,6 +1491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountantDashboardRouteImport
       parentRoute: typeof AuthenticatedAccountantRoute
     }
+    '/_authenticated/admin/properties/': {
+      id: '/_authenticated/admin/properties/'
+      path: '/'
+      fullPath: '/admin/properties/'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/finance/': {
       id: '/_authenticated/admin/finance/'
       path: '/'
@@ -1585,12 +1603,15 @@ const AuthenticatedAdminFinanceRouteWithChildren =
   )
 
 interface AuthenticatedAdminPropertiesRouteChildren {
+  AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
   AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
   AuthenticatedAdminPropertiesIdStructureRoute: typeof AuthenticatedAdminPropertiesIdStructureRoute
 }
 
 const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRouteChildren =
   {
+    AuthenticatedAdminPropertiesIndexRoute:
+      AuthenticatedAdminPropertiesIndexRoute,
     AuthenticatedAdminPropertiesIdSetupRoute:
       AuthenticatedAdminPropertiesIdSetupRoute,
     AuthenticatedAdminPropertiesIdStructureRoute:
