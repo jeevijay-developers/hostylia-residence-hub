@@ -54,7 +54,17 @@
     "checkInboxTitle": "Check your inbox",
     "checkInboxBody": "We've sent a confirmation link to",
     "checkInboxHint": "Click the link to verify your email, then sign in.",
-    "goToSignIn": "Go to sign in"
+    "goToSignIn": "Go to sign in",
+    "forgotPasswordLink": "Forgot password?",
+    "forgotPasswordTitle": "Reset your password",
+    "forgotPasswordSubtitle": "Enter your registered email and we'll send you a reset link.",
+    "sendResetLink": "Send reset link",
+    "resetEmailSentBody": "We've sent a password reset link to",
+    "resetEmailSentHint": "Click the link to set a new password, then sign in.",
+    "resetPasswordTitle": "Set a new password",
+    "resetPasswordSubtitle": "Choose a new password for your account.",
+    "newPasswordLabel": "New password",
+    "updatePassword": "Update password"
   },
   "parent": {
     "shellTitle": "Parent portal",

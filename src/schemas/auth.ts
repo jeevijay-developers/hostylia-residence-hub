@@ -111,6 +111,20 @@ export const otpVerifySchema = z.object({
   token: otpCodeSchema,
 });
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export type PhoneLoginInput = z.infer<typeof phoneLoginSchema>;
 export type EmailLoginInput = z.infer<typeof emailLoginSchema>;
 export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
@@ -119,6 +133,8 @@ export type PhoneSignupInput = z.infer<typeof phoneSignupSchema>;
 export type SignupIdentityInput = z.infer<typeof signupIdentitySchema>;
 export type EmailCredentialsInput = z.infer<typeof emailCredentialsSchema>;
 export type PhoneCredentialsInput = z.infer<typeof phoneCredentialsSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /** Rate-limit window used for OTP resend cooldown (seconds). */
 export const OTP_RESEND_WINDOW_SECONDS = 600;

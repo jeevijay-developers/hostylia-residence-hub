@@ -25,11 +25,19 @@ export function useMyNotifications() {
   });
 
   useEffect(() => {
+    let cancelled = false;
     let sub: ReturnType<typeof supabase.channel> | null = null;
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
+      if (!data.user || cancelled) return;
+      const topic = `notif-${data.user.id}`;
+      // A channel for this topic may already be subscribed (e.g. another
+      // mounted instance of this hook, or a leftover from a fast remount) —
+      // `.channel()` returns that same joined instance, and calling `.on()`
+      // on an already-subscribed channel throws. Reuse it instead.
+      const alreadyJoined = supabase.getChannels().some((c) => c.topic === `realtime:${topic}`);
+      if (alreadyJoined) return;
       sub = supabase
-        .channel(`notif-${data.user.id}`)
+        .channel(topic)
         .on(
           "postgres_changes",
           {
@@ -43,6 +51,7 @@ export function useMyNotifications() {
         .subscribe();
     });
     return () => {
+      cancelled = true;
       if (sub) supabase.removeChannel(sub);
     };
   }, [qc]);
@@ -86,9 +95,12 @@ export function useTenantNotices(tenantId: string | null | undefined, propertyId
 
   useEffect(() => {
     if (!key) return;
+    const topic = `notices-${key}`;
+    const alreadyJoined = supabase.getChannels().some((c) => c.topic === `realtime:${topic}`);
+    if (alreadyJoined) return;
     const filter = tenantId ? `tenant_id=eq.${tenantId}` : `property_id=eq.${propertyId}`;
     const channel = supabase
-      .channel(`notices-${key}`)
+      .channel(topic)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notices", filter },

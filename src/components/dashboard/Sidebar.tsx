@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
+import { signOut } from "@/lib/auth";
 import { PropertySwitcher } from "./PropertySwitcher";
 import logoAsset from "@/assets/hostylia-logo.png";
 
@@ -27,11 +28,6 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
       <div className="flex items-center gap-2 border-b border-border px-4 py-4">
         <Link to="/" className="flex items-center gap-2">
           <img src={logoAsset} alt="Hostylia" className="h-7 w-auto shrink-0" />
-          {!collapsed && (
-            <span className="font-display text-sm font-semibold text-foreground">
-              Hostylia
-            </span>
-          )}
         </Link>
       </div>
 
@@ -63,6 +59,22 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
             </Link>
           );
         })}
+
+        <button
+          type="button"
+          onClick={async () => {
+            await signOut();
+            window.location.href = "/login";
+          }}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+            collapsed && "justify-center px-2",
+          )}
+          title={collapsed ? "Sign out" : undefined}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="truncate">Sign out</span>}
+        </button>
       </nav>
 
       <button
