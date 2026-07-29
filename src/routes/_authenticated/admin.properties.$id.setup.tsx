@@ -24,11 +24,30 @@ export const Route = createFileRoute("/_authenticated/admin/properties/$id/setup
 
 const STEPS = ["Basics", "Address", "Branding"] as const;
 
+/**
+ * Mirrors the slug rule in schemas/hostel.ts (`^[a-z0-9-]+$`, 2–64 chars) so the
+ * generated value can never fail validation the user didn't cause.
+ */
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
 function PropertySetupPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const nav = useNavigate();
   const [step, setStep] = useState(0);
+  /**
+   * The slug tracks the property name until someone edits it by hand, then it
+   * stops following. Public admission links are built from it, so a silent
+   * rewrite after the link has been shared would break it.
+   */
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
 
   const propertyQ = useQuery({
     queryKey: ["property", id],
@@ -64,6 +83,9 @@ function PropertySetupPage() {
   useEffect(() => {
     if (propertyQ.data) {
       const p = propertyQ.data;
+      // A stored slug that already differs from the name was chosen deliberately;
+      // keep following the name only while the two still agree.
+      setIsSlugEdited(p.slug !== slugify(p.name));
       setForm({
         name: p.name,
         slug: p.slug,
@@ -202,20 +224,48 @@ function PropertySetupPage() {
         <CardContent className="space-y-4">
           {step === 0 && (
             <>
-              <Field label="Property name">
-                <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+              <Field id="prop-name" label="Property name">
+                <Input
+                  id="prop-name"
+                  value={form.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      name,
+                      slug: isSlugEdited ? f.slug : slugify(name),
+                    }));
+                  }}
+                />
               </Field>
-              <Field label="Slug">
-                <Input value={form.slug} onChange={(e) => set("slug", e.target.value)} />
+              <Field
+                id="prop-slug"
+                label="Slug"
+                hint={
+                  form.slug
+                    ? `Public application link: /apply/${form.slug}`
+                    : "Used in the public application link. Lowercase letters, digits and dashes."
+                }
+              >
+                <Input
+                  id="prop-slug"
+                  value={form.slug}
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  onChange={(e) => {
+                    setIsSlugEdited(true);
+                    set("slug", slugify(e.target.value));
+                  }}
+                />
               </Field>
-              <Field label="Type">
+              <Field id="prop-type" label="Type">
                 <Select
                   value={form.property_type}
                   onValueChange={(v) =>
                     set("property_type", v as PropertyFormInput["property_type"])
                   }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="prop-type"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HOSTEL">Hostel</SelectItem>
                     <SelectItem value="PG">PG</SelectItem>
@@ -224,14 +274,14 @@ function PropertySetupPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Gender policy">
+              <Field id="prop-gender" label="Gender policy">
                 <Select
                   value={form.gender_policy}
                   onValueChange={(v) =>
                     set("gender_policy", v as PropertyFormInput["gender_policy"])
                   }
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="prop-gender"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">Male only</SelectItem>
                     <SelectItem value="FEMALE">Female only</SelectItem>
@@ -241,11 +291,11 @@ function PropertySetupPage() {
                 </Select>
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Phone">
-                  <Input value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+                <Field id="prop-phone" label="Phone">
+                  <Input id="prop-phone" type="tel" inputMode="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
                 </Field>
-                <Field label="Email">
-                  <Input type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+                <Field id="prop-email" label="Email">
+                  <Input id="prop-email" type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
                 </Field>
               </div>
             </>
@@ -253,32 +303,32 @@ function PropertySetupPage() {
 
           {step === 1 && (
             <>
-              <Field label="Address line 1">
-                <Input value={form.address_line_1} onChange={(e) => set("address_line_1", e.target.value)} />
+              <Field id="prop-addr1" label="Address line 1">
+                <Input id="prop-addr1" value={form.address_line_1} onChange={(e) => set("address_line_1", e.target.value)} />
               </Field>
-              <Field label="Address line 2">
-                <Input value={form.address_line_2 ?? ""} onChange={(e) => set("address_line_2", e.target.value)} />
+              <Field id="prop-addr2" label="Address line 2">
+                <Input id="prop-addr2" value={form.address_line_2 ?? ""} onChange={(e) => set("address_line_2", e.target.value)} />
               </Field>
-              <Field label="Landmark">
-                <Input value={form.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} />
+              <Field id="prop-landmark" label="Landmark">
+                <Input id="prop-landmark" value={form.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} />
               </Field>
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="City">
-                  <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
+                <Field id="prop-city" label="City">
+                  <Input id="prop-city" value={form.city} onChange={(e) => set("city", e.target.value)} />
                 </Field>
-                <Field label="State">
-                  <Input value={form.state} onChange={(e) => set("state", e.target.value)} />
+                <Field id="prop-state" label="State">
+                  <Input id="prop-state" value={form.state} onChange={(e) => set("state", e.target.value)} />
                 </Field>
-                <Field label="Postal code">
-                  <Input value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} />
+                <Field id="prop-pin" label="Postal code" hint="6-digit PIN code.">
+                  <Input id="prop-pin" inputMode="numeric" value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} />
                 </Field>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Country code">
-                  <Input value={form.country_code} onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))} />
+                <Field id="prop-country" label="Country code" hint="Two-letter ISO code, e.g. IN.">
+                  <Input id="prop-country" value={form.country_code} onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))} />
                 </Field>
-                <Field label="Timezone">
-                  <Input value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
+                <Field id="prop-tz" label="Timezone" hint="IANA name, e.g. Asia/Kolkata.">
+                  <Input id="prop-tz" value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
                 </Field>
               </div>
             </>
@@ -291,12 +341,13 @@ function PropertySetupPage() {
                 Stored securely and served through signed URLs.
               </p>
               <div>
-                <Label>Logo</Label>
+                <Label htmlFor="prop-logo">Logo</Label>
                 <div className="mt-2 flex items-center gap-3">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm hover:bg-muted">
                     <Upload className="h-4 w-4" />
                     Choose file
                     <input
+                      id="prop-logo"
                       type="file"
                       accept="image/*"
                       className="hidden"
@@ -358,11 +409,26 @@ function PropertySetupPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * `id` is required so the label is programmatically bound to its control —
+ * placeholder-only or visually-adjacent labels don't satisfy Design.md Sec. 13.
+ */
+function Field({
+  id,
+  label,
+  hint,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

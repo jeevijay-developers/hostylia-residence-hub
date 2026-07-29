@@ -141,6 +141,64 @@ const bulkImportSchema = z.object({
   rows: z.array(studentBulkRowSchema).min(1).max(1000),
 });
 
+async function insertStudentRow(
+  supabase: ReturnType<typeof adminClient>,
+  tenantId: string,
+  propertyId: string,
+  r: z.infer<typeof studentBulkRowSchema>,
+) {
+  const dob = r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
+  const { data: student, error } = await supabase
+    .from("students")
+    .insert({
+      tenant_id: tenantId,
+      property_id: propertyId,
+      admission_number: nextAdmissionNumber(),
+      full_name: r.full_name,
+      phone: r.phone || null,
+      email: r.email || null,
+      date_of_birth: dob,
+      gender: r.gender || null,
+      academic_institute: r.academic_institute || null,
+      course_name: r.course_name || null,
+      is_minor: dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false,
+      status: "APPLICANT",
+    })
+    .select("id, admission_number")
+    .single();
+  if (error) throw error;
+
+  if (r.guardian_phone && r.guardian_name) {
+    const phone = r.guardian_phone.startsWith("+") ? r.guardian_phone : `+${r.guardian_phone}`;
+    const { data: eg } = await supabase
+      .from("guardians")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("phone", phone)
+      .maybeSingle();
+    let gid = eg?.id;
+    if (!gid) {
+      const { data: gi, error: gErr } = await supabase
+        .from("guardians")
+        .insert({ tenant_id: tenantId, full_name: r.guardian_name, phone })
+        .select("id")
+        .single();
+      if (gErr) throw gErr;
+      gid = gi?.id;
+    }
+    if (gid) {
+      await supabase.from("student_guardians").insert({
+        tenant_id: tenantId,
+        student_id: student.id,
+        guardian_id: gid,
+        relationship: "GUARDIAN",
+        is_primary: true,
+      });
+    }
+  }
+  return student;
+}
+
 export const bulkImportStudents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => bulkImportSchema.parse(data))
@@ -149,62 +207,29 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
     const errors: { row: number; error: string }[] = [];
     let inserted = 0;
     for (let i = 0; i < data.rows.length; i++) {
-      const r = data.rows[i];
       try {
-        const dob = r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
-        const { data: student, error } = await supabase
-          .from("students")
-          .insert({
-            tenant_id: data.tenant_id,
-            property_id: data.property_id,
-            admission_number: nextAdmissionNumber(),
-            full_name: r.full_name,
-            phone: r.phone || null,
-            email: r.email || null,
-            date_of_birth: dob,
-            gender: r.gender || null,
-            academic_institute: r.academic_institute || null,
-            course_name: r.course_name || null,
-            is_minor: dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false,
-            status: "APPLICANT",
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-
-        if (r.guardian_phone && r.guardian_name) {
-          const phone = r.guardian_phone.startsWith("+") ? r.guardian_phone : `+${r.guardian_phone}`;
-          const { data: eg } = await supabase
-            .from("guardians")
-            .select("id")
-            .eq("tenant_id", data.tenant_id)
-            .eq("phone", phone)
-            .maybeSingle();
-          let gid = eg?.id;
-          if (!gid) {
-            const { data: gi } = await supabase
-              .from("guardians")
-              .insert({ tenant_id: data.tenant_id, full_name: r.guardian_name, phone })
-              .select("id")
-              .single();
-            gid = gi?.id;
-          }
-          if (gid) {
-            await supabase.from("student_guardians").insert({
-              tenant_id: data.tenant_id,
-              student_id: student.id,
-              guardian_id: gid,
-              relationship: "GUARDIAN",
-              is_primary: true,
-            });
-          }
-        }
+        await insertStudentRow(supabase, data.tenant_id, data.property_id, data.rows[i]);
         inserted += 1;
       } catch (e) {
         errors.push({ row: i + 1, error: e instanceof Error ? e.message : "unknown" });
       }
     }
     return { inserted, failed: errors.length, errors };
+  });
+
+const manualCreateSchema = studentBulkRowSchema.extend({
+  tenant_id: z.string().uuid(),
+  property_id: z.string().uuid(),
+});
+
+/** Single-student manual add for Admin/Warden — same insert path as bulk import, one row at a time. */
+export const createStudentManual = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => manualCreateSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const student = await insertStudentRow(supabase, data.tenant_id, data.property_id, data);
+    return { id: student.id, admission_number: student.admission_number };
   });
 
 export const createAllocation = createServerFn({ method: "POST" })

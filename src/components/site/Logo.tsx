@@ -1,12 +1,25 @@
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/hostylia-logo.png";
+import { BrandLockup } from "@/components/BrandLockup";
 
-export function Logo({ className = "h-9 w-auto", withLink = true }: { className?: string; withLink?: boolean }) {
-  const img = <img src={logo} alt="Hostylia — Smart Residential Management" className={className} />;
-  if (!withLink) return img;
+/**
+ * Marketing-surface brand mark. Defaults to the full lockup including the
+ * tagline, which only reads at these larger sizes; app chrome should use
+ * <BrandLockup variant="lockup" /> instead.
+ */
+export function Logo({
+  className = "h-9",
+  withLink = true,
+  variant = "full",
+}: {
+  className?: string;
+  withLink?: boolean;
+  variant?: "mark" | "lockup" | "full";
+}) {
+  const mark = <BrandLockup variant={variant} className={className} />;
+  if (!withLink) return mark;
   return (
     <Link to="/" className="inline-flex items-center" aria-label="Hostylia home">
-      {img}
+      {mark}
     </Link>
   );
 }

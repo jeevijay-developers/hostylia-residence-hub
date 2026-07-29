@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 import { signOut } from "@/lib/auth";
 import { PropertySwitcher } from "./PropertySwitcher";
-import logoAsset from "@/assets/hostylia-logo.png";
+import { BrandLockup } from "@/components/BrandLockup";
 
 interface SidebarProps {
   items: NavItem[];
@@ -25,9 +25,18 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
         collapsed ? "w-[72px]" : "w-[260px]",
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border px-4 py-4">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logoAsset} alt="Hostylia" className="h-7 w-auto shrink-0" />
+      <div
+        className={cn(
+          "flex items-center border-b border-border py-4",
+          collapsed ? "justify-center px-2" : "px-4",
+        )}
+      >
+        <Link
+          to="/"
+          aria-label="Hostylia home"
+          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        >
+          <BrandLockup variant={collapsed ? "mark" : "lockup"} className="h-8" />
         </Link>
       </div>
 
@@ -80,13 +89,19 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center gap-2 border-t border-border px-4 py-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={collapsed ? "Expand sidebar" : undefined}
+        className={cn(
+          "flex items-center gap-2 border-t border-border py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          collapsed ? "justify-center px-2" : "px-4",
+        )}
       >
         {collapsed ? (
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4 shrink-0" />
         ) : (
           <>
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 shrink-0" />
             <span>Collapse</span>
           </>
         )}
