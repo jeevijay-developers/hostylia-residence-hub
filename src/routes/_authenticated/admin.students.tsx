@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { UserPlus, Upload, Search, Eye } from "lucide-react";
+import { UserPlus, Upload, Search, Eye, Link2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -18,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
+import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/students")({
   head: () => ({ meta: [{ title: "Students — Hostylia" }] }),
@@ -30,6 +32,7 @@ function StudentsListPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [q, setQ] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const propertiesQ = useQuery({
     queryKey: ["admin-properties-min", tenantId],
@@ -37,7 +40,7 @@ function StudentsListPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("properties")
-        .select("id, name")
+        .select("id, name, slug")
         .eq("tenant_id", tenantId!)
         .is("deleted_at", null)
         .order("name");
@@ -46,6 +49,17 @@ function StudentsListPage() {
   });
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const effectiveProperty = propertyId ?? propertiesQ.data?.[0]?.id ?? null;
+  const effectivePropertyRow = propertiesQ.data?.find((p) => p.id === effectiveProperty);
+
+  function shareAdmissionLink() {
+    if (!effectivePropertyRow?.slug) {
+      toast.error("Set up a property first — the admission link needs a property.");
+      return;
+    }
+    const url = `${window.location.origin}/apply/${effectivePropertyRow.slug}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Admission link copied — share it with applicants via WhatsApp/SMS.");
+  }
 
   const studentsQ = useQuery({
     queryKey: ["admin-students", tenantId, effectiveProperty, statusFilter, q],
@@ -83,14 +97,15 @@ function StudentsListPage() {
         title="Students"
         description="Applicants, active residents and alumni."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={shareAdmissionLink}>
+              <Link2 className="h-4 w-4" /> Share public form
+            </Button>
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" /> Bulk import
             </Button>
-            <Button asChild>
-              <a href={`/apply/${propertiesQ.data?.[0] ? "" : ""}`} onClick={(e) => e.preventDefault()}>
-                <UserPlus className="h-4 w-4" /> Share public form
-              </a>
+            <Button disabled={!effectiveProperty} onClick={() => setAddOpen(true)}>
+              <UserPlus className="h-4 w-4" /> Add student
             </Button>
           </div>
         }
@@ -174,13 +189,22 @@ function StudentsListPage() {
       )}
 
       {tenantId && effectiveProperty && (
-        <StudentBulkImportModal
-          open={importOpen}
-          onOpenChange={setImportOpen}
-          tenantId={tenantId}
-          propertyId={effectiveProperty}
-          onDone={() => studentsQ.refetch()}
-        />
+        <>
+          <StudentBulkImportModal
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            tenantId={tenantId}
+            propertyId={effectiveProperty}
+            onDone={() => studentsQ.refetch()}
+          />
+          <AddStudentDialog
+            open={addOpen}
+            onOpenChange={setAddOpen}
+            tenantId={tenantId}
+            propertyId={effectiveProperty}
+            onDone={() => studentsQ.refetch()}
+          />
+        </>
       )}
     </div>
   );

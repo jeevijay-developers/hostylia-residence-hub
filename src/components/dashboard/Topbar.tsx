@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Search, UserRoundPen } from "lucide-react";
+import { LogOut, Search, UserRoundPen } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -19,18 +19,20 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
-import { useResolvedRole } from "@/lib/user-role";
-import { SIDEBAR_NAV, BOTTOM_NAV } from "@/lib/dashboard-nav";
+import { signOut } from "@/lib/auth";
+import type { NavItem } from "@/lib/dashboard-nav";
 
-export function Topbar() {
+interface TopbarProps {
+  navItems?: NavItem[];
+}
+
+export function Topbar({ navItems = [] }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
   const navigate = useNavigate();
-  const { data: role } = useResolvedRole();
   const [searchOpen, setSearchOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -40,12 +42,6 @@ export function Topbar() {
   });
   const displayName = ownProfile?.preferred_name || ownProfile?.full_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
-
-  const navItems = useMemo(() => {
-    const roleKey = role?.role;
-    if (!roleKey) return [];
-    return SIDEBAR_NAV[roleKey] ?? BOTTOM_NAV[roleKey] ?? [];
-  }, [role?.role]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -86,11 +82,11 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-muted md:flex md:w-72"
+        className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground md:flex md:w-72"
       >
         <Search className="h-4 w-4" />
-        <span>Search…</span>
-        <kbd className="ml-auto hidden rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
+        <span className="flex-1 text-left">Search…</span>
+        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
           Ctrl K
         </kbd>
       </button>
@@ -99,7 +95,7 @@ export function Topbar() {
         <CommandInput placeholder="Search pages…" />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Navigation">
+          <CommandGroup heading="Pages">
             {navItems.map((item) => (
               <CommandItem
                 key={item.to}
@@ -109,7 +105,7 @@ export function Topbar() {
                   navigate({ to: item.to });
                 }}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className="mr-2 h-4 w-4" />
                 <span>{item.label}</span>
               </CommandItem>
             ))}
@@ -130,6 +126,15 @@ export function Topbar() {
           <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
             <UserRoundPen className="mr-2 h-4 w-4" />
             Edit profile
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={async () => {
+              await signOut();
+              window.location.href = "/login";
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

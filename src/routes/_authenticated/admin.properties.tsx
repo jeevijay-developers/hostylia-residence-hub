@@ -15,11 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { INDIAN_CITIES, OTHER_CITY_OPTION } from "@/lib/constants";
 
 export const Route = createFileRoute("/_authenticated/admin/properties")({
   head: () => ({ meta: [{ title: "Properties — Hostylia" }] }),
@@ -43,6 +47,11 @@ function PropertiesListPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [customCity, setCustomCity] = useState("");
+
+  const nameValid = /\p{L}/u.test(name) && name.trim().length >= 2;
+  const resolvedCity = city === OTHER_CITY_OPTION ? customCity.trim() : city;
+  const cityValid = resolvedCity.length >= 2;
 
   const properties = useQuery({
     queryKey: ["admin-properties", tenantId],
@@ -98,6 +107,8 @@ function PropertiesListPage() {
     mutationFn: async () => {
       if (!tenantId) throw new Error("No tenant");
       if (!orgQ.data?.id) throw new Error("No organization set up for this tenant");
+      if (!nameValid) throw new Error("Enter a valid property name");
+      if (!cityValid) throw new Error("Select or enter a city");
       const slug =
         name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
           .slice(0, 40) || `property-${Date.now()}`;
@@ -109,7 +120,7 @@ function PropertiesListPage() {
           name: name.trim(),
           slug,
           address_line_1: "TBD",
-          city: city.trim() || "TBD",
+          city: resolvedCity,
           state: "TBD",
           postal_code: "000000",
         })
@@ -123,6 +134,7 @@ function PropertiesListPage() {
       setOpen(false);
       setName("");
       setCity("");
+      setCustomCity("");
       toast.success("Property created — continue setup");
       nav({ to: "/admin/properties/$id/setup", params: { id } });
     },
@@ -136,7 +148,7 @@ function PropertiesListPage() {
         description="Manage the hostels and residences you operate."
         actions={
           <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" /> Add property
+            <Plus className="h-4 w-4" /> Add new property
           </Button>
         }
       />
@@ -216,17 +228,41 @@ function PropertiesListPage() {
             <div>
               <Label htmlFor="p-name">Property name</Label>
               <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} />
+              {!nameValid && name.trim().length > 0 && (
+                <p className="mt-1 text-xs text-destructive">
+                  Enter a valid property name (letters, at least 2 characters — not just numbers).
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="p-city">City</Label>
-              <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} />
+              <Select value={city} onValueChange={setCity}>
+                <SelectTrigger id="p-city"><SelectValue placeholder="Select a city" /></SelectTrigger>
+                <SelectContent>
+                  {INDIAN_CITIES.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                  <SelectItem value={OTHER_CITY_OPTION}>Other…</SelectItem>
+                </SelectContent>
+              </Select>
+              {city === OTHER_CITY_OPTION && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter city name"
+                  value={customCity}
+                  onChange={(e) => setCustomCity(e.target.value)}
+                />
+              )}
+              {!cityValid && (city.length > 0) && (
+                <p className="mt-1 text-xs text-destructive">City is required.</p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createMut.mutate()}
-              disabled={!name.trim() || createMut.isPending}
+              disabled={!nameValid || !cityValid || createMut.isPending}
             >
               Create & continue <ArrowRight className="h-4 w-4" />
             </Button>
