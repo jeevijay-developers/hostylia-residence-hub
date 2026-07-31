@@ -65,14 +65,14 @@ Deno.serve(async (req) => {
     // Dispatch notifications via unified sender (Phase 10).
     try {
       const { data: student } = await admin
-        .from("students").select("id, profile_id").eq("id", pay.student_id).maybeSingle();
+        .from("students").select("id, profile_id, email").eq("id", pay.student_id).maybeSingle();
 
-      const dispatch = async (opts: { channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL"; userId?: string; phone?: string }) => {
+      const dispatch = async (opts: { channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL"; userId?: string; phone?: string; email?: string }) => {
         await admin.functions.invoke("send-notification", {
           body: {
             channel: opts.channel,
             templateKey: "payment_receipt",
-            recipient: { userId: opts.userId, phone: opts.phone },
+            recipient: { userId: opts.userId, phone: opts.phone, email: opts.email },
             variables: { payment_number: pay.payment_number, amount_paise: pay.amount_paise },
             eventType: "PAYMENT_RECEIPT",
             tenantId: pay.tenant_id,
@@ -82,18 +82,21 @@ Deno.serve(async (req) => {
         });
       };
       if (student?.profile_id) await dispatch({ channel: "IN_APP", userId: student.profile_id });
+      if (student?.email) await dispatch({ channel: "EMAIL", email: student.email });
       // Parents with can_pay_fees
       const { data: gs } = await admin
         .from("student_guardians")
-        .select("can_pay_fees, guardians(profile_id, phone)")
+        .select("can_pay_fees, guardians(profile_id, phone, email)")
         .eq("student_id", pay.student_id)
         .is("unlinked_at", null);
       for (const g of gs ?? []) {
         if (!g.can_pay_fees) continue;
         const uid = (g as any).guardians?.profile_id ?? undefined;
         const phone = (g as any).guardians?.phone ?? undefined;
+        const email = (g as any).guardians?.email ?? undefined;
         if (uid) await dispatch({ channel: "IN_APP", userId: uid });
         if (phone) await dispatch({ channel: "WHATSAPP", phone });
+        if (email) await dispatch({ channel: "EMAIL", email });
       }
     } catch (e) {
       console.warn("[generate-receipt] notify failed", e);

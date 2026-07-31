@@ -206,11 +206,20 @@ function renderTemplate(key: string, vars: Record<string, unknown>): string {
   // Minimal built-in templates; real templating lives in a later phase.
   const T: Record<string, string> = {
     complaint_sla_breach_warden: "Complaint {{complaint_number}} has breached SLA.",
+    complaint_sla_breach_warden_subject: "SLA Breach — Complaint {{complaint_number}}",
     complaint_sla_breach_admin: "Complaint {{complaint_number}} SLA breach (property).",
+    complaint_sla_breach_admin_subject: "SLA Breach — Complaint {{complaint_number}}",
     fee_reminder_student: "Invoice {{invoice_number}} due {{due_date}} — balance ₹{{balance_rupees}}.",
+    fee_reminder_student_subject: "Fee Reminder — Invoice {{invoice_number}} due {{due_date}}",
     fee_reminder_parent: "Reminder: invoice {{invoice_number}} for your child is due {{due_date}}.",
+    fee_reminder_parent_subject: "Fee Reminder — Invoice {{invoice_number}} due {{due_date}}",
     payment_receipt: "Receipt {{payment_number}} for ₹{{amount_rupees}} received. Thank you.",
-    notice_broadcast: "{{title}} — {{body}}",
+    payment_receipt_subject: "Payment Receipt {{payment_number}} — Hostylia",
+    notice_broadcast_subject: "{{title}}",
+    notice_broadcast: "{{body}}",
+    staff_invite_subject: "You've been invited to Hostylia as {{role}}",
+    staff_invite:
+      "You've been added as {{role}} on Hostylia. Sign in with this email address to get started.",
     gate_event: "Gate {{direction}} recorded for pass {{pass_number}}.",
     late_entry: "Late entry on pass {{pass_number}}.",
     visitor_gate: "Visitor {{name}} — {{direction}}.",
