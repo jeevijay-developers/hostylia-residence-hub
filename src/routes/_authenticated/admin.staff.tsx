@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Send, UserX } from "lucide-react";
 
@@ -101,12 +101,41 @@ function AdminStaffPage() {
     queryFn: () => listFn({ data: { tenant_id: tenantId! } }),
     enabled: !!tenantId,
   });
-  const staff = (staffQ.data ?? []) as StaffRow[];
+  const staff = useMemo(() => (staffQ.data ?? []) as StaffRow[], [staffQ.data]);
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [staffRole, setStaffRole] = useState<"WARDEN" | "ACCOUNTANT">("WARDEN");
   const [pendingRevoke, setPendingRevoke] = useState<StaffRow | null>(null);
+  const [duplicateContact, setDuplicateContact] = useState<string | null>(null);
+
+  const activeContacts = useMemo(() => {
+    const emails = new Set<string>();
+    const phones = new Set<string>();
+    for (const s of staff) {
+      if (s.revoked_at) continue;
+      if (s.profile?.email) emails.add(s.profile.email.trim().toLowerCase());
+      if (s.profile?.phone) phones.add(s.profile.phone.trim());
+    }
+    return { emails, phones };
+  }, [staff]);
+
+  // Check as soon as typing settles, instead of only surfacing the conflict
+  // after a round trip to "Send invite" fails.
+  useEffect(() => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPhone = phone.trim();
+    const handle = setTimeout(() => {
+      if (trimmedEmail && activeContacts.emails.has(trimmedEmail)) {
+        setDuplicateContact("Someone with this email already has access to this hostel.");
+      } else if (trimmedPhone && activeContacts.phones.has(trimmedPhone)) {
+        setDuplicateContact("Someone with this phone number already has access to this hostel.");
+      } else {
+        setDuplicateContact(null);
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [email, phone, activeContacts]);
 
   const invite = useMutation({
     mutationFn: () =>
@@ -139,7 +168,8 @@ function AdminStaffPage() {
     onError: (e) => toast.error(errorMessage(e, "Could not revoke access")),
   });
 
-  const canInvite = !invite.isPending && (email.trim() !== "" || phone.trim() !== "");
+  const canInvite =
+    !invite.isPending && !duplicateContact && (email.trim() !== "" || phone.trim() !== "");
 
   if (!tenantId) {
     return (
@@ -211,6 +241,9 @@ function AdminStaffPage() {
             {invite.isPending ? "Sending…" : "Send invite"}
           </Button>
         </div>
+        {duplicateContact && (
+          <p className="mt-2 text-sm text-destructive">{duplicateContact}</p>
+        )}
       </section>
 
       <section className="rounded-lg border border-border bg-card">

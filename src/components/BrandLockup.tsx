@@ -1,27 +1,36 @@
 import { cn } from "@/lib/utils";
-import logoAsset from "@/assets/hostylia-logo.png";
+import { useThemeStore } from "@/stores/theme-store";
+import darkLogoAsset from "@/assets/hostylia-logo.png";
+import lightLogoAsset from "@/assets/hostylia-logo-light.png";
 
 /**
- * The brand asset is a single horizontal lockup: mark + "HOSTYLIA" wordmark +
- * "SMART RESIDENTIAL MANAGEMENT" tagline, at roughly 2.55:1. Rendered whole at
- * UI sizes (24–32px tall) the wordmark and tagline collapse into an illegible
- * smudge, which is why callers were pairing it with a duplicate text wordmark.
+ * The brand has one lockup per theme, each a single raster asset (icon +
+ * "HOSTYLIA" wordmark, dark asset also carries a tagline). Rendered whole at
+ * UI sizes (24–32px tall) the wordmark collapses into an illegible smudge,
+ * which is why callers were pairing it with a duplicate text wordmark.
  *
- * This component crops the one asset into its parts so no surface has to print
+ * This component crops each asset into its parts so no surface has to print
  * the brand name twice:
  *
  *   mark    — icon only. Icon rails, collapsed sidebar, tight mobile headers.
- *   lockup  — mark + wordmark composed side by side, tagline dropped. App chrome.
- *   full    — everything including the tagline. Only above ~48px tall, where the
- *             tagline can actually be read: marketing header and footer.
+ *   lockup  — mark + wordmark composed side by side. App chrome.
+ *   full    — everything the asset has (dark: + tagline). Only above ~48px
+ *             tall, where the tagline can actually be read: marketing header/footer.
  *
- * `lockup` recomposes rather than taking one wide crop because the mark spans
- * the asset's full height while the tagline sits below the wordmark: any single
- * crop tall enough to keep the whole building also keeps the tagline.
+ * `lockup` recomposes rather than taking one wide crop because the two parts
+ * don't share a consistent aspect relationship across assets.
  *
- * Crops are fractions of the natural image so they survive an asset re-export at
- * a different resolution. The geometry has to be inline style: it is computed
+ * Crops are fractions of each asset's own natural size (measured with pngjs
+ * against the actual file — not eyeballed) so they survive a re-export at a
+ * different resolution. The geometry has to be inline style: it is computed
  * from those fractions, not a value the spacing scale could express.
+ *
+ * The light-theme asset (src/assets/hostylia-logo-light.png) has no alpha
+ * channel — its background is an off-white ~#F7F7F7, close enough to the
+ * light theme's --card (#FFFFFF) to be imperceptible at icon sizes, but it
+ * would show as a visible box on the dark theme's navy chrome. That's why
+ * the two assets are swapped per-theme rather than the light one replacing
+ * the dark one outright.
  */
 
 interface Crop {
@@ -31,29 +40,48 @@ interface Crop {
   h: number;
 }
 
-/** Intrinsic size of the asset, needed to turn crop fractions into a real ratio. */
-const NATURAL = { w: 1491, h: 584 };
+interface AssetSpec {
+  src: string;
+  natural: { w: number; h: number };
+  mark: Crop;
+  wordmark: Crop;
+  wordmarkScale: string;
+  full: Crop;
+}
 
-/** Fractions of the natural asset (measured from src/assets/hostylia-logo.png). */
-const MARK: Crop = { x: 0.015, y: 0.02, w: 0.255, h: 0.96 };
-const WORDMARK: Crop = { x: 0.3, y: 0.43, w: 0.68, h: 0.31 };
-const FULL: Crop = { x: 0, y: 0, w: 1, h: 1 };
+const DARK_ASSET: AssetSpec = {
+  src: darkLogoAsset,
+  natural: { w: 1491, h: 584 },
+  mark: { x: 0.015, y: 0.02, w: 0.255, h: 0.96 },
+  wordmark: { x: 0.3, y: 0.43, w: 0.68, h: 0.31 },
+  wordmarkScale: "42%",
+  full: { x: 0, y: 0, w: 1, h: 1 },
+};
+
+const LIGHT_ASSET: AssetSpec = {
+  src: lightLogoAsset,
+  natural: { w: 1536, h: 1024 },
+  mark: { x: 0.0807, y: 0.2471, w: 0.2402, h: 0.5137 },
+  wordmark: { x: 0.3522, y: 0.5039, w: 0.6042, h: 0.1455 },
+  wordmarkScale: "37%",
+  full: { x: 0.0807, y: 0.2471, w: 0.8757, h: 0.5137 },
+};
 
 /**
  * Crop fractions are relative to different totals on each axis, so the rendered
  * ratio has to fold in the asset's own aspect or every crop comes out squashed.
  */
-const ratioOf = (crop: Crop) => (crop.w * NATURAL.w) / (crop.h * NATURAL.h);
-
-/** Wordmark cap-height relative to the mark, tuned so the two sit optically level. */
-const WORDMARK_SCALE = "42%";
+const ratioOf = (crop: Crop, natural: { w: number; h: number }) =>
+  (crop.w * natural.w) / (crop.h * natural.h);
 
 function CroppedAsset({
+  asset,
   crop,
   className,
   style,
   ...rest
 }: {
+  asset: AssetSpec;
   crop: Crop;
   className?: string;
   style?: React.CSSProperties;
@@ -61,11 +89,11 @@ function CroppedAsset({
   return (
     <span
       className={cn("relative block shrink-0 overflow-hidden", className)}
-      style={{ aspectRatio: ratioOf(crop), ...style }}
+      style={{ aspectRatio: ratioOf(crop, asset.natural), ...style }}
       {...rest}
     >
       <img
-        src={logoAsset}
+        src={asset.src}
         alt=""
         aria-hidden
         draggable={false}
@@ -93,6 +121,9 @@ export function BrandLockup({
   className = "h-8",
   isDecorative = false,
 }: BrandLockupProps) {
+  const theme = useThemeStore((s) => s.theme);
+  const asset = theme === "dark" ? DARK_ASSET : LIGHT_ASSET;
+
   const label = isDecorative ? undefined : "Hostylia";
   const a11y = isDecorative
     ? ({ "aria-hidden": true } as const)
@@ -101,11 +132,22 @@ export function BrandLockup({
   if (variant === "lockup") {
     return (
       <span className={cn("flex items-center gap-2", className)} {...a11y}>
-        <CroppedAsset crop={MARK} className="h-full" />
-        <CroppedAsset crop={WORDMARK} style={{ height: WORDMARK_SCALE }} />
+        <CroppedAsset asset={asset} crop={asset.mark} className="h-full" />
+        <CroppedAsset
+          asset={asset}
+          crop={asset.wordmark}
+          style={{ height: asset.wordmarkScale }}
+        />
       </span>
     );
   }
 
-  return <CroppedAsset crop={variant === "mark" ? MARK : FULL} className={className} {...a11y} />;
+  return (
+    <CroppedAsset
+      asset={asset}
+      crop={variant === "mark" ? asset.mark : asset.full}
+      className={className}
+      {...a11y}
+    />
+  );
 }

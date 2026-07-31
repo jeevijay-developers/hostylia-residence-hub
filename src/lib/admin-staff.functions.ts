@@ -35,21 +35,23 @@ export const inviteStaff = createServerFn({ method: "POST" })
     if (!data.email && !data.phone) throw new Error("email or phone required");
     await assertAdmin(supabase, userId, data.tenant_id);
 
-    // Resolve invitee by email/phone (may not exist yet)
+    // Resolve invitee by email/phone (may not exist yet). `profiles` RLS only
+    // allows reading your own row, so looking up someone else's by contact
+    // info needs the service-role client, not the request-scoped `supabase`.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let inviteeId: string | null = null;
     if (data.email) {
-      const { data: p } = await supabase.from("profiles").select("id").eq("email", data.email).limit(1);
+      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("email", data.email).limit(1);
       if (p && p.length) inviteeId = p[0].id;
     }
     if (!inviteeId && data.phone) {
-      const { data: p } = await supabase.from("profiles").select("id").eq("phone", data.phone).limit(1);
+      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("phone", data.phone).limit(1);
       if (p && p.length) inviteeId = p[0].id;
     }
 
     if (!inviteeId) {
       // Store pending invite via admin (needs to insert a role_assignments row we can flip later).
       // Requires a real user_id, so we create a placeholder profile via admin client.
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
         email: data.email ?? undefined,
         phone: data.phone ?? undefined,

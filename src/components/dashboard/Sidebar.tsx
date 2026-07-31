@@ -4,9 +4,9 @@ import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
-import { signOut } from "@/lib/auth";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { BrandLockup } from "@/components/BrandLockup";
+import { SignOutDialog } from "./SignOutDialog";
 
 interface SidebarProps {
   items: NavItem[];
@@ -16,6 +16,7 @@ interface SidebarProps {
 
 export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -28,7 +29,7 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
       <div
         className={cn(
           "flex items-center border-b border-border py-4",
-          collapsed ? "justify-center px-2" : "px-4",
+          collapsed ? "flex-col gap-2 px-2" : "justify-between px-4",
         )}
       >
         <Link
@@ -38,6 +39,20 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
         >
           <BrandLockup variant={collapsed ? "mark" : "lockup"} className="h-8" />
         </Link>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       {showPropertySwitcher ? (
@@ -71,10 +86,7 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
 
         <button
           type="button"
-          onClick={async () => {
-            await signOut();
-            window.location.href = "/login";
-          }}
+          onClick={() => setSignOutOpen(true)}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
             collapsed && "justify-center px-2",
@@ -86,26 +98,7 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
         </button>
       </nav>
 
-      <button
-        type="button"
-        onClick={() => setCollapsed((c) => !c)}
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? "Expand sidebar" : undefined}
-        className={cn(
-          "flex items-center gap-2 border-t border-border py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          collapsed ? "justify-center px-2" : "px-4",
-        )}
-      >
-        {collapsed ? (
-          <ChevronRight className="h-4 w-4 shrink-0" />
-        ) : (
-          <>
-            <ChevronLeft className="h-4 w-4 shrink-0" />
-            <span>Collapse</span>
-          </>
-        )}
-      </button>
+      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </aside>
   );
 }

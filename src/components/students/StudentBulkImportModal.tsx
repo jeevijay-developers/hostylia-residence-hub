@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileText, Upload } from "lucide-react";
+import { Download, FileText, Upload } from "lucide-react";
 
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -10,6 +10,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { bulkImportStudents } from "@/lib/student.functions";
 import { studentBulkRowSchema } from "@/schemas/student";
+
+const CSV_COLUMNS = [
+  "full_name", "phone", "email", "date_of_birth", "gender",
+  "academic_institute", "course_name", "guardian_name", "guardian_phone",
+];
+const CSV_SAMPLE_ROW = [
+  "Riya Sharma", "9876543210", "riya.sharma@example.com", "2005-04-12", "Female",
+  "ABC Institute of Technology", "B.Tech CSE", "Sunita Sharma", "9876500000",
+];
+
+function downloadSampleCsv() {
+  const csv = [CSV_COLUMNS.join(","), CSV_SAMPLE_ROW.join(",")].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "students-import-template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -76,6 +96,9 @@ export function StudentBulkImportModal({ open, onOpenChange, tenantId, propertyI
               full_name, phone, email, date_of_birth, gender, academic_institute, course_name, guardian_name, guardian_phone
             </code>. Rows with errors are skipped — valid rows still import.
           </p>
+          <Button type="button" variant="outline" size="sm" onClick={downloadSampleCsv}>
+            <Download className="mr-2 h-4 w-4" /> Download sample CSV
+          </Button>
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border px-6 py-8 text-sm hover:bg-muted">
             <Upload className="h-4 w-4" />
             {rows.length ? `${rows.length} rows loaded — choose another file` : "Choose CSV file"}
