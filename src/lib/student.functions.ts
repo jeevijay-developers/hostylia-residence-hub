@@ -7,6 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
+  manualStudentRowSchema,
   allocationCreateSchema,
   clickConsentSchema,
 } from "@/schemas/student";
@@ -217,7 +218,7 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
     return { inserted, failed: errors.length, errors };
   });
 
-const manualCreateSchema = studentBulkRowSchema.extend({
+const manualCreateSchema = manualStudentRowSchema.extend({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
 });
@@ -323,6 +324,50 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
       granted_at: new Date().toISOString(),
     });
     if (rErr) throw new Error(rErr.message);
+
+    // A self-signed-up student captures their guardian's name/phone as auth
+    // metadata (SignupForm). If nobody entered a guardian for this student
+    // yet (admin add / bulk import / public admission all do it up front),
+    // create one from that metadata now that we know which auth user this is.
+    const { data: existingLink } = await supabase
+      .from("student_guardians")
+      .select("id")
+      .eq("student_id", student.id)
+      .is("unlinked_at", null)
+      .limit(1);
+    if (!existingLink?.length) {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(matchedId);
+      const meta = authUser?.user?.user_metadata as Record<string, unknown> | undefined;
+      const guardianName = typeof meta?.guardian_name === "string" ? meta.guardian_name : "";
+      const guardianPhoneRaw = typeof meta?.guardian_phone === "string" ? meta.guardian_phone : "";
+      if (guardianName.trim() && guardianPhoneRaw.trim()) {
+        const guardianPhone = guardianPhoneRaw.startsWith("+") ? guardianPhoneRaw : `+${guardianPhoneRaw}`;
+        const { data: existingG } = await supabase
+          .from("guardians")
+          .select("id")
+          .eq("tenant_id", student.tenant_id)
+          .eq("phone", guardianPhone)
+          .maybeSingle();
+        let guardianId = existingG?.id;
+        if (!guardianId) {
+          const { data: gIns, error: gErr } = await supabase
+            .from("guardians")
+            .insert({ tenant_id: student.tenant_id, full_name: guardianName, phone: guardianPhone })
+            .select("id")
+            .single();
+          if (gErr) throw new Error(gErr.message);
+          guardianId = gIns.id;
+        }
+        await supabase.from("student_guardians").insert({
+          tenant_id: student.tenant_id,
+          student_id: student.id,
+          guardian_id: guardianId,
+          relationship: "GUARDIAN",
+          is_primary: true,
+          is_emergency_contact: true,
+        });
+      }
+    }
 
     return { ok: true as const, linked_profile_id: matchedId };
   });

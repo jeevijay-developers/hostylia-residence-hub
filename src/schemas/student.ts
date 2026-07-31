@@ -55,6 +55,14 @@ export const studentBulkRowSchema = z.object({
 });
 export type StudentBulkRow = z.infer<typeof studentBulkRowSchema>;
 
+/** Manual "Add student" (admin/warden): unlike bulk CSV import, a guardian
+ * contact is always known at the point of entry, so it's required here. */
+export const manualStudentRowSchema = studentBulkRowSchema.extend({
+  guardian_name: z.string().trim().min(2).max(120),
+  guardian_phone: phoneSchema,
+});
+export type ManualStudentRow = z.infer<typeof manualStudentRowSchema>;
+
 export const allocationCreateSchema = z.object({
   student_id: z.string().uuid(),
   bed_id: z.string().uuid(),

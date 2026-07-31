@@ -34,6 +34,8 @@
     "fullNameLabel": "Full name",
     "hostelNameLabel": "Hostel / property name",
     "hostelNameHelp": "You'll be able to add rooms, students and staff right after this.",
+    "guardianNameLabel": "Parent/guardian's name",
+    "guardianPhoneLabel": "Parent/guardian's phone",
     "confirmPasswordLabel": "Confirm password",
     "createAccount": "Create account",
     "noAccount": "Don't have an account?",
