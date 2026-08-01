@@ -33,6 +33,9 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
   const [guardianPhone, setGuardianPhone] = useState("");
 
   const nameValid = fullName.trim().length >= 2;
+  const guardianValid =
+    guardianName.trim().length >= 2 && /^\+?[1-9]\d{7,14}$/.test(guardianPhone.trim());
+  const canSubmit = nameValid && guardianValid;
 
   const createFn = useServerFn(createStudentManual);
   const createMut = useMutation({
@@ -68,7 +71,7 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
         </DialogHeader>
         <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
           <div>
-            <Label htmlFor="s-name">Full name</Label>
+            <Label htmlFor="s-name">Full name *</Label>
             <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -100,18 +103,18 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
           </div>
           <div className="grid grid-cols-2 gap-3 border-t border-border pt-4">
             <div>
-              <Label htmlFor="s-g-name">Guardian name</Label>
+              <Label htmlFor="s-g-name">Guardian name *</Label>
               <Input id="s-g-name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="s-g-phone">Guardian phone</Label>
+              <Label htmlFor="s-g-phone">Guardian phone *</Label>
               <Input id="s-g-phone" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} placeholder="+91…" />
             </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!nameValid || createMut.isPending} onClick={() => createMut.mutate()}>
+          <Button disabled={!canSubmit || createMut.isPending} onClick={() => createMut.mutate()}>
             <UserPlus className="h-4 w-4" /> Add student
           </Button>
         </DialogFooter>

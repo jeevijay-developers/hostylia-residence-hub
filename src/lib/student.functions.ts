@@ -7,6 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
+  manualStudentRowSchema,
   allocationCreateSchema,
   clickConsentSchema,
 } from "@/schemas/student";
@@ -217,7 +218,7 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
     return { inserted, failed: errors.length, errors };
   });
 
-const manualCreateSchema = studentBulkRowSchema.extend({
+const manualCreateSchema = manualStudentRowSchema.extend({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
 });
@@ -230,6 +231,145 @@ export const createStudentManual = createServerFn({ method: "POST" })
     const { supabase } = context;
     const student = await insertStudentRow(supabase, data.tenant_id, data.property_id, data);
     return { id: student.id, admission_number: student.admission_number };
+  });
+
+const confirmAdmissionSchema = z.object({
+  student_id: z.string().uuid(),
+});
+
+/**
+ * Links an APPLICANT's admission record to the account they signed up with
+ * (matched by the phone/email already on file), and grants them the STUDENT
+ * role for this tenant. Until this runs, the student is stuck on
+ * /access-pending no matter what "approving" they see on the admin side —
+ * profile_id/tenant_membership/role_assignment are what RoleRedirect and the
+ * self-access RLS policies actually key off of.
+ */
+export const confirmStudentAdmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => confirmAdmissionSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("id, tenant_id, property_id, phone, email, profile_id")
+      .eq("id", data.student_id)
+      .single();
+    if (sErr || !student) throw new Error("Student not found");
+    if (student.profile_id) throw new Error("This student is already linked to an account");
+
+    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_tenant_role", {
+      _user_id: userId,
+      _tenant_id: student.tenant_id,
+      _role: "HOSTEL_ADMIN",
+    });
+    if (roleErr) throw roleErr;
+    if (!isAdmin) throw new Error("Only a Hostel Admin can confirm admissions");
+
+    // Match the account they already signed up with — same lookup pattern as
+    // staff invites: email first, then phone. `profiles` RLS only allows
+    // reading your own row, so looking up someone else's by contact info
+    // needs the service-role client, not the request-scoped `supabase`.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let matchedId: string | null = null;
+    if (student.email) {
+      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("email", student.email).limit(1);
+      if (p && p.length) matchedId = p[0].id;
+    }
+    if (!matchedId && student.phone) {
+      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("phone", student.phone).limit(1);
+      if (p && p.length) matchedId = p[0].id;
+    }
+    if (!matchedId) {
+      throw new Error(
+        "No account found with this student's phone/email yet — ask them to sign up first, then confirm again.",
+      );
+    }
+
+    const { data: already } = await supabase
+      .from("students")
+      .select("id")
+      .eq("profile_id", matchedId)
+      .is("deleted_at", null)
+      .limit(1);
+    if (already && already.length) {
+      throw new Error("That account is already linked to another student record");
+    }
+
+    const { error: linkErr } = await supabase
+      .from("students")
+      .update({ profile_id: matchedId, portal_access_enabled: true })
+      .eq("id", student.id);
+    if (linkErr) throw new Error(linkErr.message);
+
+    const { error: mErr } = await supabase.from("tenant_memberships").upsert(
+      {
+        tenant_id: student.tenant_id,
+        user_id: matchedId,
+        status: "ACTIVE",
+        joined_at: new Date().toISOString(),
+      },
+      { onConflict: "tenant_id,user_id" },
+    );
+    if (mErr) throw new Error(mErr.message);
+
+    const { error: rErr } = await supabase.from("role_assignments").insert({
+      tenant_id: student.tenant_id,
+      user_id: matchedId,
+      role: "STUDENT",
+      property_id: student.property_id,
+      is_active: true,
+      granted_by: userId,
+      granted_at: new Date().toISOString(),
+    });
+    if (rErr) throw new Error(rErr.message);
+
+    // A self-signed-up student captures their guardian's name/phone as auth
+    // metadata (SignupForm). If nobody entered a guardian for this student
+    // yet (admin add / bulk import / public admission all do it up front),
+    // create one from that metadata now that we know which auth user this is.
+    const { data: existingLink } = await supabase
+      .from("student_guardians")
+      .select("id")
+      .eq("student_id", student.id)
+      .is("unlinked_at", null)
+      .limit(1);
+    if (!existingLink?.length) {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(matchedId);
+      const meta = authUser?.user?.user_metadata as Record<string, unknown> | undefined;
+      const guardianName = typeof meta?.guardian_name === "string" ? meta.guardian_name : "";
+      const guardianPhoneRaw = typeof meta?.guardian_phone === "string" ? meta.guardian_phone : "";
+      if (guardianName.trim() && guardianPhoneRaw.trim()) {
+        const guardianPhone = guardianPhoneRaw.startsWith("+") ? guardianPhoneRaw : `+${guardianPhoneRaw}`;
+        const { data: existingG } = await supabase
+          .from("guardians")
+          .select("id")
+          .eq("tenant_id", student.tenant_id)
+          .eq("phone", guardianPhone)
+          .maybeSingle();
+        let guardianId = existingG?.id;
+        if (!guardianId) {
+          const { data: gIns, error: gErr } = await supabase
+            .from("guardians")
+            .insert({ tenant_id: student.tenant_id, full_name: guardianName, phone: guardianPhone })
+            .select("id")
+            .single();
+          if (gErr) throw new Error(gErr.message);
+          guardianId = gIns.id;
+        }
+        await supabase.from("student_guardians").insert({
+          tenant_id: student.tenant_id,
+          student_id: student.id,
+          guardian_id: guardianId,
+          relationship: "GUARDIAN",
+          is_primary: true,
+          is_emergency_contact: true,
+        });
+      }
+    }
+
+    return { ok: true as const, linked_profile_id: matchedId };
   });
 
 export const createAllocation = createServerFn({ method: "POST" })

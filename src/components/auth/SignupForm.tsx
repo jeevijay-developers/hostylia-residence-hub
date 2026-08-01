@@ -34,6 +34,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Mode = "phone" | "email";
 type Step = 0 | 1 | 2 | 3;
+type IdentityValues = {
+  fullName: string;
+  hostelName?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+};
 
 /**
  * Three-step signup wizard (+ a confirmation step), rather than one long
@@ -51,7 +57,7 @@ export function SignupForm({ defaultMode = "email" as Mode }: { defaultMode?: Mo
   // going back enters from the left.
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [role, setRole] = useState<SignupRole | null>(null);
-  const [identity, setIdentity] = useState<{ fullName: string; hostelName?: string } | null>(null);
+  const [identity, setIdentity] = useState<IdentityValues | null>(null);
   const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
 
   const go = (next: Step, dir: "next" | "prev" = "next") => {
@@ -84,7 +90,7 @@ export function SignupForm({ defaultMode = "email" as Mode }: { defaultMode?: Mo
             initial={identity}
             onBack={() => go(0, "prev")}
             onNext={(values) => {
-              setIdentity({ fullName: values.fullName, hostelName: values.hostelName });
+              setIdentity(values);
               go(2, "next");
             }}
           />
@@ -232,12 +238,13 @@ function IdentityStep({
   onNext,
 }: {
   role: SignupRole;
-  initial: { fullName: string; hostelName?: string } | null;
+  initial: IdentityValues | null;
   onBack: () => void;
-  onNext: (values: { fullName: string; hostelName?: string }) => void;
+  onNext: (values: IdentityValues) => void;
 }) {
   const { t } = useTranslation();
   const isOwner = role === "HOSTEL_ADMIN";
+  const isStudent = role === "STUDENT";
   const {
     register,
     handleSubmit,
@@ -248,12 +255,21 @@ function IdentityStep({
       role,
       fullName: initial?.fullName ?? "",
       hostelName: initial?.hostelName ?? "",
+      guardianName: initial?.guardianName ?? "",
+      guardianPhone: initial?.guardianPhone ?? "",
     },
   });
 
   return (
     <form
-      onSubmit={handleSubmit((values) => onNext({ fullName: values.fullName, hostelName: values.hostelName }))}
+      onSubmit={handleSubmit((values) =>
+        onNext({
+          fullName: values.fullName,
+          hostelName: values.hostelName,
+          guardianName: values.guardianName,
+          guardianPhone: values.guardianPhone,
+        }),
+      )}
       className="space-y-4"
       noValidate
     >
@@ -294,11 +310,46 @@ function IdentityStep({
             <p className="text-xs text-muted-foreground">{t("auth.hostelNameHelp")}</p>
           )}
         </div>
-      ) : (
-        <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-          {t("auth.studentJoinNote")}
-        </p>
-      )}
+      ) : null}
+
+      {isStudent ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="guardianName">{t("auth.guardianNameLabel")}</Label>
+            <Input
+              id="guardianName"
+              type="text"
+              autoComplete="off"
+              placeholder="Parent/guardian's name"
+              className="min-h-11"
+              aria-invalid={errors.guardianName ? "true" : undefined}
+              {...register("guardianName")}
+            />
+            {errors.guardianName ? (
+              <p className="text-sm text-destructive" role="alert">{errors.guardianName.message}</p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="guardianPhone">{t("auth.guardianPhoneLabel")}</Label>
+            <Input
+              id="guardianPhone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="+91 98765 43210"
+              className="min-h-11"
+              aria-invalid={errors.guardianPhone ? "true" : undefined}
+              {...register("guardianPhone")}
+            />
+            {errors.guardianPhone ? (
+              <p className="text-sm text-destructive" role="alert">{errors.guardianPhone.message}</p>
+            ) : null}
+          </div>
+          <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            {t("auth.studentJoinNote")}
+          </p>
+        </>
+      ) : null}
 
       <StepButtons onBack={onBack} nextLabel={t("auth.continue")} />
     </form>
@@ -313,7 +364,7 @@ function CredentialsStep({
   onEmailSignedUp,
 }: {
   role: SignupRole;
-  identity: { fullName: string; hostelName?: string };
+  identity: IdentityValues;
   defaultMode: Mode;
   onBack: () => void;
   onEmailSignedUp: (email: string) => void;
@@ -344,13 +395,20 @@ function CredentialsStep({
   );
 }
 
-/** Metadata written onto the auth user — read later by RoleRedirect. */
-function signupMetadata(role: SignupRole, identity: { fullName: string; hostelName?: string }) {
+/**
+ * Metadata written onto the auth user — read later by RoleRedirect, and by
+ * confirmStudentAdmission to create the guardian record once an admin links
+ * this account to an admission.
+ */
+function signupMetadata(role: SignupRole, identity: IdentityValues) {
   return {
     full_name: identity.fullName,
     signup_role: role,
     ...(role === "HOSTEL_ADMIN" && identity.hostelName
       ? { hostel_name: identity.hostelName }
+      : {}),
+    ...(role === "STUDENT" && identity.guardianName && identity.guardianPhone
+      ? { guardian_name: identity.guardianName, guardian_phone: identity.guardianPhone }
       : {}),
   };
 }
@@ -362,7 +420,7 @@ function EmailCredentialsForm({
   onSignedUp,
 }: {
   role: SignupRole;
-  identity: { fullName: string; hostelName?: string };
+  identity: IdentityValues;
   onBack: () => void;
   onSignedUp: (email: string) => void;
 }) {
@@ -468,7 +526,7 @@ function PhoneCredentialsForm({
   onBack,
 }: {
   role: SignupRole;
-  identity: { fullName: string; hostelName?: string };
+  identity: IdentityValues;
   onBack: () => void;
 }) {
   const { t } = useTranslation();

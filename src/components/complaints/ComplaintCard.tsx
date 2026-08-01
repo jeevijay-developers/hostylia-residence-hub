@@ -1,7 +1,10 @@
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SlaBadge, StatusBadge } from "./SlaBadge";
 import type { ComplaintRow } from "@/lib/complaint";
 import type { ReactNode } from "react";
+
+const DATE_FORMAT = "d MMM yyyy, h:mm a";
 
 export function ComplaintCard({
   complaint,
@@ -27,6 +30,12 @@ export function ComplaintCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Raised {format(new Date(complaint.created_at), DATE_FORMAT)}</span>
+          {complaint.resolved_at && (
+            <span>Resolved {format(new Date(complaint.resolved_at), DATE_FORMAT)}</span>
+          )}
+        </div>
         <p className="line-clamp-3 text-sm text-muted-foreground">{complaint.description}</p>
         {complaint.resolution_summary && (
           <div className="rounded-md border border-success/30 bg-success/5 p-2 text-xs">

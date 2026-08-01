@@ -22,7 +22,7 @@ import {
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
-import { signOut } from "@/lib/auth";
+import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import type { NavItem } from "@/lib/dashboard-nav";
 
 interface TopbarProps {
@@ -35,12 +35,13 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   const { data: ownProfile } = useQuery({
     queryKey: ["own-profile"],
     queryFn: fetchOwnProfile,
   });
-  const displayName = ownProfile?.preferred_name || ownProfile?.full_name || "";
+  const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
 
   useEffect(() => {
@@ -128,9 +129,9 @@ export function Topbar({ navItems = [] }: TopbarProps) {
             Edit profile
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={async () => {
-              await signOut();
-              window.location.href = "/login";
+            onSelect={(e) => {
+              e.preventDefault();
+              setSignOutOpen(true);
             }}
           >
             <LogOut className="mr-2 h-4 w-4" />
@@ -140,6 +141,7 @@ export function Topbar({ navItems = [] }: TopbarProps) {
       </DropdownMenu>
 
       <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </header>
   );
 }

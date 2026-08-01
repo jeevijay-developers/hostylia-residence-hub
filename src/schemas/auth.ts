@@ -58,16 +58,31 @@ export const emailLoginSchema = z.object({
 export const signupRoleSchema = z.enum(["HOSTEL_ADMIN", "STUDENT"]);
 export type SignupRole = z.infer<typeof signupRoleSchema>;
 
-/** Step 2 — who you are. `hostelName` is required only for hostel owners. */
+/**
+ * Step 2 — who you are. `hostelName` is required only for hostel owners;
+ * `guardianName`/`guardianPhone` only for students (captured here so a
+ * self-signed-up student's guardian record exists by the time an admin
+ * confirms their admission, instead of relying on separate data entry).
+ */
 export const signupIdentitySchema = z
   .object({
     role: signupRoleSchema,
     fullName: fullNameSchema,
     hostelName: z.string().trim().max(120, "Name is too long").optional(),
+    guardianName: z.string().trim().max(120, "Name is too long").optional(),
+    guardianPhone: z.string().trim().optional(),
   })
   .refine(
     (d) => d.role !== "HOSTEL_ADMIN" || (d.hostelName ?? "").trim().length >= 2,
     { message: "Enter your hostel / property name", path: ["hostelName"] },
+  )
+  .refine(
+    (d) => d.role !== "STUDENT" || (d.guardianName ?? "").trim().length >= 2,
+    { message: "Enter your parent/guardian's name", path: ["guardianName"] },
+  )
+  .refine(
+    (d) => d.role !== "STUDENT" || phoneSchema.safeParse(d.guardianPhone).success,
+    { message: "Enter a valid guardian phone number", path: ["guardianPhone"] },
   );
 
 /** Step 3a — email + password credentials. */

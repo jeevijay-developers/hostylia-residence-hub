@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, DoorOpen } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { ArrowLeft, DoorOpen, Link2, Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
+import { confirmStudentAdmission } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/students/$id/")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }] }),
@@ -18,6 +21,8 @@ export const Route = createFileRoute("/_authenticated/admin/students/$id/")({
 
 function StudentDetailPage() {
   const { id } = Route.useParams();
+  const qc = useQueryClient();
+  const confirmAdmissionFn = useServerFn(confirmStudentAdmission);
 
   const studentQ = useQuery({
     queryKey: ["student", id],
@@ -26,6 +31,15 @@ function StudentDetailPage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const confirmAdmission = useMutation({
+    mutationFn: () => confirmAdmissionFn({ data: { student_id: id } }),
+    onSuccess: () => {
+      toast.success("Account linked — the student can now sign in to their portal");
+      qc.invalidateQueries({ queryKey: ["student", id] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not link the account"),
   });
 
   const allocQ = useQuery({
@@ -71,6 +85,20 @@ function StudentDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <StudentStatusBadge status={s.status} />
+            {!s.profile_id && (
+              <Button
+                variant="outline"
+                disabled={confirmAdmission.isPending}
+                onClick={() => confirmAdmission.mutate()}
+              >
+                {confirmAdmission.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
+                Confirm & link account
+              </Button>
+            )}
             {(s.status === "ACTIVE" || s.status === "NOTICE_GIVEN") && (
               <Button asChild variant="outline">
                 <Link to="/admin/students/$id/move-out" params={{ id }}>
@@ -92,6 +120,7 @@ function StudentDetailPage() {
             <Info label="Minor" value={s.is_minor ? "Yes" : "No"} />
             <Info label="Institute" value={s.academic_institute ?? "—"} />
             <Info label="Course" value={s.course_name ?? "—"} />
+            <Info label="Portal access" value={s.profile_id ? "Linked" : "Not linked yet"} />
           </CardContent>
         </Card>
 
