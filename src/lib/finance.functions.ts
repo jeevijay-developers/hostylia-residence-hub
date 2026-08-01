@@ -106,6 +106,27 @@ export const recordManualPayment = createServerFn({ method: "POST" })
       .single();
     if (pErr) throw new Error(pErr.message);
 
+    // First payment on a fresh allocation: move it (and the student, and the
+    // bed) from "waiting to pay" to live, atomically — RULES.md 19.3/19.5.
+    // Same rule as the Razorpay webhook; guarded inside the DB function by
+    // status = PENDING_PAYMENT, so later rent payments (allocation already
+    // ACTIVE) are a no-op.
+    const { data: pendingAlloc } = await supabase
+      .from("allocations")
+      .select("id")
+      .eq("student_id", inv.student_id)
+      .eq("status", "PENDING_PAYMENT")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingAlloc) {
+      const { error: actErr } = await supabase.rpc("activate_allocation", {
+        p_allocation_id: pendingAlloc.id,
+      });
+      if (actErr) throw new Error(actErr.message);
+    }
+
     // Fire-and-forget receipt generation (Edge Function will TODO delivery)
     try {
       await supabase.functions.invoke("generate-receipt", { body: { payment_id: pay.id } });

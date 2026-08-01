@@ -80,7 +80,32 @@ function StructurePage() {
     qc.invalidateQueries({ queryKey: ["structure", propertyId] });
   }
 
-  if (propertyQ.isLoading || treeQ.isLoading || !tenantId) {
+  if (propertyQ.isError || treeQ.isError) {
+    const err = propertyQ.error ?? treeQ.error;
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Structure" description="Manage blocks, floors, rooms and beds." />
+        <Card>
+          <CardContent className="space-y-3 py-6 text-center">
+            <p className="text-sm text-destructive">
+              {err instanceof Error ? err.message : "This property's structure couldn't be loaded."}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                propertyQ.refetch();
+                treeQ.refetch();
+              }}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (propertyQ.isLoading || treeQ.isLoading || !tenantId || !treeQ.data) {
     return <Skeleton className="h-96 w-full" />;
   }
 

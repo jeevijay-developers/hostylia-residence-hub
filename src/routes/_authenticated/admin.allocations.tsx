@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useResolvedRole } from "@/lib/user-role";
 import { createAllocation } from "@/lib/student.functions";
+import { usePropertyStore } from "@/stores/property-store";
 
 export const Route = createFileRoute("/_authenticated/admin/allocations")({
   head: () => ({ meta: [{ title: "Allocations — Hostylia" }] }),
@@ -27,37 +27,36 @@ export const Route = createFileRoute("/_authenticated/admin/allocations")({
 });
 
 function AllocationBoard() {
-  const { data: resolved } = useResolvedRole();
-  const tenantId = resolved?.tenantId ?? null;
+  const effectiveProp = usePropertyStore((s) => s.activePropertyId);
   const qc = useQueryClient();
-
-  const propertiesQ = useQuery({
-    queryKey: ["admin-properties-min", tenantId],
-    enabled: !!tenantId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("properties")
-        .select("id, name")
-        .eq("tenant_id", tenantId!)
-        .is("deleted_at", null)
-        .order("name");
-      return data ?? [];
-    },
-  });
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const effectiveProp = propertyId ?? propertiesQ.data?.[0]?.id ?? null;
 
   const bedsQ = useQuery({
     queryKey: ["allocation-beds", effectiveProp],
     enabled: !!effectiveProp,
     queryFn: async (): Promise<BedTile[]> => {
-      const { data } = await supabase
+      const { data: beds } = await supabase
         .from("beds")
         .select("id, code, status")
         .eq("property_id", effectiveProp!)
         .is("deleted_at", null)
         .order("code");
-      return (data ?? []) as BedTile[];
+
+      const { data: occupied } = await supabase
+        .from("allocations")
+        .select("bed_id, students(full_name)")
+        .eq("property_id", effectiveProp!)
+        .in("status", ["ACTIVE", "NOTICE_GIVEN"]);
+      const occupantByBed = new Map<string, string>();
+      (occupied ?? []).forEach((a) => {
+        const name = (a.students as { full_name: string } | null)?.full_name;
+        if (name) occupantByBed.set(a.bed_id, name);
+      });
+
+      return (beds ?? []).map((b) => ({
+        ...b,
+        status: b.status as BedTile["status"],
+        occupantName: occupantByBed.get(b.id) ?? null,
+      }));
     },
   });
 
@@ -124,16 +123,11 @@ function AllocationBoard() {
         }
       />
 
-      {propertiesQ.data && propertiesQ.data.length > 1 && (
-        <Select value={effectiveProp ?? ""} onValueChange={setPropertyId}>
-          <SelectTrigger className="w-64"><SelectValue placeholder="Property" /></SelectTrigger>
-          <SelectContent>
-            {propertiesQ.data.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
-
-      {bedsQ.isLoading ? (
+      {!effectiveProp ? (
+        <p className="text-sm text-muted-foreground">
+          Choose a property from the sidebar first.
+        </p>
+      ) : bedsQ.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
         <BedGrid

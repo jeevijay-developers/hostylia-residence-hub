@@ -45,7 +45,14 @@ export function OccupancyReportPanel({ propertyId, showExport = true }: { proper
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Occupancy accuracy</h2>
-        {showExport && <ExportButton filename="occupancy-report.csv" rows={rows} columns={occupancyCsv} />}
+        {showExport && (
+          <ExportButton
+            filename="occupancy-report"
+            title="Occupancy accuracy"
+            rows={rows}
+            columns={occupancyCsv}
+          />
+        )}
       </div>
       {rows.length > 0 && <OccupancyChart data={rows} />}
       <ReportTable rows={rows} columns={occupancyCols} />
@@ -99,7 +106,14 @@ export function AgingReportPanel({ propertyId, showExport = true }: { propertyId
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">DSO &amp; aging</h2>
-        {showExport && <ExportButton filename="aging-report.csv" rows={rows} columns={agingCsv} />}
+        {showExport && (
+          <ExportButton
+            filename="aging-report"
+            title="DSO & aging"
+            rows={rows}
+            columns={agingCsv}
+          />
+        )}
       </div>
       {d && (
         <div className="grid gap-3 sm:grid-cols-4">
@@ -150,7 +164,14 @@ export function SlaComplianceReportPanel({ propertyId, showExport = true }: { pr
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Complaint SLA compliance</h2>
-        {showExport && <ExportButton filename="sla-compliance.csv" rows={rows} columns={slaCsv} />}
+        {showExport && (
+          <ExportButton
+            filename="sla-compliance"
+            title="Complaint SLA compliance"
+            rows={rows}
+            columns={slaCsv}
+          />
+        )}
       </div>
       {rows.length > 0 && <SlaComplianceChart data={rows} />}
       <ReportTable rows={rows} columns={slaCols} />

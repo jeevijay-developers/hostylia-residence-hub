@@ -139,7 +139,9 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
 const bulkImportSchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
-  rows: z.array(studentBulkRowSchema).min(1).max(1000),
+  // Each row is validated individually in the handler so one bad row
+  // doesn't reject the whole batch — this must stay loose here.
+  rows: z.array(z.record(z.string(), z.string())).min(1).max(1000),
 });
 
 async function insertStudentRow(
@@ -208,8 +210,13 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
     const errors: { row: number; error: string }[] = [];
     let inserted = 0;
     for (let i = 0; i < data.rows.length; i++) {
+      const parsed = studentBulkRowSchema.safeParse(data.rows[i]);
+      if (!parsed.success) {
+        errors.push({ row: i + 1, error: parsed.error.issues.map((x) => x.message).join("; ") });
+        continue;
+      }
       try {
-        await insertStudentRow(supabase, data.tenant_id, data.property_id, data.rows[i]);
+        await insertStudentRow(supabase, data.tenant_id, data.property_id, parsed.data);
         inserted += 1;
       } catch (e) {
         errors.push({ row: i + 1, error: e instanceof Error ? e.message : "unknown" });
@@ -484,58 +491,51 @@ export const moveOutAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => moveOutSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
 
-    const { data: allocBefore, error: qErr } = await supabase
-      .from("allocations")
-      .select("id, tenant_id, property_id, student_id, deposit_snapshot_paise")
-      .eq("id", data.allocation_id)
+    // Closes the allocation, moves the student out, frees the bed, and
+    // deducts any outstanding dues from the deposit — all atomically in one
+    // DB function per RULES.md 19.3/19.5 (no independent bed.status writes).
+    const { error } = await supabase.rpc("complete_move_out", {
+      p_allocation_id: data.allocation_id,
+      p_actual_end_date: data.actual_end_date,
+    });
+    if (error) throw new Error(error.message);
+
+    return { ok: true as const };
+  });
+
+const deleteStudentSchema = z.object({
+  student_id: z.string().uuid(),
+});
+
+/**
+ * Soft-deletes a student record (sets deleted_at, matching the
+ * `.is("deleted_at", null)` convention every student query filters on).
+ * Blocked while the student is ACTIVE/NOTICE_GIVEN — move them out first so
+ * their bed doesn't end up occupied by a record nobody can see anymore.
+ */
+export const deleteStudent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => deleteStudentSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("status")
+      .eq("id", data.student_id)
       .single();
-    if (qErr || !allocBefore) throw new Error("Allocation not found");
-
-    // Compute unpaid balances against the deposit and post an ADJUSTMENT/DEDUCTION
-    const { data: openInvs } = await supabase
-      .from("invoices")
-      .select("balance_paise")
-      .eq("allocation_id", data.allocation_id)
-      .not("status", "in", "(VOID,PAID,REFUNDED)")
-      .is("deleted_at", null);
-    const dues = (openInvs ?? []).reduce((s, i) => s + (i.balance_paise ?? 0), 0);
-
-    if (dues > 0) {
-      const capped = Math.min(dues, allocBefore.deposit_snapshot_paise ?? 0);
-      if (capped > 0) {
-        await supabase.from("deposit_ledger_entries").insert({
-          tenant_id: allocBefore.tenant_id,
-          property_id: allocBefore.property_id,
-          student_id: allocBefore.student_id,
-          allocation_id: allocBefore.id,
-          entry_type: "DEDUCTION",
-          amount_paise: capped,
-          direction: "DEBIT",
-          reference_type: "MOVE_OUT",
-          description: `Deducted outstanding dues from deposit at move-out (${data.actual_end_date})`,
-          created_by: userId,
-        });
-      }
+    if (sErr || !student) throw new Error("Student not found");
+    if (student.status === "ACTIVE" || student.status === "NOTICE_GIVEN") {
+      throw new Error("Move this student out before deleting their record");
     }
 
-    const { data: alloc, error: aErr } = await supabase
-      .from("allocations")
-      .update({
-        status: "CLOSED",
-        actual_end_date: data.actual_end_date,
-        closed_at: new Date().toISOString(),
-      })
-      .eq("id", data.allocation_id)
-      .select("student_id")
-      .single();
-    if (aErr) throw new Error(aErr.message);
-
-    await supabase
+    const { error } = await supabase
       .from("students")
-      .update({ status: "MOVED_OUT", moved_out_at: data.actual_end_date })
-      .eq("id", alloc.student_id);
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", data.student_id);
+    if (error) throw new Error(error.message);
 
     return { ok: true as const };
   });
