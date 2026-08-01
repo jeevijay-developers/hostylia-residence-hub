@@ -8,6 +8,8 @@ export interface BedTile {
   id: string;
   code: string;
   status: BedStatus;
+  /** Full name of the student currently allocated to this bed, if any. */
+  occupantName?: string | null;
 }
 
 const STATUS_META: Record<
@@ -81,11 +83,12 @@ export function BedGrid({ beds, onSelect }: BedGridProps) {
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
         {beds.map((b) => {
           const { className, Icon, label } = STATUS_META[b.status];
+          const title = b.occupantName ? `${b.code} — ${label} — ${b.occupantName}` : `${b.code} — ${label}`;
           return (
             <button
               key={b.id}
               onClick={() => onSelect?.(b)}
-              title={`${b.code} — ${label}`}
+              title={title}
               className={cn(
                 "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-md border-2 px-2 py-2 text-xs font-medium transition hover:opacity-80",
                 className,
@@ -93,6 +96,11 @@ export function BedGrid({ beds, onSelect }: BedGridProps) {
             >
               <Icon className="h-4 w-4" aria-hidden />
               <span className="tabular-nums">{b.code}</span>
+              {b.occupantName ? (
+                <span className="max-w-full truncate text-[10px] font-normal opacity-80">
+                  {b.occupantName}
+                </span>
+              ) : null}
             </button>
           );
         })}

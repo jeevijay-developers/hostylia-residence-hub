@@ -3938,6 +3938,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      activate_allocation: {
+        Args: { p_allocation_id: string }
+        Returns: undefined
+      }
+      complete_move_out: {
+        Args: { p_actual_end_date: string; p_allocation_id: string }
+        Returns: undefined
+      }
       earliest_move_out_date: {
         Args: { p_allocation_id: string }
         Returns: string

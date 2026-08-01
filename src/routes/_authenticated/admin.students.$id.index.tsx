@@ -31,11 +31,12 @@ function StudentDetailPage() {
   const allocQ = useQuery({
     queryKey: ["student-allocations", id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("allocations")
         .select("id, status, start_date, expected_end_date, actual_end_date, bed_id, rent_snapshot_paise")
         .eq("student_id", id)
         .order("created_at", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -98,7 +99,11 @@ function StudentDetailPage() {
         <Card>
           <CardHeader><CardTitle>Allocation history</CardTitle></CardHeader>
           <CardContent>
-            {(allocQ.data ?? []).length === 0 ? (
+            {allocQ.isError ? (
+              <p className="text-sm text-destructive">
+                Couldn't load allocations: {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
+              </p>
+            ) : (allocQ.data ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No allocations yet. Assign a bed from Allocations.</p>
             ) : (
               <ul className="space-y-2 text-sm">

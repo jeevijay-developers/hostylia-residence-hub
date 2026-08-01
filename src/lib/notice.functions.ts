@@ -119,6 +119,27 @@ export const publishNotice = createServerFn({ method: "POST" })
     return { notice_id: notice.id, dispatched };
   });
 
+const editNoticeSchema = z.object({
+  notice_id: z.string().uuid(),
+  title: z.string().trim().min(3).max(200),
+  body: z.string().trim().min(3).max(4000),
+  priority: z.enum(["NORMAL", "IMPORTANT", "URGENT"]),
+});
+
+/** Corrects title/body/priority on an existing notice. Does not re-dispatch —
+ * already-sent SMS/WhatsApp/email/in-app notifications are not recalled. */
+export const editNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => editNoticeSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("notices")
+      .update({ title: data.title, body: data.body, priority: data.priority })
+      .eq("id", data.notice_id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const cancelNotice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
