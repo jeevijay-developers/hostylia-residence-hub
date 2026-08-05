@@ -65,8 +65,12 @@ function StudentGatePassPage() {
 
   const [reason, setReason] = useState("");
   const [destination, setDestination] = useState("");
-  const [outAt, setOutAt] = useState("");
-  const [inAt, setInAt] = useState("");
+  const [outDate, setOutDate] = useState("");
+  const [outTime, setOutTime] = useState("");
+  const [inDate, setInDate] = useState("");
+  const [inTime, setInTime] = useState("");
+  const outAt = outDate && outTime ? `${outDate}T${outTime}` : "";
+  const inAt = inDate && inTime ? `${inDate}T${inTime}` : "";
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -82,7 +86,12 @@ function StudentGatePassPage() {
       saveToken(pass.id, token);
       return pass;
     },
-    onSuccess: () => { toast.success("Requested"); setReason(""); setDestination(""); setOutAt(""); setInAt(""); qc.invalidateQueries({ queryKey: ["my-passes"] }); },
+    onSuccess: () => {
+      toast.success("Requested");
+      setReason(""); setDestination("");
+      setOutDate(""); setOutTime(""); setInDate(""); setInTime("");
+      qc.invalidateQueries({ queryKey: ["my-passes"] });
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
@@ -95,9 +104,30 @@ function StudentGatePassPage() {
           <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
-            <Input type="datetime-local" value={outAt} onChange={(e) => setOutAt(e.target.value)} />
-            <Input type="datetime-local" value={inAt} onChange={(e) => setInAt(e.target.value)} />
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Going out — date</label>
+              <Input type="date" value={outDate} onChange={(e) => setOutDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Going out — time</label>
+              <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Expected back — date</label>
+              <Input type="date" value={inDate} onChange={(e) => setInDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Expected back — time</label>
+              <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
+            </div>
           </div>
+          {(!reason || !outAt || !inAt) && (
+            <p className="text-xs text-muted-foreground">
+              {!reason
+                ? "Enter a reason to continue."
+                : "Fill in both the date and time for \"Going out\" and \"Expected back\" — the Request button unlocks once all four are set."}
+            </p>
+          )}
           <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !reason || !outAt || !inAt}>
             {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Request

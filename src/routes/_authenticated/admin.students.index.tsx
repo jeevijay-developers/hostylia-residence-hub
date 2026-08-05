@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { UserPlus, Upload, Search, Eye, Link2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { UserPlus, Upload, Search, Eye, Link2, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -15,11 +16,22 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
+import { deleteStudent } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/students/")({
   head: () => ({ meta: [{ title: "Students — Hostylia" }] }),
@@ -29,10 +41,23 @@ export const Route = createFileRoute("/_authenticated/admin/students/")({
 function StudentsListPage() {
   const { data: resolved } = useResolvedRole();
   const tenantId = resolved?.tenantId ?? null;
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [q, setQ] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const deleteStudentFn = useServerFn(deleteStudent);
+  const deleteMutation = useMutation({
+    mutationFn: (studentId: string) => deleteStudentFn({ data: { student_id: studentId } }),
+    onSuccess: () => {
+      toast.success("Student record deleted");
+      setPendingDelete(null);
+      qc.invalidateQueries({ queryKey: ["admin-students"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete student"),
+  });
 
   const propertiesQ = useQuery({
     queryKey: ["admin-properties-min", tenantId],
@@ -175,11 +200,21 @@ function StudentsListPage() {
                   <TableCell>{s.phone ?? "—"}</TableCell>
                   <TableCell><StudentStatusBadge status={s.status} /></TableCell>
                   <TableCell className="text-right">
-                    <Button asChild size="sm" variant="ghost">
-                      <Link to="/admin/students/$id" params={{ id: s.id }}>
-                        <Eye className="h-4 w-4" /> Open
-                      </Link>
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button asChild size="sm" variant="ghost">
+                        <Link to="/admin/students/$id" params={{ id: s.id }}>
+                          <Eye className="h-4 w-4" /> Open
+                        </Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setPendingDelete({ id: s.id, name: s.full_name })}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -206,6 +241,33 @@ function StudentsListPage() {
           />
         </>
       )}
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this student record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `"${pendingDelete.name}" will be removed from Students, Allocations and Finance lists. This is meant for duplicate/mistaken entries — use it carefully.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

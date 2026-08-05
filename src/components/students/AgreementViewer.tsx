@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ShieldCheck } from "lucide-react";
+import { Clock, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +11,11 @@ import { acceptAgreementClickwrap } from "@/lib/student.functions";
 
 interface Props {
   studentId: string;
+  /** Admin/staff view: status only, no document text or accept control —
+   * signing is a student-side action from their own portal. */
+  readOnly?: boolean;
+  /** Fires after a successful accept, e.g. so a parent gate can re-check status. */
+  onAccepted?: () => void;
 }
 
 const AGREEMENT_TEXT = `HOSTYLIA STANDARD BOARDING AGREEMENT (v1)
@@ -30,7 +35,7 @@ function fnv1a(str: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
-export function AgreementViewer({ studentId }: Props) {
+export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Props) {
   const [checked, setChecked] = useState(false);
   const acceptFn = useServerFn(acceptAgreementClickwrap);
 
@@ -58,6 +63,7 @@ export function AgreementViewer({ studentId }: Props) {
     onSuccess: () => {
       toast.success("Agreement accepted");
       agreementQ.refetch();
+      onAccepted?.();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -71,6 +77,25 @@ export function AgreementViewer({ studentId }: Props) {
   }
 
   const signed = agreementQ.data.status === "SIGNED";
+
+  if (readOnly) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+        <h3 className="font-display text-base font-semibold">Boarding agreement</h3>
+        {signed ? (
+          <span className="flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
+            <ShieldCheck className="h-4 w-4" />
+            Completed — signed {new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
+            <Clock className="h-4 w-4" />
+            Pending — awaiting student acceptance
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-4">
