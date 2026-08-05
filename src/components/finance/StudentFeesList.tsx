@@ -6,10 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { createRazorpayOrder } from "@/lib/finance.functions";
 import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
+import { useKycComplete } from "@/lib/kyc";
+import { KycGateNotice } from "@/components/students/KycGateNotice";
 
 export function StudentFeesList({ studentId }: { studentId: string }) {
   const qc = useQueryClient();
   const createOrder = useServerFn(createRazorpayOrder);
+  const { complete: kycComplete } = useKycComplete(studentId);
 
   const q = useQuery({
     queryKey: ["student-invoices", studentId],
@@ -41,6 +44,7 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
 
   return (
     <div className="space-y-2">
+      {!kycComplete && <KycGateNotice message="Complete your KYC to pay your fees online." />}
       {rows.map((i) => (
         <div key={i.id} className="rounded-md border border-border bg-card p-3">
           <div className="flex items-center justify-between gap-3">
@@ -55,7 +59,7 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
               {i.balance_paise > 0 && i.status !== "VOID" && (
                 <Button size="sm" className="mt-2"
                   onClick={() => pay.mutate(i.id)}
-                  disabled={pay.isPending}>
+                  disabled={!kycComplete || pay.isPending}>
                   {pay.isPending ? "Opening…" : "Pay now"}
                 </Button>
               )}

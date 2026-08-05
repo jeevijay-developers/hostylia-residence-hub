@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { createGatePass } from "@/lib/operations.functions";
+import { useKycComplete } from "@/lib/kyc";
+import { KycGateNotice } from "@/components/students/KycGateNotice";
 
 export const Route = createFileRoute("/_authenticated/student/gate-pass")({
   component: StudentGatePassPage,
@@ -71,6 +73,7 @@ function StudentGatePassPage() {
   const [inTime, setInTime] = useState("");
   const outAt = outDate && outTime ? `${outDate}T${outTime}` : "";
   const inAt = inDate && inTime ? `${inDate}T${inTime}` : "";
+  const { complete: kycComplete } = useKycComplete(studentQ.data?.id);
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -128,7 +131,8 @@ function StudentGatePassPage() {
                 : "Fill in both the date and time for \"Going out\" and \"Expected back\" — the Request button unlocks once all four are set."}
             </p>
           )}
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !reason || !outAt || !inAt}>
+          {!kycComplete && <KycGateNotice message="Complete your KYC to request a gate pass." />}
+          <Button onClick={() => createMut.mutate()} disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}>
             {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Request
           </Button>

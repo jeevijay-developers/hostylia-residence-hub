@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
+import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 
@@ -33,7 +34,7 @@ function StudentProfilePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year")
+        .select("id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year")
         .eq("profile_id", userId!)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -41,6 +42,21 @@ function StudentProfilePage() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const docsQ = useQuery({
+    queryKey: ["student-docs", studentQ.data?.id],
+    enabled: !!studentQ.data?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("documents")
+        .select("id, document_type, original_filename, verification_status")
+        .eq("owner_type", "STUDENT")
+        .eq("owner_id", studentQ.data!.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      return data ?? [];
     },
   });
 
@@ -114,6 +130,34 @@ function StudentProfilePage() {
         description={`Admission #${s.admission_number}`}
         actions={<StudentStatusBadge status={s.status} />}
       />
+
+      <Card className="gap-3 py-4">
+        <CardHeader className="px-4"><CardTitle className="text-sm">KYC documents</CardTitle></CardHeader>
+        <CardContent className="space-y-3 px-4">
+          <KycUploadForm
+            tenantId={s.tenant_id}
+            propertyId={s.property_id}
+            studentId={s.id}
+            onUploaded={() => docsQ.refetch()}
+          />
+          {(docsQ.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No documents uploaded yet — upload at least one to unlock fees, gate pass, mess and complaints.
+            </p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {(docsQ.data ?? []).map((d) => (
+                <li key={d.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                  <span className="font-medium">{d.document_type}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {d.original_filename} • Uploaded, {d.verification_status === "PENDING" ? "awaiting admin review" : d.verification_status.toLowerCase()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="gap-3 py-4">
         <CardHeader className="px-4"><CardTitle className="text-sm">Your details</CardTitle></CardHeader>
