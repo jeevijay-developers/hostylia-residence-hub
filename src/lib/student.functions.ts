@@ -244,6 +244,12 @@ const confirmAdmissionSchema = z.object({
   student_id: z.string().uuid(),
 });
 
+/** Digits only, so "+91 98765-43210", "919876543210" and "9876543210" all
+ * reduce to a comparable form regardless of who typed which format. */
+function phoneDigits(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
 /**
  * Links an APPLICANT's admission record to the account they signed up with
  * (matched by the phone/email already on file), and grants them the STUDENT
@@ -287,6 +293,21 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
     if (!matchedId && student.phone) {
       const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("phone", student.phone).limit(1);
       if (p && p.length) matchedId = p[0].id;
+    }
+    // Fall back to a country-code-agnostic match: the admission phone may
+    // have been entered without "+91" while the signed-up account's phone
+    // (captured verbatim from the OTP flow) has it, or vice versa.
+    if (!matchedId && student.phone) {
+      const suffix = phoneDigits(student.phone).slice(-10);
+      if (suffix.length === 10) {
+        const { data: candidates } = await supabaseAdmin
+          .from("profiles")
+          .select("id, phone")
+          .like("phone", `%${suffix}`)
+          .limit(5);
+        const match = candidates?.find((c) => phoneDigits(c.phone ?? "").endsWith(suffix));
+        if (match) matchedId = match.id;
+      }
     }
     if (!matchedId) {
       throw new Error(
@@ -378,6 +399,7 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
 
     return { ok: true as const, linked_profile_id: matchedId };
   });
+
 
 export const createAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -512,29 +534,40 @@ const deleteStudentSchema = z.object({
 /**
  * Soft-deletes a student record (sets deleted_at, matching the
  * `.is("deleted_at", null)` convention every student query filters on).
- * Blocked while the student is ACTIVE/NOTICE_GIVEN — move them out first so
- * their bed doesn't end up occupied by a record nobody can see anymore.
+ * Only a Hostel Admin may delete, and it's blocked while the student is
+ * ACTIVE/NOTICE_GIVEN — move them out first so their bed doesn't end up
+ * occupied by a record nobody can see anymore.
  */
 export const deleteStudent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => deleteStudentSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
 
     const { data: student, error: sErr } = await supabase
       .from("students")
-      .select("status")
+      .select("id, tenant_id, status")
       .eq("id", data.student_id)
+      .is("deleted_at", null)
       .single();
     if (sErr || !student) throw new Error("Student not found");
     if (student.status === "ACTIVE" || student.status === "NOTICE_GIVEN") {
       throw new Error("Move this student out before deleting their record");
     }
 
+    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_tenant_role", {
+      _user_id: userId,
+      _tenant_id: student.tenant_id,
+      _role: "HOSTEL_ADMIN",
+    });
+    if (roleErr) throw roleErr;
+    if (!isAdmin) throw new Error("Only a Hostel Admin can delete a student record");
+
     const { error } = await supabase
       .from("students")
       .update({ deleted_at: new Date().toISOString() })
-      .eq("id", data.student_id);
+      .eq("id", student.id)
+      .eq("tenant_id", student.tenant_id);
     if (error) throw new Error(error.message);
 
     return { ok: true as const };

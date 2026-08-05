@@ -196,7 +196,7 @@ function StudentsListPage() {
                   <TableCell>{s.phone ?? "—"}</TableCell>
                   <TableCell><StudentStatusBadge status={s.status} /></TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       <Button asChild size="sm" variant="ghost">
                         <Link to="/admin/students/$id" params={{ id: s.id }}>
                           <Eye className="h-4 w-4" /> Open
@@ -264,6 +264,7 @@ function StudentsListPage() {
                 if (pendingDelete) deleteMut.mutate(pendingDelete.id);
               }}
               disabled={deleteMut.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Delete
