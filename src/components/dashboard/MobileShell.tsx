@@ -6,6 +6,7 @@ import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { RoleGuard } from "./RoleGuard";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -23,7 +24,7 @@ export function MobileShell({ allow, navItems, children }: MobileShellProps) {
       <div className="flex min-h-screen flex-col bg-background" lang={langAttr}>
         <ImpersonationBanner />
         <MobileHeader />
-        <main className="flex-1 px-4 py-5 sm:px-6">
+        <main className={cn("flex-1 px-4 py-5 sm:px-6", navItems.length > 0 && "pb-24")}>
           <div className="mx-auto w-full max-w-2xl">{children ?? <Outlet />}</div>
         </main>
         <BottomNav items={navItems} />

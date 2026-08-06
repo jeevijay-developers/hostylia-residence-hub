@@ -3,20 +3,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { BedSingle, LayoutGrid } from "lucide-react";
+import { BedSingle, Check, ChevronsUpDown, DoorOpen, LayoutGrid, User } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { Button } from "@/components/ui/button";
 import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { createAllocation } from "@/lib/student.functions";
@@ -76,8 +81,29 @@ function AllocationBoard() {
     },
   });
 
+  const [viewBed, setViewBed] = useState<BedTile | null>(null);
+  const bedDetailQ = useQuery({
+    queryKey: ["bed-allocation-detail", viewBed?.id],
+    enabled: !!viewBed && viewBed.status === "OCCUPIED",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("allocations")
+        .select(
+          "id, status, start_date, rent_snapshot_paise, deposit_snapshot_paise, student_id, students(id, full_name, admission_number, phone)",
+        )
+        .eq("bed_id", viewBed!.id)
+        .in("status", ["ACTIVE", "NOTICE_GIVEN", "MOVE_OUT_INSPECTION", "PENDING_PAYMENT", "PENDING_AGREEMENT"])
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   const [selectedBed, setSelectedBed] = useState<BedTile | null>(null);
   const [studentId, setStudentId] = useState("");
+  const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [rent, setRent] = useState<number>(500000);
   const [deposit, setDeposit] = useState<number>(1000000);
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -139,11 +165,11 @@ function AllocationBoard() {
         <BedGrid
           beds={bedsQ.data ?? []}
           onSelect={(b) => {
-            if (b.status !== "VACANT") {
-              toast.info(`Bed ${b.code} is ${b.status.toLowerCase()}`);
+            if (b.status === "VACANT") {
+              setSelectedBed(b);
               return;
             }
-            setSelectedBed(b);
+            setViewBed(b);
           }}
         />
       )}
@@ -156,16 +182,54 @@ function AllocationBoard() {
           <div className="space-y-4">
             <div>
               <Label>Student</Label>
-              <Select value={studentId} onValueChange={setStudentId}>
-                <SelectTrigger><SelectValue placeholder="Select applicant" /></SelectTrigger>
-                <SelectContent>
-                  {(studentsQ.data ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name} • {s.admission_number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={studentPickerOpen} onOpenChange={setStudentPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={studentPickerOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {studentId
+                      ? (() => {
+                          const selected = (studentsQ.data ?? []).find((s) => s.id === studentId);
+                          return selected
+                            ? `${selected.full_name} • ${selected.admission_number}`
+                            : "Select applicant";
+                        })()
+                      : "Select applicant"}
+                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
+                  <Command>
+                    <CommandInput placeholder="Search by name or admission no…" />
+                    <CommandList>
+                      <CommandEmpty>No applicant found.</CommandEmpty>
+                      <CommandGroup>
+                        {(studentsQ.data ?? []).map((s) => (
+                          <CommandItem
+                            key={s.id}
+                            value={`${s.full_name} ${s.admission_number}`}
+                            onSelect={() => {
+                              setStudentId(s.id);
+                              setStudentPickerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "h-4 w-4",
+                                studentId === s.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {s.full_name} • {s.admission_number}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -190,6 +254,71 @@ function AllocationBoard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!viewBed} onOpenChange={(v) => !v && setViewBed(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bed {viewBed?.code}</DialogTitle>
+          </DialogHeader>
+          {viewBed?.status !== "OCCUPIED" ? (
+            <p className="text-sm text-muted-foreground">
+              This bed is currently <span className="font-medium">{viewBed?.status.toLowerCase()}</span>.
+              Manage its status from Manage rooms & beds.
+            </p>
+          ) : bedDetailQ.isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : !bedDetailQ.data ? (
+            <p className="text-sm text-muted-foreground">
+              Marked occupied but no active allocation record was found.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-md border border-border p-3">
+                <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate font-medium">{bedDetailQ.data.students?.full_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {bedDetailQ.data.students?.admission_number}
+                    {bedDetailQ.data.students?.phone ? ` • ${bedDetailQ.data.students.phone}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <Info label="Since" value={bedDetailQ.data.start_date ?? "—"} />
+                <Info label="Status" value={bedDetailQ.data.status} />
+                <Info label="Rent" value={`₹ ${(bedDetailQ.data.rent_snapshot_paise / 100).toFixed(2)}`} />
+                <Info label="Deposit" value={`₹ ${(bedDetailQ.data.deposit_snapshot_paise / 100).toFixed(2)}`} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewBed(null)}>Close</Button>
+            {viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
+              <>
+                <Button asChild variant="outline">
+                  <Link to="/admin/students/$id" params={{ id: bedDetailQ.data.student_id }}>
+                    <User className="h-4 w-4" /> View student
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/admin/students/$id/move-out" params={{ id: bedDetailQ.data.student_id }}>
+                    <DoorOpen className="h-4 w-4" /> Deallocate / move out
+                  </Link>
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-medium tabular-nums">{value}</p>
     </div>
   );
 }

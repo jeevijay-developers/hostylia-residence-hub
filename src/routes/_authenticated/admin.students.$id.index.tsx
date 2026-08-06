@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
-import { KycUploadForm } from "@/components/students/KycUploadForm";
+import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { confirmStudentAdmission } from "@/lib/student.functions";
 
@@ -47,22 +47,11 @@ function StudentDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("allocations")
-        .select("id, status, start_date, expected_end_date, actual_end_date, bed_id, rent_snapshot_paise")
+        .select(
+          "id, status, start_date, expected_end_date, actual_end_date, bed_id, rent_snapshot_paise, " +
+            "bed:beds(code, room:rooms(room_number), floor:floors(name, floor_number), block:blocks(name))",
+        )
         .eq("student_id", id)
-        .order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
-
-  const docsQ = useQuery({
-    queryKey: ["student-docs", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("documents")
-        .select("id, document_type, original_filename, status, verification_status, created_at")
-        .eq("owner_type", "STUDENT")
-        .eq("owner_id", id)
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -131,47 +120,44 @@ function StudentDetailPage() {
               <p className="text-sm text-muted-foreground">No allocations yet. Assign a bed from Allocations.</p>
             ) : (
               <ul className="space-y-2 text-sm">
-                {(allocQ.data ?? []).map((a) => (
-                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border p-2">
-                    <span>
-                      {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
-                    </span>
-                    <span className="text-xs font-medium">{a.status}</span>
-                  </li>
-                ))}
+                {(allocQ.data ?? []).map((a) => {
+                  const bed = a.bed as {
+                    code: string;
+                    room: { room_number: string } | null;
+                    floor: { name: string; floor_number: number | null } | null;
+                    block: { name: string } | null;
+                  } | null;
+                  return (
+                    <li key={a.id} className="space-y-1 rounded-md border border-border p-2">
+                      <div className="flex items-center justify-between">
+                        <span>
+                          {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {bed
+                          ? [
+                              bed.block?.name && `Block ${bed.block.name}`,
+                              bed.floor?.name ?? (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
+                              bed.room?.room_number && `Room ${bed.room.room_number}`,
+                              `Bed ${bed.code}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")
+                          : "Bed details unavailable"}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>KYC documents</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <KycUploadForm
-            tenantId={s.tenant_id}
-            propertyId={s.property_id}
-            studentId={s.id}
-            onUploaded={() => docsQ.refetch()}
-          />
-          {(docsQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {(docsQ.data ?? []).map((d) => (
-                <li key={d.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                  <span className="font-medium">{d.document_type}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {d.original_filename} • {d.verification_status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <KycStatus studentId={s.id} />
 
-      <AgreementViewer studentId={s.id} />
+      <AgreementViewer studentId={s.id} readOnly />
     </div>
   );
 }
