@@ -141,6 +141,7 @@ function StudentProfilePage() {
             tenantId={s.tenant_id}
             propertyId={s.property_id}
             studentId={s.id}
+            existingDocs={docsQ.data ?? []}
             onUploaded={() => docsQ.refetch()}
           />
           {(docsQ.data ?? []).length === 0 ? (
