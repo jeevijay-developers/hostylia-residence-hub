@@ -12,6 +12,7 @@ import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 import { linkGuardianProfileOnLogin } from "@/lib/parent-link.functions";
 import { activateMyInvites } from "@/lib/admin-staff.functions";
 import {
+  displayIndianPhone,
   maskPhone,
   otpCodeSchema,
   OTP_RESEND_COOLDOWN_SECONDS,
@@ -89,11 +90,16 @@ function VerifyOtpPage() {
     if (cooldown > 0 || resending) return;
     setResending(true);
     try {
-      await sendPhoneOtp({ data: { phone } });
+      const result = await sendPhoneOtp({ data: { phone } });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not resend the code.");
+        return;
+      }
       toast.success("A new code has been sent.");
       setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not resend the code.");
+      console.error("resend OTP failed:", err);
+      toast.error(err instanceof Error && err.message ? err.message : "Could not resend the code.");
     } finally {
       setResending(false);
     }
@@ -102,7 +108,7 @@ function VerifyOtpPage() {
   return (
     <AuthLayout
       title="Enter verification code"
-      subtitle={`We sent a 6-digit code to ${maskPhone(phone)}.`}
+      subtitle={`We sent a 6-digit code to ${maskPhone(displayIndianPhone(phone))}.`}
     >
       <div className="space-y-6">
         <OtpInput

@@ -25,6 +25,7 @@ import {
   signupIdentitySchema,
   emailCredentialsSchema,
   phoneCredentialsSchema,
+  normalizeIndianPhone,
   type SignupRole,
   type SignupIdentityInput,
   type EmailCredentialsInput,
@@ -544,15 +545,16 @@ function PhoneCredentialsForm({
   const onSubmit = async (values: PhoneCredentialsInput) => {
     setSubmitting(true);
     try {
+      const phone = normalizeIndianPhone(values.phone);
       const { error } = await supabase.auth.signInWithOtp({
-        phone: values.phone,
+        phone,
         options: { shouldCreateUser: true, data: signupMetadata(role, identity) },
       });
       if (error) {
         toast.error(error.message);
         return;
       }
-      navigate({ to: "/verify-otp", search: { phone: values.phone } });
+      navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not send OTP. Please try again.";
       toast.error(message);

@@ -10,6 +10,33 @@ export const phoneSchema = z
   .trim()
   .regex(/^\+?[1-9]\d{7,14}$/, "Enter a valid phone number in international format (e.g. +919876543210)");
 
+/**
+ * Normalizes to E.164 with the +91 (India) country code — this app targets
+ * Indian hostels, and Supabase Auth's phone-based auth matches on the exact
+ * stored string. Storing a bare 10-digit number at invite/admission time
+ * while login expects "+91…" silently creates two different identities for
+ * the same person, so every write path that ends up as an auth.users.phone
+ * or a guardians/profiles lookup key must go through this first.
+ */
+export function normalizeIndianPhone(phone: string): string {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  return digits.length === 10 ? `+91${digits}` : `+${digits}`;
+}
+
+/**
+ * Inverse of the above, for display only — stored/sent values must stay
+ * E.164 (normalizeIndianPhone), this just hides the +91/91 country code
+ * so admins see the 10-digit number they'd actually recognize.
+ */
+export function displayIndianPhone(phone: string): string {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith("+91") && trimmed.length === 13) return trimmed.slice(3);
+  if (trimmed.startsWith("91") && trimmed.length === 12) return trimmed.slice(2);
+  return trimmed;
+}
+
 export const emailSchema = z
   .string()
   .trim()
