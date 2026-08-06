@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normalizeIndianPhone } from "@/schemas/auth";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
@@ -97,9 +98,7 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     if (sErr) throw new Error(sErr.message);
 
     // Upsert guardian by (tenant, phone), then link.
-    const normalizedPhone = data.guardian_phone.startsWith("+")
-      ? data.guardian_phone
-      : `+${data.guardian_phone}`;
+    const normalizedPhone = normalizeIndianPhone(data.guardian_phone);
 
     const { data: existingG } = await admin
       .from("guardians")
@@ -170,7 +169,7 @@ async function insertStudentRow(
   if (error) throw error;
 
   if (r.guardian_phone && r.guardian_name) {
-    const phone = r.guardian_phone.startsWith("+") ? r.guardian_phone : `+${r.guardian_phone}`;
+    const phone = normalizeIndianPhone(r.guardian_phone);
     const { data: eg } = await supabase
       .from("guardians")
       .select("id")
@@ -341,7 +340,7 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
       const guardianName = typeof meta?.guardian_name === "string" ? meta.guardian_name : "";
       const guardianPhoneRaw = typeof meta?.guardian_phone === "string" ? meta.guardian_phone : "";
       if (guardianName.trim() && guardianPhoneRaw.trim()) {
-        const guardianPhone = guardianPhoneRaw.startsWith("+") ? guardianPhoneRaw : `+${guardianPhoneRaw}`;
+        const guardianPhone = normalizeIndianPhone(guardianPhoneRaw);
         const { data: existingG } = await supabase
           .from("guardians")
           .select("id")

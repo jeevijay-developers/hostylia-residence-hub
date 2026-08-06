@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   emailLoginSchema,
   phoneLoginSchema,
+  normalizeIndianPhone,
   type EmailLoginInput,
   type PhoneLoginInput,
 } from "@/schemas/auth";
@@ -67,10 +68,23 @@ function PhoneForm() {
   const onSubmit = async (values: PhoneLoginInput) => {
     setSubmitting(true);
     try {
-      await sendPhoneOtp({ data: { phone: values.phone } });
-      navigate({ to: "/verify-otp", search: { phone: values.phone } });
+      const phone = normalizeIndianPhone(values.phone);
+      const result = await sendPhoneOtp({ data: { phone } });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not send OTP. Please try again.");
+        return;
+      }
+      navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not send OTP. Please try again.";
+      // Truly unexpected failures (network, etc.) still land here — server-fn
+      // errors don't always round-trip as a plain Error with a populated
+      // `.message` (TanStack Start's serializer can drop it), so log the raw
+      // value too instead of just showing a blank/"{}" toast.
+      console.error("sendPhoneOtp failed:", err);
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not send OTP. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);

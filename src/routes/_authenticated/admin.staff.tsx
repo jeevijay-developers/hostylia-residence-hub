@@ -3,19 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Send, UserX } from "lucide-react";
+import { ChevronDown, Loader2, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,9 +29,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
-import { inviteStaff, listStaff, revokeStaff } from "@/lib/admin-staff.functions";
+import { displayIndianPhone, normalizeIndianPhone } from "@/schemas/auth";
+import {
+  deleteStaff,
+  inviteStaff,
+  listStaff,
+  revokeStaff,
+  updateStaff,
+} from "@/lib/admin-staff.functions";
+
+const STAFF_ROLE_LABEL = { WARDEN: "Warden", ACCOUNTANT: "Accountant" } as const;
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   head: () => ({ meta: [{ title: "Staff — Hostylia" }] }),
@@ -95,6 +110,8 @@ function AdminStaffPage() {
   const listFn = useServerFn(listStaff);
   const inviteFn = useServerFn(inviteStaff);
   const revokeFn = useServerFn(revokeStaff);
+  const updateFn = useServerFn(updateStaff);
+  const deleteFn = useServerFn(deleteStaff);
 
   const staffQ = useQuery({
     queryKey: ["staff", tenantId],
@@ -103,39 +120,38 @@ function AdminStaffPage() {
   });
   const staff = useMemo(() => (staffQ.data ?? []) as StaffRow[], [staffQ.data]);
 
-  const [email, setEmail] = useState("");
+  const [addRole, setAddRole] = useState<"WARDEN" | "ACCOUNTANT" | null>(null);
+  const [staffName, setStaffName] = useState("");
   const [phone, setPhone] = useState("");
-  const [staffRole, setStaffRole] = useState<"WARDEN" | "ACCOUNTANT">("WARDEN");
   const [pendingRevoke, setPendingRevoke] = useState<StaffRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<StaffRow | null>(null);
+  const [editRow, setEditRow] = useState<StaffRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [duplicateContact, setDuplicateContact] = useState<string | null>(null);
 
-  const activeContacts = useMemo(() => {
-    const emails = new Set<string>();
+  const activePhones = useMemo(() => {
     const phones = new Set<string>();
     for (const s of staff) {
       if (s.revoked_at) continue;
-      if (s.profile?.email) emails.add(s.profile.email.trim().toLowerCase());
       if (s.profile?.phone) phones.add(s.profile.phone.trim());
     }
-    return { emails, phones };
+    return phones;
   }, [staff]);
 
   // Check as soon as typing settles, instead of only surfacing the conflict
   // after a round trip to "Send invite" fails.
   useEffect(() => {
-    const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = phone.trim();
     const handle = setTimeout(() => {
-      if (trimmedEmail && activeContacts.emails.has(trimmedEmail)) {
-        setDuplicateContact("Someone with this email already has access to this hostel.");
-      } else if (trimmedPhone && activeContacts.phones.has(trimmedPhone)) {
-        setDuplicateContact("Someone with this phone number already has access to this hostel.");
-      } else {
-        setDuplicateContact(null);
-      }
+      setDuplicateContact(
+        trimmedPhone && activePhones.has(normalizeIndianPhone(trimmedPhone))
+          ? "Someone with this phone number already has access to this hostel."
+          : null,
+      );
     }, 400);
     return () => clearTimeout(handle);
-  }, [email, phone, activeContacts]);
+  }, [phone, activePhones]);
 
   const invite = useMutation({
     mutationFn: () =>
@@ -143,14 +159,15 @@ function AdminStaffPage() {
         data: {
           tenant_id: tenantId!,
           property_id: propertyId,
-          email: email || null,
+          full_name: staffName || null,
           phone: phone || null,
-          role: staffRole,
+          role: addRole!,
         },
       }),
     onSuccess: () => {
-      toast.success("Invite sent");
-      setEmail("");
+      toast.success("Added — they can sign in with this phone number now.");
+      setAddRole(null);
+      setStaffName("");
       setPhone("");
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
@@ -168,8 +185,39 @@ function AdminStaffPage() {
     onError: (e) => toast.error(errorMessage(e, "Could not revoke access")),
   });
 
+  const update = useMutation({
+    mutationFn: () =>
+      updateFn({
+        data: {
+          tenant_id: tenantId!,
+          role_assignment_id: editRow!.id,
+          full_name: editName,
+          phone: editPhone,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Updated");
+      setEditRow(null);
+      qc.invalidateQueries({ queryKey: ["staff", tenantId] });
+    },
+    onError: (e) => toast.error(errorMessage(e, "Could not update")),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
+    onSuccess: () => {
+      toast.success("Removed");
+      setPendingDelete(null);
+      qc.invalidateQueries({ queryKey: ["staff", tenantId] });
+    },
+    onError: (e) => toast.error(errorMessage(e, "Could not remove")),
+  });
+
+  const canUpdate =
+    !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
+
   const canInvite =
-    !invite.isPending && !duplicateContact && (email.trim() !== "" || phone.trim() !== "");
+    !invite.isPending && !duplicateContact && staffName.trim().length >= 2 && phone.trim() !== "";
 
   if (!tenantId) {
     return (
@@ -184,67 +232,81 @@ function AdminStaffPage() {
     <div className="space-y-8">
       <PageHeader
         title="Staff"
-        description="Invite Wardens and Accountants; revoke access when they leave."
+        description="Add Wardens and Accountants; revoke access when they leave."
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <UserPlus className="h-4 w-4" /> Add <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setAddRole("WARDEN")}>Warden</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAddRole("ACCOUNTANT")}>
+                Accountant
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
       />
 
-      <section className="rounded-lg border border-border bg-card p-6">
-        <h2 className="text-sm font-semibold">Invite staff</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Send to an email address or a phone number. They pick their own password on first sign-in.
-        </p>
-
-        <div className="mt-5 grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto]">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-email">Email</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              autoComplete="off"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="staff@example.com"
-            />
+      <Dialog
+        open={!!addRole}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddRole(null);
+            setStaffName("");
+            setPhone("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add {addRole ? STAFF_ROLE_LABEL[addRole] : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-name">Name</Label>
+              <Input
+                id="add-staff-name"
+                autoComplete="off"
+                value={staffName}
+                onChange={(e) => setStaffName(e.target.value)}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-phone">Phone</Label>
+              <Input
+                id="add-staff-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+              />
+              <p className="text-xs text-muted-foreground">
+                They sign in with this phone number and a one-time code — no password.
+              </p>
+            </div>
+            {duplicateContact && <p className="text-sm text-destructive">{duplicateContact}</p>}
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-phone">Phone</Label>
-            <Input
-              id="invite-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="off"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-role">Role</Label>
-            <Select
-              value={staffRole}
-              onValueChange={(v) => setStaffRole(v as "WARDEN" | "ACCOUNTANT")}
-            >
-              <SelectTrigger id="invite-role" className="lg:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="WARDEN">Warden</SelectItem>
-                <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button disabled={!canInvite} onClick={() => invite.mutate()}>
-            {invite.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            {invite.isPending ? "Sending…" : "Send invite"}
-          </Button>
-        </div>
-        {duplicateContact && (
-          <p className="mt-2 text-sm text-destructive">{duplicateContact}</p>
-        )}
-      </section>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddRole(null)}>
+              Cancel
+            </Button>
+            <Button disabled={!canInvite} onClick={() => invite.mutate()}>
+              {invite.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {invite.isPending ? "Adding…" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <section className="rounded-lg border border-border bg-card">
         <Table>
@@ -296,29 +358,62 @@ function AdminStaffPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.profile?.full_name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {s.profile?.email ?? s.profile?.phone ?? "—"}
+                      {s.profile?.email ??
+                        (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
+                        "—"}
                     </TableCell>
                     <TableCell>{ROLE_LABEL[s.role] ?? s.role}</TableCell>
                     <TableCell>
                       <StaffStatusBadge row={s} />
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* Never leave this cell blank: say why an action is unavailable. */}
-                      {isRevoked ? (
-                        <span className="text-xs text-muted-foreground">No longer has access</span>
-                      ) : isOwner ? (
+                      {/* Icon-only actions; title= carries the label for a11y/hover. */}
+                      {isOwner ? (
                         <span className="text-xs text-muted-foreground">
                           Account owner — cannot be revoked
                         </span>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setPendingRevoke(s)}
-                        >
-                          <UserX className="h-4 w-4" /> Revoke
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {!isRevoked && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Edit"
+                                aria-label="Edit"
+                                onClick={() => {
+                                  setEditRow(s);
+                                  setEditName(s.profile?.full_name ?? "");
+                                  setEditPhone(
+                                    s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
+                                  );
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Revoke access"
+                                aria-label="Revoke access"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setPendingRevoke(s)}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Delete"
+                            aria-label="Delete"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setPendingDelete(s)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -355,6 +450,74 @@ function AdminStaffPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {pendingDelete?.profile?.full_name ?? "this person"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from the staff list entirely — unlike Revoke, this can't be undone.
+              You'd need to add them again from scratch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingDelete) del.mutate(pendingDelete.id);
+              }}
+              disabled={del.isPending}
+            >
+              {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={!!editRow} onOpenChange={(open) => !open && setEditRow(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit {editRow ? ROLE_LABEL[editRow.role] ?? editRow.role : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-staff-name">Name</Label>
+              <Input
+                id="edit-staff-name"
+                autoComplete="off"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-staff-phone">Phone</Label>
+              <Input
+                id="edit-staff-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditRow(null)}>
+              Cancel
+            </Button>
+            <Button disabled={!canUpdate} onClick={() => update.mutate()}>
+              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {update.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
