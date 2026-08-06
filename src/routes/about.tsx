@@ -62,7 +62,7 @@ function AboutPage() {
             { v: "120+", l: "Properties live" },
             { v: "65,000", l: "Beds managed" },
             { v: "₹240 Cr+", l: "Fees collected" },
-            { v: "11 cities", l: "Across India" },
+            { v: "11 cities", l: "Across Indiaaa" },
           ]} />
         </div>
       </section>
