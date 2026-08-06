@@ -51,7 +51,6 @@ export function LoginForm({ defaultMode = "phone" as Mode }: { defaultMode?: Mod
     </div>
   );
 }
-
 function PhoneForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
