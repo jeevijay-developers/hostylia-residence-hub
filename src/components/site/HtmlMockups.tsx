@@ -82,8 +82,8 @@ export function MockOccupancyDashboard() {
             status === "occupied"
               ? "bg-soft-teal/80 border-soft-teal"
               : status === "notice"
-              ? "bg-gold/70 border-gold"
-              : "bg-white/5 border-dark-border";
+                ? "bg-gold/70 border-gold"
+                : "bg-white/5 border-dark-border";
           return (
             <div key={i} className={`flex h-10 items-center justify-center rounded-lg border text-[10px] font-bold text-white ${color}`}>
               {i + 301}
@@ -240,7 +240,7 @@ export function MockParentApp() {
     <PhoneFrame>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] text-soft-grey">Welcome back,</div>
+          <div className="text-[10px] text-soft-grey">Welcome back ,</div>
           <div className="text-sm font-extrabold text-white">Mrs. Sharma</div>
         </div>
         <div className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-white"><Bell size={14} /></div>
@@ -317,10 +317,9 @@ export function MockSecurityLog() {
         {rows.map((r, i) => (
           <div key={i} className="flex items-center justify-between border-b border-dark-border bg-white/5 px-3 py-2 last:border-0">
             <div className="flex items-center gap-2">
-              <span className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-bold ${
-                r.s === "alert" ? "bg-[#E55353]/20 text-[#E55353]" :
+              <span className={`grid h-7 w-7 place-items-center rounded-full text-[10px] font-bold ${r.s === "alert" ? "bg-[#E55353]/20 text-[#E55353]" :
                 r.s === "visitor" ? "bg-gold/20 text-gold" : "bg-soft-teal/20 text-soft-teal"
-              }`}><Users size={12} /></span>
+                }`}><Users size={12} /></span>
               <div>
                 <div className="text-[11px] font-bold text-white">{r.n}</div>
                 <div className="text-[10px] text-soft-grey">{r.t}</div>
