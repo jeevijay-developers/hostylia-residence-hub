@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Save, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ function StudentProfilePage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("documents")
-        .select("id, document_type, original_filename, verification_status")
+        .select("id, document_type, original_filename, verification_status, rejection_reason")
         .eq("owner_type", "STUDENT")
         .eq("owner_id", studentQ.data!.id)
         .is("deleted_at", null)
@@ -132,7 +132,10 @@ function StudentProfilePage() {
       />
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4"><CardTitle className="text-sm">KYC documents</CardTitle></CardHeader>
+        <CardHeader className="flex-row items-center justify-between px-4">
+          <CardTitle className="text-sm">KYC documents</CardTitle>
+          <KycOverallBadge docs={docsQ.data ?? []} />
+        </CardHeader>
         <CardContent className="space-y-3 px-4">
           <KycUploadForm
             tenantId={s.tenant_id}
@@ -147,11 +150,21 @@ function StudentProfilePage() {
           ) : (
             <ul className="space-y-1 text-sm">
               {(docsQ.data ?? []).map((d) => (
-                <li key={d.id} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                  <span className="font-medium">{d.document_type}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {d.original_filename} • Uploaded, {d.verification_status === "PENDING" ? "awaiting admin review" : d.verification_status.toLowerCase()}
-                  </span>
+                <li key={d.id} className="flex flex-col gap-0.5 rounded-md border border-border px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{d.document_type}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {d.original_filename} •{" "}
+                      {d.verification_status === "PENDING"
+                        ? "Uploaded, awaiting warden review"
+                        : d.verification_status === "VERIFIED"
+                          ? "Verified"
+                          : "Rejected"}
+                    </span>
+                  </div>
+                  {d.verification_status === "REJECTED" && d.rejection_reason && (
+                    <p className="text-xs text-destructive">Reason: {d.rejection_reason}</p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -209,5 +222,35 @@ function StudentProfilePage() {
         Save changes
       </Button>
     </div>
+  );
+}
+
+type KycDoc = { verification_status: string };
+
+/** Mirrors the staff-side KycStatus widget's logic: complete only once the
+ * warden has verified every uploaded document. */
+function KycOverallBadge({ docs }: { docs: KycDoc[] }) {
+  if (docs.length === 0) return null;
+  const hasRejected = docs.some((d) => d.verification_status === "REJECTED");
+  const allVerified = docs.every((d) => d.verification_status === "VERIFIED");
+
+  if (hasRejected) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+        <AlertTriangle className="h-3.5 w-3.5" /> Rejected
+      </span>
+    );
+  }
+  if (allVerified) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-md bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+        <ShieldCheck className="h-3.5 w-3.5" /> Complete
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 rounded-md bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+      <Clock className="h-3.5 w-3.5" /> Awaiting warden review
+    </span>
   );
 }
