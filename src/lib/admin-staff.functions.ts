@@ -55,19 +55,14 @@ export const inviteStaff = createServerFn({ method: "POST" })
       if (p && p.length) inviteeId = p[0].id;
     }
 
-    // Reusing an existing (e.g. orphaned/partial-invite) profile skips the
-    // createUser call below, which is the only place full_name otherwise
-    // gets set — so the name the admin just typed would silently vanish.
-    // Only backfill an empty name; never overwrite one the person set themselves.
+    // Reusing an existing (e.g. orphaned/partial-invite/test) profile skips
+    // the createUser call below, which is the only place full_name otherwise
+    // gets set — so the name the admin just typed here would silently be
+    // dropped in favor of whatever (often garbage, from earlier testing)
+    // name the shell profile already had. The admin typing a name in this
+    // form is a deliberate act — it should always win.
     if (inviteeId && data.full_name) {
-      const { data: existing } = await supabaseAdmin
-        .from("profiles")
-        .select("full_name")
-        .eq("id", inviteeId)
-        .single();
-      if (!existing?.full_name) {
-        await supabaseAdmin.from("profiles").update({ full_name: data.full_name }).eq("id", inviteeId);
-      }
+      await supabaseAdmin.from("profiles").update({ full_name: data.full_name }).eq("id", inviteeId);
     }
 
     if (!inviteeId) {

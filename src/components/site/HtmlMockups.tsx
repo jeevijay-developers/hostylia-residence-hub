@@ -240,7 +240,7 @@ export function MockParentApp() {
     <PhoneFrame>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] text-soft-grey">Welcome back ,</div>
+          <div className="text-[10px] text-soft-grey">Welcome back,</div>
           <div className="text-sm font-extrabold text-white">Mrs. Sharma</div>
         </div>
         <div className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-white"><Bell size={14} /></div>
