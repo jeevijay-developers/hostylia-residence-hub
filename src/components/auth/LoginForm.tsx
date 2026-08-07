@@ -125,11 +125,13 @@ function EmailForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<EmailLoginInput>({
     resolver: zodResolver(emailLoginSchema),
     defaultValues: { email: "", password: "" },
   });
+  const email = watch("email");
 
   const onSubmit = async (values: EmailLoginInput) => {
     setSubmitting(true);
@@ -194,7 +196,9 @@ function EmailForm() {
         {t("auth.signIn")}
       </Button>
       <Button asChild type="button" variant="ghost" className="min-h-11 w-full">
-        <Link to="/forgot-password">{t("auth.forgotPasswordLink")}</Link>
+        <Link to="/forgot-password" search={email ? { email } : {}}>
+          {t("auth.forgotPasswordLink")}
+        </Link>
       </Button>
     </form>
   );

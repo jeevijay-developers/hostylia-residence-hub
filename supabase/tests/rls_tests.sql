@@ -218,6 +218,104 @@ SELECT pg_temp.assert_throws(
 ROLLBACK;
 
 -- =============================================================================
+-- SECTION 10b — Complaint reopen as the actual STUDENT owner (not admin).
+-- fn_complaints_guard_self_update must allow this one specific transition
+-- while still blocking a student from sneaking other column changes through
+-- alongside it, and still blocking reopen once the window has lapsed.
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000022'); -- Student 03, owns cp05
+-- cp05 is seeded RESOLVED with reopen_until = now()+44h → within window.
+UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.complaints WHERE id='11111111-1111-1111-1111-11111111ca05' AND status='REOPENED'),
+  1, 'Student can reopen own RESOLVED complaint within 48h window');
+ROLLBACK; -- undoes the reopen; fixture state is untouched for the next block
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- admin resets fixture state
+UPDATE public.complaints SET status='RESOLVED', resolved_at=now(), reopen_until=now()-interval '1 day'
+  WHERE id='11111111-1111-1111-1111-11111111ca05';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000022'); -- Student 03 again
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05'$sql$,
+  'Student reopen rejected after 48h window');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+UPDATE public.complaints SET status='RESOLVED', resolved_at=now(), reopen_until=now()+interval '44 hours'
+  WHERE id='11111111-1111-1111-1111-11111111ca05';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000022'); -- Student 03 again
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.complaints SET status='REOPENED', resolution_summary='rewritten by student'
+       WHERE id='11111111-1111-1111-1111-11111111ca05'$sql$,
+  'Student cannot bundle a staff-controlled column change into a reopen');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 10c — Student can rate the resolution of their own complaint.
+-- rating/rating_comment are deliberately NOT in fn_complaints_guard_self_update's
+-- blocked-column list, so this must succeed for RESOLVED/CLOSED complaints the
+-- student owns, be rejected for complaints they don't own, and still respect the
+-- rating CHECK (1..5) constraint.
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000022'); -- Student 03, owns cp05 (RESOLVED)
+UPDATE public.complaints SET rating=4, rating_comment='Quick fix, thanks!'
+  WHERE id='11111111-1111-1111-1111-11111111ca05';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.complaints
+    WHERE id='11111111-1111-1111-1111-11111111ca05' AND rating=4 AND rating_comment='Quick fix, thanks!'),
+  1, 'Student can rate their own resolved complaint');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.complaints SET rating=6 WHERE id='11111111-1111-1111-1111-11111111ca05'$sql$,
+  'Rating outside 1-5 is rejected by the CHECK constraint');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, does NOT own cp05
+UPDATE public.complaints SET rating=1, rating_comment='not mine to rate'
+  WHERE id='11111111-1111-1111-1111-11111111ca05';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.complaints
+    WHERE id='11111111-1111-1111-1111-11111111ca05' AND rating_comment='not mine to rate'),
+  0, 'Student cannot rate a complaint that is not their own (RLS USING excludes the row)');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 10d — Student/parent can read the bed/room/floor/block referenced by
+-- their own (student's) allocation, but not someone else's.
+-- Allocation a1 (student 01, profile ..020) → bed e001/room c001/floor f001/block b001.
+-- Allocation a2 (student 02, profile ..021) → bed e002 (same room/floor/block as a1).
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e001'),
+  1, 'Student can read their own allocation''s bed');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.rooms WHERE id='11111111-1111-1111-1111-11111111c001'),
+  1, 'Student can read their own allocation''s room');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.floors WHERE id='11111111-1111-1111-1111-11111111f001'),
+  1, 'Student can read their own allocation''s floor');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.blocks WHERE id='11111111-1111-1111-1111-11111111b001'),
+  1, 'Student can read their own allocation''s block');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e002'),
+  0, 'Student cannot read a bed from someone else''s allocation');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01, linked to Student 01
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e001'),
+  1, 'Linked parent can read their child''s allocation bed');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e002'),
+  0, 'Parent cannot read a bed from a student they are not linked to');
+ROLLBACK;
+
+-- =============================================================================
 -- SECTION 11 — Phase 13 hardening: tenants / organizations / properties /
 -- subscriptions cross-tenant isolation + tenants status-column trigger guard.
 --

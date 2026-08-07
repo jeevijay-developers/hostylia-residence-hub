@@ -101,7 +101,7 @@ function StudentDetailPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="lg:row-span-2">
           <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 text-sm">
             <Info label="Email" value={s.email ?? "—"} />
@@ -114,55 +114,67 @@ function StudentDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Allocation history</CardTitle></CardHeader>
-          <CardContent>
-            {allocQ.isError ? (
-              <p className="text-sm text-destructive">
-                Couldn't load allocations: {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
-              </p>
-            ) : (allocQ.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No allocations yet. Assign a bed from Allocations.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {(allocQ.data ?? []).map((a) => {
-                  const bed = a.bed as {
-                    code: string;
-                    room: { room_number: string } | null;
-                    floor: { name: string; floor_number: number | null } | null;
-                    block: { name: string } | null;
-                  } | null;
-                  return (
-                    <li key={a.id} className="space-y-1 rounded-md border border-border p-2">
-                      <div className="flex items-center justify-between">
-                        <span>
-                          {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {bed
-                          ? [
-                              bed.block?.name && `Block ${bed.block.name}`,
-                              bed.floor?.name ?? (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
-                              bed.room?.room_number && `Room ${bed.room.room_number}`,
-                              `Bed ${bed.code}`,
-                            ]
-                              .filter(Boolean)
-                              .join(" • ")
-                          : "Bed details unavailable"}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Allocation history</CardTitle></CardHeader>
+            <CardContent>
+              {allocQ.isError ? (
+                <p className="text-sm text-destructive">
+                  Couldn't load allocations: {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
+                </p>
+              ) : (allocQ.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No allocations yet. Assign a bed from Allocations.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {(allocQ.data ?? []).map((a) => {
+                    const bed = a.bed as {
+                      code: string;
+                      room: { room_number: string } | null;
+                      floor: { name: string; floor_number: number | null } | null;
+                      block: { name: string } | null;
+                    } | null;
+                    return (
+                      <li key={a.id} className="space-y-1 rounded-md border border-border p-2">
+                        <div className="flex items-center justify-between">
+                          <span>
+                            {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {bed
+                            ? [
+                                bed.block?.name && `Block ${bed.block.name}`,
+                                bed.floor?.name ?? (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
+                                bed.room?.room_number && `Room ${bed.room.room_number}`,
+                                `Bed ${bed.code}`,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")
+                            : "Bed details unavailable"}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle>KYC documents</CardTitle>
+              <KycStatus studentId={s.id} />
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle>Boarding agreement</CardTitle>
+              <AgreementViewer studentId={s.id} readOnly />
+            </CardHeader>
+          </Card>
+        </div>
       </div>
-
-      <KycStatus studentId={s.id} />
-
-      <AgreementViewer studentId={s.id} readOnly />
     </div>
   );
 }

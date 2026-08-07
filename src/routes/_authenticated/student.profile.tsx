@@ -11,8 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +27,14 @@ export const Route = createFileRoute("/_authenticated/student/profile")({
   head: () => ({ meta: [{ title: "My Profile — Hostylia" }] }),
   component: StudentProfilePage,
 });
+
+const OPEN_ALLOCATION_STATUSES = [
+  "ACTIVE",
+  "NOTICE_GIVEN",
+  "MOVE_OUT_INSPECTION",
+  "PENDING_AGREEMENT",
+  "PENDING_PAYMENT",
+];
 
 function StudentProfilePage() {
   const { data: resolved } = useResolvedRole();
@@ -34,7 +47,9 @@ function StudentProfilePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select("id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year")
+        .select(
+          "id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year",
+        )
         .eq("profile_id", userId!)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -60,6 +75,25 @@ function StudentProfilePage() {
     },
   });
 
+  const allocQ = useQuery({
+    queryKey: ["my-current-allocation", studentQ.data?.id],
+    enabled: !!studentQ.data?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allocations")
+        .select(
+          "id, status, bed:beds(code, room:rooms(room_number), floor:floors(name, floor_number), block:blocks(name))",
+        )
+        .eq("student_id", studentQ.data!.id)
+        .in("status", OPEN_ALLOCATION_STATUSES)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -68,6 +102,7 @@ function StudentProfilePage() {
   const [institute, setInstitute] = useState("");
   const [course, setCourse] = useState("");
   const [academicYear, setAcademicYear] = useState("");
+  const [kycDialogOpen, setKycDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!studentQ.data) return;
@@ -122,6 +157,34 @@ function StudentProfilePage() {
   }
 
   const s = studentQ.data;
+  const docs = docsQ.data ?? [];
+  // Mirrors KycUploadForm's own lock condition, so the collapsed summary and
+  // the form agree on when KYC counts as "done".
+  const kycSubmitted = docs.some(
+    (d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED",
+  );
+  const kycRejected = !kycSubmitted && docs.some((d) => d.verification_status === "REJECTED");
+
+  const bed = allocQ.data?.bed as
+    | {
+        code: string;
+        room: { room_number: string } | null;
+        floor: { name: string; floor_number: number | null } | null;
+        block: { name: string } | null;
+      }
+    | null
+    | undefined;
+  const stayText = bed
+    ? [
+        bed.block?.name && `Block ${bed.block.name}`,
+        bed.floor?.name ??
+          (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
+        bed.room?.room_number && `Room ${bed.room.room_number}`,
+        `Bed ${bed.code}`,
+      ]
+        .filter(Boolean)
+        .join(" • ")
+    : "Not allocated yet";
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -132,70 +195,64 @@ function StudentProfilePage() {
       />
 
       <Card className="gap-3 py-4">
-        <CardHeader className="flex-row items-center justify-between px-4">
-          <CardTitle className="text-sm">KYC documents</CardTitle>
-          <KycOverallBadge docs={docsQ.data ?? []} />
+        <CardHeader className="px-4">
+          <CardTitle className="text-sm">Your details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 px-4">
-          <KycUploadForm
-            tenantId={s.tenant_id}
-            propertyId={s.property_id}
-            studentId={s.id}
-            existingDocs={docsQ.data ?? []}
-            onUploaded={() => docsQ.refetch()}
-          />
-          {(docsQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No documents uploaded yet — upload at least one to unlock fees, gate pass, mess and complaints.
-            </p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {(docsQ.data ?? []).map((d) => (
-                <li key={d.id} className="flex flex-col gap-0.5 rounded-md border border-border px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{d.document_type}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {d.original_filename} •{" "}
-                      {d.verification_status === "PENDING"
-                        ? "Uploaded, awaiting warden review"
-                        : d.verification_status === "VERIFIED"
-                          ? "Verified"
-                          : "Rejected"}
-                    </span>
-                  </div>
-                  {d.verification_status === "REJECTED" && d.rejection_reason && (
-                    <p className="text-xs text-destructive">Reason: {d.rejection_reason}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="gap-3 py-4">
-        <CardHeader className="px-4"><CardTitle className="text-sm">Your details</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-x-3 gap-y-2 px-4">
           <div className="space-y-1">
-            <Label htmlFor="p-name" className="text-xs">Full name</Label>
-            <Input id="p-name" className="h-9" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Label htmlFor="p-name" className="text-xs">
+              Full name
+            </Label>
+            <Input
+              id="p-name"
+              className="h-9"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-phone" className="text-xs">Phone</Label>
-            <Input id="p-phone" className="h-9" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Label htmlFor="p-phone" className="text-xs">
+              Phone
+            </Label>
+            <Input
+              id="p-phone"
+              className="h-9"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-email" className="text-xs">Email</Label>
-            <Input id="p-email" className="h-9" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="p-email" className="text-xs">
+              Email
+            </Label>
+            <Input
+              id="p-email"
+              className="h-9"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-dob" className="text-xs">Date of birth</Label>
-            <Input id="p-dob" className="h-9" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            <Label htmlFor="p-dob" className="text-xs">
+              Date of birth
+            </Label>
+            <Input
+              id="p-dob"
+              className="h-9"
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-gender" className="text-xs">Gender</Label>
+            <Label htmlFor="p-gender" className="text-xs">
+              Gender
+            </Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="p-gender" className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger id="p-gender" className="h-9">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MALE">Male</SelectItem>
                 <SelectItem value="FEMALE">Female</SelectItem>
@@ -204,22 +261,90 @@ function StudentProfilePage() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-institute" className="text-xs">Institute</Label>
-            <Input id="p-institute" className="h-9" value={institute} onChange={(e) => setInstitute(e.target.value)} />
+            <Label htmlFor="p-institute" className="text-xs">
+              Institute
+            </Label>
+            <Input
+              id="p-institute"
+              className="h-9"
+              value={institute}
+              onChange={(e) => setInstitute(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="p-course" className="text-xs">
+              Course
+            </Label>
+            <Input
+              id="p-course"
+              className="h-9"
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-course" className="text-xs">Course</Label>
-            <Input id="p-course" className="h-9" value={course} onChange={(e) => setCourse(e.target.value)} />
+            <Label htmlFor="p-year" className="text-xs">
+              Academic year
+            </Label>
+            <Input
+              id="p-year"
+              className="h-9"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">KYC documents</Label>
+            <button
+              type="button"
+              onClick={() => setKycDialogOpen(true)}
+              className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+            >
+              <span>{kycSubmitted ? "Submitted" : "Tap to complete"}</span>
+              <KycOverallBadge docs={docs} />
+            </button>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="p-year" className="text-xs">Academic year</Label>
-            <Input id="p-year" className="h-9" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} />
+            <Label className="text-xs">Room / bed assigned</Label>
+            <div className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
+              {stayText}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Button className="min-h-10 w-full sm:w-auto" disabled={save.isPending || !fullName.trim()} onClick={() => save.mutate()}>
-        {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+      <Dialog open={kycDialogOpen} onOpenChange={setKycDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>KYC documents</DialogTitle>
+          </DialogHeader>
+          {kycRejected && (
+            <p className="text-xs text-destructive">
+              Your last submission was rejected — please upload again.
+            </p>
+          )}
+          <KycUploadForm
+            tenantId={s.tenant_id}
+            propertyId={s.property_id}
+            studentId={s.id}
+            existingDocs={docs}
+            onUploaded={() => docsQ.refetch()}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Button
+        className="min-h-10 w-full sm:w-auto"
+        disabled={save.isPending || !fullName.trim()}
+        onClick={() => save.mutate()}
+      >
+        {save.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
         Save changes
       </Button>
     </div>

@@ -28,30 +28,34 @@ export function KycStatus({ studentId }: Props) {
   const hasRejected = docs.some((d) => d.verification_status === "REJECTED");
   const allVerified = docs.length > 0 && docs.every((d) => d.verification_status === "VERIFIED");
 
+  if (docs.length === 0) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
+        <Clock className="h-4 w-4" />
+        Pending — awaiting student upload
+      </span>
+    );
+  }
+  if (hasRejected) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
+        <AlertTriangle className="h-4 w-4" />
+        Rejected — awaiting re-upload
+      </span>
+    );
+  }
+  if (allVerified) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
+        <ShieldCheck className="h-4 w-4" />
+        Complete
+      </span>
+    );
+  }
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
-      <h3 className="font-display text-base font-semibold">KYC documents</h3>
-      {docs.length === 0 ? (
-        <span className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-          <Clock className="h-4 w-4" />
-          Pending — awaiting student upload
-        </span>
-      ) : hasRejected ? (
-        <span className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
-          <AlertTriangle className="h-4 w-4" />
-          Rejected — awaiting re-upload
-        </span>
-      ) : allVerified ? (
-        <span className="flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
-          <ShieldCheck className="h-4 w-4" />
-          Complete
-        </span>
-      ) : (
-        <span className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-          <Clock className="h-4 w-4" />
-          Uploaded — awaiting warden review
-        </span>
-      )}
-    </div>
+    <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
+      <Clock className="h-4 w-4" />
+      Uploaded — awaiting warden review
+    </span>
   );
 }

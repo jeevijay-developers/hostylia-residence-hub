@@ -69,7 +69,9 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
   });
 
   if (!agreementQ.data) {
-    return (
+    return readOnly ? (
+      <p className="text-sm text-muted-foreground">No agreement yet — allocate a bed to generate one.</p>
+    ) : (
       <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
         No agreement created yet — allocate a bed to generate one.
       </p>
@@ -79,21 +81,16 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
   const signed = agreementQ.data.status === "SIGNED";
 
   if (readOnly) {
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
-        <h3 className="font-display text-base font-semibold">Boarding agreement</h3>
-        {signed ? (
-          <span className="flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
-            <ShieldCheck className="h-4 w-4" />
-            Completed — signed {new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}
-          </span>
-        ) : (
-          <span className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-            <Clock className="h-4 w-4" />
-            Pending — awaiting student acceptance
-          </span>
-        )}
-      </div>
+    return signed ? (
+      <span className="inline-flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
+        <ShieldCheck className="h-4 w-4" />
+        Completed — signed {new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
+        <Clock className="h-4 w-4" />
+        Pending — awaiting student acceptance
+      </span>
     );
   }
 
