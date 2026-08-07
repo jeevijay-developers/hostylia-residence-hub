@@ -42,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { displayIndianPhone, normalizeIndianPhone } from "@/schemas/auth";
@@ -121,8 +122,10 @@ function AdminStaffPage() {
   const staff = useMemo(() => (staffQ.data ?? []) as StaffRow[], [staffQ.data]);
 
   const [addRole, setAddRole] = useState<"WARDEN" | "ACCOUNTANT" | null>(null);
+  const [addMode, setAddMode] = useState<"phone" | "email">("phone");
   const [staffName, setStaffName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [pendingRevoke, setPendingRevoke] = useState<StaffRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StaffRow | null>(null);
   const [editRow, setEditRow] = useState<StaffRow | null>(null);
@@ -130,28 +133,39 @@ function AdminStaffPage() {
   const [editPhone, setEditPhone] = useState("");
   const [duplicateContact, setDuplicateContact] = useState<string | null>(null);
 
-  const activePhones = useMemo(() => {
+  const activeContacts = useMemo(() => {
     const phones = new Set<string>();
+    const emails = new Set<string>();
     for (const s of staff) {
       if (s.revoked_at) continue;
       if (s.profile?.phone) phones.add(s.profile.phone.trim());
+      if (s.profile?.email) emails.add(s.profile.email.trim().toLowerCase());
     }
-    return phones;
+    return { phones, emails };
   }, [staff]);
 
   // Check as soon as typing settles, instead of only surfacing the conflict
-  // after a round trip to "Send invite" fails.
+  // after a round trip to "Add" fails.
   useEffect(() => {
-    const trimmedPhone = phone.trim();
     const handle = setTimeout(() => {
-      setDuplicateContact(
-        trimmedPhone && activePhones.has(normalizeIndianPhone(trimmedPhone))
-          ? "Someone with this phone number already has access to this hostel."
-          : null,
-      );
+      if (addMode === "phone") {
+        const trimmedPhone = phone.trim();
+        setDuplicateContact(
+          trimmedPhone && activeContacts.phones.has(normalizeIndianPhone(trimmedPhone))
+            ? "Someone with this phone number already has access to this hostel."
+            : null,
+        );
+      } else {
+        const trimmedEmail = email.trim().toLowerCase();
+        setDuplicateContact(
+          trimmedEmail && activeContacts.emails.has(trimmedEmail)
+            ? "Someone with this email already has access to this hostel."
+            : null,
+        );
+      }
     }, 400);
     return () => clearTimeout(handle);
-  }, [phone, activePhones]);
+  }, [phone, email, addMode, activeContacts]);
 
   const invite = useMutation({
     mutationFn: () =>
@@ -160,18 +174,24 @@ function AdminStaffPage() {
           tenant_id: tenantId!,
           property_id: propertyId,
           full_name: staffName || null,
-          phone: phone || null,
+          phone: addMode === "phone" ? phone || null : null,
+          email: addMode === "email" ? email || null : null,
           role: addRole!,
         },
       }),
     onSuccess: () => {
-      toast.success("Added — they can sign in with this phone number now.");
+      toast.success(
+        addMode === "phone"
+          ? "Added — they can sign in with this phone number now."
+          : "Added — an invite email has been sent to set up sign-in.",
+      );
       setAddRole(null);
       setStaffName("");
       setPhone("");
+      setEmail("");
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
-    onError: (e) => toast.error(errorMessage(e, "Could not send the invite")),
+    onError: (e) => toast.error(errorMessage(e, "Could not add them")),
   });
 
   const revoke = useMutation({
@@ -217,7 +237,10 @@ function AdminStaffPage() {
     !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
 
   const canInvite =
-    !invite.isPending && !duplicateContact && staffName.trim().length >= 2 && phone.trim() !== "";
+    !invite.isPending &&
+    !duplicateContact &&
+    staffName.trim().length >= 2 &&
+    (addMode === "phone" ? phone.trim() !== "" : email.trim() !== "");
 
   if (!tenantId) {
     return (
@@ -255,8 +278,10 @@ function AdminStaffPage() {
         onOpenChange={(open) => {
           if (!open) {
             setAddRole(null);
+            setAddMode("phone");
             setStaffName("");
             setPhone("");
+            setEmail("");
           }
         }}
       >
@@ -275,21 +300,44 @@ function AdminStaffPage() {
                 placeholder="Full name"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="add-staff-phone">Phone</Label>
-              <Input
-                id="add-staff-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="off"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-              />
-              <p className="text-xs text-muted-foreground">
-                They sign in with this phone number and a one-time code — no password.
-              </p>
-            </div>
+
+            <Tabs value={addMode} onValueChange={(v) => setAddMode(v as "phone" | "email")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="phone">Phone</TabsTrigger>
+                <TabsTrigger value="email">Email</TabsTrigger>
+              </TabsList>
+              <TabsContent value="phone" className="space-y-1.5 pt-3">
+                <Label htmlFor="add-staff-phone">Phone</Label>
+                <Input
+                  id="add-staff-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                />
+                <p className="text-xs text-muted-foreground">
+                  They sign in with this phone number and a one-time code — no password.
+                </p>
+              </TabsContent>
+              <TabsContent value="email" className="space-y-1.5 pt-3">
+                <Label htmlFor="add-staff-email">Email</Label>
+                <Input
+                  id="add-staff-email"
+                  type="email"
+                  autoComplete="off"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="staff@example.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  They'll get an invite email — ask them to use "Forgot password" on first
+                  sign-in to set one.
+                </p>
+              </TabsContent>
+            </Tabs>
+
             {duplicateContact && <p className="text-sm text-destructive">{duplicateContact}</p>}
           </div>
           <DialogFooter>
