@@ -54,6 +54,51 @@ export const createGatePass = createServerFn({ method: "POST" })
     return gp;
   });
 
+const createVisitorSchema = z.object({
+  host_student_id: z.string().uuid(),
+  name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().min(6).max(20),
+  purpose: z.string().trim().min(2).max(200),
+  expected_at: z.string().optional(),
+});
+
+/**
+ * Registers a visitor against an existing student host. Wardens already have
+ * FOR ALL access to `visitors` via the `vis_warden` RLS policy
+ * (warden_can_read_property) — this just fills in the previously-missing
+ * server function + validation; no policy changes needed. `status` is left
+ * off the insert so the column default ('REQUESTED') applies, reusing the
+ * existing lifecycle checkVisitor already drives forward.
+ */
+export const createVisitor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => createVisitorSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: s, error: sErr } = await supabase
+      .from("students")
+      .select("id, tenant_id, property_id")
+      .eq("id", data.host_student_id)
+      .maybeSingle();
+    if (sErr || !s) throw new Error("Student not found");
+    const { data: v, error } = await supabase
+      .from("visitors")
+      .insert({
+        tenant_id: s.tenant_id,
+        property_id: s.property_id,
+        host_student_id: s.id,
+        name: data.name,
+        phone: data.phone,
+        purpose: data.purpose,
+        expected_at: data.expected_at ?? null,
+        created_by: userId,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return v;
+  });
+
 const decisionSchema = z.object({
   pass_id: z.string().uuid(),
   role: z.enum(["WARDEN", "PARENT", "HOSTEL_ADMIN"]),
@@ -67,7 +112,10 @@ export const decideGatePass = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: gp, error } = await supabase
-      .from("gate_passes").select("*").eq("id", data.pass_id).maybeSingle();
+      .from("gate_passes")
+      .select("*")
+      .eq("id", data.pass_id)
+      .maybeSingle();
     if (error || !gp) throw new Error("Pass not found");
 
     const now = new Date().toISOString();
@@ -98,10 +146,12 @@ export const decideGatePass = createServerFn({ method: "POST" })
       }
     }
 
-
-
     const { data: updated, error: uErr } = await supabase
-      .from("gate_passes").update(patch as never).eq("id", data.pass_id).select("*").single();
+      .from("gate_passes")
+      .update(patch as never)
+      .eq("id", data.pass_id)
+      .select("*")
+      .single();
     if (uErr) throw new Error(uErr.message);
 
     await supabase.from("gate_pass_approvals").insert({
@@ -130,7 +180,10 @@ export const scanGatePass = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: gp } = await supabase
-      .from("gate_passes").select("*").eq("id", data.pass_id).maybeSingle();
+      .from("gate_passes")
+      .select("*")
+      .eq("id", data.pass_id)
+      .maybeSingle();
     if (!gp) throw new Error("Pass not found");
     if (!gp.qr_token_hash) throw new Error("Pass has no QR issued");
     if (gp.qr_expires_at && new Date(gp.qr_expires_at) < new Date() && data.direction === "OUT") {
@@ -169,7 +222,10 @@ export const scanGatePass = createServerFn({ method: "POST" })
       data.direction === "OUT"
         ? { status: "ACTIVE", actual_out_at: now }
         : { status: "COMPLETED", actual_in_at: now };
-    await supabase.from("gate_passes").update(passPatch as never).eq("id", gp.id);
+    await supabase
+      .from("gate_passes")
+      .update(passPatch as never)
+      .eq("id", gp.id);
 
     // Notify parent(s)
     try {
@@ -199,9 +255,13 @@ export const scanGatePass = createServerFn({ method: "POST" })
       // Late entry → notify warden
       if (data.direction === "IN" && gp.warden_approved_by) {
         const { data: latestEvent } = await supabase
-          .from("gate_events").select("is_late")
-          .eq("gate_pass_id", gp.id).eq("direction", "IN")
-          .order("event_at", { ascending: false }).limit(1).maybeSingle();
+          .from("gate_events")
+          .select("is_late")
+          .eq("gate_pass_id", gp.id)
+          .eq("direction", "IN")
+          .order("event_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
         if (latestEvent?.is_late) {
           await supabase.functions.invoke("send-notification", {
             body: {
@@ -234,7 +294,10 @@ export const checkVisitor = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: v } = await supabase
-      .from("visitors").select("*").eq("id", data.visitor_id).maybeSingle();
+      .from("visitors")
+      .select("*")
+      .eq("id", data.visitor_id)
+      .maybeSingle();
     if (!v) throw new Error("Visitor not found");
     const now = new Date().toISOString();
     const bucket = Math.floor(Date.now() / 60000);
@@ -249,16 +312,22 @@ export const checkVisitor = createServerFn({ method: "POST" })
       idempotency_key: idem,
     });
     if (error && !error.message.includes("duplicate")) throw new Error(error.message);
-    await supabase.from("visitors").update(
-      data.direction === "IN"
-        ? { status: "CHECKED_IN", checked_in_at: now }
-        : { status: "CHECKED_OUT", checked_out_at: now },
-    ).eq("id", v.id);
+    await supabase
+      .from("visitors")
+      .update(
+        data.direction === "IN"
+          ? { status: "CHECKED_IN", checked_in_at: now }
+          : { status: "CHECKED_OUT", checked_out_at: now },
+      )
+      .eq("id", v.id);
 
     // Notify host student
     try {
       const { data: st } = await supabase
-        .from("students").select("profile_id").eq("id", v.host_student_id).maybeSingle();
+        .from("students")
+        .select("profile_id")
+        .eq("id", v.host_student_id)
+        .maybeSingle();
       if (st?.profile_id) {
         await supabase.functions.invoke("send-notification", {
           body: {
@@ -273,21 +342,40 @@ export const checkVisitor = createServerFn({ method: "POST" })
           },
         });
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
     return { ok: true };
   });
 
-const bulkAttendanceSchema = z.object({
-  property_id: z.string().uuid(),
-  block_id: z.string().uuid().nullable().optional(),
-  attendance_date: z.string(),
-  session: z.enum(["DAILY", "MORNING", "EVENING"]).default("DAILY"),
-  entries: z.array(z.object({
-    student_id: z.string().uuid(),
-    status: z.enum(["PRESENT", "ABSENT", "ON_LEAVE", "OUT_PASS", "NOT_MARKED"]),
-    notes: z.string().optional(),
-  })).min(1).max(1000),
-});
+const bulkAttendanceSchema = z
+  .object({
+    property_id: z.string().uuid(),
+    block_id: z.string().uuid().nullable().optional(),
+    attendance_date: z.string(),
+    session: z.enum(["DAILY", "MORNING", "EVENING"]).default("DAILY"),
+    entries: z
+      .array(
+        z.object({
+          student_id: z.string().uuid(),
+          status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE", "OUT_PASS", "NOT_MARKED"]),
+          notes: z.string().optional(),
+        }),
+      )
+      .min(1)
+      .max(1000),
+  })
+  .superRefine((data, ctx) => {
+    data.entries.forEach((e, i) => {
+      if (e.status !== "PRESENT" && !e.notes?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A remark is required for any status other than Present",
+          path: ["entries", i, "notes"],
+        });
+      }
+    });
+  });
 
 export const bulkMarkAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -295,7 +383,10 @@ export const bulkMarkAttendance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: prop } = await supabase
-      .from("properties").select("tenant_id").eq("id", data.property_id).maybeSingle();
+      .from("properties")
+      .select("tenant_id")
+      .eq("id", data.property_id)
+      .maybeSingle();
     if (!prop) throw new Error("Property not found");
     const rows = data.entries.map((e) => ({
       tenant_id: prop.tenant_id,
@@ -310,7 +401,8 @@ export const bulkMarkAttendance = createServerFn({ method: "POST" })
       notes: e.notes ?? null,
     }));
     const { error } = await supabase
-      .from("attendance").upsert(rows, { onConflict: "student_id,attendance_date,session" });
+      .from("attendance")
+      .upsert(rows, { onConflict: "student_id,attendance_date,session" });
     if (error) throw new Error(error.message);
     return { inserted: rows.length };
   });

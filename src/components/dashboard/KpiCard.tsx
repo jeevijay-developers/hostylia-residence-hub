@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
 interface KpiCardProps {
   icon: LucideIcon;
@@ -9,21 +9,53 @@ interface KpiCardProps {
   value?: string | number | null;
   loading?: boolean;
   trend?: { direction: "up" | "down"; label: string };
+  /** Icon accent — defaults to the brand tone so existing dashboards are unaffected. */
+  tone?: SemanticTone;
+  /** Plain icon with no background container, for dense KPI rows. Defaults to the existing boxed icon look. */
+  bareIcon?: boolean;
 }
 
-export function KpiCard({ icon: Icon, label, value, loading, trend }: KpiCardProps) {
+export function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  loading,
+  trend,
+  tone = "primary",
+  bareIcon = false,
+}: KpiCardProps) {
   const displayValue = value === null || value === undefined || value === "" ? "—" : value;
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
+    <div
+      className={cn(
+        "flex flex-col justify-between rounded-2xl border border-border bg-card shadow-sm",
+        bareIcon ? "min-h-[92px] p-4" : "min-h-[132px] p-4 sm:p-5",
+      )}
+    >
+      <div
+        className={
+          bareIcon
+            ? "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2"
+            : "flex items-start justify-between gap-3"
+        }
+      >
+        <p className="min-w-0 text-sm font-medium leading-snug text-muted-foreground">{label}</p>
+        {bareIcon ? (
+          <Icon className={cn("h-4 w-4 shrink-0", toneTextClasses[tone])} />
+        ) : (
+          <div
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
+              toneClasses[tone],
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
       </div>
-      <div className="mt-4">
+      <div className="mt-3">
         {loading ? (
-          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-20" />
         ) : (
           <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
             {displayValue}

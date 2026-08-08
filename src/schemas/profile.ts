@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { fullNameSchema, phoneSchema } from "@/schemas/auth";
+import { emailSchema, fullNameSchema, phoneSchema } from "@/schemas/auth";
 
 /**
  * Self-service profile update — the account owner editing their own
@@ -13,3 +13,36 @@ export const profileUpdateSchema = z.object({
 });
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+export const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"]);
+
+export const bloodGroupSchema = z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]);
+
+export const addressSchema = z.object({
+  line1: z.string().trim().max(200).optional().or(z.literal("")),
+  city: z.string().trim().max(80).optional().or(z.literal("")),
+  state: z.string().trim().max(80).optional().or(z.literal("")),
+  pincode: z.string().trim().max(12).optional().or(z.literal("")),
+});
+
+/**
+ * Warden self-service "Edit Profile" — covers only the fields the spec
+ * allows a Warden to edit on their own `profiles` row. Employee ID, role,
+ * assigned property/block, joining date, account status and permissions are
+ * intentionally absent (never rendered as editable, let alone validated
+ * here).
+ */
+export const wardenProfileEditSchema = z.object({
+  fullName: fullNameSchema,
+  phone: phoneSchema,
+  email: emailSchema,
+  emergencyContactName: z.string().trim().min(2, "Enter an emergency contact name").max(120),
+  emergencyContactNumber: phoneSchema,
+  alternatePhone: phoneSchema.optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  gender: genderSchema.optional(),
+  bloodGroup: bloodGroupSchema.optional(),
+  address: addressSchema.optional(),
+});
+
+export type WardenProfileEditInput = z.infer<typeof wardenProfileEditSchema>;
