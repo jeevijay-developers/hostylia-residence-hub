@@ -610,6 +610,58 @@ export type Database = {
           },
         ]
       }
+      complaint_comments: {
+        Row: {
+          author_user_id: string
+          body: string
+          complaint_id: string
+          created_at: string
+          id: string
+          property_id: string
+          tenant_id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          complaint_id: string
+          created_at?: string
+          id?: string
+          property_id: string
+          tenant_id: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          complaint_id?: string
+          created_at?: string
+          id?: string
+          property_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaint_comments_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_comments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_comments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       complaints: {
         Row: {
           assigned_at: string | null
@@ -632,6 +684,7 @@ export type Database = {
           reopen_until: string | null
           resolution_summary: string | null
           resolved_at: string | null
+          resolved_by: string | null
           room_id: string | null
           sla_breached_at: string | null
           sla_due_at: string
@@ -662,6 +715,7 @@ export type Database = {
           reopen_until?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           room_id?: string | null
           sla_breached_at?: string | null
           sla_due_at: string
@@ -692,6 +746,7 @@ export type Database = {
           reopen_until?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           room_id?: string | null
           sla_breached_at?: string | null
           sla_due_at?: string
@@ -2045,6 +2100,7 @@ export type Database = {
           property_id: string
           published_at: string | null
           published_by: string | null
+          serve_time: string | null
           status: string
           tenant_id: string
           title: string | null
@@ -2060,6 +2116,7 @@ export type Database = {
           property_id: string
           published_at?: string | null
           published_by?: string | null
+          serve_time?: string | null
           status?: string
           tenant_id: string
           title?: string | null
@@ -2075,6 +2132,7 @@ export type Database = {
           property_id?: string
           published_at?: string | null
           published_by?: string | null
+          serve_time?: string | null
           status?: string
           tenant_id?: string
           title?: string | null
@@ -2762,10 +2820,17 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: Json | null
+          alternate_phone: string | null
           avatar_path: string | null
+          blood_group: string | null
           created_at: string
+          date_of_birth: string | null
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_number: string | null
           full_name: string
+          gender: string | null
           id: string
           last_active_at: string | null
           locale: string
@@ -2775,10 +2840,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: Json | null
+          alternate_phone?: string | null
           avatar_path?: string | null
+          blood_group?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_number?: string | null
           full_name: string
+          gender?: string | null
           id: string
           last_active_at?: string | null
           locale?: string
@@ -2788,10 +2860,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: Json | null
+          alternate_phone?: string | null
           avatar_path?: string | null
+          blood_group?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_number?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           last_active_at?: string | null
           locale?: string
@@ -3044,6 +3123,7 @@ export type Database = {
       role_assignments: {
         Row: {
           block_id: string | null
+          employee_id: string | null
           granted_at: string
           granted_by: string | null
           id: string
@@ -3058,6 +3138,7 @@ export type Database = {
         }
         Insert: {
           block_id?: string | null
+          employee_id?: string | null
           granted_at?: string
           granted_by?: string | null
           id?: string
@@ -3072,6 +3153,7 @@ export type Database = {
         }
         Update: {
           block_id?: string | null
+          employee_id?: string | null
           granted_at?: string
           granted_by?: string | null
           id?: string
@@ -3974,6 +4056,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fn_dispatch_notification: {
+        Args: {
+          p_channel: string
+          p_event_type: string
+          p_property_id: string
+          p_recipient: Json
+          p_reference_id: string
+          p_template_key: string
+          p_tenant_id: string
+          p_variables: Json
+        }
+        Returns: undefined
       }
       fn_effective_feature: {
         Args: { _feature_key: string; _tenant_id: string }

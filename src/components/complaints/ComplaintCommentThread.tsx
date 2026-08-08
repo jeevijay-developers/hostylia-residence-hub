@@ -12,7 +12,8 @@ import { useComplaintComments, type ComplaintWithRelations } from "@/lib/complai
 import { complaintCommentSchema } from "@/schemas/complaint";
 
 export function ComplaintCommentThread({
-  complaint, userId,
+  complaint,
+  userId,
 }: {
   complaint: Pick<ComplaintWithRelations, "id" | "tenant_id" | "property_id">;
   userId: string | null;
@@ -43,7 +44,9 @@ export function ComplaintCommentThread({
 
   return (
     <div className="space-y-2">
-      <Label className="flex items-center gap-1 text-xs"><MessageSquare className="h-3 w-3" /> Conversation</Label>
+      <Label className="flex items-center gap-1 text-xs">
+        <MessageSquare className="h-3 w-3" /> Conversation
+      </Label>
       {commentsQ.isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
       {!commentsQ.isLoading && (commentsQ.data ?? []).length === 0 && (
         <p className="text-xs text-muted-foreground">No comments yet.</p>
@@ -53,7 +56,9 @@ export function ComplaintCommentThread({
           <div key={m.id} className="rounded-md border border-border p-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">{m.profiles?.full_name ?? "User"}</span>
-              <span className="text-muted-foreground">{new Date(m.created_at).toLocaleString()}</span>
+              <span className="text-muted-foreground">
+                {new Date(m.created_at).toLocaleString()}
+              </span>
             </div>
             <p className="mt-1 text-muted-foreground">{m.body}</p>
           </div>
@@ -67,7 +72,11 @@ export function ComplaintCommentThread({
           rows={2}
           className="flex-1"
         />
-        <Button size="sm" disabled={postComment.isPending || !comment.trim()} onClick={() => postComment.mutate()}>
+        <Button
+          size="sm"
+          disabled={postComment.isPending || !comment.trim()}
+          onClick={() => postComment.mutate()}
+        >
           Post
         </Button>
       </div>

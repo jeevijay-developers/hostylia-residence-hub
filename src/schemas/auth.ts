@@ -8,7 +8,10 @@ import { z } from "zod";
 export const phoneSchema = z
   .string()
   .trim()
-  .regex(/^\+?[1-9]\d{7,14}$/, "Enter a valid phone number in international format (e.g. +919876543210)");
+  .regex(
+    /^\+?[1-9]\d{7,14}$/,
+    "Enter a valid phone number in international format (e.g. +919876543210)",
+  );
 
 export const emailSchema = z
   .string()
@@ -21,9 +24,7 @@ export const passwordSchema = z
   .min(8, "Password must be at least 8 characters")
   .max(128, "Password is too long");
 
-export const otpCodeSchema = z
-  .string()
-  .regex(/^\d{6}$/, "Enter the 6-digit code");
+export const otpCodeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code");
 
 export const fullNameSchema = z
   .string()
@@ -72,18 +73,18 @@ export const signupIdentitySchema = z
     guardianName: z.string().trim().max(120, "Name is too long").optional(),
     guardianPhone: z.string().trim().optional(),
   })
-  .refine(
-    (d) => d.role !== "HOSTEL_ADMIN" || (d.hostelName ?? "").trim().length >= 2,
-    { message: "Enter your hostel / property name", path: ["hostelName"] },
-  )
-  .refine(
-    (d) => d.role !== "STUDENT" || (d.guardianName ?? "").trim().length >= 2,
-    { message: "Enter your parent/guardian's name", path: ["guardianName"] },
-  )
-  .refine(
-    (d) => d.role !== "STUDENT" || phoneSchema.safeParse(d.guardianPhone).success,
-    { message: "Enter a valid guardian phone number", path: ["guardianPhone"] },
-  );
+  .refine((d) => d.role !== "HOSTEL_ADMIN" || (d.hostelName ?? "").trim().length >= 2, {
+    message: "Enter your hostel / property name",
+    path: ["hostelName"],
+  })
+  .refine((d) => d.role !== "STUDENT" || (d.guardianName ?? "").trim().length >= 2, {
+    message: "Enter your parent/guardian's name",
+    path: ["guardianName"],
+  })
+  .refine((d) => d.role !== "STUDENT" || phoneSchema.safeParse(d.guardianPhone).success, {
+    message: "Enter a valid guardian phone number",
+    path: ["guardianPhone"],
+  });
 
 /** Step 3a — email + password credentials. */
 export const emailCredentialsSchema = z
@@ -140,6 +141,26 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+/**
+ * Logged-in "Change Password" — current password is re-verified via
+ * signInWithPassword before the new one is set (Supabase's updateUser alone
+ * doesn't check the old password), so it's only required here, not shaped.
+ */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  })
+  .refine((d) => d.password !== d.currentPassword, {
+    message: "New password must be different from your current password",
+    path: ["password"],
+  });
+
 export type PhoneLoginInput = z.infer<typeof phoneLoginSchema>;
 export type EmailLoginInput = z.infer<typeof emailLoginSchema>;
 export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
@@ -150,6 +171,7 @@ export type EmailCredentialsInput = z.infer<typeof emailCredentialsSchema>;
 export type PhoneCredentialsInput = z.infer<typeof phoneCredentialsSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 /** Rate-limit window used for OTP resend cooldown (seconds). */
 export const OTP_RESEND_WINDOW_SECONDS = 600;

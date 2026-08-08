@@ -7,8 +7,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 type ScanState =
-  | "idle" | "requesting-camera" | "scanning" | "validating"
-  | "success" | "invalid" | "expired" | "already-used" | "denied";
+  | "idle"
+  | "requesting-camera"
+  | "scanning"
+  | "validating"
+  | "success"
+  | "invalid"
+  | "expired"
+  | "already-used"
+  | "denied";
 
 const ERROR_STATES: ScanState[] = ["invalid", "expired", "already-used", "denied"];
 
@@ -19,9 +26,15 @@ const ERROR_STATES: ScanState[] = ["invalid", "expired", "already-used", "denied
  */
 function classifyScanError(message: string): "invalid" | "expired" | "already-used" | "denied" {
   const m = message.toLowerCase();
-  if (m.includes("invalid qr token") || m.includes("pass not found") || m.includes("no qr issued")) return "invalid";
+  if (m.includes("invalid qr token") || m.includes("pass not found") || m.includes("no qr issued"))
+    return "invalid";
   if (m.includes("expired")) return "expired";
-  if (m.includes("cannot check out from status") || m.includes("not currently active") || m.includes("not awaiting")) return "already-used";
+  if (
+    m.includes("cannot check out from status") ||
+    m.includes("not currently active") ||
+    m.includes("not awaiting")
+  )
+    return "already-used";
   return "denied";
 }
 
@@ -34,7 +47,9 @@ const STATE_LABEL: Partial<Record<ScanState, string>> = {
 };
 
 export function CameraQrScanner({
-  direction, onDirectionChange, onDetected,
+  direction,
+  onDirectionChange,
+  onDetected,
 }: {
   direction: "IN" | "OUT";
   onDirectionChange: (d: "IN" | "OUT") => void;
@@ -115,7 +130,9 @@ export function CameraQrScanner({
     setState("requesting-camera");
     setMessage(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -136,7 +153,8 @@ export function CameraQrScanner({
     <div className="space-y-3">
       <div className="flex gap-2">
         <Button
-          type="button" size="sm"
+          type="button"
+          size="sm"
           variant={direction === "OUT" ? "default" : "outline"}
           disabled={state === "scanning" || state === "validating"}
           onClick={() => onDirectionChange("OUT")}
@@ -144,7 +162,8 @@ export function CameraQrScanner({
           Check OUT
         </Button>
         <Button
-          type="button" size="sm"
+          type="button"
+          size="sm"
           variant={direction === "IN" ? "default" : "outline"}
           disabled={state === "scanning" || state === "validating"}
           onClick={() => onDirectionChange("IN")}

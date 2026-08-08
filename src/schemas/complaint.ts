@@ -31,3 +31,11 @@ export const ratingSchema = z.object({
   rating: z.number().int().min(1).max(5),
   rating_comment: z.string().trim().max(1000).optional().or(z.literal("")),
 });
+
+export const complaintCommentSchema = z.object({
+  body: z.string().trim().min(1, "Write a message").max(2000),
+});
+export type ComplaintCommentInput = z.infer<typeof complaintCommentSchema>;
+
+/** The 4 manual status targets a Warden can pick from the complaint details dialog. */
+export const wardenStatusOptions = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;

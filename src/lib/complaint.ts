@@ -5,6 +5,20 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type ComplaintRow = Database["public"]["Tables"]["complaints"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["complaint_categories"]["Row"];
+export type ComplaintCommentRow = Database["public"]["Tables"]["complaint_comments"]["Row"];
+
+/** Complaint row enriched with the joined student/room/block/category info the Warden page displays. */
+export type ComplaintWithRelations = ComplaintRow & {
+  students: {
+    full_name: string;
+    admission_number: string;
+    profile_id: string;
+    profiles: { avatar_path: string | null } | null;
+  } | null;
+  rooms: { room_number: string } | null;
+  blocks: { name: string } | null;
+  complaint_categories: { name: string } | null;
+};
 
 /** Active allocation for the signed-in student, used to auto-fill room/bed/block. */
 export function useStudentSelf() {
@@ -76,7 +90,7 @@ export function useComplaints(opts: ListOptions) {
       let q = supabase
         .from("complaints")
         .select(
-          "id, tenant_id, property_id, block_id, room_id, bed_id, student_id, category_id, complaint_number, title, description, priority, status, assigned_to, assigned_at, sla_due_at, sla_breached_at, resolved_at, closed_at, resolution_summary, rating, rating_comment, reopen_until, created_at, updated_at",
+          "id, tenant_id, property_id, block_id, room_id, bed_id, student_id, category_id, complaint_number, title, description, priority, status, assigned_to, assigned_at, sla_due_at, sla_breached_at, resolved_at, resolved_by, closed_at, resolution_summary, rating, rating_comment, reopen_until, created_at, updated_at, students(full_name, admission_number, profile_id, profiles(avatar_path)), rooms(room_number), blocks(name), complaint_categories(name)",
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
@@ -85,7 +99,7 @@ export function useComplaints(opts: ListOptions) {
       if (opts.assignedTo) q = q.eq("assigned_to", opts.assignedTo);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as ComplaintRow[];
+      return (data ?? []) as unknown as ComplaintWithRelations[];
     },
   });
 
@@ -94,10 +108,8 @@ export function useComplaints(opts: ListOptions) {
     const filter = opts.propertyId ? `property_id=eq.${opts.propertyId}` : undefined;
     const channel = supabase
       .channel(`complaints-${opts.propertyId ?? "all"}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "complaints", filter },
-        () => qc.invalidateQueries({ queryKey: ["complaints"] }),
+      .on("postgres_changes", { event: "*", schema: "public", table: "complaints", filter }, () =>
+        qc.invalidateQueries({ queryKey: ["complaints"] }),
       )
       .subscribe();
     return () => {
@@ -127,6 +139,28 @@ export function slaMeta(c: ComplaintRow): {
   const mins = Math.round(dueMs / 60000);
   const tone = mins < 60 ? "warn" : "ok";
   return { label: `SLA in ${formatMinutes(mins)}`, tone };
+}
+
+export type ComplaintCommentWithAuthor = ComplaintCommentRow & {
+  profiles: { full_name: string } | null;
+};
+
+export function useComplaintComments(complaintId: string | null) {
+  return useQuery({
+    queryKey: ["complaint-comments", complaintId],
+    enabled: !!complaintId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("complaint_comments")
+        .select(
+          "id, tenant_id, property_id, complaint_id, author_user_id, body, created_at, profiles(full_name)",
+        )
+        .eq("complaint_id", complaintId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as ComplaintCommentWithAuthor[];
+    },
+  });
 }
 
 function formatMinutes(m: number): string {

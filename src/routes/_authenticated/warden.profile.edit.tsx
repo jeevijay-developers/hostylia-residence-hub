@@ -11,7 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +41,11 @@ function WardenProfileEditPage() {
     queryKey: ["warden-profile", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId!).single();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId!)
+        .single();
       if (error) throw error;
       return data;
     },
@@ -70,7 +78,12 @@ function WardenProfileEditPage() {
     setGender(p.gender ?? "");
     setBloodGroup(p.blood_group ?? "");
     setAvatarPath(p.avatar_path);
-    const addr = (p.address ?? null) as { line1?: string; city?: string; state?: string; pincode?: string } | null;
+    const addr = (p.address ?? null) as {
+      line1?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    } | null;
     setLine1(addr?.line1 ?? "");
     setCity(addr?.city ?? "");
     setState(addr?.state ?? "");
@@ -158,7 +171,9 @@ function WardenProfileEditPage() {
   }
 
   const initial = fullName.trim()[0]?.toUpperCase() ?? "W";
-  const avatarUrl = avatarPath ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl : undefined;
+  const avatarUrl = avatarPath
+    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
+    : undefined;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -189,7 +204,11 @@ function WardenProfileEditPage() {
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
             >
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
               Change photo
             </Button>
           </div>
@@ -197,25 +216,51 @@ function WardenProfileEditPage() {
       </Card>
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4"><CardTitle className="text-sm">Required details</CardTitle></CardHeader>
+        <CardHeader className="px-4">
+          <CardTitle className="text-sm">Required details</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-1 gap-x-3 gap-y-3 px-4 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label htmlFor="w-name" className="text-xs">Full Name</Label>
-            <Input id="w-name" className="h-9" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Label htmlFor="w-name" className="text-xs">
+              Full Name
+            </Label>
+            <Input
+              id="w-name"
+              className="h-9"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
             {errors.fullName ? <p className="text-xs text-destructive">{errors.fullName}</p> : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-phone" className="text-xs">Mobile Number</Label>
-            <Input id="w-phone" className="h-9" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Label htmlFor="w-phone" className="text-xs">
+              Mobile Number
+            </Label>
+            <Input
+              id="w-phone"
+              className="h-9"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
             {errors.phone ? <p className="text-xs text-destructive">{errors.phone}</p> : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-email" className="text-xs">Email</Label>
-            <Input id="w-email" type="email" className="h-9" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="w-email" className="text-xs">
+              Email
+            </Label>
+            <Input
+              id="w-email"
+              type="email"
+              className="h-9"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
             {errors.email ? <p className="text-xs text-destructive">{errors.email}</p> : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-ecname" className="text-xs">Emergency Contact Name</Label>
+            <Label htmlFor="w-ecname" className="text-xs">
+              Emergency Contact Name
+            </Label>
             <Input
               id="w-ecname"
               className="h-9"
@@ -227,7 +272,9 @@ function WardenProfileEditPage() {
             ) : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-ecnumber" className="text-xs">Emergency Contact Number</Label>
+            <Label htmlFor="w-ecnumber" className="text-xs">
+              Emergency Contact Number
+            </Label>
             <Input
               id="w-ecnumber"
               className="h-9"
@@ -242,20 +289,41 @@ function WardenProfileEditPage() {
       </Card>
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4"><CardTitle className="text-sm">Optional details</CardTitle></CardHeader>
+        <CardHeader className="px-4">
+          <CardTitle className="text-sm">Optional details</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-1 gap-x-3 gap-y-3 px-4 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label htmlFor="w-altphone" className="text-xs">Alternate Mobile Number</Label>
-            <Input id="w-altphone" className="h-9" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
+            <Label htmlFor="w-altphone" className="text-xs">
+              Alternate Mobile Number
+            </Label>
+            <Input
+              id="w-altphone"
+              className="h-9"
+              value={alternatePhone}
+              onChange={(e) => setAlternatePhone(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-dob" className="text-xs">Date of Birth</Label>
-            <Input id="w-dob" type="date" className="h-9" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+            <Label htmlFor="w-dob" className="text-xs">
+              Date of Birth
+            </Label>
+            <Input
+              id="w-dob"
+              type="date"
+              className="h-9"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-gender" className="text-xs">Gender</Label>
+            <Label htmlFor="w-gender" className="text-xs">
+              Gender
+            </Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="w-gender" className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger id="w-gender" className="h-9">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MALE">Male</SelectItem>
                 <SelectItem value="FEMALE">Female</SelectItem>
@@ -264,31 +332,65 @@ function WardenProfileEditPage() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-blood" className="text-xs">Blood Group</Label>
+            <Label htmlFor="w-blood" className="text-xs">
+              Blood Group
+            </Label>
             <Select value={bloodGroup} onValueChange={setBloodGroup}>
-              <SelectTrigger id="w-blood" className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger id="w-blood" className="h-9">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
               <SelectContent>
                 {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                  <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                  <SelectItem key={bg} value={bg}>
+                    {bg}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="w-addr1" className="text-xs">Address line</Label>
-            <Input id="w-addr1" className="h-9" value={line1} onChange={(e) => setLine1(e.target.value)} />
+            <Label htmlFor="w-addr1" className="text-xs">
+              Address line
+            </Label>
+            <Input
+              id="w-addr1"
+              className="h-9"
+              value={line1}
+              onChange={(e) => setLine1(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-city" className="text-xs">City</Label>
-            <Input id="w-city" className="h-9" value={city} onChange={(e) => setCity(e.target.value)} />
+            <Label htmlFor="w-city" className="text-xs">
+              City
+            </Label>
+            <Input
+              id="w-city"
+              className="h-9"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-state" className="text-xs">State</Label>
-            <Input id="w-state" className="h-9" value={state} onChange={(e) => setState(e.target.value)} />
+            <Label htmlFor="w-state" className="text-xs">
+              State
+            </Label>
+            <Input
+              id="w-state"
+              className="h-9"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="w-pincode" className="text-xs">Pincode</Label>
-            <Input id="w-pincode" className="h-9" value={pincode} onChange={(e) => setPincode(e.target.value)} />
+            <Label htmlFor="w-pincode" className="text-xs">
+              Pincode
+            </Label>
+            <Input
+              id="w-pincode"
+              className="h-9"
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -298,7 +400,11 @@ function WardenProfileEditPage() {
         disabled={save.isPending || !fullName.trim()}
         onClick={() => save.mutate()}
       >
-        {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        {save.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
         Save changes
       </Button>
     </div>

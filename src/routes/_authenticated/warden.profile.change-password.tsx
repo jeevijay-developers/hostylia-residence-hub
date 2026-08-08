@@ -51,7 +51,9 @@ function ChangePasswordPage() {
         throw new Error("Current password is incorrect");
       }
 
-      const { error: updateErr } = await supabase.auth.updateUser({ password: parsed.data.password });
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: parsed.data.password,
+      });
       if (updateErr) throw updateErr;
     },
     onSuccess: () => {
@@ -69,23 +71,34 @@ function ChangePasswordPage() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <PageHeader title="Change Password" description="Keep your account secure with a strong password" />
+      <PageHeader
+        title="Change Password"
+        description="Keep your account secure with a strong password"
+      />
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4"><CardTitle className="text-sm">Update your password</CardTitle></CardHeader>
+        <CardHeader className="px-4">
+          <CardTitle className="text-sm">Update your password</CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-1 gap-y-3 px-4">
           <div className="space-y-1">
-            <Label htmlFor="cp-current" className="text-xs">Current Password</Label>
+            <Label htmlFor="cp-current" className="text-xs">
+              Current Password
+            </Label>
             <PasswordInput
               id="cp-current"
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
-            {errors.currentPassword ? <p className="text-xs text-destructive">{errors.currentPassword}</p> : null}
+            {errors.currentPassword ? (
+              <p className="text-xs text-destructive">{errors.currentPassword}</p>
+            ) : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cp-new" className="text-xs">New Password</Label>
+            <Label htmlFor="cp-new" className="text-xs">
+              New Password
+            </Label>
             <PasswordInput
               id="cp-new"
               autoComplete="new-password"
@@ -95,14 +108,18 @@ function ChangePasswordPage() {
             {errors.password ? <p className="text-xs text-destructive">{errors.password}</p> : null}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cp-confirm" className="text-xs">Confirm Password</Label>
+            <Label htmlFor="cp-confirm" className="text-xs">
+              Confirm Password
+            </Label>
             <PasswordInput
               id="cp-confirm"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
-            {errors.confirmPassword ? <p className="text-xs text-destructive">{errors.confirmPassword}</p> : null}
+            {errors.confirmPassword ? (
+              <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -112,7 +129,11 @@ function ChangePasswordPage() {
         disabled={changePassword.isPending || !currentPassword || !password || !confirmPassword}
         onClick={() => changePassword.mutate()}
       >
-        {changePassword.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+        {changePassword.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <KeyRound className="h-4 w-4" />
+        )}
         Change Password
       </Button>
     </div>

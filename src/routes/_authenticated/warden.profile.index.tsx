@@ -60,7 +60,10 @@ function useWardenProfile(userId: string | null) {
       );
       const blockNames = new Map<string, string>();
       if (blockIds.length > 0) {
-        const { data: blocks } = await supabase.from("blocks").select("id, name").in("id", blockIds);
+        const { data: blocks } = await supabase
+          .from("blocks")
+          .select("id, name")
+          .in("id", blockIds);
         for (const b of blocks ?? []) blockNames.set(b.id, b.name);
       }
 
@@ -126,7 +129,12 @@ function WardenProfilePage() {
   const avatarUrl = p.avatar_path
     ? supabase.storage.from("avatars").getPublicUrl(p.avatar_path).data.publicUrl
     : undefined;
-  const address = (p.address ?? null) as { line1?: string; city?: string; state?: string; pincode?: string } | null;
+  const address = (p.address ?? null) as {
+    line1?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  } | null;
   const addressText = address
     ? [address.line1, address.city, address.state, address.pincode].filter(Boolean).join(", ")
     : "";
@@ -174,7 +182,10 @@ function WardenProfilePage() {
           <ReadOnlyField label="Role" value="Warden" />
           <Field label="Mobile Number" value={p.phone} />
           <Field label="Email" value={p.email} />
-          <ReadOnlyField label="Assigned Property" value={properties.join(", ") || "All properties"} />
+          <ReadOnlyField
+            label="Assigned Property"
+            value={properties.join(", ") || "All properties"}
+          />
           <ReadOnlyField label="Assigned Block(s)" value={blocks.join(", ") || "All blocks"} />
           <Field label="Emergency Contact Name" value={p.emergency_contact_name} />
           <Field label="Emergency Contact Number" value={p.emergency_contact_number} />
@@ -193,11 +204,15 @@ function WardenProfilePage() {
           <Field label="Address" value={addressText} />
           <ReadOnlyField
             label="Joining Date"
-            value={primary?.granted_at ? new Date(primary.granted_at).toLocaleDateString() : undefined}
+            value={
+              primary?.granted_at ? new Date(primary.granted_at).toLocaleDateString() : undefined
+            }
           />
           <ReadOnlyField
             label="Account Status"
-            value={<Badge variant={p.status === "ACTIVE" ? "default" : "secondary"}>{p.status}</Badge>}
+            value={
+              <Badge variant={p.status === "ACTIVE" ? "default" : "secondary"}>{p.status}</Badge>
+            }
           />
         </CardContent>
       </Card>
