@@ -77,9 +77,12 @@ import { Route as AuthenticatedAccountantRefundsRouteImport } from './routes/_au
 import { Route as AuthenticatedAccountantPaymentsRouteImport } from './routes/_authenticated/accountant.payments'
 import { Route as AuthenticatedAccountantInvoicesRouteImport } from './routes/_authenticated/accountant.invoices'
 import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
+import { Route as AuthenticatedWardenProfileIndexRouteImport } from './routes/_authenticated/warden.profile.index'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/admin.students.index'
 import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
 import { Route as AuthenticatedAdminFinanceIndexRouteImport } from './routes/_authenticated/admin.finance.index'
+import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
+import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './routes/_authenticated/warden.profile.change-password'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
@@ -463,6 +466,12 @@ const AuthenticatedAccountantDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAccountantRoute,
   } as any)
+const AuthenticatedWardenProfileIndexRoute =
+  AuthenticatedWardenProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedAdminStudentsIndexRoute =
   AuthenticatedAdminStudentsIndexRouteImport.update({
     id: '/',
@@ -480,6 +489,18 @@ const AuthenticatedAdminFinanceIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedAdminFinanceRoute,
+  } as any)
+const AuthenticatedWardenProfileEditRoute =
+  AuthenticatedWardenProfileEditRouteImport.update({
+    id: '/profile/edit',
+    path: '/profile/edit',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedWardenProfileChangePasswordRoute =
+  AuthenticatedWardenProfileChangePasswordRouteImport.update({
+    id: '/profile/change-password',
+    path: '/profile/change-password',
+    getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
 const AuthenticatedAdminStudentsIdRoute =
   AuthenticatedAdminStudentsIdRouteImport.update({
@@ -602,9 +623,12 @@ export interface FileRoutesByFullPath {
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
+  '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
+  '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
   '/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
+  '/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -678,9 +702,12 @@ export interface FileRoutesByTo {
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
+  '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
+  '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students': typeof AuthenticatedAdminStudentsIndexRoute
+  '/warden/profile': typeof AuthenticatedWardenProfileIndexRoute
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -760,9 +787,12 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
+  '/_authenticated/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
+  '/_authenticated/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
   '/_authenticated/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/_authenticated/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
+  '/_authenticated/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/_authenticated/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
@@ -842,9 +872,12 @@ export interface FileRouteTypes {
     | '/admin/finance/invoices'
     | '/admin/finance/pnl'
     | '/admin/students/$id'
+    | '/warden/profile/change-password'
+    | '/warden/profile/edit'
     | '/admin/finance/'
     | '/admin/properties/'
     | '/admin/students/'
+    | '/warden/profile/'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
@@ -918,9 +951,12 @@ export interface FileRouteTypes {
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
     | '/admin/finance/pnl'
+    | '/warden/profile/change-password'
+    | '/warden/profile/edit'
     | '/admin/finance'
     | '/admin/properties'
     | '/admin/students'
+    | '/warden/profile'
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
@@ -999,9 +1035,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/invoices'
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/students/$id'
+    | '/_authenticated/warden/profile/change-password'
+    | '/_authenticated/warden/profile/edit'
     | '/_authenticated/admin/finance/'
     | '/_authenticated/admin/properties/'
     | '/_authenticated/admin/students/'
+    | '/_authenticated/warden/profile/'
     | '/_authenticated/admin/properties/$id/setup'
     | '/_authenticated/admin/properties/$id/structure'
     | '/_authenticated/admin/students/$id/move-out'
@@ -1513,6 +1552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountantDashboardRouteImport
       parentRoute: typeof AuthenticatedAccountantRoute
     }
+    '/_authenticated/warden/profile/': {
+      id: '/_authenticated/warden/profile/'
+      path: '/profile'
+      fullPath: '/warden/profile/'
+      preLoaderRoute: typeof AuthenticatedWardenProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
     '/_authenticated/admin/students/': {
       id: '/_authenticated/admin/students/'
       path: '/'
@@ -1533,6 +1579,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/finance/'
       preLoaderRoute: typeof AuthenticatedAdminFinanceIndexRouteImport
       parentRoute: typeof AuthenticatedAdminFinanceRoute
+    }
+    '/_authenticated/warden/profile/edit': {
+      id: '/_authenticated/warden/profile/edit'
+      path: '/profile/edit'
+      fullPath: '/warden/profile/edit'
+      preLoaderRoute: typeof AuthenticatedWardenProfileEditRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/profile/change-password': {
+      id: '/_authenticated/warden/profile/change-password'
+      path: '/profile/change-password'
+      fullPath: '/warden/profile/change-password'
+      preLoaderRoute: typeof AuthenticatedWardenProfileChangePasswordRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
     }
     '/_authenticated/admin/students/$id': {
       id: '/_authenticated/admin/students/$id'
@@ -1797,6 +1857,9 @@ interface AuthenticatedWardenRouteChildren {
   AuthenticatedWardenMessRoute: typeof AuthenticatedWardenMessRoute
   AuthenticatedWardenNoticesRoute: typeof AuthenticatedWardenNoticesRoute
   AuthenticatedWardenReportsRoute: typeof AuthenticatedWardenReportsRoute
+  AuthenticatedWardenProfileChangePasswordRoute: typeof AuthenticatedWardenProfileChangePasswordRoute
+  AuthenticatedWardenProfileEditRoute: typeof AuthenticatedWardenProfileEditRoute
+  AuthenticatedWardenProfileIndexRoute: typeof AuthenticatedWardenProfileIndexRoute
 }
 
 const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
@@ -1807,6 +1870,10 @@ const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
   AuthenticatedWardenMessRoute: AuthenticatedWardenMessRoute,
   AuthenticatedWardenNoticesRoute: AuthenticatedWardenNoticesRoute,
   AuthenticatedWardenReportsRoute: AuthenticatedWardenReportsRoute,
+  AuthenticatedWardenProfileChangePasswordRoute:
+    AuthenticatedWardenProfileChangePasswordRoute,
+  AuthenticatedWardenProfileEditRoute: AuthenticatedWardenProfileEditRoute,
+  AuthenticatedWardenProfileIndexRoute: AuthenticatedWardenProfileIndexRoute,
 }
 
 const AuthenticatedWardenRouteWithChildren =
