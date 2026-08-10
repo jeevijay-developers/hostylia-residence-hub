@@ -33,6 +33,8 @@ export function useStudentSelf() {
         .select("id, tenant_id, property_id")
         .eq("profile_id", u.user.id)
         .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (!s) return null;
       const { data: alloc } = await supabase

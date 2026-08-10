@@ -4,7 +4,18 @@ import { useTranslation } from "react-i18next";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Badge } from "@/components/ui/badge";
 
-export function AttendanceHistoryList({ studentId }: { studentId: string }) {
+export function AttendanceHistoryList({
+  studentId,
+  emptyTitle,
+  emptyDescription,
+}: {
+  studentId: string;
+  /** Overrides the default parent-facing copy — e.g. the student's own
+   * attendance view shouldn't talk about "your child" or imply a hostel-side
+   * activation toggle that doesn't exist. */
+  emptyTitle?: string;
+  emptyDescription?: string;
+}) {
   const { t } = useTranslation();
   const q = useQuery({
     queryKey: ["parent-attendance", studentId],
@@ -16,7 +27,12 @@ export function AttendanceHistoryList({ studentId }: { studentId: string }) {
     },
   });
   if (q.isLoading) return <div className="text-sm text-muted-foreground p-4">Loading…</div>;
-  if (!q.data?.length) return <EmptyState title={t("parent.attendance.emptyTitle")} description={t("parent.attendance.emptyBody")} />;
+  if (!q.data?.length) return (
+    <EmptyState
+      title={emptyTitle ?? t("parent.attendance.emptyTitle")}
+      description={emptyDescription ?? t("parent.attendance.emptyBody")}
+    />
+  );
   return (
     <div className="divide-y rounded border">
       {q.data.map((a) => (

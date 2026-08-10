@@ -125,7 +125,7 @@ export function NoticeComposer({ propertyId }: Props) {
             <Label htmlFor="notice-body">Body</Label>
             <Textarea id="notice-body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label>Priority</Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>

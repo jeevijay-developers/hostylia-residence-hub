@@ -49,6 +49,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Properties", to: "/admin/properties", icon: Building2 },
     { label: "Students", to: "/admin/students", icon: Users },
     { label: "Allocations", to: "/admin/allocations", icon: CalendarCheck },
+    { label: "Attendance", to: "/admin/attendance", icon: CalendarCheck },
     { label: "Finance", to: "/admin/finance", icon: Wallet },
     { label: "Complaints", to: "/admin/complaints", icon: MessageSquareWarning },
     { label: "Notices", to: "/admin/notices", icon: BellRing },
@@ -68,6 +69,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
 export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   WARDEN: [
     { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
+    { label: "Students", to: "/warden/students", icon: Users },
     { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
     { label: "Complaints", to: "/warden/complaints", icon: MessageSquareWarning },
     { label: "Gate", to: "/warden/gate", icon: DoorOpen },
@@ -84,12 +86,11 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
     { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
+    { label: "Gate Pass", to: "/parent/gate-pass", icon: Ticket },
     { label: "Payments", to: "/parent/payments", icon: Receipt },
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
     { label: "Messages", to: "/parent/messages", icon: BellRing },
   ],
-
-
 };
 
 export const NOTIFICATION_ICON = BellRing;

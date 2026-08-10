@@ -9,6 +9,7 @@ import { OtpInput } from "@/components/auth/OtpInput";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
+import { devParentTestLogin } from "@/lib/dev-auth.functions";
 import { linkGuardianProfileOnLogin } from "@/lib/parent-link.functions";
 import { activateMyInvites } from "@/lib/admin-staff.functions";
 import {
@@ -57,6 +58,33 @@ function VerifyOtpPage() {
     }
     setVerifying(true);
     try {
+      // Local-testing-only Parent login bypass: no-ops (ok: false) outside
+      // dev or when the phone/OTP don't match the configured test values —
+      // in every other case, falls through to the real verifyOtp below
+      // unchanged. See dev-auth.functions.ts for the env gate.
+      if (import.meta.env.DEV) {
+        const bypass = await devParentTestLogin({ data: { phone, otp: value } });
+        if (bypass.ok && bypass.session) {
+          const { error: setSessionErr } = await supabase.auth.setSession(bypass.session);
+          if (setSessionErr) {
+            setInlineError(setSessionErr.message);
+            return;
+          }
+          try {
+            await linkGuardianProfileOnLogin();
+          } catch (e) {
+            console.warn("guardian backfill failed", e);
+          }
+          try {
+            await activateMyInvites();
+          } catch (e) {
+            console.warn("invite activation failed", e);
+          }
+          navigate({ to: "/post-login" });
+          return;
+        }
+      }
+
       const { error } = await supabase.auth.verifyOtp({
         phone,
         token: value,

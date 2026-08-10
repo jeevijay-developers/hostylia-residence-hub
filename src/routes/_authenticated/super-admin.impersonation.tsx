@@ -156,7 +156,7 @@ function ImpersonationPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto">
         <div className="p-4 text-sm font-semibold">Recent sessions</div>
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">

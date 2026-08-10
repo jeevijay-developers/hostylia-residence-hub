@@ -209,7 +209,7 @@ function StudentProfilePage() {
         <CardHeader className="px-4">
           <CardTitle className="text-sm">Your details</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-x-3 gap-y-2 px-4">
+        <CardContent className="grid grid-cols-1 gap-x-3 gap-y-2 px-4 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="p-name" className="text-xs">
               Full name

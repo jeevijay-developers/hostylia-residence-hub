@@ -11,6 +11,7 @@ export interface ParentChild {
   can_view_attendance: boolean;
   can_view_complaints: boolean;
   can_view_gate_events: boolean;
+  can_approve_gate_pass: boolean;
   can_pay_fees: boolean;
   is_primary: boolean;
   bed_code: string | null;
@@ -31,7 +32,7 @@ async function fetchLinkedChildren(userId: string): Promise<ParentChild[]> {
     .from("student_guardians")
     .select(
       `id, guardian_id, is_primary,
-       can_view_attendance, can_view_complaints, can_view_gate_events, can_pay_fees,
+       can_view_attendance, can_view_complaints, can_view_gate_events, can_approve_gate_pass, can_pay_fees,
        students!inner(id, full_name, property_id, status,
          properties!inner(name),
          allocations(status, deleted_at, beds(code))
@@ -57,6 +58,7 @@ async function fetchLinkedChildren(userId: string): Promise<ParentChild[]> {
       can_view_attendance: row.can_view_attendance,
       can_view_complaints: row.can_view_complaints,
       can_view_gate_events: row.can_view_gate_events,
+      can_approve_gate_pass: row.can_approve_gate_pass,
       can_pay_fees: row.can_pay_fees,
       is_primary: row.is_primary,
       bed_code: alloc?.beds?.code ?? null,
