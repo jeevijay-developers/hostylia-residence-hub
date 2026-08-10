@@ -23,8 +23,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useResolvedRole } from "@/lib/user-role";
 import { createAllocation } from "@/lib/student.functions";
+import { usePropertyStore } from "@/stores/property-store";
 
 export const Route = createFileRoute("/_authenticated/admin/allocations")({
   head: () => ({ meta: [{ title: "Allocations — Hostylia" }] }),
@@ -32,37 +32,36 @@ export const Route = createFileRoute("/_authenticated/admin/allocations")({
 });
 
 function AllocationBoard() {
-  const { data: resolved } = useResolvedRole();
-  const tenantId = resolved?.tenantId ?? null;
+  const effectiveProp = usePropertyStore((s) => s.activePropertyId);
   const qc = useQueryClient();
-
-  const propertiesQ = useQuery({
-    queryKey: ["admin-properties-min", tenantId],
-    enabled: !!tenantId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("properties")
-        .select("id, name")
-        .eq("tenant_id", tenantId!)
-        .is("deleted_at", null)
-        .order("name");
-      return data ?? [];
-    },
-  });
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const effectiveProp = propertyId ?? propertiesQ.data?.[0]?.id ?? null;
 
   const bedsQ = useQuery({
     queryKey: ["allocation-beds", effectiveProp],
     enabled: !!effectiveProp,
     queryFn: async (): Promise<BedTile[]> => {
-      const { data } = await supabase
+      const { data: beds } = await supabase
         .from("beds")
         .select("id, code, status")
         .eq("property_id", effectiveProp!)
         .is("deleted_at", null)
         .order("code");
-      return (data ?? []) as BedTile[];
+
+      const { data: occupied } = await supabase
+        .from("allocations")
+        .select("bed_id, students(full_name)")
+        .eq("property_id", effectiveProp!)
+        .in("status", ["ACTIVE", "NOTICE_GIVEN"]);
+      const occupantByBed = new Map<string, string>();
+      (occupied ?? []).forEach((a) => {
+        const name = (a.students as { full_name: string } | null)?.full_name;
+        if (name) occupantByBed.set(a.bed_id, name);
+      });
+
+      return (beds ?? []).map((b) => ({
+        ...b,
+        status: b.status as BedTile["status"],
+        occupantName: occupantByBed.get(b.id) ?? null,
+      }));
     },
   });
 
@@ -101,9 +100,25 @@ function AllocationBoard() {
     },
   });
 
+  const feePlansQ = useQuery({
+    queryKey: ["allocation-fee-plans", effectiveProp],
+    enabled: !!effectiveProp,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("fee_plans")
+        .select("id, name, code")
+        .eq("property_id", effectiveProp!)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
   const [selectedBed, setSelectedBed] = useState<BedTile | null>(null);
   const [studentId, setStudentId] = useState("");
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
+  const [feePlanId, setFeePlanId] = useState("");
   const [rent, setRent] = useState<number>(500000);
   const [deposit, setDeposit] = useState<number>(1000000);
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -112,10 +127,12 @@ function AllocationBoard() {
   const create = useMutation({
     mutationFn: async () => {
       if (!selectedBed || !studentId) throw new Error("Pick bed + student");
+      if (!feePlanId) throw new Error("Pick a fee plan — required to auto-generate invoices");
       return createFn({
         data: {
           student_id: studentId,
           bed_id: selectedBed.id,
+          fee_plan_id: feePlanId,
           start_date: startDate,
           rent_snapshot_paise: rent,
           deposit_snapshot_paise: deposit,
@@ -130,6 +147,7 @@ function AllocationBoard() {
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
       setSelectedBed(null);
       setStudentId("");
+      setFeePlanId("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -150,16 +168,11 @@ function AllocationBoard() {
         }
       />
 
-      {propertiesQ.data && propertiesQ.data.length > 1 && (
-        <Select value={effectiveProp ?? ""} onValueChange={setPropertyId}>
-          <SelectTrigger className="w-64"><SelectValue placeholder="Property" /></SelectTrigger>
-          <SelectContent>
-            {propertiesQ.data.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
-
-      {bedsQ.isLoading ? (
+      {!effectiveProp ? (
+        <p className="text-sm text-muted-foreground">
+          Choose a property from the sidebar first.
+        </p>
+      ) : bedsQ.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
         <BedGrid
@@ -231,6 +244,27 @@ function AllocationBoard() {
                 </PopoverContent>
               </Popover>
             </div>
+            <div>
+              <Label htmlFor="fee-plan">Fee plan</Label>
+              <Select value={feePlanId} onValueChange={setFeePlanId}>
+                <SelectTrigger id="fee-plan">
+                  <SelectValue placeholder="Select a fee plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(feePlansQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} ({p.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {feePlansQ.data && feePlansQ.data.length === 0 && (
+                <p className="mt-1 text-xs text-destructive">
+                  No active fee plan for this property — create one first, or this allocation
+                  won't be billable.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="sd">Start date</Label>
@@ -248,7 +282,10 @@ function AllocationBoard() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSelectedBed(null)}>Cancel</Button>
-            <Button disabled={!studentId || create.isPending} onClick={() => create.mutate()}>
+            <Button
+              disabled={!studentId || !feePlanId || create.isPending}
+              onClick={() => create.mutate()}
+            >
               <BedSingle className="h-4 w-4" /> Allocate
             </Button>
           </DialogFooter>

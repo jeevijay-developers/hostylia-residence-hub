@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,12 @@ import { Label } from "@/components/ui/label";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/schemas/auth";
 import { supabase } from "@/integrations/supabase/client";
 
+const forgotPasswordSearchSchema = z.object({
+  email: z.string().email().optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/forgot-password")({
+  validateSearch: forgotPasswordSearchSchema,
   head: () => ({
     meta: [
       { title: "Forgot password — Hostylia" },
@@ -26,6 +32,7 @@ export const Route = createFileRoute("/forgot-password")({
 
 function ForgotPasswordPage() {
   const { t } = useTranslation();
+  const { email: prefilledEmail } = Route.useSearch();
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -34,7 +41,7 @@ function ForgotPasswordPage() {
     formState: { errors },
   } = useForm<ForgotPasswordInput>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: prefilledEmail ?? "" },
   });
 
   const onSubmit = async (values: ForgotPasswordInput) => {

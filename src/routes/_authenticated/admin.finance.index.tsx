@@ -10,7 +10,16 @@ function FinanceIndex() {
   const links = [
     { to: "/admin/finance/fee-plans", label: "Fee plans", desc: "Rent/mess/deposit templates" },
     { to: "/admin/finance/invoices", label: "Invoices", desc: "All invoices for this property" },
-    { to: "/admin/finance/pnl", label: "Revenue & Collections", desc: "Collections + aging + refunds" },
+    {
+      to: "/admin/finance/payments",
+      label: "Record payment",
+      desc: "Cash, cheque, bank transfer or UPI",
+    },
+    {
+      to: "/admin/finance/pnl",
+      label: "Revenue & Collections",
+      desc: "Collections + aging + refunds",
+    },
   ] as const;
   return (
     <div className="space-y-6">

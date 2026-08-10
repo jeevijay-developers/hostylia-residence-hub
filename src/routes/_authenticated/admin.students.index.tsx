@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, Upload, Search, Eye, Link2, Trash2, Loader2 } from "lucide-react";
+import { UserPlus, Upload, Search, Eye, Link2, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -17,14 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -32,6 +26,7 @@ import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 import { deleteStudent } from "@/lib/student.functions";
+import { usePropertyStore } from "@/stores/property-store";
 
 export const Route = createFileRoute("/_authenticated/admin/students/")({
   head: () => ({ meta: [{ title: "Students — Hostylia" }] }),
@@ -46,18 +41,7 @@ function StudentsListPage() {
   const [q, setQ] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
-
-  const deleteStudentFn = useServerFn(deleteStudent);
-  const deleteMutation = useMutation({
-    mutationFn: (studentId: string) => deleteStudentFn({ data: { student_id: studentId } }),
-    onSuccess: () => {
-      toast.success("Student record deleted");
-      setPendingDelete(null);
-      qc.invalidateQueries({ queryKey: ["admin-students"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete student"),
-  });
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; full_name: string } | null>(null);
 
   const propertiesQ = useQuery({
     queryKey: ["admin-properties-min", tenantId],
@@ -72,8 +56,9 @@ function StudentsListPage() {
       return data ?? [];
     },
   });
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const effectiveProperty = propertyId ?? propertiesQ.data?.[0]?.id ?? null;
+  const activePropertyId = usePropertyStore((s) => s.activePropertyId);
+  const [localPropertyId, setLocalPropertyId] = useState<string | null>(null);
+  const effectiveProperty = localPropertyId ?? activePropertyId ?? propertiesQ.data?.[0]?.id ?? null;
   const effectivePropertyRow = propertiesQ.data?.find((p) => p.id === effectiveProperty);
 
   function shareAdmissionLink() {
@@ -104,6 +89,17 @@ function StudentsListPage() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  const deleteFn = useServerFn(deleteStudent);
+  const deleteMut = useMutation({
+    mutationFn: (student_id: string) => deleteFn({ data: { student_id } }),
+    onSuccess: () => {
+      toast.success("Student deleted");
+      setPendingDelete(null);
+      qc.invalidateQueries({ queryKey: ["admin-students"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete student"),
   });
 
   const stats = useMemo(() => {
@@ -138,7 +134,7 @@ function StudentsListPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         {propertiesQ.data && propertiesQ.data.length > 1 && (
-          <Select value={effectiveProperty ?? ""} onValueChange={(v) => setPropertyId(v)}>
+          <Select value={effectiveProperty ?? ""} onValueChange={(v) => setLocalPropertyId(v)}>
             <SelectTrigger className="w-56"><SelectValue placeholder="Property" /></SelectTrigger>
             <SelectContent>
               {propertiesQ.data.map((p) => (
@@ -206,14 +202,23 @@ function StudentsListPage() {
                           <Eye className="h-4 w-4" /> Open
                         </Link>
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setPendingDelete({ id: s.id, name: s.full_name })}
-                      >
-                        <Trash2 className="h-4 w-4" /> Delete
-                      </Button>
+                      {s.status === "ACTIVE" || s.status === "NOTICE_GIVEN" ? (
+                        <span
+                          className="inline-flex items-center px-2 text-xs text-muted-foreground"
+                          title="Move this student out before deleting their record"
+                        >
+                          <Trash2 className="h-4 w-4 opacity-40" />
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setPendingDelete({ id: s.id, full_name: s.full_name })}
+                        >
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -245,11 +250,10 @@ function StudentsListPage() {
       <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this student record?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {pendingDelete?.full_name ?? "this student"}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete
-                ? `"${pendingDelete.name}" will be removed from Students, Allocations and Finance lists. This is meant for duplicate/mistaken entries — use it carefully.`
-                : null}
+              This removes them from the students list. Their record is kept for audit purposes
+              and can be recovered by support if needed — this isn't a permanent erase.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -257,12 +261,12 @@ function StudentsListPage() {
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+                if (pendingDelete) deleteMut.mutate(pendingDelete.id);
               }}
-              disabled={deleteMutation.isPending}
+              disabled={deleteMut.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {deleteMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

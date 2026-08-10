@@ -85,20 +85,29 @@ export async function markAllRead(ids: string[]) {
     .in("id", ids);
 }
 
-export function useTenantNotices(tenantId: string | null | undefined, propertyId?: string | null) {
+/**
+ * @param includeAllStatuses Admin/composer views need to see and act on
+ * DRAFT/SCHEDULED/CANCELLED notices too (e.g. to Cancel a scheduled one
+ * before it fires); recipient-facing feeds must stay PUBLISHED-only.
+ */
+export function useTenantNotices(
+  tenantId: string | null | undefined,
+  propertyId?: string | null,
+  includeAllStatuses = false,
+) {
   const qc = useQueryClient();
   const key = tenantId ?? propertyId ?? null;
   const query = useQuery({
-    queryKey: ["notices", tenantId, propertyId],
+    queryKey: ["notices", tenantId, propertyId, includeAllStatuses],
     enabled: !!(tenantId || propertyId),
     queryFn: async () => {
       let q = supabase
         .from("notices")
         .select("*")
-        .eq("status", "PUBLISHED")
         .is("deleted_at", null)
-        .order("published_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(50);
+      if (!includeAllStatuses) q = q.eq("status", "PUBLISHED");
       if (tenantId) q = q.eq("tenant_id", tenantId);
       if (propertyId) q = q.eq("property_id", propertyId);
       const { data, error } = await q;

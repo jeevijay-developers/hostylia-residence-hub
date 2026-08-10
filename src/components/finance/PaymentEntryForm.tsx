@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -12,6 +12,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { recordManualPayment } from "@/lib/finance.functions";
 import { formatInr } from "@/lib/finance";
+
+const PAYABLE_STATUSES = ["ISSUED", "PARTIALLY_PAID", "OVERDUE"];
 
 export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
   const qc = useQueryClient();
@@ -28,9 +30,10 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, invoice_number, balance_paise, students(full_name)")
+        .select("id, invoice_number, status, balance_paise, students(full_name)")
         .eq("property_id", propertyId)
-        .in("status", ["ISSUED", "PARTIALLY_PAID", "OVERDUE"])
+        .in("status", PAYABLE_STATUSES)
+        .gt("balance_paise", 0)
         .is("deleted_at", null)
         .order("due_date");
       if (error) throw new Error(error.message);
@@ -38,17 +41,54 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
     },
   });
 
+  // Another payment (this form, another tab, Razorpay) can settle/void an
+  // invoice while this dropdown sits open — keep it live instead of relying
+  // on a manual refresh, so a stale entry can't be picked in the first place.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`payment-entry-invoices-${propertyId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invoices", filter: `property_id=eq.${propertyId}` },
+        () => qc.invalidateQueries({ queryKey: ["open-invoices", propertyId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [propertyId, qc]);
+
   const m = useMutation({
-    mutationFn: async () => record({
-      data: {
-        invoice_id: invoiceId,
-        mode,
-        amount_paise: Math.round(parseFloat(amount) * 100),
-        offline_reference: ref,
-        cheque_date: mode === "CHEQUE" ? chequeDate : "",
-        notes,
-      },
-    }),
+    mutationFn: async () => {
+      // Belt-and-braces: re-verify the selected invoice's real backend
+      // status/balance right before submitting, in case the dropdown (even
+      // with the realtime subscription above) is momentarily stale. The
+      // atomic record_manual_payment() DB function is still the actual
+      // authority and re-checks this itself under a row lock — this is
+      // just an earlier, clearer rejection than waiting for that error.
+      const { data: fresh, error: fErr } = await supabase
+        .from("invoices")
+        .select("status, balance_paise")
+        .eq("id", invoiceId)
+        .single();
+      if (fErr || !fresh) throw new Error("Invoice not found");
+      if (!PAYABLE_STATUSES.includes(fresh.status) || fresh.balance_paise <= 0) {
+        qc.invalidateQueries({ queryKey: ["open-invoices", propertyId] });
+        setInvoiceId("");
+        throw new Error(`Cannot record a payment against a ${fresh.status.toLowerCase()} invoice`);
+      }
+
+      return record({
+        data: {
+          invoice_id: invoiceId,
+          mode,
+          amount_paise: Math.round(parseFloat(amount) * 100),
+          offline_reference: ref,
+          cheque_date: mode === "CHEQUE" ? chequeDate : "",
+          notes,
+        },
+      });
+    },
     onSuccess: (out) => {
       toast.success(`Payment recorded: ${out.payment_number}`);
       qc.invalidateQueries({ queryKey: ["open-invoices"] });

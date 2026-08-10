@@ -1,9 +1,7 @@
 import { z } from "zod";
+import { phoneSchema as authPhoneSchema, emailSchema } from "@/schemas/auth";
 
-const phoneSchema = z
-  .string()
-  .trim()
-  .regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone (E.164 expected)");
+const phoneSchema = authPhoneSchema;
 
 export const studentStatusEnum = z.enum([
   "APPLICANT",
@@ -66,6 +64,10 @@ export type ManualStudentRow = z.infer<typeof manualStudentRowSchema>;
 export const allocationCreateSchema = z.object({
   student_id: z.string().uuid(),
   bed_id: z.string().uuid(),
+  // Without this, neither the recurring monthly generator nor the
+  // agreement-signing invoice (PRD 8.2.4) can ever bill the allocation —
+  // both join through fee_plan_id and silently no-op without it.
+  fee_plan_id: z.string().uuid(),
   start_date: z.string().date(),
   expected_end_date: z.string().date().optional().or(z.literal("")),
   rent_snapshot_paise: z.number().int().min(0),
@@ -79,3 +81,36 @@ export const clickConsentSchema = z.object({
   agreement_id: z.string().uuid(),
   document_hash: z.string().min(8).max(200),
 });
+
+const MIN_STUDENT_AGE_YEARS = 10;
+const MAX_STUDENT_AGE_YEARS = 100;
+
+/** Student self-service profile edit (student.profile.tsx). The `students`
+ * self-update RLS policy + guard trigger already let a student touch these
+ * columns freely at the DB level — this is the only place format/sanity is
+ * enforced, so a bad phone/email/DOB was previously saved as-is. */
+export const studentSelfProfileSchema = z.object({
+  full_name: z.string().trim().min(2).max(120),
+  phone: phoneSchema,
+  email: emailSchema.optional().or(z.literal("")),
+  date_of_birth: z
+    .string()
+    .date()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (v) => {
+        if (!v) return true;
+        const dob = new Date(v);
+        if (Number.isNaN(dob.getTime()) || dob > new Date()) return false;
+        const ageYears = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+        return ageYears >= MIN_STUDENT_AGE_YEARS && ageYears <= MAX_STUDENT_AGE_YEARS;
+      },
+      { message: "Enter a valid date of birth" },
+    ),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional().or(z.literal("")),
+  academic_institute: z.string().trim().max(160).optional().or(z.literal("")),
+  course_name: z.string().trim().max(160).optional().or(z.literal("")),
+  academic_year: z.string().trim().max(40).optional().or(z.literal("")),
+});
+export type StudentSelfProfileInput = z.infer<typeof studentSelfProfileSchema>;

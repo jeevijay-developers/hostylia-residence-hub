@@ -16,7 +16,7 @@ secrets = "env(SEND_SMS_HOOK_SECRET)"
 # CLI's local-dev template defaults.
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = []
+additional_redirect_urls = ["http://localhost:8080"]
 
 [auth.mfa.totp]
 enroll_enabled = true

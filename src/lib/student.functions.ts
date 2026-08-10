@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
@@ -11,6 +11,7 @@ import {
   manualStudentRowSchema,
   allocationCreateSchema,
   clickConsentSchema,
+  studentSelfProfileSchema,
 } from "@/schemas/student";
 
 function adminClient() {
@@ -138,7 +139,9 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
 const bulkImportSchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
-  rows: z.array(studentBulkRowSchema).min(1).max(1000),
+  // Each row is validated individually in the handler so one bad row
+  // doesn't reject the whole batch — this must stay loose here.
+  rows: z.array(z.record(z.string(), z.string())).min(1).max(1000),
 });
 
 async function insertStudentRow(
@@ -207,8 +210,13 @@ export const bulkImportStudents = createServerFn({ method: "POST" })
     const errors: { row: number; error: string }[] = [];
     let inserted = 0;
     for (let i = 0; i < data.rows.length; i++) {
+      const parsed = studentBulkRowSchema.safeParse(data.rows[i]);
+      if (!parsed.success) {
+        errors.push({ row: i + 1, error: parsed.error.issues.map((x) => x.message).join("; ") });
+        continue;
+      }
       try {
-        await insertStudentRow(supabase, data.tenant_id, data.property_id, data.rows[i]);
+        await insertStudentRow(supabase, data.tenant_id, data.property_id, parsed.data);
         inserted += 1;
       } catch (e) {
         errors.push({ row: i + 1, error: e instanceof Error ? e.message : "unknown" });
@@ -392,44 +400,6 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
     return { ok: true as const, linked_profile_id: matchedId };
   });
 
-const deleteStudentSchema = z.object({
-  student_id: z.string().uuid(),
-});
-
-/** Soft-deletes a student record (e.g. a duplicate/mistaken applicant entry) — sets
- * deleted_at rather than a hard DELETE, matching the rest of the schema's convention. */
-export const deleteStudent = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((data) => deleteStudentSchema.parse(data))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    const { data: student, error: sErr } = await supabase
-      .from("students")
-      .select("id, tenant_id")
-      .eq("id", data.student_id)
-      .is("deleted_at", null)
-      .single();
-    if (sErr || !student) throw new Error("Student not found");
-
-    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_tenant_role", {
-      _user_id: userId,
-      _tenant_id: student.tenant_id,
-      _role: "HOSTEL_ADMIN",
-    });
-    if (roleErr) throw roleErr;
-    if (!isAdmin) throw new Error("Only a Hostel Admin can delete a student record");
-
-    const { error: delErr } = await supabase
-      .from("students")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", student.id)
-      .eq("tenant_id", student.tenant_id);
-    if (delErr) throw new Error(delErr.message);
-
-    return { ok: true as const };
-  });
-
 export const createAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => allocationCreateSchema.parse(data))
@@ -454,6 +424,7 @@ export const createAllocation = createServerFn({ method: "POST" })
         room_id: bed.room_id,
         floor_id: bed.floor_id,
         block_id: bed.block_id,
+        fee_plan_id: data.fee_plan_id,
         status: "PENDING_AGREEMENT",
         start_date: data.start_date,
         expected_end_date: data.expected_end_date || null,
@@ -524,14 +495,104 @@ export const acceptAgreementClickwrap = createServerFn({ method: "POST" })
       .eq("id", data.agreement_id)
       .single();
     if (agr?.allocation_id) {
-      await supabase
-        .from("allocations")
-        .update({ status: "PENDING_PAYMENT" })
-        .eq("id", agr.allocation_id)
-        .eq("status", "PENDING_AGREEMENT");
+      // Students have no direct RLS write policy on `allocations` — this
+      // transition has to go through a SECURITY DEFINER function (RULES.md
+      // 19.3), not a raw client .update() (which would silently no-op here).
+      const { error: advErr } = await supabase.rpc("advance_allocation_after_signing", {
+        p_agreement_id: data.agreement_id,
+      });
+      if (advErr) throw new Error(advErr.message);
+
+      // PRD 8.2.4: signing → "deposit + first-month invoice generated" —
+      // this is a one-time move-in invoice, distinct from fn_generate_invoices'
+      // recurring monthly cron (which deliberately excludes DEPOSIT and only
+      // fires on an allocation's billing_cycle_day). Best-effort: a student
+      // shouldn't be blocked from signing because invoicing hiccuped.
+      try {
+        await generateFirstInvoiceForAllocation(supabase, agr.allocation_id);
+      } catch (e) {
+        console.error("[acceptAgreementClickwrap] first invoice generation failed", e);
+      }
     }
     return { ok: true as const };
   });
+
+/**
+ * Deposit + first billing period invoice, issued once at agreement
+ * acceptance (PRD 8.2.4). Mirrors fn_generate_invoices' component rollup for
+ * RENT/MESS/MAINTENANCE/OTHER, plus the allocation's own negotiated deposit
+ * (allocations.deposit_snapshot_paise — not the fee plan's DEPOSIT
+ * component, since the actual deposit can be customized per allocation).
+ * Idempotent via the same (allocation_id, billing_period, fee_plan_id)
+ * unique index the recurring generator relies on, so a double-submit of the
+ * click-consent flow can't double-bill.
+ */
+async function generateFirstInvoiceForAllocation(
+  supabase: SupabaseClient<Database>,
+  allocationId: string,
+) {
+  const { data: alloc, error: aErr } = await supabase
+    .from("allocations")
+    .select("tenant_id, property_id, student_id, fee_plan_id, deposit_snapshot_paise")
+    .eq("id", allocationId)
+    .single();
+  if (aErr || !alloc || !alloc.fee_plan_id) return;
+
+  const { data: plan } = await supabase
+    .from("fee_plans")
+    .select("grace_period_days")
+    .eq("id", alloc.fee_plan_id)
+    .single();
+
+  const { data: comps, error: cErr } = await supabase
+    .from("fee_plan_components")
+    .select("amount_paise, is_taxable, tax_rate_basis_points")
+    .eq("fee_plan_id", alloc.fee_plan_id)
+    .eq("is_active", true)
+    .in("component_type", ["RENT", "MESS", "MAINTENANCE", "OTHER"]);
+  if (cErr) throw new Error(cErr.message);
+
+  let subtotal = alloc.deposit_snapshot_paise ?? 0;
+  let tax = 0;
+  for (const c of comps ?? []) {
+    subtotal += c.amount_paise;
+    if (c.is_taxable) tax += Math.floor((c.amount_paise * c.tax_rate_basis_points) / 10000);
+  }
+  if (subtotal <= 0) return;
+
+  const today = new Date();
+  const periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const graceDays = plan?.grace_period_days ?? 0;
+  const due = new Date(today);
+  due.setDate(due.getDate() + graceDays);
+
+  const { error } = await supabase.from("invoices").insert({
+    tenant_id: alloc.tenant_id,
+    property_id: alloc.property_id,
+    student_id: alloc.student_id,
+    allocation_id: allocationId,
+    fee_plan_id: alloc.fee_plan_id,
+    billing_period_start: periodStart,
+    billing_period_end: periodEnd,
+    issue_date: today.toISOString().slice(0, 10),
+    due_date: due.toISOString().slice(0, 10),
+    status: "ISSUED",
+    subtotal_paise: subtotal,
+    discount_paise: 0,
+    tax_paise: tax,
+    late_fee_paise: 0,
+    total_paise: subtotal + tax,
+    paid_paise: 0,
+    refunded_paise: 0,
+    balance_paise: subtotal + tax,
+    issued_at: new Date().toISOString(),
+    notes: "Security deposit + first month, generated on agreement acceptance.",
+  });
+  // 23505 = unique_violation on (allocation_id, billing_period, fee_plan_id) —
+  // already generated (e.g. a retried click-consent submit); not an error.
+  if (error && (error as { code?: string }).code !== "23505") throw new Error(error.message);
+}
 
 const moveOutSchema = z.object({
   allocation_id: z.string().uuid(),
@@ -542,58 +603,62 @@ export const moveOutAllocation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => moveOutSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    // Closes the allocation, moves the student out, frees the bed, and
+    // deducts any outstanding dues from the deposit — all atomically in one
+    // DB function per RULES.md 19.3/19.5 (no independent bed.status writes).
+    const { error } = await supabase.rpc("complete_move_out", {
+      p_allocation_id: data.allocation_id,
+      p_actual_end_date: data.actual_end_date,
+    });
+    if (error) throw new Error(error.message);
+
+    return { ok: true as const };
+  });
+
+const deleteStudentSchema = z.object({
+  student_id: z.string().uuid(),
+});
+
+/**
+ * Soft-deletes a student record (sets deleted_at, matching the
+ * `.is("deleted_at", null)` convention every student query filters on).
+ * Only a Hostel Admin may delete, and it's blocked while the student is
+ * ACTIVE/NOTICE_GIVEN — move them out first so their bed doesn't end up
+ * occupied by a record nobody can see anymore.
+ */
+export const deleteStudent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => deleteStudentSchema.parse(data))
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: allocBefore, error: qErr } = await supabase
-      .from("allocations")
-      .select("id, tenant_id, property_id, student_id, deposit_snapshot_paise")
-      .eq("id", data.allocation_id)
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("id, tenant_id, status")
+      .eq("id", data.student_id)
+      .is("deleted_at", null)
       .single();
-    if (qErr || !allocBefore) throw new Error("Allocation not found");
-
-    // Compute unpaid balances against the deposit and post an ADJUSTMENT/DEDUCTION
-    const { data: openInvs } = await supabase
-      .from("invoices")
-      .select("balance_paise")
-      .eq("allocation_id", data.allocation_id)
-      .not("status", "in", "(VOID,PAID,REFUNDED)")
-      .is("deleted_at", null);
-    const dues = (openInvs ?? []).reduce((s, i) => s + (i.balance_paise ?? 0), 0);
-
-    if (dues > 0) {
-      const capped = Math.min(dues, allocBefore.deposit_snapshot_paise ?? 0);
-      if (capped > 0) {
-        await supabase.from("deposit_ledger_entries").insert({
-          tenant_id: allocBefore.tenant_id,
-          property_id: allocBefore.property_id,
-          student_id: allocBefore.student_id,
-          allocation_id: allocBefore.id,
-          entry_type: "DEDUCTION",
-          amount_paise: capped,
-          direction: "DEBIT",
-          reference_type: "MOVE_OUT",
-          description: `Deducted outstanding dues from deposit at move-out (${data.actual_end_date})`,
-          created_by: userId,
-        });
-      }
+    if (sErr || !student) throw new Error("Student not found");
+    if (student.status === "ACTIVE" || student.status === "NOTICE_GIVEN") {
+      throw new Error("Move this student out before deleting their record");
     }
 
-    const { data: alloc, error: aErr } = await supabase
-      .from("allocations")
-      .update({
-        status: "CLOSED",
-        actual_end_date: data.actual_end_date,
-        closed_at: new Date().toISOString(),
-      })
-      .eq("id", data.allocation_id)
-      .select("student_id")
-      .single();
-    if (aErr) throw new Error(aErr.message);
+    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_tenant_role", {
+      _user_id: userId,
+      _tenant_id: student.tenant_id,
+      _role: "HOSTEL_ADMIN",
+    });
+    if (roleErr) throw roleErr;
+    if (!isAdmin) throw new Error("Only a Hostel Admin can delete a student record");
 
-    await supabase
+    const { error } = await supabase
       .from("students")
-      .update({ status: "MOVED_OUT", moved_out_at: data.actual_end_date })
-      .eq("id", alloc.student_id);
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", student.id)
+      .eq("tenant_id", student.tenant_id);
+    if (error) throw new Error(error.message);
 
     return { ok: true as const };
   });
@@ -635,6 +700,7 @@ export const registerDocument = createServerFn({ method: "POST" })
   .validator((data) => registerDocSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
     const { data: doc, error } = await supabase
       .from("documents")
       .insert({
@@ -646,5 +712,70 @@ export const registerDocument = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
+    // A resubmission (owner had only REJECTED docs, per KycUploadForm's
+    // isSubmitted gate) must supersede the old rows instead of insert-only
+    // stacking them — otherwise every re-upload leaves a stale REJECTED row
+    // behind that keeps `hasRejected` (KycStatus.tsx) stuck true forever and
+    // clutters the warden's document review with duplicates. Runs after the
+    // insert succeeds, so a failed insert never leaves zero active docs.
+    // There's no student-self UPDATE policy on `documents` (only
+    // INSERT/SELECT), so this goes through the service-role client — the
+    // insert above already proved the caller owns `owner_id` via RLS.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: supersedeErr } = await supabaseAdmin
+      .from("documents")
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .eq("tenant_id", data.tenant_id)
+      .eq("owner_type", data.owner_type)
+      .eq("owner_id", data.owner_id)
+      .eq("verification_status", "REJECTED")
+      .neq("id", doc.id)
+      .is("deleted_at", null);
+    if (supersedeErr) throw new Error(supersedeErr.message);
+
     return { id: doc.id };
+  });
+
+/**
+ * Student self-service profile edit (student.profile.tsx). The RLS self-
+ * update policy + guard trigger already restrict a student to their own
+ * non-staff-controlled columns, but neither enforces *format* — a raw client
+ * UPDATE could (and did) save a garbage phone/email/DOB as-is. Validation
+ * here is the actual fix; going through a server fn (vs. the previous direct
+ * client `.update()`) means it can't be bypassed by calling Supabase directly.
+ */
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => studentSelfProfileSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("id")
+      .eq("profile_id", userId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sErr) throw new Error(sErr.message);
+    if (!student) throw new Error("No student record linked to your account");
+
+    const { error } = await supabase
+      .from("students")
+      .update({
+        full_name: data.full_name,
+        phone: normalizeIndianPhone(data.phone),
+        email: data.email || null,
+        date_of_birth: data.date_of_birth || null,
+        gender: data.gender || null,
+        academic_institute: data.academic_institute || null,
+        course_name: data.course_name || null,
+        academic_year: data.academic_year || null,
+      })
+      .eq("id", student.id);
+    if (error) throw new Error(error.message);
+
+    return { ok: true as const };
   });

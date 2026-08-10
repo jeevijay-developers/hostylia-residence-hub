@@ -53,6 +53,7 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
 
   return (
     <div className="space-y-3 rounded-md border border-border bg-card p-3">
+      <p className="text-sm font-medium">Rate this resolution</p>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
@@ -91,9 +92,7 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
           </Button>
         )}
         {!canReopen && (
-          <span className="self-center text-xs text-muted-foreground">
-            Reopen window closed.
-          </span>
+          <span className="self-center text-xs text-muted-foreground">Reopen window closed.</span>
         )}
       </div>
     </div>

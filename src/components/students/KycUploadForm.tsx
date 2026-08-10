@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, Upload, FileCheck2 } from "lucide-react";
+import { Camera, Upload, FileCheck2, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +12,37 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { registerDocument } from "@/lib/student.functions";
 
+interface ExistingDoc {
+  document_type: string;
+  verification_status: string;
+}
+
 interface Props {
   tenantId: string;
   propertyId: string;
   studentId: string;
+  /** Already-submitted docs — KYC only needs one document submitted, ever.
+   * Once any document is PENDING or VERIFIED the whole form locks; a
+   * REJECTED-only history re-opens it for a fresh submission. */
+  existingDocs?: ExistingDoc[];
   onUploaded?: () => void;
 }
 
 const DOC_TYPES = ["AADHAAR", "COLLEGE_ID", "PHOTO", "OTHER"];
 
-export function KycUploadForm({ tenantId, propertyId, studentId, onUploaded }: Props) {
+export function KycUploadForm({ tenantId, propertyId, studentId, existingDocs = [], onUploaded }: Props) {
   const [docType, setDocType] = useState("AADHAAR");
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const registerFn = useServerFn(registerDocument);
+
+  // KYC needs exactly one document submission — once anything is pending
+  // review or already verified, the whole form locks regardless of type.
+  const isSubmitted = useMemo(
+    () => existingDocs.some((d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED"),
+    [existingDocs],
+  );
 
   const upload = useMutation({
     mutationFn: async () => {
@@ -58,6 +74,15 @@ export function KycUploadForm({ tenantId, propertyId, studentId, onUploaded }: P
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Upload failed"),
   });
+
+  if (isSubmitted) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-4 text-sm font-medium text-success">
+        <CheckCircle2 className="h-4 w-4" />
+        Completed — your KYC document has already been submitted.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-card p-4">

@@ -11,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { useKycComplete } from "@/lib/kyc";
+import { KycGateNotice } from "@/components/students/KycGateNotice";
 
 export const Route = createFileRoute("/_authenticated/student/mess")({
   component: StudentMessPage,
@@ -52,19 +54,20 @@ function StudentMessPage() {
     },
   });
   const submittedMap = new Map((feedbackQ.data ?? []).map((f) => [f.mess_menu_id, f.rating]));
+  const { complete: kycComplete } = useKycComplete(studentQ.data?.id);
 
   return (
     <div className="space-y-4">
       <PageHeader title="Mess" description="Today's menu and your feedback." />
       {(menusQ.data ?? []).map((m) => (
-        <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
+        <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
       ))}
       {menusQ.data?.length === 0 && <div className="text-sm text-muted-foreground text-center p-6">No menu published for today.</div>}
     </div>
   );
 }
 
-function MenuCard({ menu, submittedRating, student, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; onSubmitted: () => void }) {
+function MenuCard({ menu, submittedRating, student, kycComplete, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; onSubmitted: () => void }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const submitMut = useMutation({
@@ -96,7 +99,8 @@ function MenuCard({ menu, submittedRating, student, onSubmitted }: { menu: { id:
             ))}
           </div>
           <Textarea placeholder="Comment (optional)" value={comment} onChange={(e) => setComment(e.target.value)} rows={2} />
-          <Button size="sm" onClick={() => submitMut.mutate()} disabled={submitMut.isPending}>
+          {!kycComplete && <KycGateNotice message="Complete your KYC to submit mess feedback." />}
+          <Button size="sm" onClick={() => submitMut.mutate()} disabled={!kycComplete || submitMut.isPending}>
             <Send className="h-4 w-4" /> Submit
           </Button>
         </div>

@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, Save, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Save, Upload } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ function slugify(value: string) {
 function PropertySetupPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [step, setStep] = useState(0);
   /**
    * The slug tracks the property name until someone edits it by hand, then it
@@ -122,6 +123,24 @@ function PropertySetupPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
   });
 
+  const finishMut = useMutation({
+    mutationFn: async (values: PropertyFormInput) => {
+      const parsed = propertyFormSchema.partial().parse(values);
+      const { error } = await supabase
+        .from("properties")
+        .update({ ...parsed, status: "ACTIVE" })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["property", id] });
+      qc.invalidateQueries({ queryKey: ["admin-properties"] });
+      toast.success("Property setup complete");
+      nav({ to: "/admin/properties" });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not finish setup"),
+  });
+
   function set<K extends keyof PropertyFormInput>(k: K, v: PropertyFormInput[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -143,6 +162,26 @@ function PropertySetupPage() {
 
   if (propertyQ.isLoading) {
     return <Skeleton className="h-96 w-full" />;
+  }
+
+  if (propertyQ.isError || !propertyQ.data) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Setup" description="Configure your property's basics, address, and branding." />
+        <Card>
+          <CardContent className="space-y-3 py-6 text-center">
+            <p className="text-sm text-destructive">
+              {propertyQ.error instanceof Error
+                ? propertyQ.error.message
+                : "This property couldn't be loaded."}
+            </p>
+            <Button variant="outline" onClick={() => propertyQ.refetch()}>
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -346,15 +385,24 @@ function PropertySetupPage() {
           >
             <Save className="h-4 w-4" /> Save
           </Button>
-          <Button
-            onClick={async () => {
-              await saveMut.mutateAsync(form);
-              setStep((s) => Math.min(STEPS.length - 1, s + 1));
-            }}
-            disabled={step === STEPS.length - 1 || saveMut.isPending}
-          >
-            Save & continue <ArrowRight className="h-4 w-4" />
-          </Button>
+          {step === STEPS.length - 1 ? (
+            <Button
+              onClick={() => finishMut.mutate(form)}
+              disabled={finishMut.isPending}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Finish setup
+            </Button>
+          ) : (
+            <Button
+              onClick={async () => {
+                await saveMut.mutateAsync(form);
+                setStep((s) => Math.min(STEPS.length - 1, s + 1));
+              }}
+              disabled={saveMut.isPending}
+            >
+              Save & continue <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

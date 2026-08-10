@@ -62,7 +62,7 @@ function AboutPage() {
             { v: "120+", l: "Properties live" },
             { v: "65,000", l: "Beds managed" },
             { v: "₹240 Cr+", l: "Fees collected" },
-            { v: "11 cities", l: "Across India" },
+            { v: "11 cities", l: "Across Indiaaa" },
           ]} />
         </div>
       </section>
@@ -161,7 +161,6 @@ function AboutPage() {
           </div>
         </div>
       </section>
-
       <section className="py-20">
         <div className="mx-auto max-w-4xl px-4 md:px-6">
           <div className="glass-panel rounded-3xl p-8 text-center md:p-12">

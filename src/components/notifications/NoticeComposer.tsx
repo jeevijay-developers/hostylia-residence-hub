@@ -16,10 +16,13 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { publishNotice, cancelNotice } from "@/lib/notice.functions";
+import { publishNotice, cancelNotice, editNotice } from "@/lib/notice.functions";
 import { useTenantNotices, type NoticeRow } from "@/lib/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 const CHANNELS = [
   { key: "IN_APP", label: "In-app" },
@@ -51,7 +54,36 @@ export function NoticeComposer({ propertyId }: Props) {
   const [publishAt, setPublishAt] = useState("");
 
   const tenantId = usePropertyTenantId(propertyId);
-  const { data: notices = [] } = useTenantNotices(tenantId, propertyId);
+  const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
+
+  const [viewingNotice, setViewingNotice] = useState<NoticeRow | null>(null);
+  const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editPriority, setEditPriority] = useState<"NORMAL" | "IMPORTANT" | "URGENT">("NORMAL");
+
+  const editFn = useServerFn(editNotice);
+  const edit = useMutation({
+    mutationFn: async () => {
+      if (!editingNotice) throw new Error("No notice selected");
+      return editFn({
+        data: { notice_id: editingNotice.id, title: editTitle, body: editBody, priority: editPriority },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Notice updated");
+      qc.invalidateQueries({ queryKey: ["notices"] });
+      setEditingNotice(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function openEdit(n: NoticeRow) {
+    setEditingNotice(n);
+    setEditTitle(n.title);
+    setEditBody(n.body);
+    setEditPriority(n.priority as "NORMAL" | "IMPORTANT" | "URGENT");
+  }
 
   const publish = useMutation({
     mutationFn: async () => {
@@ -177,27 +209,133 @@ export function NoticeComposer({ propertyId }: Props) {
                     <p className="text-xs text-muted-foreground">
                       {n.audience_type} · {n.channels.join(", ")}
                     </p>
+                    {n.status === "SCHEDULED" && n.publish_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Scheduled for {new Date(n.publish_at).toLocaleString()}
+                      </p>
+                    )}
                   </div>
                   <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>{n.status}</Badge>
                 </div>
-                {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
+                <div className="mt-2 flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-2 h-7 text-xs"
-                    onClick={async () => {
-                      await cancelFn({ data: { notice_id: n.id } });
-                      qc.invalidateQueries({ queryKey: ["notices"] });
-                    }}
+                    className="h-7 text-xs"
+                    onClick={() => setViewingNotice(n)}
                   >
-                    Cancel
+                    View
                   </Button>
-                )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openEdit(n)}
+                  >
+                    Edit
+                  </Button>
+                  {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={async () => {
+                        await cancelFn({ data: { notice_id: n.id } });
+                        qc.invalidateQueries({ queryKey: ["notices"] });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
         )}
       </Card>
+
+      <Dialog open={!!viewingNotice} onOpenChange={(v) => !v && setViewingNotice(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{viewingNotice?.title}</DialogTitle>
+          </DialogHeader>
+          {viewingNotice && (
+            <div className="space-y-3 text-sm">
+              <p className="whitespace-pre-wrap">{viewingNotice.body}</p>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant={viewingNotice.status === "PUBLISHED" ? "default" : "secondary"}>
+                  {viewingNotice.status}
+                </Badge>
+                <span>{viewingNotice.priority}</span>
+                <span>{viewingNotice.audience_type}</span>
+                <span>{viewingNotice.channels.join(", ")}</span>
+              </div>
+              {viewingNotice.published_at && (
+                <p className="text-xs text-muted-foreground">
+                  Published {new Date(viewingNotice.published_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewingNotice(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingNotice} onOpenChange={(v) => !v && setEditingNotice(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit notice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="edit-notice-title">Title</Label>
+              <Input
+                id="edit-notice-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                maxLength={200}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-notice-body">Body</Label>
+              <Textarea
+                id="edit-notice-body"
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                rows={5}
+              />
+            </div>
+            <div>
+              <Label>Priority</Label>
+              <Select value={editPriority} onValueChange={(v) => setEditPriority(v as typeof editPriority)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NORMAL">Normal</SelectItem>
+                  <SelectItem value="IMPORTANT">Important</SelectItem>
+                  <SelectItem value="URGENT">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editingNotice?.status === "PUBLISHED" && (
+              <p className="text-xs text-muted-foreground">
+                This notice was already sent — editing only corrects the stored record, it will not
+                resend SMS/WhatsApp/email/in-app notifications already dispatched.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingNotice(null)}>Cancel</Button>
+            <Button
+              disabled={editTitle.trim().length < 3 || editBody.trim().length < 3 || edit.isPending}
+              onClick={() => edit.mutate()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

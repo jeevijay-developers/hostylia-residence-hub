@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { registerDocument } from "@/lib/student.functions";
 import { useComplaintCategories, useStudentSelf } from "@/lib/complaint";
 import { complaintFormSchema } from "@/schemas/complaint";
+import { useKycComplete } from "@/lib/kyc";
+import { KycGateNotice } from "@/components/students/KycGateNotice";
 
 export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   const student = useStudentSelf();
@@ -22,6 +24,7 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   const cats = useComplaintCategories(propId);
   const qc = useQueryClient();
   const registerFn = useServerFn(registerDocument);
+  const { complete: kycComplete } = useKycComplete(student.data?.id);
 
   const [categoryId, setCategoryId] = useState("");
   const [title, setTitle] = useState("");
@@ -166,7 +169,8 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
           You don't have an active allocation — the complaint will be filed against the property.
         </p>
       )}
-      <Button type="submit" disabled={submit.isPending}>
+      {!kycComplete && <KycGateNotice message="Complete your KYC to submit a complaint." />}
+      <Button type="submit" disabled={!kycComplete || submit.isPending}>
         {submit.isPending ? "Submitting…" : "Submit complaint"}
       </Button>
     </form>

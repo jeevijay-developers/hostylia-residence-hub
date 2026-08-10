@@ -25,15 +25,15 @@ export function DesktopShell({
   return (
     <RoleGuard allow={allow}>
       <ImpersonationBanner />
-      <div className="flex min-h-screen bg-muted/30">
+      <div className="flex h-screen overflow-hidden bg-muted/30">
         <Sidebar
           items={navItems}
           showPropertySwitcher={showPropertySwitcher}
           tenantId={data?.tenantId ?? null}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar navItems={navItems} />
-          <main className="flex-1">
+          <main className="flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8">
               {children ?? <Outlet />}
             </div>
