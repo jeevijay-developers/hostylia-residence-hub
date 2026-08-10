@@ -100,9 +100,25 @@ function AllocationBoard() {
     },
   });
 
+  const feePlansQ = useQuery({
+    queryKey: ["allocation-fee-plans", effectiveProp],
+    enabled: !!effectiveProp,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("fee_plans")
+        .select("id, name, code")
+        .eq("property_id", effectiveProp!)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
   const [selectedBed, setSelectedBed] = useState<BedTile | null>(null);
   const [studentId, setStudentId] = useState("");
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
+  const [feePlanId, setFeePlanId] = useState("");
   const [rent, setRent] = useState<number>(500000);
   const [deposit, setDeposit] = useState<number>(1000000);
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -111,10 +127,12 @@ function AllocationBoard() {
   const create = useMutation({
     mutationFn: async () => {
       if (!selectedBed || !studentId) throw new Error("Pick bed + student");
+      if (!feePlanId) throw new Error("Pick a fee plan — required to auto-generate invoices");
       return createFn({
         data: {
           student_id: studentId,
           bed_id: selectedBed.id,
+          fee_plan_id: feePlanId,
           start_date: startDate,
           rent_snapshot_paise: rent,
           deposit_snapshot_paise: deposit,
@@ -129,6 +147,7 @@ function AllocationBoard() {
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
       setSelectedBed(null);
       setStudentId("");
+      setFeePlanId("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -225,6 +244,27 @@ function AllocationBoard() {
                 </PopoverContent>
               </Popover>
             </div>
+            <div>
+              <Label htmlFor="fee-plan">Fee plan</Label>
+              <Select value={feePlanId} onValueChange={setFeePlanId}>
+                <SelectTrigger id="fee-plan">
+                  <SelectValue placeholder="Select a fee plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(feePlansQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} ({p.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {feePlansQ.data && feePlansQ.data.length === 0 && (
+                <p className="mt-1 text-xs text-destructive">
+                  No active fee plan for this property — create one first, or this allocation
+                  won't be billable.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="sd">Start date</Label>
@@ -242,7 +282,10 @@ function AllocationBoard() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSelectedBed(null)}>Cancel</Button>
-            <Button disabled={!studentId || create.isPending} onClick={() => create.mutate()}>
+            <Button
+              disabled={!studentId || !feePlanId || create.isPending}
+              onClick={() => create.mutate()}
+            >
               <BedSingle className="h-4 w-4" /> Allocate
             </Button>
           </DialogFooter>

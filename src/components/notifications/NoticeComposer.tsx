@@ -54,7 +54,7 @@ export function NoticeComposer({ propertyId }: Props) {
   const [publishAt, setPublishAt] = useState("");
 
   const tenantId = usePropertyTenantId(propertyId);
-  const { data: notices = [] } = useTenantNotices(tenantId, propertyId);
+  const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
 
   const [viewingNotice, setViewingNotice] = useState<NoticeRow | null>(null);
   const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
@@ -209,6 +209,11 @@ export function NoticeComposer({ propertyId }: Props) {
                     <p className="text-xs text-muted-foreground">
                       {n.audience_type} · {n.channels.join(", ")}
                     </p>
+                    {n.status === "SCHEDULED" && n.publish_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Scheduled for {new Date(n.publish_at).toLocaleString()}
+                      </p>
+                    )}
                   </div>
                   <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>{n.status}</Badge>
                 </div>

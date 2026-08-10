@@ -83,6 +83,7 @@ import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/
 import { Route as AuthenticatedAdminFinanceIndexRouteImport } from './routes/_authenticated/admin.finance.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
+import { Route as AuthenticatedAdminFinancePaymentsRouteImport } from './routes/_authenticated/admin.finance.payments'
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
 import { Route as AuthenticatedAdminFinanceFeePlansRouteImport } from './routes/_authenticated/admin.finance.fee-plans'
 import { Route as AuthenticatedAdminStudentsIdIndexRouteImport } from './routes/_authenticated/admin.students.$id.index'
@@ -500,6 +501,12 @@ const AuthenticatedAdminFinancePnlRoute =
     path: '/pnl',
     getParentRoute: () => AuthenticatedAdminFinanceRoute,
   } as any)
+const AuthenticatedAdminFinancePaymentsRoute =
+  AuthenticatedAdminFinancePaymentsRouteImport.update({
+    id: '/payments',
+    path: '/payments',
+    getParentRoute: () => AuthenticatedAdminFinanceRoute,
+  } as any)
 const AuthenticatedAdminFinanceInvoicesRoute =
   AuthenticatedAdminFinanceInvoicesRouteImport.update({
     id: '/invoices',
@@ -608,6 +615,7 @@ export interface FileRoutesByFullPath {
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
+  '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
@@ -686,6 +694,7 @@ export interface FileRoutesByTo {
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
+  '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
@@ -768,6 +777,7 @@ export interface FileRoutesById {
   '/_authenticated/warden/reports': typeof AuthenticatedWardenReportsRoute
   '/_authenticated/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/_authenticated/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
+  '/_authenticated/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
@@ -851,6 +861,7 @@ export interface FileRouteTypes {
     | '/warden/reports'
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
+    | '/admin/finance/payments'
     | '/admin/finance/pnl'
     | '/admin/students/$id'
     | '/admin/finance/'
@@ -929,6 +940,7 @@ export interface FileRouteTypes {
     | '/warden/reports'
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
+    | '/admin/finance/payments'
     | '/admin/finance/pnl'
     | '/admin/finance'
     | '/admin/properties'
@@ -1010,6 +1022,7 @@ export interface FileRouteTypes {
     | '/_authenticated/warden/reports'
     | '/_authenticated/admin/finance/fee-plans'
     | '/_authenticated/admin/finance/invoices'
+    | '/_authenticated/admin/finance/payments'
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/finance/'
@@ -1568,6 +1581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFinancePnlRouteImport
       parentRoute: typeof AuthenticatedAdminFinanceRoute
     }
+    '/_authenticated/admin/finance/payments': {
+      id: '/_authenticated/admin/finance/payments'
+      path: '/payments'
+      fullPath: '/admin/finance/payments'
+      preLoaderRoute: typeof AuthenticatedAdminFinancePaymentsRouteImport
+      parentRoute: typeof AuthenticatedAdminFinanceRoute
+    }
     '/_authenticated/admin/finance/invoices': {
       id: '/_authenticated/admin/finance/invoices'
       path: '/invoices'
@@ -1639,6 +1659,7 @@ const AuthenticatedAccountantRouteWithChildren =
 interface AuthenticatedAdminFinanceRouteChildren {
   AuthenticatedAdminFinanceFeePlansRoute: typeof AuthenticatedAdminFinanceFeePlansRoute
   AuthenticatedAdminFinanceInvoicesRoute: typeof AuthenticatedAdminFinanceInvoicesRoute
+  AuthenticatedAdminFinancePaymentsRoute: typeof AuthenticatedAdminFinancePaymentsRoute
   AuthenticatedAdminFinancePnlRoute: typeof AuthenticatedAdminFinancePnlRoute
   AuthenticatedAdminFinanceIndexRoute: typeof AuthenticatedAdminFinanceIndexRoute
 }
@@ -1649,6 +1670,8 @@ const AuthenticatedAdminFinanceRouteChildren: AuthenticatedAdminFinanceRouteChil
       AuthenticatedAdminFinanceFeePlansRoute,
     AuthenticatedAdminFinanceInvoicesRoute:
       AuthenticatedAdminFinanceInvoicesRoute,
+    AuthenticatedAdminFinancePaymentsRoute:
+      AuthenticatedAdminFinancePaymentsRoute,
     AuthenticatedAdminFinancePnlRoute: AuthenticatedAdminFinancePnlRoute,
     AuthenticatedAdminFinanceIndexRoute: AuthenticatedAdminFinanceIndexRoute,
   }

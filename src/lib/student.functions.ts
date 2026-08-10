@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
@@ -11,6 +11,7 @@ import {
   manualStudentRowSchema,
   allocationCreateSchema,
   clickConsentSchema,
+  studentSelfProfileSchema,
 } from "@/schemas/student";
 
 function adminClient() {
@@ -423,6 +424,7 @@ export const createAllocation = createServerFn({ method: "POST" })
         room_id: bed.room_id,
         floor_id: bed.floor_id,
         block_id: bed.block_id,
+        fee_plan_id: data.fee_plan_id,
         status: "PENDING_AGREEMENT",
         start_date: data.start_date,
         expected_end_date: data.expected_end_date || null,
@@ -493,14 +495,104 @@ export const acceptAgreementClickwrap = createServerFn({ method: "POST" })
       .eq("id", data.agreement_id)
       .single();
     if (agr?.allocation_id) {
-      await supabase
-        .from("allocations")
-        .update({ status: "PENDING_PAYMENT" })
-        .eq("id", agr.allocation_id)
-        .eq("status", "PENDING_AGREEMENT");
+      // Students have no direct RLS write policy on `allocations` — this
+      // transition has to go through a SECURITY DEFINER function (RULES.md
+      // 19.3), not a raw client .update() (which would silently no-op here).
+      const { error: advErr } = await supabase.rpc("advance_allocation_after_signing", {
+        p_agreement_id: data.agreement_id,
+      });
+      if (advErr) throw new Error(advErr.message);
+
+      // PRD 8.2.4: signing → "deposit + first-month invoice generated" —
+      // this is a one-time move-in invoice, distinct from fn_generate_invoices'
+      // recurring monthly cron (which deliberately excludes DEPOSIT and only
+      // fires on an allocation's billing_cycle_day). Best-effort: a student
+      // shouldn't be blocked from signing because invoicing hiccuped.
+      try {
+        await generateFirstInvoiceForAllocation(supabase, agr.allocation_id);
+      } catch (e) {
+        console.error("[acceptAgreementClickwrap] first invoice generation failed", e);
+      }
     }
     return { ok: true as const };
   });
+
+/**
+ * Deposit + first billing period invoice, issued once at agreement
+ * acceptance (PRD 8.2.4). Mirrors fn_generate_invoices' component rollup for
+ * RENT/MESS/MAINTENANCE/OTHER, plus the allocation's own negotiated deposit
+ * (allocations.deposit_snapshot_paise — not the fee plan's DEPOSIT
+ * component, since the actual deposit can be customized per allocation).
+ * Idempotent via the same (allocation_id, billing_period, fee_plan_id)
+ * unique index the recurring generator relies on, so a double-submit of the
+ * click-consent flow can't double-bill.
+ */
+async function generateFirstInvoiceForAllocation(
+  supabase: SupabaseClient<Database>,
+  allocationId: string,
+) {
+  const { data: alloc, error: aErr } = await supabase
+    .from("allocations")
+    .select("tenant_id, property_id, student_id, fee_plan_id, deposit_snapshot_paise")
+    .eq("id", allocationId)
+    .single();
+  if (aErr || !alloc || !alloc.fee_plan_id) return;
+
+  const { data: plan } = await supabase
+    .from("fee_plans")
+    .select("grace_period_days")
+    .eq("id", alloc.fee_plan_id)
+    .single();
+
+  const { data: comps, error: cErr } = await supabase
+    .from("fee_plan_components")
+    .select("amount_paise, is_taxable, tax_rate_basis_points")
+    .eq("fee_plan_id", alloc.fee_plan_id)
+    .eq("is_active", true)
+    .in("component_type", ["RENT", "MESS", "MAINTENANCE", "OTHER"]);
+  if (cErr) throw new Error(cErr.message);
+
+  let subtotal = alloc.deposit_snapshot_paise ?? 0;
+  let tax = 0;
+  for (const c of comps ?? []) {
+    subtotal += c.amount_paise;
+    if (c.is_taxable) tax += Math.floor((c.amount_paise * c.tax_rate_basis_points) / 10000);
+  }
+  if (subtotal <= 0) return;
+
+  const today = new Date();
+  const periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const graceDays = plan?.grace_period_days ?? 0;
+  const due = new Date(today);
+  due.setDate(due.getDate() + graceDays);
+
+  const { error } = await supabase.from("invoices").insert({
+    tenant_id: alloc.tenant_id,
+    property_id: alloc.property_id,
+    student_id: alloc.student_id,
+    allocation_id: allocationId,
+    fee_plan_id: alloc.fee_plan_id,
+    billing_period_start: periodStart,
+    billing_period_end: periodEnd,
+    issue_date: today.toISOString().slice(0, 10),
+    due_date: due.toISOString().slice(0, 10),
+    status: "ISSUED",
+    subtotal_paise: subtotal,
+    discount_paise: 0,
+    tax_paise: tax,
+    late_fee_paise: 0,
+    total_paise: subtotal + tax,
+    paid_paise: 0,
+    refunded_paise: 0,
+    balance_paise: subtotal + tax,
+    issued_at: new Date().toISOString(),
+    notes: "Security deposit + first month, generated on agreement acceptance.",
+  });
+  // 23505 = unique_violation on (allocation_id, billing_period, fee_plan_id) —
+  // already generated (e.g. a retried click-consent submit); not an error.
+  if (error && (error as { code?: string }).code !== "23505") throw new Error(error.message);
+}
 
 const moveOutSchema = z.object({
   allocation_id: z.string().uuid(),
@@ -608,6 +700,7 @@ export const registerDocument = createServerFn({ method: "POST" })
   .validator((data) => registerDocSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
     const { data: doc, error } = await supabase
       .from("documents")
       .insert({
@@ -619,5 +712,70 @@ export const registerDocument = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
+    // A resubmission (owner had only REJECTED docs, per KycUploadForm's
+    // isSubmitted gate) must supersede the old rows instead of insert-only
+    // stacking them — otherwise every re-upload leaves a stale REJECTED row
+    // behind that keeps `hasRejected` (KycStatus.tsx) stuck true forever and
+    // clutters the warden's document review with duplicates. Runs after the
+    // insert succeeds, so a failed insert never leaves zero active docs.
+    // There's no student-self UPDATE policy on `documents` (only
+    // INSERT/SELECT), so this goes through the service-role client — the
+    // insert above already proved the caller owns `owner_id` via RLS.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: supersedeErr } = await supabaseAdmin
+      .from("documents")
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .eq("tenant_id", data.tenant_id)
+      .eq("owner_type", data.owner_type)
+      .eq("owner_id", data.owner_id)
+      .eq("verification_status", "REJECTED")
+      .neq("id", doc.id)
+      .is("deleted_at", null);
+    if (supersedeErr) throw new Error(supersedeErr.message);
+
     return { id: doc.id };
+  });
+
+/**
+ * Student self-service profile edit (student.profile.tsx). The RLS self-
+ * update policy + guard trigger already restrict a student to their own
+ * non-staff-controlled columns, but neither enforces *format* — a raw client
+ * UPDATE could (and did) save a garbage phone/email/DOB as-is. Validation
+ * here is the actual fix; going through a server fn (vs. the previous direct
+ * client `.update()`) means it can't be bypassed by calling Supabase directly.
+ */
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => studentSelfProfileSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("id")
+      .eq("profile_id", userId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sErr) throw new Error(sErr.message);
+    if (!student) throw new Error("No student record linked to your account");
+
+    const { error } = await supabase
+      .from("students")
+      .update({
+        full_name: data.full_name,
+        phone: normalizeIndianPhone(data.phone),
+        email: data.email || null,
+        date_of_birth: data.date_of_birth || null,
+        gender: data.gender || null,
+        academic_institute: data.academic_institute || null,
+        course_name: data.course_name || null,
+        academic_year: data.academic_year || null,
+      })
+      .eq("id", student.id);
+    if (error) throw new Error(error.message);
+
+    return { ok: true as const };
   });

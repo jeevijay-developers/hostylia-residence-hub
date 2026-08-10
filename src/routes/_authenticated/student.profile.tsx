@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AlertTriangle, Clock, Loader2, Save, ShieldCheck } from "lucide-react";
 
@@ -22,6 +23,8 @@ import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { updateMyProfile } from "@/lib/student.functions";
+import { studentSelfProfileSchema } from "@/schemas/student";
 
 export const Route = createFileRoute("/_authenticated/student/profile")({
   head: () => ({ meta: [{ title: "My Profile — Hostylia" }] }),
@@ -103,6 +106,7 @@ function StudentProfilePage() {
   const [course, setCourse] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!studentQ.data) return;
@@ -116,23 +120,30 @@ function StudentProfilePage() {
     setAcademicYear(studentQ.data.academic_year ?? "");
   }, [studentQ.data]);
 
+  const updateProfileFn = useServerFn(updateMyProfile);
   const save = useMutation({
     mutationFn: async () => {
-      if (!studentQ.data?.id) throw new Error("No profile to update");
-      const { error } = await supabase
-        .from("students")
-        .update({
-          full_name: fullName.trim(),
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          date_of_birth: dob || null,
-          gender: gender || null,
-          academic_institute: institute.trim() || null,
-          course_name: course.trim() || null,
-          academic_year: academicYear.trim() || null,
-        })
-        .eq("id", studentQ.data.id);
-      if (error) throw error;
+      const parsed = studentSelfProfileSchema.safeParse({
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        date_of_birth: dob,
+        gender,
+        academic_institute: institute.trim(),
+        course_name: course.trim(),
+        academic_year: academicYear.trim(),
+      });
+      if (!parsed.success) {
+        const errs: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const key = issue.path[0];
+          if (typeof key === "string" && !errs[key]) errs[key] = issue.message;
+        }
+        setFieldErrors(errs);
+        throw new Error("Please fix the highlighted fields");
+      }
+      setFieldErrors({});
+      return updateProfileFn({ data: parsed.data });
     },
     onSuccess: () => {
       toast.success("Profile updated");
@@ -209,6 +220,9 @@ function StudentProfilePage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
+            {fieldErrors.full_name && (
+              <p className="text-xs text-destructive">{fieldErrors.full_name}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-phone" className="text-xs">
@@ -219,7 +233,9 @@ function StudentProfilePage() {
               className="h-9"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              placeholder="+919876543210"
             />
+            {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-email" className="text-xs">
@@ -232,6 +248,7 @@ function StudentProfilePage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-dob" className="text-xs">
@@ -242,8 +259,12 @@ function StudentProfilePage() {
               className="h-9"
               type="date"
               value={dob}
+              max={new Date().toISOString().slice(0, 10)}
               onChange={(e) => setDob(e.target.value)}
             />
+            {fieldErrors.date_of_birth && (
+              <p className="text-xs text-destructive">{fieldErrors.date_of_birth}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-gender" className="text-xs">

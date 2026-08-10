@@ -5,14 +5,22 @@ interface InvoiceRow {
   id: string;
   invoice_number: string;
   student_id: string;
+  allocation_id?: string | null;
+  billing_period_start?: string | null;
+  billing_period_end?: string | null;
   issue_date: string;
   due_date: string;
   status: string;
+  subtotal_paise?: number;
+  tax_paise?: number;
   total_paise: number;
   paid_paise: number;
   balance_paise: number;
+  notes?: string | null;
+  void_reason?: string | null;
   students?: { full_name: string } | null;
 }
+export type { InvoiceRow };
 
 export function InvoiceTable({
   rows,
