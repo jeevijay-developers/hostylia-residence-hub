@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Search, UserRoundPen } from "lucide-react";
+import { KeyRound, LogOut, Search, User, UserRoundPen } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
+import { useResolvedRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
 
 interface TopbarProps {
@@ -43,6 +44,8 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   });
   const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
+  const { data: resolved } = useResolvedRole();
+  const isAccountant = resolved?.role === "ACCOUNTANT";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -124,10 +127,34 @@ export function Topbar({ navItems = [] }: TopbarProps) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel>Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
-            <UserRoundPen className="mr-2 h-4 w-4" />
-            Edit profile
-          </DropdownMenuItem>
+          {isAccountant ? (
+            <>
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  My Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile/edit">
+                  <UserRoundPen className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile/change-password">
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Change Password
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : (
+            <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
+              <UserRoundPen className="mr-2 h-4 w-4" />
+              Edit profile
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
@@ -140,7 +167,9 @@ export function Topbar({ navItems = [] }: TopbarProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+      {!isAccountant && (
+        <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+      )}
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </header>
   );

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ChangePasswordForm } from "@/components/dashboard/ChangePasswordForm";
 
-export const Route = createFileRoute("/_authenticated/warden/profile/change-password")({
+export const Route = createFileRoute("/_authenticated/accountant/profile/change-password")({
   head: () => ({ meta: [{ title: "Change Password — Hostylia" }] }),
   component: ChangePasswordPage,
 });
@@ -15,7 +15,7 @@ function ChangePasswordPage() {
         title="Change Password"
         description="Keep your account secure with a strong password"
       />
-      <ChangePasswordForm onSuccess={() => navigate({ to: "/warden/profile" })} />
+      <ChangePasswordForm onSuccess={() => navigate({ to: "/accountant/profile" })} />
     </div>
   );
 }

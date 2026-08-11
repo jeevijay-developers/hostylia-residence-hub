@@ -61,7 +61,9 @@ export const listSubscriptionsWithPlan = createServerFn({ method: "GET" })
     await assertSuper(supabase, userId);
     const { data, error } = await supabase
       .from("subscriptions")
-      .select("id,tenant_id,status,current_period_end,plans(code,name,price_paise,billing_interval)")
+      .select(
+        "id,tenant_id,status,current_period_end,plans(code,name,price_paise,billing_interval)",
+      )
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw error;
@@ -135,7 +137,9 @@ export const assignTenantSubscription = createServerFn({ method: "POST" })
     const now = new Date();
     const periodEnd = new Date(now.getTime() + data.period_days * 24 * 60 * 60 * 1000);
     const trialEnd =
-      data.status === "TRIAL" ? new Date(now.getTime() + (plan.trial_days ?? 0) * 24 * 60 * 60 * 1000) : null;
+      data.status === "TRIAL"
+        ? new Date(now.getTime() + (plan.trial_days ?? 0) * 24 * 60 * 60 * 1000)
+        : null;
 
     const { data: existing } = await supabase
       .from("subscriptions")
@@ -192,7 +196,7 @@ export const listTenantFeatures = createServerFn({ method: "GET" })
       .from("subscriptions")
       .select("plan_id")
       .eq("tenant_id", data.tenant_id)
-      .in("status", ["ACTIVE", "TRIALING"])
+      .in("status", ["ACTIVE", "TRIAL"])
       .limit(1);
     const planId = sub?.[0]?.plan_id ?? null;
     const [{ data: planFeats }, { data: overrides }] = await Promise.all([
@@ -291,13 +295,20 @@ export const startSupportSession = createServerFn({ method: "POST" })
           channel: "IN_APP",
           templateKey: "support_session_started",
           recipient: { userId: data.target_user_id },
-          variables: { session_id: row.id, expires_at: row.expires_at, access_mode: data.access_mode, reason: data.reason },
+          variables: {
+            session_id: row.id,
+            expires_at: row.expires_at,
+            access_mode: data.access_mode,
+            reason: data.reason,
+          },
           eventType: "SUPPORT_SESSION_STARTED",
           tenantId: data.tenant_id,
           referenceId: row.id,
         },
       });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
 
     // Audit
     await supabase.from("audit_logs").insert({
@@ -338,7 +349,9 @@ export const endSupportSession = createServerFn({ method: "POST" })
           referenceId: data.session_id,
         },
       });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     return row;
   });
 
@@ -370,4 +383,114 @@ export const searchUsers = createServerFn({ method: "GET" })
       .limit(20);
     if (error) throw error;
     return rows ?? [];
+  });
+
+// -------- Hostel Admin assignment (Tenants → Assign Hostel Admin) --------
+
+/**
+ * Existing HOSTEL_ADMIN role_assignments for a tenant, with profile +
+ * property names resolved via the service-role client — `profiles`/
+ * `properties` RLS already lets Super Admin read across tenants directly,
+ * but `role_assignments` join targets (other users' names) still need the
+ * same service-role lookup pattern `listStaff` (admin.staff.tsx's
+ * equivalent) already uses.
+ */
+export const getTenantHostelAdmins = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { tenant_id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { data: rows, error } = await supabase
+      .from("role_assignments")
+      .select("id,user_id,property_id,granted_at")
+      .eq("tenant_id", data.tenant_id)
+      .eq("role", "HOSTEL_ADMIN")
+      .eq("is_active", true)
+      .order("granted_at", { ascending: false });
+    if (error) throw error;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const userIds = Array.from(new Set((rows ?? []).map((r) => r.user_id)));
+    const propertyIds = Array.from(
+      new Set((rows ?? []).map((r) => r.property_id).filter((v): v is string => !!v)),
+    );
+    const [{ data: profiles }, { data: properties }] = await Promise.all([
+      userIds.length
+        ? supabaseAdmin.from("profiles").select("id,full_name,email").in("id", userIds)
+        : Promise.resolve({
+            data: [] as { id: string; full_name: string; email: string | null }[],
+          }),
+      propertyIds.length
+        ? supabase.from("properties").select("id,name").in("id", propertyIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    ]);
+    const pmap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const propmap = new Map((properties ?? []).map((p) => [p.id, p.name]));
+    return (rows ?? []).map((r) => ({
+      ...r,
+      profile: pmap.get(r.user_id) ?? null,
+      property_name: r.property_id ? (propmap.get(r.property_id) ?? null) : null,
+    }));
+  });
+
+/**
+ * Users who already belong to a tenant (via tenant_memberships) — the pool
+ * Super Admin picks from to "assign an existing user belonging to the
+ * tenant" as Hostel Admin. Deliberately tenant-scoped, unlike `searchUsers`
+ * (global) — `tenant_memberships` has no Super-Admin-inclusive SELECT
+ * policy (only "own row" / "HOSTEL_ADMIN of that tenant"), so this reads
+ * via the service-role client rather than widening that RLS policy for a
+ * single admin-panel dropdown.
+ */
+export const listTenantMembers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { tenant_id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: members, error } = await supabaseAdmin
+      .from("tenant_memberships")
+      .select("user_id")
+      .eq("tenant_id", data.tenant_id)
+      .eq("status", "ACTIVE");
+    if (error) throw error;
+    const ids = Array.from(new Set((members ?? []).map((m) => m.user_id)));
+    if (!ids.length) return [];
+    const { data: profiles, error: pErr } = await supabase
+      .from("profiles")
+      .select("id,full_name,email,phone")
+      .in("id", ids)
+      .order("full_name");
+    if (pErr) throw pErr;
+    return profiles ?? [];
+  });
+
+const assignHostelAdminSchema = z.object({
+  tenant_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  property_id: z.string().uuid().nullable().optional(),
+});
+
+/**
+ * Grants an existing user HOSTEL_ADMIN for a tenant. All authorization and
+ * cross-tenant validation happens inside `fn_assign_hostel_admin` (a
+ * SECURITY DEFINER Postgres function, not a raw client mutation) — the
+ * `assertSuper` check here is defense-in-depth at the app layer, the real
+ * boundary is the DB function's own `is_super_admin()` check.
+ */
+export const assignHostelAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => assignHostelAdminSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { data: out, error } = await supabase.rpc("fn_assign_hostel_admin", {
+      p_tenant_id: data.tenant_id,
+      p_target_user_id: data.user_id,
+      p_property_id: data.property_id ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return out as { role_assignment_id: string };
   });

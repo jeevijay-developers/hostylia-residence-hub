@@ -58,9 +58,12 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ],
   ACCOUNTANT: [
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
+    { label: "Students", to: "/accountant/students", icon: Users },
+    { label: "Fee Plans", to: "/accountant/fee-plans", icon: ClipboardList },
     { label: "Invoices", to: "/accountant/invoices", icon: FileText },
     { label: "Payments", to: "/accountant/payments", icon: CreditCard },
     { label: "Refunds", to: "/accountant/refunds", icon: Receipt },
+    { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart },
   ],
 };
@@ -88,8 +91,6 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
     { label: "Messages", to: "/parent/messages", icon: BellRing },
   ],
-
-
 };
 
 export const NOTIFICATION_ICON = BellRing;

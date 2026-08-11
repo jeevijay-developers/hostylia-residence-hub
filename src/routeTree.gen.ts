@@ -40,10 +40,13 @@ import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authentic
 import { Route as AuthenticatedWardenRouteImport } from './routes/_authenticated/warden'
 import { Route as ApplyPropertySlugRouteImport } from './routes/apply.$propertySlug'
 import { Route as AuthenticatedAccountantDashboardRouteImport } from './routes/_authenticated/accountant.dashboard'
+import { Route as AuthenticatedAccountantDepositLedgerRouteImport } from './routes/_authenticated/accountant.deposit-ledger'
+import { Route as AuthenticatedAccountantFeePlansRouteImport } from './routes/_authenticated/accountant.fee-plans'
 import { Route as AuthenticatedAccountantInvoicesRouteImport } from './routes/_authenticated/accountant.invoices'
 import { Route as AuthenticatedAccountantPaymentsRouteImport } from './routes/_authenticated/accountant.payments'
 import { Route as AuthenticatedAccountantRefundsRouteImport } from './routes/_authenticated/accountant.refunds'
 import { Route as AuthenticatedAccountantReportsRouteImport } from './routes/_authenticated/accountant.reports'
+import { Route as AuthenticatedAccountantStudentsRouteImport } from './routes/_authenticated/accountant.students'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated/admin.allocations'
 import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
@@ -78,6 +81,9 @@ import { Route as AuthenticatedWardenGateRouteImport } from './routes/_authentic
 import { Route as AuthenticatedWardenMessRouteImport } from './routes/_authenticated/warden.mess'
 import { Route as AuthenticatedWardenNoticesRouteImport } from './routes/_authenticated/warden.notices'
 import { Route as AuthenticatedWardenReportsRouteImport } from './routes/_authenticated/warden.reports'
+import { Route as AuthenticatedAccountantProfileIndexRouteImport } from './routes/_authenticated/accountant.profile.index'
+import { Route as AuthenticatedAccountantProfileChangePasswordRouteImport } from './routes/_authenticated/accountant.profile.change-password'
+import { Route as AuthenticatedAccountantProfileEditRouteImport } from './routes/_authenticated/accountant.profile.edit'
 import { Route as AuthenticatedAdminFinanceIndexRouteImport } from './routes/_authenticated/admin.finance.index'
 import { Route as AuthenticatedAdminFinanceFeePlansRouteImport } from './routes/_authenticated/admin.finance.fee-plans'
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
@@ -249,6 +255,18 @@ const AuthenticatedAccountantDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedAccountantRoute,
   } as any)
+const AuthenticatedAccountantDepositLedgerRoute =
+  AuthenticatedAccountantDepositLedgerRouteImport.update({
+    id: '/deposit-ledger',
+    path: '/deposit-ledger',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
+const AuthenticatedAccountantFeePlansRoute =
+  AuthenticatedAccountantFeePlansRouteImport.update({
+    id: '/fee-plans',
+    path: '/fee-plans',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
 const AuthenticatedAccountantInvoicesRoute =
   AuthenticatedAccountantInvoicesRouteImport.update({
     id: '/invoices',
@@ -271,6 +289,12 @@ const AuthenticatedAccountantReportsRoute =
   AuthenticatedAccountantReportsRouteImport.update({
     id: '/reports',
     path: '/reports',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
+const AuthenticatedAccountantStudentsRoute =
+  AuthenticatedAccountantStudentsRouteImport.update({
+    id: '/students',
+    path: '/students',
     getParentRoute: () => AuthenticatedAccountantRoute,
   } as any)
 const AuthenticatedAdminAllocationsRoute =
@@ -474,6 +498,24 @@ const AuthenticatedWardenReportsRoute =
     path: '/reports',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedAccountantProfileIndexRoute =
+  AuthenticatedAccountantProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
+const AuthenticatedAccountantProfileChangePasswordRoute =
+  AuthenticatedAccountantProfileChangePasswordRouteImport.update({
+    id: '/profile/change-password',
+    path: '/profile/change-password',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
+const AuthenticatedAccountantProfileEditRoute =
+  AuthenticatedAccountantProfileEditRouteImport.update({
+    id: '/profile/edit',
+    path: '/profile/edit',
+    getParentRoute: () => AuthenticatedAccountantRoute,
+  } as any)
 const AuthenticatedAdminFinanceIndexRoute =
   AuthenticatedAdminFinanceIndexRouteImport.update({
     id: '/',
@@ -596,10 +638,13 @@ export interface FileRoutesByFullPath {
   '/warden': typeof AuthenticatedWardenRouteWithChildren
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/accountant/deposit-ledger': typeof AuthenticatedAccountantDepositLedgerRoute
+  '/accountant/fee-plans': typeof AuthenticatedAccountantFeePlansRoute
   '/accountant/invoices': typeof AuthenticatedAccountantInvoicesRoute
   '/accountant/payments': typeof AuthenticatedAccountantPaymentsRoute
   '/accountant/refunds': typeof AuthenticatedAccountantRefundsRoute
   '/accountant/reports': typeof AuthenticatedAccountantReportsRoute
+  '/accountant/students': typeof AuthenticatedAccountantStudentsRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
@@ -634,6 +679,8 @@ export interface FileRoutesByFullPath {
   '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
+  '/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
@@ -641,6 +688,7 @@ export interface FileRoutesByFullPath {
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
+  '/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
   '/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
@@ -681,10 +729,13 @@ export interface FileRoutesByTo {
   '/warden': typeof AuthenticatedWardenRouteWithChildren
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/accountant/deposit-ledger': typeof AuthenticatedAccountantDepositLedgerRoute
+  '/accountant/fee-plans': typeof AuthenticatedAccountantFeePlansRoute
   '/accountant/invoices': typeof AuthenticatedAccountantInvoicesRoute
   '/accountant/payments': typeof AuthenticatedAccountantPaymentsRoute
   '/accountant/refunds': typeof AuthenticatedAccountantRefundsRoute
   '/accountant/reports': typeof AuthenticatedAccountantReportsRoute
+  '/accountant/students': typeof AuthenticatedAccountantStudentsRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
@@ -716,12 +767,15 @@ export interface FileRoutesByTo {
   '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
+  '/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
+  '/accountant/profile': typeof AuthenticatedAccountantProfileIndexRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students': typeof AuthenticatedAdminStudentsIndexRoute
@@ -764,10 +818,13 @@ export interface FileRoutesById {
   '/_authenticated/warden': typeof AuthenticatedWardenRouteWithChildren
   '/apply/$propertySlug': typeof ApplyPropertySlugRoute
   '/_authenticated/accountant/dashboard': typeof AuthenticatedAccountantDashboardRoute
+  '/_authenticated/accountant/deposit-ledger': typeof AuthenticatedAccountantDepositLedgerRoute
+  '/_authenticated/accountant/fee-plans': typeof AuthenticatedAccountantFeePlansRoute
   '/_authenticated/accountant/invoices': typeof AuthenticatedAccountantInvoicesRoute
   '/_authenticated/accountant/payments': typeof AuthenticatedAccountantPaymentsRoute
   '/_authenticated/accountant/refunds': typeof AuthenticatedAccountantRefundsRoute
   '/_authenticated/accountant/reports': typeof AuthenticatedAccountantReportsRoute
+  '/_authenticated/accountant/students': typeof AuthenticatedAccountantStudentsRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
@@ -802,6 +859,8 @@ export interface FileRoutesById {
   '/_authenticated/warden/mess': typeof AuthenticatedWardenMessRoute
   '/_authenticated/warden/notices': typeof AuthenticatedWardenNoticesRoute
   '/_authenticated/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/_authenticated/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
+  '/_authenticated/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
   '/_authenticated/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
   '/_authenticated/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/_authenticated/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
@@ -809,6 +868,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/_authenticated/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
+  '/_authenticated/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
   '/_authenticated/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/_authenticated/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
@@ -851,10 +911,13 @@ export interface FileRouteTypes {
     | '/warden'
     | '/apply/$propertySlug'
     | '/accountant/dashboard'
+    | '/accountant/deposit-ledger'
+    | '/accountant/fee-plans'
     | '/accountant/invoices'
     | '/accountant/payments'
     | '/accountant/refunds'
     | '/accountant/reports'
+    | '/accountant/students'
     | '/admin/allocations'
     | '/admin/complaints'
     | '/admin/dashboard'
@@ -889,6 +952,8 @@ export interface FileRouteTypes {
     | '/warden/mess'
     | '/warden/notices'
     | '/warden/reports'
+    | '/accountant/profile/change-password'
+    | '/accountant/profile/edit'
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
     | '/admin/finance/payments'
@@ -896,6 +961,7 @@ export interface FileRouteTypes {
     | '/admin/students/$id'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
+    | '/accountant/profile/'
     | '/admin/finance/'
     | '/admin/properties/'
     | '/admin/students/'
@@ -936,10 +1002,13 @@ export interface FileRouteTypes {
     | '/warden'
     | '/apply/$propertySlug'
     | '/accountant/dashboard'
+    | '/accountant/deposit-ledger'
+    | '/accountant/fee-plans'
     | '/accountant/invoices'
     | '/accountant/payments'
     | '/accountant/refunds'
     | '/accountant/reports'
+    | '/accountant/students'
     | '/admin/allocations'
     | '/admin/complaints'
     | '/admin/dashboard'
@@ -971,12 +1040,15 @@ export interface FileRouteTypes {
     | '/warden/mess'
     | '/warden/notices'
     | '/warden/reports'
+    | '/accountant/profile/change-password'
+    | '/accountant/profile/edit'
     | '/admin/finance/fee-plans'
     | '/admin/finance/invoices'
     | '/admin/finance/payments'
     | '/admin/finance/pnl'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
+    | '/accountant/profile'
     | '/admin/finance'
     | '/admin/properties'
     | '/admin/students'
@@ -1018,10 +1090,13 @@ export interface FileRouteTypes {
     | '/_authenticated/warden'
     | '/apply/$propertySlug'
     | '/_authenticated/accountant/dashboard'
+    | '/_authenticated/accountant/deposit-ledger'
+    | '/_authenticated/accountant/fee-plans'
     | '/_authenticated/accountant/invoices'
     | '/_authenticated/accountant/payments'
     | '/_authenticated/accountant/refunds'
     | '/_authenticated/accountant/reports'
+    | '/_authenticated/accountant/students'
     | '/_authenticated/admin/allocations'
     | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/dashboard'
@@ -1056,6 +1131,8 @@ export interface FileRouteTypes {
     | '/_authenticated/warden/mess'
     | '/_authenticated/warden/notices'
     | '/_authenticated/warden/reports'
+    | '/_authenticated/accountant/profile/change-password'
+    | '/_authenticated/accountant/profile/edit'
     | '/_authenticated/admin/finance/fee-plans'
     | '/_authenticated/admin/finance/invoices'
     | '/_authenticated/admin/finance/payments'
@@ -1063,6 +1140,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/warden/profile/change-password'
     | '/_authenticated/warden/profile/edit'
+    | '/_authenticated/accountant/profile/'
     | '/_authenticated/admin/finance/'
     | '/_authenticated/admin/properties/'
     | '/_authenticated/admin/students/'
@@ -1319,6 +1397,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountantDashboardRouteImport
       parentRoute: typeof AuthenticatedAccountantRoute
     }
+    '/_authenticated/accountant/deposit-ledger': {
+      id: '/_authenticated/accountant/deposit-ledger'
+      path: '/deposit-ledger'
+      fullPath: '/accountant/deposit-ledger'
+      preLoaderRoute: typeof AuthenticatedAccountantDepositLedgerRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
+    '/_authenticated/accountant/fee-plans': {
+      id: '/_authenticated/accountant/fee-plans'
+      path: '/fee-plans'
+      fullPath: '/accountant/fee-plans'
+      preLoaderRoute: typeof AuthenticatedAccountantFeePlansRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
     '/_authenticated/accountant/invoices': {
       id: '/_authenticated/accountant/invoices'
       path: '/invoices'
@@ -1345,6 +1437,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/accountant/reports'
       preLoaderRoute: typeof AuthenticatedAccountantReportsRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
+    '/_authenticated/accountant/students': {
+      id: '/_authenticated/accountant/students'
+      path: '/students'
+      fullPath: '/accountant/students'
+      preLoaderRoute: typeof AuthenticatedAccountantStudentsRouteImport
       parentRoute: typeof AuthenticatedAccountantRoute
     }
     '/_authenticated/admin/allocations': {
@@ -1585,6 +1684,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenReportsRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
+    '/_authenticated/accountant/profile/': {
+      id: '/_authenticated/accountant/profile/'
+      path: '/profile'
+      fullPath: '/accountant/profile/'
+      preLoaderRoute: typeof AuthenticatedAccountantProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
+    '/_authenticated/accountant/profile/change-password': {
+      id: '/_authenticated/accountant/profile/change-password'
+      path: '/profile/change-password'
+      fullPath: '/accountant/profile/change-password'
+      preLoaderRoute: typeof AuthenticatedAccountantProfileChangePasswordRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
+    '/_authenticated/accountant/profile/edit': {
+      id: '/_authenticated/accountant/profile/edit'
+      path: '/profile/edit'
+      fullPath: '/accountant/profile/edit'
+      preLoaderRoute: typeof AuthenticatedAccountantProfileEditRouteImport
+      parentRoute: typeof AuthenticatedAccountantRoute
+    }
     '/_authenticated/admin/finance/': {
       id: '/_authenticated/admin/finance/'
       path: '/'
@@ -1695,20 +1815,36 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAccountantRouteChildren {
   AuthenticatedAccountantDashboardRoute: typeof AuthenticatedAccountantDashboardRoute
+  AuthenticatedAccountantDepositLedgerRoute: typeof AuthenticatedAccountantDepositLedgerRoute
+  AuthenticatedAccountantFeePlansRoute: typeof AuthenticatedAccountantFeePlansRoute
   AuthenticatedAccountantInvoicesRoute: typeof AuthenticatedAccountantInvoicesRoute
   AuthenticatedAccountantPaymentsRoute: typeof AuthenticatedAccountantPaymentsRoute
   AuthenticatedAccountantRefundsRoute: typeof AuthenticatedAccountantRefundsRoute
   AuthenticatedAccountantReportsRoute: typeof AuthenticatedAccountantReportsRoute
+  AuthenticatedAccountantStudentsRoute: typeof AuthenticatedAccountantStudentsRoute
+  AuthenticatedAccountantProfileChangePasswordRoute: typeof AuthenticatedAccountantProfileChangePasswordRoute
+  AuthenticatedAccountantProfileEditRoute: typeof AuthenticatedAccountantProfileEditRoute
+  AuthenticatedAccountantProfileIndexRoute: typeof AuthenticatedAccountantProfileIndexRoute
 }
 
 const AuthenticatedAccountantRouteChildren: AuthenticatedAccountantRouteChildren =
   {
     AuthenticatedAccountantDashboardRoute:
       AuthenticatedAccountantDashboardRoute,
+    AuthenticatedAccountantDepositLedgerRoute:
+      AuthenticatedAccountantDepositLedgerRoute,
+    AuthenticatedAccountantFeePlansRoute: AuthenticatedAccountantFeePlansRoute,
     AuthenticatedAccountantInvoicesRoute: AuthenticatedAccountantInvoicesRoute,
     AuthenticatedAccountantPaymentsRoute: AuthenticatedAccountantPaymentsRoute,
     AuthenticatedAccountantRefundsRoute: AuthenticatedAccountantRefundsRoute,
     AuthenticatedAccountantReportsRoute: AuthenticatedAccountantReportsRoute,
+    AuthenticatedAccountantStudentsRoute: AuthenticatedAccountantStudentsRoute,
+    AuthenticatedAccountantProfileChangePasswordRoute:
+      AuthenticatedAccountantProfileChangePasswordRoute,
+    AuthenticatedAccountantProfileEditRoute:
+      AuthenticatedAccountantProfileEditRoute,
+    AuthenticatedAccountantProfileIndexRoute:
+      AuthenticatedAccountantProfileIndexRoute,
   }
 
 const AuthenticatedAccountantRouteWithChildren =

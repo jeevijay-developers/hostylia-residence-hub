@@ -382,4 +382,59 @@ UPDATE public.tenants SET status='SUSPENDED', suspended_at=now() WHERE id='11111
 SELECT pg_temp.assert_eq((SELECT count(*) FROM public.tenants WHERE id='11111111-1111-1111-1111-111111111111' AND status='SUSPENDED'), 1, 'SUPER_ADMIN can change tenants.status');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION 12 — fn_assign_hostel_admin (Super Admin → Tenants → Assign
+-- Hostel Admin). Property A1 = 11111111-1111-1111-1111-11111111a001
+-- (Tenant A); Tenant B property = 22222222-2222-2222-2222-22222222a001.
+-- =============================================================================
+
+-- Non-SUPER_ADMIN (even an existing HOSTEL_ADMIN of the target tenant)
+-- cannot perform this platform-level assignment.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_throws(
+  $sql$SELECT public.fn_assign_hostel_admin(
+    '11111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-000000000013',
+    NULL)$sql$,
+  'Non-SUPER_ADMIN cannot call fn_assign_hostel_admin');
+ROLLBACK;
+
+-- Cross-tenant assignment is denied: Tenant A grant with a Tenant B property.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- SUPER_ADMIN
+SELECT pg_temp.assert_throws(
+  $sql$SELECT public.fn_assign_hostel_admin(
+    '11111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-000000000013',
+    '22222222-2222-2222-2222-22222222a001')$sql$,
+  'Cross-tenant property is rejected by fn_assign_hostel_admin');
+ROLLBACK;
+
+-- SUPER_ADMIN can assign an existing Tenant A member (accountant_A) as
+-- Hostel Admin, scoped to Property A1; the grantee immediately has
+-- HOSTEL_ADMIN permissions for that property (is_hostel_admin flips true),
+-- and an audit_logs row is written in the same transaction (checked by
+-- resetting to the underlying superuser role, since audit_logs SELECT is
+-- hidden — USING (false) — for the authenticated role by design).
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- SUPER_ADMIN
+SELECT public.fn_assign_hostel_admin(
+  '11111111-1111-1111-1111-111111111111',
+  '00000000-0000-0000-0000-000000000013',
+  '11111111-1111-1111-1111-11111111a001');
+SELECT pg_temp.assert_eq(
+  (SELECT public.is_hostel_admin(
+    '00000000-0000-0000-0000-000000000013',
+    '11111111-1111-1111-1111-111111111111',
+    '11111111-1111-1111-1111-11111111a001')::int),
+  1, 'Newly-assigned user has HOSTEL_ADMIN for the correct property');
+RESET ROLE;
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.audit_logs
+    WHERE action = 'HOSTEL_ADMIN_ASSIGNED_BY_SUPER_ADMIN'
+      AND effective_user_id = '00000000-0000-0000-0000-000000000013'),
+  1, 'Audit log recorded for the Hostel Admin assignment');
+ROLLBACK; -- undoes both the grant and the audit row; fixture stays intact
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;
