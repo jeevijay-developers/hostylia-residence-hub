@@ -39,9 +39,23 @@ export function ParentPageFrame({
   const childrenQ = useLinkedChildren(userId);
   const [selected, setSelected] = useState<string | null>(null);
 
+  const list = childrenQ.data ?? [];
+  const current =
+    list.find((c) => c.student_id === selected) ??
+    list.find((c) => c.is_primary) ??
+    list[0];
+
+  // Hooks must run unconditionally on every render (including the loading
+  // and empty-list renders below) so the hook count/order never changes
+  // between a cold render (fresh page load) and a warm one (cached query
+  // data) — otherwise React throws on the loading -> loaded transition.
+  const ctx = useMemo<Ctx | null>(
+    () => (current && userId ? { child: current, children: list, userId, setChildId: setSelected } : null),
+    [current, list, userId],
+  );
+
   if (roleQ.isLoading || childrenQ.isLoading) return <Skeleton className="h-40 w-full" />;
 
-  const list = childrenQ.data ?? [];
   if (list.length === 0) {
     return (
       <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
@@ -49,20 +63,11 @@ export function ParentPageFrame({
       </p>
     );
   }
-  const current =
-    list.find((c) => c.student_id === selected) ??
-    list.find((c) => c.is_primary) ??
-    list[0];
 
   const permOk = !requirePermission || current[requirePermission];
 
-  const ctx = useMemo<Ctx>(
-    () => ({ child: current, children: list, userId: userId!, setChildId: setSelected }),
-    [current, list, userId],
-  );
-
   return (
-    <ParentChildContext.Provider value={ctx}>
+    <ParentChildContext.Provider value={ctx!}>
       <div className="space-y-4">
         {list.length > 1 && (
           <Select

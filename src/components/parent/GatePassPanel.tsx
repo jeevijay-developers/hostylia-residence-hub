@@ -136,12 +136,21 @@ export function GatePassPanel({
           />
         )}
         {others.map((p) => (
-          <div key={p.id} className="rounded border p-3 flex items-center justify-between text-sm">
-            <div>
+          <div key={p.id} className="rounded border p-3 flex items-start justify-between gap-3 text-sm">
+            <div className="min-w-0">
               <div className="font-medium">{p.pass_number}</div>
-              <div className="text-xs text-muted-foreground">{p.reason}</div>
+              <div className="text-xs text-muted-foreground">
+                {p.reason}
+                {p.destination ? ` · ${p.destination}` : ""}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(p.out_at).toLocaleString()} → {new Date(p.expected_in_at).toLocaleString()}
+              </div>
             </div>
-            <Badge variant={p.status === "REJECTED" ? "destructive" : "secondary"}>
+            <Badge
+              variant={p.status === "REJECTED" ? "destructive" : "secondary"}
+              className="shrink-0"
+            >
               {PENDING_STATUSES.includes(p.status) ? t("parent.gatePass.pending") : p.status}
             </Badge>
           </div>

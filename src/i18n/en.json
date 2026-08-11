@@ -89,7 +89,8 @@
     "attendance": {
       "title": "Attendance",
       "emptyTitle": "No attendance yet",
-      "emptyBody": "Attendance tracking starts once your hostel activates it."
+      "emptyBody": "Attendance tracking starts once your hostel activates it.",
+      "noReasonRecorded": "No reason recorded"
     },
     "complaints": {
       "title": "Complaints",

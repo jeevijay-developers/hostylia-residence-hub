@@ -51,6 +51,22 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
 
   if (!canRate) return null;
 
+  if (complaint.rating != null) {
+    const savedRating = complaint.rating;
+    return (
+      <div className="flex items-center gap-1 rounded-md border border-border bg-card p-3">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star
+            key={n}
+            size={22}
+            className={n <= savedRating ? "fill-warning text-warning" : "text-muted-foreground"}
+          />
+        ))}
+        <span className="ml-1 text-sm text-muted-foreground">{savedRating}/5</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 rounded-md border border-border bg-card p-3">
       <p className="text-sm font-medium">Rate this resolution</p>
