@@ -30,31 +30,31 @@ export function KycStatus({ studentId }: Props) {
 
   if (docs.length === 0) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-        <Clock className="h-4 w-4" />
+      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium leading-snug text-warning">
+        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
         Pending — awaiting student upload
       </span>
     );
   }
   if (hasRejected) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
-        <AlertTriangle className="h-4 w-4" />
+      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-sm font-medium leading-snug text-destructive">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         Rejected — awaiting re-upload
       </span>
     );
   }
   if (allVerified) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
-        <ShieldCheck className="h-4 w-4" />
+      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium leading-snug text-success">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
         Complete
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-      <Clock className="h-4 w-4" />
+    <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium leading-snug text-warning">
+      <Clock className="mt-0.5 h-4 w-4 shrink-0" />
       Uploaded — awaiting warden review
     </span>
   );

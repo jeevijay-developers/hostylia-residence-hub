@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { KeyRound, LogOut, User, UserRoundPen } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,6 @@ export function MobileHeader() {
       <div className="flex items-center gap-1">
         {isWarden && <MessagesPanel />}
         <NotificationBell />
-        <LanguageSwitcher />
         {isWarden ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -48,19 +47,7 @@ export function MobileHeader() {
               <DropdownMenuItem asChild>
                 <Link to="/warden/profile">
                   <User className="mr-2 h-4 w-4" />
-                  My Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/warden/profile/edit">
-                  <UserRoundPen className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/warden/profile/change-password">
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Change Password
+                  Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -88,13 +75,7 @@ export function MobileHeader() {
               <DropdownMenuItem asChild>
                 <Link to="/parent/profile">
                   <User className="mr-2 h-4 w-4" />
-                  My Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/parent/profile/edit">
-                  <UserRoundPen className="mr-2 h-4 w-4" />
-                  Edit Profile
+                  Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

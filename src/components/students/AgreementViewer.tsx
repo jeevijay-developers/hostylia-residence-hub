@@ -70,7 +70,9 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
 
   if (!agreementQ.data) {
     return readOnly ? (
-      <p className="text-sm text-muted-foreground">No agreement yet — allocate a bed to generate one.</p>
+      <p className="text-sm text-muted-foreground">
+        No agreement yet — allocate a bed to generate one.
+      </p>
     ) : (
       <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
         No agreement created yet — allocate a bed to generate one.
@@ -82,13 +84,13 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
 
   if (readOnly) {
     return signed ? (
-      <span className="inline-flex items-center gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
-        <ShieldCheck className="h-4 w-4" />
+      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium leading-snug text-success">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
         Completed — signed {new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}
       </span>
     ) : (
-      <span className="inline-flex items-center gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning">
-        <Clock className="h-4 w-4" />
+      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium leading-snug text-warning">
+        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
         Pending — awaiting student acceptance
       </span>
     );
@@ -115,8 +117,8 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
           <label className="flex items-start gap-2 text-sm">
             <Checkbox checked={checked} onCheckedChange={(v) => setChecked(!!v)} className="mt-1" />
             <span>
-              I have read and accept the agreement. I understand my IP address and timestamp
-              will be recorded as proof of consent.
+              I have read and accept the agreement. I understand my IP address and timestamp will be
+              recorded as proof of consent.
             </span>
           </label>
           <Button
