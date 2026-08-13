@@ -301,7 +301,14 @@ END $seed$;
 INSERT INTO public.notices (id, tenant_id, property_id, title, body, priority, status, audience_type, published_at)
 VALUES
   ('11111111-1111-1111-1111-111111118c01','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Water shutdown','Maintenance 10-12','IMPORTANT','PUBLISHED','ALL', now()-interval '2 hours'),
-  ('11111111-1111-1111-1111-111111118c02','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Holiday menu','Diwali special','NORMAL','PUBLISHED','STUDENTS', now()-interval '1 day');
+  ('11111111-1111-1111-1111-111111118c02','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Holiday menu','Diwali special','NORMAL','PUBLISHED','STUDENTS', now()-interval '1 day'),
+  -- Property A2, audience ALL, PUBLISHED — parents linked only to Property A1 must NOT see this
+  -- (proves the new parent notice policy scopes by property, not just audience_type).
+  ('11111111-1111-1111-1111-111111118c03','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Fumigation notice','Pest control 6-8pm','NORMAL','PUBLISHED','ALL', now()-interval '3 hours'),
+  -- Property A1, audience ALL, still DRAFT (published_at NULL) — must stay hidden from parents.
+  ('11111111-1111-1111-1111-111111118c04','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Draft — do not publish yet','Internal draft copy','NORMAL','DRAFT','ALL', NULL),
+  -- Property A1, audience STUDENTS only — parents must NOT see this even though the property matches.
+  ('11111111-1111-1111-1111-111111118c05','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Mess headcount reminder','Submit by 9am','NORMAL','PUBLISHED','STUDENTS', now()-interval '5 hours');
 
 INSERT INTO public.notifications (tenant_id, property_id, recipient_user_id, event_type, channel, template_key, payload, status, sent_at, delivered_at, idempotency_key)
 VALUES

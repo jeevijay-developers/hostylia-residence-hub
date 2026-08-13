@@ -34,6 +34,13 @@ const OPEN_ALLOCATION_STATUSES = [
   "PENDING_PAYMENT",
 ];
 
+function getGreeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return "Good Morning";
+  if (hour >= 12 && hour < 17) return "Good Afternoon";
+  if (hour >= 17 && hour < 21) return "Good Evening";
+  return "Good Night";
+}
+
 function StudentHomePage() {
   const role = useResolvedRole();
   const userId = role.data?.userId ?? null;
@@ -84,12 +91,13 @@ function StudentHomePage() {
   const bed = allocQ.data?.bed as
     { code: string; room: { room_number: string } | null } | null | undefined;
   const firstName = profileQ.data?.full_name?.trim().split(" ")[0];
+  const greeting = getGreeting(new Date().getHours());
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
-          Good Morning{firstName ? `, ${firstName}` : ""} 👋
+          {greeting}{firstName ? `, ${firstName}` : ""} 👋
         </h1>
         {bed && (
           <p className="mt-1 text-sm text-muted-foreground">

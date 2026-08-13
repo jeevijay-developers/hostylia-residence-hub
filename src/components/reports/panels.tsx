@@ -1,10 +1,22 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ReportTable, type Column } from "@/components/reports/ReportTable";
 import { ExportButton } from "@/components/reports/ExportButton";
-import { OccupancyChart, DsoChart, SlaComplianceChart } from "@/components/reports/charts";
-import { getOccupancyReport, getAgingReport, getSlaComplianceReport } from "@/lib/reports.functions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  OccupancyChart,
+  DsoChart,
+  SlaComplianceChart,
+  AttendanceChart,
+} from "@/components/reports/charts";
+import {
+  getOccupancyReport,
+  getAgingReport,
+  getSlaComplianceReport,
+  getAttendanceReport,
+} from "@/lib/reports.functions";
 import { formatInr } from "@/lib/finance";
 import type { CsvColumn } from "@/lib/csv";
 
@@ -179,18 +191,125 @@ export function SlaComplianceReportPanel({ propertyId, showExport = true }: { pr
   );
 }
 
-/* ----------------------- ATTENDANCE STUB ----------------------- */
+/* ----------------------- MONTHLY ATTENDANCE ----------------------- */
 
-// TODO(Phase 11): swap this stub for a real query against the `attendance`
-// table once Phase 11 introduces it. The report shape should stay:
-// per-student, per-day presence + roll-up % — this panel is the wire-up point.
-export function AttendanceReportPanel() {
+interface AttendanceSummaryRow extends Record<string, unknown> {
+  student_id: string;
+  full_name: string;
+  admission_number: string;
+  present_days: number;
+  absent_days: number;
+  late_days: number;
+  leave_days: number;
+  out_pass_days: number;
+  marked_days: number;
+  attendance_pct: number | null;
+}
+
+const attendanceCols: Column<AttendanceSummaryRow>[] = [
+  { key: "full_name", header: "Student", sortable: true },
+  { key: "admission_number", header: "Admission #", sortable: true },
+  { key: "present_days", header: "Present", align: "right", sortable: true },
+  { key: "absent_days", header: "Absent", align: "right", sortable: true },
+  { key: "late_days", header: "Late", align: "right", sortable: true },
+  { key: "leave_days", header: "Leave", align: "right", sortable: true },
+  { key: "out_pass_days", header: "Out-pass", align: "right", sortable: true },
+  { key: "marked_days", header: "Marked days", align: "right", sortable: true },
+  {
+    key: "attendance_pct",
+    header: "Attendance %",
+    align: "right",
+    sortable: true,
+    render: (r) => (r.attendance_pct === null ? "—" : `${r.attendance_pct}%`),
+  },
+];
+
+const attendanceCsv: CsvColumn<AttendanceSummaryRow>[] = attendanceCols.map((c) => ({
+  key: c.key,
+  label: c.header,
+}));
+
+function currentMonthValue(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function AttendanceReportPanel({
+  propertyId,
+  showExport = true,
+}: {
+  propertyId: string;
+  showExport?: boolean;
+}) {
+  const [monthInput, setMonthInput] = useState(currentMonthValue()); // "YYYY-MM"
+  const month = `${monthInput}-01`; // matches v_attendance_monthly_summary.month
+
+  const fn = useServerFn(getAttendanceReport);
+  const q = useQuery({
+    queryKey: ["report-attendance", propertyId, month],
+    queryFn: () => fn({ data: { property_id: propertyId, month } }),
+  });
+  const rows = useMemo(() => (q.data ?? []) as AttendanceSummaryRow[], [q.data]);
+
+  const summary = useMemo(() => {
+    const studentsMarked = rows.filter((r) => r.marked_days > 0).length;
+    const present = rows.reduce((s, r) => s + r.present_days, 0);
+    const absent = rows.reduce((s, r) => s + r.absent_days, 0);
+    const withPct = rows.filter((r) => r.attendance_pct !== null);
+    const avgPct = withPct.length
+      ? Math.round(
+          (withPct.reduce((s, r) => s + (r.attendance_pct ?? 0), 0) / withPct.length) * 10,
+        ) / 10
+      : null;
+    return { studentsMarked, present, absent, avgPct };
+  }, [rows]);
+
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Attendance summary</h2>
-      <EmptyState
-        title="Attendance reporting available once your hostel tracks attendance"
-        description="This report activates automatically after the attendance module goes live."
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Attendance summary</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground">
+              Month
+            </Label>
+            <Input
+              id="attendance-report-month"
+              type="month"
+              className="h-9 w-40"
+              value={monthInput}
+              max={currentMonthValue()}
+              onChange={(e) => setMonthInput(e.target.value)}
+            />
+          </div>
+          {showExport && (
+            <ExportButton
+              filename={`attendance-report-${month}`}
+              title={`Attendance summary — ${month}`}
+              rows={rows}
+              columns={attendanceCsv}
+            />
+          )}
+        </div>
+      </div>
+
+      {rows.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Kpi label="Students marked" value={String(summary.studentsMarked)} />
+          <Kpi label="Present (days)" value={String(summary.present)} tone="success" />
+          <Kpi label="Absent (days)" value={String(summary.absent)} tone="warning" />
+          <Kpi
+            label="Avg attendance %"
+            value={summary.avgPct === null ? "—" : `${summary.avgPct}%`}
+          />
+        </div>
+      )}
+
+      {rows.length > 0 && <AttendanceChart data={rows} />}
+      <ReportTable
+        rows={rows}
+        columns={attendanceCols}
+        empty="No attendance marked for this month yet."
       />
     </section>
   );

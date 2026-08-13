@@ -24,7 +24,7 @@ function AdminReportsPage() {
       <OccupancyReportPanel propertyId={propertyId} />
       <AgingReportPanel propertyId={propertyId} />
       <SlaComplianceReportPanel propertyId={propertyId} />
-      <AttendanceReportPanel />
+      <AttendanceReportPanel propertyId={propertyId} />
     </div>
   );
 }

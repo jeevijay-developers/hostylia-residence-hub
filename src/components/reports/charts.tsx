@@ -63,6 +63,31 @@ export function DsoChart({ aging }: { aging: Record<string, number> }) {
   );
 }
 
+export function AttendanceChart({ data }: { data: Array<{ full_name: string; attendance_pct: number | null }> }) {
+  const clean = data.filter((d) => d.attendance_pct !== null) as Array<{ full_name: string; attendance_pct: number }>;
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer>
+        <BarChart data={clean}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+          <XAxis dataKey="full_name" tick={{ fontSize: 12 }} hide={clean.length > 15} />
+          <YAxis unit="%" domain={[0, 100]} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={(v: number) => `${v}%`} />
+          <Bar dataKey="attendance_pct" radius={[4, 4, 0, 0]}>
+            {clean.map((d, i) => (
+              <Cell key={i} fill={
+                d.attendance_pct >= 90 ? TOKEN.success :
+                d.attendance_pct >= 75 ? TOKEN.info :
+                d.attendance_pct >= 50 ? TOKEN.warning : TOKEN.destructive
+              } />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function SlaComplianceChart({ data }: { data: Array<{ category_name: string; sla_compliance_pct: number | null }> }) {
   const clean = data.filter((d) => d.sla_compliance_pct !== null) as Array<{ category_name: string; sla_compliance_pct: number }>;
   return (
