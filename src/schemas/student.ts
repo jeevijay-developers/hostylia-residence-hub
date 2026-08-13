@@ -114,3 +114,14 @@ export const studentSelfProfileSchema = z.object({
   academic_year: z.string().trim().max(40).optional().or(z.literal("")),
 });
 export type StudentSelfProfileInput = z.infer<typeof studentSelfProfileSchema>;
+
+/** Staff-side edit of a student's personal/academic fields (Hostel Admin VCED,
+ * Warden VE assigned-block per PRD 7 "Student profiles" row). Same field set
+ * and validation as the student's own self-edit — just targeted at a
+ * `student_id` instead of the caller's own linked record. Guardian records,
+ * KYC, allocation, status and finance fields are out of scope here — those
+ * have their own dedicated flows. */
+export const studentStaffProfileEditSchema = studentSelfProfileSchema.extend({
+  student_id: z.string().uuid(),
+});
+export type StudentStaffProfileEditInput = z.infer<typeof studentStaffProfileEditSchema>;

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BedDouble, Pencil, Save } from "lucide-react";
+import { ArrowLeft, BedDouble, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -15,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,33 +27,45 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
+import { GuardianCard } from "@/components/students/GuardianCard";
+import { StudentProfileEditDialog } from "@/components/students/StudentProfileEditDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { displayIndianPhone } from "@/schemas/auth";
 
 export const Route = createFileRoute("/_authenticated/warden/students/$id")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }] }),
   component: WardenStudentDetailPage,
 });
 
-const STATUSES = [
-  "APPLICANT",
-  "VERIFIED",
-  "ACTIVE",
-  "NOTICE_GIVEN",
-  "MOVED_OUT",
-  "ARCHIVED",
-  "REJECTED",
-] as const;
+interface AllocationRow {
+  id: string;
+  status: string;
+  start_date: string;
+  expected_end_date: string | null;
+  actual_end_date: string | null;
+  bed: {
+    code: string;
+    room: { room_number: string } | null;
+    floor: { name: string; floor_number: number | null } | null;
+    block: { name: string } | null;
+  } | null;
+}
 
 function WardenStudentDetailPage() {
   const { id } = Route.useParams();
-  const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [stayOpen, setStayOpen] = useState(false);
 
   const studentQ = useQuery({
     queryKey: ["student", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("students").select("*").eq("id", id).single();
+      const { data, error } = await supabase
+        .from("students")
+        .select(
+          "id, property_id, full_name, admission_number, phone, email, date_of_birth, gender, is_minor, academic_institute, course_name, academic_year, status",
+        )
+        .eq("id", id)
+        .single();
       if (error) throw error;
       return data;
     },
@@ -75,76 +86,21 @@ function WardenStudentDetailPage() {
     },
   });
 
-  const guardiansQ = useQuery({
-    queryKey: ["student-guardians", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("student_guardians")
-        .select("is_primary, guardian:guardians(id, full_name, phone)")
-        .eq("student_id", id)
-        .is("unlinked_at", null)
-        .order("is_primary", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const updateStudent = useMutation({
-    mutationFn: async (values: StudentFormValues) => {
-      const { error } = await supabase
-        .from("students")
-        .update({
-          full_name: values.full_name.trim(),
-          admission_number: values.admission_number.trim(),
-          phone: emptyToNull(values.phone),
-          email: emptyToNull(values.email),
-          date_of_birth: emptyToNull(values.date_of_birth),
-          gender: emptyToNull(values.gender),
-          academic_institute: emptyToNull(values.academic_institute),
-          course_name: emptyToNull(values.course_name),
-          academic_year: emptyToNull(values.academic_year),
-          joined_at: emptyToNull(values.joined_at),
-          status: values.status,
-          is_minor: values.is_minor,
-        })
-        .eq("id", id);
-      if (error) throw error;
-
-      const guardian = guardiansQ.data?.[0]?.guardian;
-      if (
-        guardian &&
-        (guardian.full_name !== values.guardian_name.trim() ||
-          guardian.phone !== values.guardian_phone.trim())
-      ) {
-        const { error: guardianError } = await supabase
-          .from("guardians")
-          .update({ full_name: values.guardian_name.trim(), phone: values.guardian_phone.trim() })
-          .eq("id", guardian.id);
-        if (guardianError) throw guardianError;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Student details updated");
-      qc.invalidateQueries({ queryKey: ["student", id] });
-      qc.invalidateQueries({ queryKey: ["students"] });
-      qc.invalidateQueries({ queryKey: ["student-guardians", id] });
-      setEditOpen(false);
-    },
-    onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Could not update student"),
-  });
-
+  // Warden scope = VE on Student profiles (PRD 7, assigned block); the
+  // /warden/students list is already restricted to the warden's assigned
+  // property, so any student reachable here is read-in-scope. The edit
+  // server function re-verifies the student's current block before writing,
+  // per PRD 7.1.
   if (studentQ.isLoading || !studentQ.data) return <Skeleton className="h-80 w-full rounded-xl" />;
   const s = studentQ.data;
   const currentAllocation =
     allocationsQ.data?.find((a) => !a.actual_end_date) ?? allocationsQ.data?.[0];
   const profileDetails = [
-    { label: "Phone", value: s.phone },
+    { label: "Phone", value: s.phone ? displayIndianPhone(s.phone) : null },
     { label: "Email", value: s.email },
     { label: "Date of birth", value: s.date_of_birth },
     { label: "Gender", value: s.gender },
     { label: "Minor", value: s.is_minor ? "Yes" : "No" },
-    { label: "Joined", value: s.joined_at },
     { label: "Institute", value: s.academic_institute },
     { label: "Course", value: s.course_name },
     { label: "Academic year", value: s.academic_year },
@@ -161,22 +117,15 @@ function WardenStudentDetailPage() {
       <PageHeader
         title={s.full_name}
         description={[`Admission #${s.admission_number}`, s.phone].filter(Boolean).join(" · ")}
-        actions={
-          <StudentEditor
-            student={s}
-            guardian={guardiansQ.data?.[0]?.guardian ?? null}
-            open={editOpen}
-            onOpenChange={setEditOpen}
-            onSave={(values) => updateStudent.mutate(values)}
-            saving={updateStudent.isPending}
-          />
-        }
+        actions={<StudentStatusBadge status={s.status} />}
       />
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-semibold">Student profile</p>
-          <StudentStatusBadge status={s.status} />
+          <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 py-4 sm:grid-cols-3">
           {profileDetails.map((detail) => (
@@ -211,6 +160,8 @@ function WardenStudentDetailPage() {
         </Card>
       </section>
 
+      <GuardianCard studentId={id} canEdit />
+
       <section className="grid grid-cols-2 gap-3 sm:gap-5">
         <Card className="min-w-0 shadow-none">
           <CardHeader className="flex-col items-start gap-3 space-y-0">
@@ -225,199 +176,17 @@ function WardenStudentDetailPage() {
           </CardHeader>
         </Card>
       </section>
-    </div>
-  );
-}
 
-type StudentFormValues = {
-  full_name: string;
-  admission_number: string;
-  phone: string;
-  email: string;
-  date_of_birth: string;
-  gender: string;
-  academic_institute: string;
-  course_name: string;
-  academic_year: string;
-  joined_at: string;
-  status: (typeof STATUSES)[number];
-  is_minor: boolean;
-  guardian_name: string;
-  guardian_phone: string;
-};
-
-function StudentEditor({
-  student,
-  guardian,
-  open,
-  onOpenChange,
-  onSave,
-  saving,
-}: {
-  student: Record<string, any>;
-  guardian: { id: string; full_name: string; phone: string } | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (values: StudentFormValues) => void;
-  saving: boolean;
-}) {
-  const [values, setValues] = useState<StudentFormValues>(toFormValues(student, guardian));
-  useEffect(() => setValues(toFormValues(student, guardian)), [student, guardian]);
-  const set = (key: keyof StudentFormValues, value: string | boolean) =>
-    setValues((current) => ({ ...current, [key]: value }));
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Pencil className="h-4 w-4" /> Edit details
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Edit student details</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-2 sm:grid-cols-2">
-          <Field
-            label="Full name"
-            value={values.full_name}
-            onChange={(v) => set("full_name", v)}
-            required
-          />
-          <Field
-            label="Admission number"
-            value={values.admission_number}
-            onChange={(v) => set("admission_number", v)}
-            required
-          />
-          <Field label="Phone" type="tel" value={values.phone} onChange={(v) => set("phone", v)} />{" "}
-          <Field
-            label="Email"
-            type="email"
-            value={values.email}
-            onChange={(v) => set("email", v)}
-          />
-          <Field
-            label="Date of birth"
-            type="date"
-            value={values.date_of_birth}
-            onChange={(v) => set("date_of_birth", v)}
-          />
-          <div className="grid gap-2">
-            <Label>Gender</Label>
-            <Input
-              value={values.gender}
-              onChange={(e) => set("gender", e.target.value)}
-              placeholder="e.g. Male"
-            />
-          </div>
-          <Field
-            label="Institute"
-            value={values.academic_institute}
-            onChange={(v) => set("academic_institute", v)}
-          />{" "}
-          <Field
-            label="Course"
-            value={values.course_name}
-            onChange={(v) => set("course_name", v)}
-          />
-          <Field
-            label="Academic year"
-            value={values.academic_year}
-            onChange={(v) => set("academic_year", v)}
-          />{" "}
-          <Field
-            label="Joined on"
-            type="date"
-            value={values.joined_at}
-            onChange={(v) => set("joined_at", v)}
-          />
-          {guardian && (
-            <>
-              <p className="col-span-full border-t border-border pt-4 text-sm font-semibold">
-                Guardian / parent contact
-              </p>
-              <Field
-                label="Guardian name"
-                value={values.guardian_name}
-                onChange={(v) => set("guardian_name", v)}
-              />
-              <Field
-                label="Guardian phone"
-                type="tel"
-                value={values.guardian_phone}
-                onChange={(v) => set("guardian_phone", v)}
-              />
-            </>
-          )}
-          <div className="grid gap-2">
-            <Label>Status</Label>
-            <Select value={values.status} onValueChange={(v) => set("status", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status.replaceAll("_", " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <label className="flex items-center gap-2 pt-7 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={values.is_minor}
-              onChange={(e) => set("is_minor", e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />{" "}
-            Minor
-          </label>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => onSave(values)}
-            disabled={saving || !values.full_name.trim() || !values.admission_number.trim()}
-          >
-            {saving ? (
-              "Saving…"
-            ) : (
-              <>
-                <Save className="h-4 w-4" /> Save changes
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="grid gap-2">
-      <Label>{label}</Label>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
+      <StudentProfileEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        studentId={id}
+        student={s}
       />
     </div>
   );
 }
+
 function Info({ label, value }: { label: string; value: string | null | boolean }) {
   return (
     <div className="min-w-0">
@@ -428,7 +197,8 @@ function Info({ label, value }: { label: string; value: string | null | boolean 
     </div>
   );
 }
-function AllocationDetails({ allocation }: { allocation: any }) {
+
+function AllocationDetails({ allocation }: { allocation: AllocationRow }) {
   const bed = allocation.bed;
   const location = [
     bed?.block?.name && `Block ${bed.block.name}`,
@@ -458,7 +228,7 @@ function StayEditor({
   open,
   onOpenChange,
 }: {
-  allocation: any;
+  allocation: AllocationRow;
   propertyId: string;
   studentId: string;
   open: boolean;
@@ -567,28 +337,4 @@ function StayEditor({
       </DialogContent>
     </Dialog>
   );
-}
-function toFormValues(
-  student: Record<string, any>,
-  guardian: { full_name: string; phone: string } | null,
-): StudentFormValues {
-  return {
-    full_name: student.full_name ?? "",
-    admission_number: student.admission_number ?? "",
-    phone: student.phone ?? "",
-    email: student.email ?? "",
-    date_of_birth: student.date_of_birth ?? "",
-    gender: student.gender ?? "",
-    academic_institute: student.academic_institute ?? "",
-    course_name: student.course_name ?? "",
-    academic_year: student.academic_year ?? "",
-    joined_at: student.joined_at ?? "",
-    status: STATUSES.includes(student.status) ? student.status : "APPLICANT",
-    is_minor: student.is_minor ?? false,
-    guardian_name: guardian?.full_name ?? "",
-    guardian_phone: guardian?.phone ?? "",
-  };
-}
-function emptyToNull(value: string) {
-  return value.trim() || null;
 }

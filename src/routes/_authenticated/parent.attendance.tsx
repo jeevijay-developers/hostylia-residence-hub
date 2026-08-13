@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ParentPageFrame } from "@/components/parent/ParentPageFrame";
 import { AttendanceHistoryList } from "@/components/parent/AttendanceHistoryList";
+import { MonthlyAttendanceReport } from "@/components/parent/MonthlyAttendanceReport";
 import { GateHistoryList } from "@/components/parent/GateHistoryList";
 
 export const Route = createFileRoute("/_authenticated/parent/attendance")({
@@ -19,7 +20,10 @@ function ParentAttendancePage() {
         {(child) => (
           <div className="space-y-6">
             {child.can_view_attendance ? (
-              <AttendanceHistoryList studentId={child.student_id} />
+              <>
+                <MonthlyAttendanceReport studentId={child.student_id} />
+                <AttendanceHistoryList studentId={child.student_id} />
+              </>
             ) : (
               <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
                 —

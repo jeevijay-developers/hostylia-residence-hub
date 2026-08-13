@@ -141,7 +141,11 @@ function WardenBriefPage() {
   const studentsQ = useStudentsInProperty(propertyId);
   const attendanceQ = useAttendance(propertyId, today);
   const complaintsQ = useComplaints({ propertyId });
-  const gatePassesQ = useGatePasses(propertyId, ["PENDING_WARDEN"]);
+  // Matches warden.gate.tsx's own "pending" definition (APPROVAL_FILTER_STATUSES.PENDING):
+  // a request awaiting parent sign-off is still a pending gate pass a warden can act on —
+  // decideGatePass accepts PENDING_WARDEN/PENDING_PARENT/DRAFT for a warden decision — so
+  // filtering to PENDING_WARDEN alone hid still-pending, still-actionable requests.
+  const gatePassesQ = useGatePasses(propertyId, ["PENDING_WARDEN", "PENDING_PARENT"]);
   const visitorsQ = useVisitors(propertyId);
   const menusQ = useMessMenusForDate(propertyId, today);
   const kycQ = useKycQueue();

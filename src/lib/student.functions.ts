@@ -12,14 +12,23 @@ import {
   allocationCreateSchema,
   clickConsentSchema,
   studentSelfProfileSchema,
+  studentStaffProfileEditSchema,
 } from "@/schemas/student";
 
+// Matches uidx_allocations_active_student — the statuses that count as a
+// student's current (not yet closed/cancelled) stay.
+const OPEN_ALLOCATION_STATUSES = [
+  "PENDING_AGREEMENT",
+  "PENDING_PAYMENT",
+  "ACTIVE",
+  "NOTICE_GIVEN",
+  "MOVE_OUT_INSPECTION",
+];
+
 function adminClient() {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  return createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 function getClientIp(): string {
@@ -57,7 +66,8 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
       p_window_seconds: 3600,
     });
     if (rlErr) throw new Error("Rate limiter unavailable");
-    if (!allowed) throw new Error("Too many applications from this network. Please try again later.");
+    if (!allowed)
+      throw new Error("Too many applications from this network. Please try again later.");
 
     const { data: props, error: pErr } = await admin
       .from("properties")
@@ -72,9 +82,7 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     if (property.status !== "ACTIVE") throw new Error("Property is not accepting applications");
 
     const dob = data.date_of_birth || null;
-    const isMinor = dob
-      ? new Date().getFullYear() - new Date(dob).getFullYear() < 18
-      : false;
+    const isMinor = dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false;
 
     const { data: student, error: sErr } = await admin
       .from("students")
@@ -150,7 +158,8 @@ async function insertStudentRow(
   propertyId: string,
   r: z.infer<typeof studentBulkRowSchema>,
 ) {
-  const dob = r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
+  const dob =
+    r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
   const { data: student, error } = await supabase
     .from("students")
     .insert({
@@ -287,11 +296,19 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let matchedId: string | null = null;
     if (student.email) {
-      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("email", student.email).limit(1);
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("email", student.email)
+        .limit(1);
       if (p && p.length) matchedId = p[0].id;
     }
     if (!matchedId && student.phone) {
-      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("phone", student.phone).limit(1);
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("phone", student.phone)
+        .limit(1);
       if (p && p.length) matchedId = p[0].id;
     }
     // Fall back to a country-code-agnostic match: the admission phone may
@@ -466,8 +483,13 @@ export const acceptAgreementClickwrap = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const ip = getClientIp();
     const ua = (() => {
-      try { return getRequestHeader("user-agent") || getRequest().headers.get("user-agent") || "unknown"; }
-      catch { return "unknown"; }
+      try {
+        return (
+          getRequestHeader("user-agent") || getRequest().headers.get("user-agent") || "unknown"
+        );
+      } catch {
+        return "unknown";
+      }
     })();
     const now = new Date().toISOString();
 
@@ -562,7 +584,9 @@ async function generateFirstInvoiceForAllocation(
 
   const today = new Date();
   const periodStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
   const graceDays = plan?.grace_period_days ?? 0;
   const due = new Date(today);
   due.setDate(due.getDate() + graceDays);
@@ -776,6 +800,101 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       })
       .eq("id", student.id);
     if (error) throw new Error(error.message);
+
+    return { ok: true as const };
+  });
+
+/**
+ * Staff-side edit of a student's personal/academic fields — Hostel Admin
+ * (VCED) or Warden (VE, assigned block per PRD 7 "Student profiles" row).
+ * `students warden update` RLS only checks property (block_id passed as
+ * NULL — see 20260715120431 migration), so per PRD 7.1 "server-side is the
+ * primary guard" this handler resolves the student's *current* block via
+ * their open allocation and re-checks warden_can_write_scope against it,
+ * the same pattern updateGuardianPhone uses for property scope.
+ */
+export const updateStudentProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => studentStaffProfileEditSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select(
+        "id, tenant_id, property_id, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year",
+      )
+      .eq("id", data.student_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (sErr) throw new Error(sErr.message);
+    if (!student) throw new Error("Student not found");
+
+    const { data: isAdmin, error: adminErr } = await supabase.rpc("has_tenant_role", {
+      _user_id: userId,
+      _tenant_id: student.tenant_id,
+      _role: "HOSTEL_ADMIN",
+    });
+    if (adminErr) throw new Error(adminErr.message);
+
+    if (!isAdmin) {
+      const { data: alloc, error: allocErr } = await supabase
+        .from("allocations")
+        .select("block_id")
+        .eq("student_id", student.id)
+        .in("status", OPEN_ALLOCATION_STATUSES)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (allocErr) throw new Error(allocErr.message);
+
+      const { data: wardenOk, error: wardenErr } = await supabase.rpc("warden_can_write_scope", {
+        _user_id: userId,
+        _tenant_id: student.tenant_id,
+        _property_id: student.property_id,
+        _block_id: alloc?.block_id ?? null,
+      });
+      if (wardenErr) throw new Error(wardenErr.message);
+      if (!wardenOk) throw new Error("You don't have permission to edit this student's profile");
+    }
+
+    const before = {
+      full_name: student.full_name,
+      phone: student.phone,
+      email: student.email,
+      date_of_birth: student.date_of_birth,
+      gender: student.gender,
+      academic_institute: student.academic_institute,
+      course_name: student.course_name,
+      academic_year: student.academic_year,
+    };
+    const after = {
+      full_name: data.full_name,
+      phone: normalizeIndianPhone(data.phone),
+      email: data.email || null,
+      date_of_birth: data.date_of_birth || null,
+      gender: data.gender || null,
+      academic_institute: data.academic_institute || null,
+      course_name: data.course_name || null,
+      academic_year: data.academic_year || null,
+    };
+
+    const { error: updErr } = await supabase.from("students").update(after).eq("id", student.id);
+    if (updErr) throw new Error(updErr.message);
+
+    // audit_logs has no client-writable INSERT policy by design — only
+    // service-role can write it (see guardian.functions.ts for the same pattern).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      tenant_id: student.tenant_id,
+      property_id: student.property_id,
+      actor_user_id: userId,
+      action: "STUDENT_PROFILE_UPDATED",
+      entity_type: "students",
+      entity_id: student.id,
+      before_data: before,
+      after_data: after,
+    });
 
     return { ok: true as const };
   });

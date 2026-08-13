@@ -432,4 +432,65 @@ UPDATE public.tenants SET status='SUSPENDED', suspended_at=now() WHERE id='11111
 SELECT pg_temp.assert_eq((SELECT count(*) FROM public.tenants WHERE id='11111111-1111-1111-1111-111111111111' AND status='SUSPENDED'), 1, 'SUPER_ADMIN can change tenants.status');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION 12 — Parent notices access, relationship-gated (NOT tenant_memberships)
+--
+-- Guards the "notices read by linked parent" policy added in
+-- 20260812100000_parent_notice_access_policy.sql. Parent01 (profile ..040)
+-- is linked via student_guardians to Student 01, whose property is A1
+-- (..a001). The seed's blanket tenant_memberships bulk-insert (range
+-- ..010-..04f) happens to also cover Parent01/02/03's profiles for
+-- convenience elsewhere in this suite — which would let the *old*
+-- tenant-membership policy paper over a missing relationship-based grant.
+-- To actually prove the new policy (not that pre-existing row) is what
+-- grants access, Parent01's tenant_membership row is deleted for the
+-- duration of this transaction before assuming their identity.
+-- =============================================================================
+BEGIN;
+DELETE FROM public.tenant_memberships
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000040';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.tenant_memberships WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000040'),
+  0, 'Sanity: Parent01 tenant_membership row removed for this test');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01 (no tenant_membership), linked to Student 01 @ Property A1
+
+-- Positive: sees the PUBLISHED, audience=ALL notice for their linked child's property.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c01'),
+  1, 'Parent01 (no tenant_membership) can read PUBLISHED/ALL notice for linked child''s property');
+
+-- Negative: audience_type=STUDENTS notice on the SAME property must stay hidden.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c05'),
+  0, 'Parent01 cannot read STUDENTS-only notice even on own child''s property');
+
+-- Negative: DRAFT (unpublished) notice on the SAME property must stay hidden.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c04'),
+  0, 'Parent01 cannot read DRAFT notice on own child''s property');
+
+-- Negative: cross-property denial — audience=ALL/PUBLISHED but a DIFFERENT property (A2), not linked.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE property_id='11111111-1111-1111-1111-11111111a002'),
+  0, 'Parent01 cannot read notices for a property their child is not in (cross-property denial)');
+
+-- Negative: cross-tenant denial.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE tenant_id='22222222-2222-2222-2222-222222222222'),
+  0, 'Parent01 cannot read Tenant B notices (cross-tenant denial)');
+ROLLBACK;
+
+-- Parent02 (view-only permissions elsewhere — can_pay_fees=false etc.) is still linked to
+-- Student 02 @ Property A1 via an active student_guardians row: notices carry no per-guardian
+-- permission flag (unlike attendance/gate events), so linkage alone must grant read access.
+BEGIN;
+DELETE FROM public.tenant_memberships
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000041';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02 (no tenant_membership)
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c01'),
+  1, 'Parent02 (view-only elsewhere, no tenant_membership) can still read linked-property ALL notice');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

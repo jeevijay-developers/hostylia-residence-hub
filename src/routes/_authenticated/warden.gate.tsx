@@ -180,6 +180,25 @@ function WardenGatePage() {
       ),
     [visitors.data, today],
   );
+  // KPI card: a visitor counts as "today" whether they were scheduled for
+  // today, walked in unscheduled and were registered today (expected_at is
+  // optional — see RegisterVisitorDialog — so a same-day walk-in has no
+  // expected_at at all and was previously invisible here), or checked in
+  // today. Rejected/cancelled entries aren't a "valid" visitor. Kept
+  // separate from `visitorsToday` above, which drives the "Expected Today"
+  // tab and must stay strictly expected-at-based.
+  const validVisitorsToday = useMemo(
+    () =>
+      ((visitors.data as VisitorWithRelations[]) ?? []).filter((v) => {
+        if (v.status === "REJECTED" || v.status === "CANCELLED") return false;
+        return (
+          v.expected_at?.slice(0, 10) === today ||
+          v.checked_in_at?.slice(0, 10) === today ||
+          v.created_at?.slice(0, 10) === today
+        );
+      }),
+    [visitors.data, today],
+  );
   const visitorsInside = useMemo(
     () =>
       ((visitors.data as VisitorWithRelations[]) ?? []).filter((v) => v.status === "CHECKED_IN"),
@@ -271,7 +290,7 @@ function WardenGatePage() {
         <KpiCard
           icon={UserPlus}
           label="Visitors Today"
-          value={visitorsToday.length}
+          value={validVisitorsToday.length}
           loading={visitors.isLoading}
           tone="info"
           bareIcon
