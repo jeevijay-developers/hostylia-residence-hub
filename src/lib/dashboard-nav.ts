@@ -40,8 +40,10 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   SUPER_ADMIN: [
     { label: "Dashboard", to: "/super-admin/dashboard", icon: LayoutDashboard },
     { label: "Tenants", to: "/super-admin/tenants", icon: Boxes },
+    { label: "Plans", to: "/super-admin/plans", icon: ClipboardList },
     { label: "Billing", to: "/super-admin/billing", icon: CreditCard },
     { label: "Feature Flags", to: "/super-admin/feature-flags", icon: Activity },
+    { label: "Support Tickets", to: "/super-admin/support-tickets", icon: Ticket },
     { label: "Impersonation", to: "/super-admin/impersonation", icon: LifeBuoy },
   ],
   HOSTEL_ADMIN: [
@@ -52,6 +54,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Attendance", to: "/admin/attendance", icon: CalendarCheck },
     { label: "Finance", to: "/admin/finance", icon: Wallet },
     { label: "Complaints", to: "/admin/complaints", icon: MessageSquareWarning },
+    { label: "Hostylia Support", to: "/admin/support", icon: LifeBuoy },
     { label: "Notices", to: "/admin/notices", icon: BellRing },
     { label: "Staff", to: "/admin/staff", icon: UserCog },
     { label: "Reports", to: "/admin/reports", icon: FileBarChart },
@@ -59,9 +62,12 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ],
   ACCOUNTANT: [
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
+    { label: "Students", to: "/accountant/students", icon: Users },
+    { label: "Fee Plans", to: "/accountant/fee-plans", icon: ClipboardList },
     { label: "Invoices", to: "/accountant/invoices", icon: FileText },
     { label: "Payments", to: "/accountant/payments", icon: CreditCard },
     { label: "Refunds", to: "/accountant/refunds", icon: Receipt },
+    { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart },
   ],
 };

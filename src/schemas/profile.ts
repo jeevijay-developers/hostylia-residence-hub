@@ -46,3 +46,16 @@ export const wardenProfileEditSchema = z.object({
 });
 
 export type WardenProfileEditInput = z.infer<typeof wardenProfileEditSchema>;
+
+/**
+ * Accountant self-service "Edit Profile" — deliberately minimal (finance/
+ * staff account, not a full HR profile). Email is intentionally absent:
+ * it's tied to auth and rendered read-only, never submitted here. Role,
+ * tenant, property assignment and permissions are never editable.
+ */
+export const accountantProfileEditSchema = z.object({
+  fullName: fullNameSchema,
+  phone: phoneSchema,
+});
+
+export type AccountantProfileEditInput = z.infer<typeof accountantProfileEditSchema>;

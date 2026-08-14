@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Loader2, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
+import { ChevronDown, Loader2, Mail, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ import {
   deleteStaff,
   inviteStaff,
   listStaff,
+  resendStaffInvite,
   revokeStaff,
   updateStaff,
 } from "@/lib/admin-staff.functions";
@@ -113,6 +114,7 @@ function AdminStaffPage() {
   const revokeFn = useServerFn(revokeStaff);
   const updateFn = useServerFn(updateStaff);
   const deleteFn = useServerFn(deleteStaff);
+  const resendFn = useServerFn(resendStaffInvite);
 
   const staffQ = useQuery({
     queryKey: ["staff", tenantId],
@@ -179,12 +181,16 @@ function AdminStaffPage() {
           role: addRole!,
         },
       }),
-    onSuccess: () => {
-      toast.success(
-        addMode === "phone"
-          ? "Added — they can sign in with this phone number now."
-          : "Added — an invite email has been sent to set up sign-in.",
-      );
+    onSuccess: (out) => {
+      if (out.resent) {
+        toast.success("Invitation already pending — resent it.");
+      } else {
+        toast.success(
+          addMode === "phone"
+            ? "Invitation sent — they'll get access once they sign in with this phone number."
+            : "Invitation sent — they'll get access once they set up sign-in via the invite email.",
+        );
+      }
       setAddRole(null);
       setStaffName("");
       setPhone("");
@@ -192,6 +198,13 @@ function AdminStaffPage() {
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
     onError: (e) => toast.error(errorMessage(e, "Could not add them")),
+  });
+
+  const resend = useMutation({
+    mutationFn: (id: string) =>
+      resendFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
+    onSuccess: () => toast.success("Invitation resent"),
+    onError: (e) => toast.error(errorMessage(e, "Could not resend invitation")),
   });
 
   const revoke = useMutation({
@@ -224,7 +237,8 @@ function AdminStaffPage() {
   });
 
   const del = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
+    mutationFn: (id: string) =>
+      deleteFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
     onSuccess: () => {
       toast.success("Removed");
       setPendingDelete(null);
@@ -233,8 +247,7 @@ function AdminStaffPage() {
     onError: (e) => toast.error(errorMessage(e, "Could not remove")),
   });
 
-  const canUpdate =
-    !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
+  const canUpdate = !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
 
   const canInvite =
     !invite.isPending &&
@@ -332,8 +345,8 @@ function AdminStaffPage() {
                   placeholder="staff@example.com"
                 />
                 <p className="text-xs text-muted-foreground">
-                  They'll get an invite email — ask them to use "Forgot password" on first
-                  sign-in to set one.
+                  They'll get an invite email — ask them to use "Forgot password" on first sign-in
+                  to set one.
                 </p>
               </TabsContent>
             </Tabs>
@@ -402,6 +415,7 @@ function AdminStaffPage() {
               staff.map((s) => {
                 const isOwner = s.role === "HOSTEL_ADMIN";
                 const isRevoked = !!s.revoked_at;
+                const isPending = !s.is_active && !isRevoked;
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.profile?.full_name ?? "—"}</TableCell>
@@ -422,7 +436,35 @@ function AdminStaffPage() {
                         </span>
                       ) : (
                         <div className="flex items-center justify-end gap-1">
-                          {!isRevoked && (
+                          {isPending && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Resend invitation"
+                                aria-label="Resend invitation"
+                                disabled={resend.isPending}
+                                onClick={() => resend.mutate(s.id)}
+                              >
+                                {resend.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Mail className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Cancel invitation"
+                                aria-label="Cancel invitation"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setPendingRevoke(s)}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          {!isPending && !isRevoked && (
                             <>
                               <Button
                                 size="icon"
@@ -476,15 +518,20 @@ function AdminStaffPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Revoke access for {pendingRevoke?.profile?.full_name ?? "this person"}?
+              {pendingRevoke && !pendingRevoke.is_active
+                ? `Cancel invitation for ${pendingRevoke.profile?.full_name ?? "this person"}?`
+                : `Revoke access for ${pendingRevoke?.profile?.full_name ?? "this person"}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              They lose access to this hostel immediately and their sign-in stops working. Their
-              past activity stays on the record. You can invite them again later.
+              {pendingRevoke && !pendingRevoke.is_active
+                ? "They haven't accepted this invitation yet — cancelling it means they can no longer accept and get access. You can invite them again later."
+                : "They lose access to this hostel immediately and their sign-in stops working. Their past activity stays on the record. You can invite them again later."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep access</AlertDialogCancel>
+            <AlertDialogCancel>
+              {pendingRevoke && !pendingRevoke.is_active ? "Keep invitation" : "Keep access"}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -493,7 +540,7 @@ function AdminStaffPage() {
               disabled={revoke.isPending}
             >
               {revoke.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Revoke access
+              {pendingRevoke && !pendingRevoke.is_active ? "Cancel invitation" : "Revoke access"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -529,7 +576,9 @@ function AdminStaffPage() {
       <Dialog open={!!editRow} onOpenChange={(open) => !open && setEditRow(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit {editRow ? ROLE_LABEL[editRow.role] ?? editRow.role : ""}</DialogTitle>
+            <DialogTitle>
+              Edit {editRow ? (ROLE_LABEL[editRow.role] ?? editRow.role) : ""}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">

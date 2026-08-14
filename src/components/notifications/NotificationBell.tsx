@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bell } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import {
   DropdownMenu,
@@ -8,18 +8,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useMyNotifications, markAllRead } from "@/lib/notifications";
+import {
+  useMyNotifications,
+  markAllRead,
+  markNotificationRead,
+  type NotificationRow,
+} from "@/lib/notifications";
 import { formatDistanceToNow } from "date-fns";
 
 export function NotificationBell({ className }: { className?: string }) {
   const { data = [] } = useMyNotifications();
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const unread = useMemo(() => data.filter((n) => !n.read_at), [data]);
 
   const onOpenChange = async (v: boolean) => {
     setOpen(v);
     if (v && unread.length) await markAllRead(unread.map((n) => n.id));
   };
+
+  function handleItemClick(n: NotificationRow) {
+    const p = (n.payload ?? {}) as Record<string, unknown>;
+    const ticketId = p.ticket_id;
+    if (typeof ticketId === "string") {
+      if (!n.read_at) void markNotificationRead(n.id);
+      setOpen(false);
+      navigate({ to: "/admin/support/$id", params: { id: ticketId } });
+    }
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -49,8 +65,9 @@ export function NotificationBell({ className }: { className?: string }) {
                 const p = (n.payload ?? {}) as Record<string, unknown>;
                 const title = String(p.title ?? n.event_type.replaceAll("_", " "));
                 const body = String(p.body ?? p.invoice_number ?? p.complaint_number ?? "");
-                return (
-                  <li key={n.id} className={`px-3 py-2 text-sm ${n.read_at ? "" : "bg-muted/40"}`}>
+                const clickable = typeof p.ticket_id === "string";
+                const content = (
+                  <>
                     <div className="flex justify-between gap-2">
                       <span className="font-medium">{title}</span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -58,6 +75,21 @@ export function NotificationBell({ className }: { className?: string }) {
                       </span>
                     </div>
                     {body && <p className="text-xs text-muted-foreground">{body}</p>}
+                  </>
+                );
+                return (
+                  <li key={n.id} className={n.read_at ? "" : "bg-muted/40"}>
+                    {clickable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleItemClick(n)}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      <div className="px-3 py-2 text-sm">{content}</div>
+                    )}
                   </li>
                 );
               })}
