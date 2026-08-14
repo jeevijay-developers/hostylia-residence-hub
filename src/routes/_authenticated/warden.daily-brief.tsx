@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   CalendarCheck,
   Check,
   CheckCircle2,
@@ -40,14 +39,10 @@ import {
 } from "@/components/ui/dialog";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
-import {
-  useAttendance,
-  useGatePasses,
-  useMessMenusForDate,
-  useStudentsInProperty,
-  useVisitors,
-} from "@/lib/ops";
+import { useAttendance, useGatePasses, useStudentsInProperty, useVisitors } from "@/lib/ops";
 import { useComplaints } from "@/lib/complaint";
+import { useRecentActivity } from "@/lib/warden-activity";
+import { ActivityIcon } from "@/components/warden/ActivityIcon";
 import { decideGatePass } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage, toneClasses, type SemanticTone } from "@/lib/utils";
@@ -90,12 +85,6 @@ const PRIORITY_DOT_CLASSES: Record<SemanticTone, string> = {
   info: "bg-info",
   muted: "bg-muted-foreground",
 };
-
-interface ActivityItem {
-  type: string;
-  detail: string;
-  at: string;
-}
 
 interface PendingKycDoc {
   id: string;
@@ -147,24 +136,8 @@ function WardenBriefPage() {
   // filtering to PENDING_WARDEN alone hid still-pending, still-actionable requests.
   const gatePassesQ = useGatePasses(propertyId, ["PENDING_WARDEN", "PENDING_PARENT"]);
   const visitorsQ = useVisitors(propertyId);
-  const menusQ = useMessMenusForDate(propertyId, today);
   const kycQ = useKycQueue();
-
-  const approvedTodayQ = useQuery({
-    queryKey: ["gate-passes-approved-today", propertyId, today],
-    enabled: !!propertyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("gate_passes")
-        .select("id, pass_number, warden_approved_at, status")
-        .eq("property_id", propertyId!)
-        .eq("status", "APPROVED")
-        .gte("warden_approved_at", `${today}T00:00:00`)
-        .order("warden_approved_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { items: recentActivity } = useRecentActivity(propertyId);
 
   const decide = useServerFn(decideGatePass);
   const decideMut = useMutation({
@@ -202,58 +175,6 @@ function WardenBriefPage() {
       return expected === today || checkedIn === today;
     });
   }, [visitorsQ.data, today]);
-
-  const recentActivity = useMemo(() => {
-    const items: ActivityItem[] = [];
-
-    const attendanceGroups = new Map<string, number>();
-    for (const a of attendanceQ.data ?? []) {
-      attendanceGroups.set(a.marked_at, (attendanceGroups.get(a.marked_at) ?? 0) + 1);
-    }
-    for (const [at, count] of attendanceGroups) {
-      items.push({
-        type: "Attendance Submitted",
-        detail: `${count} student${count === 1 ? "" : "s"} marked`,
-        at,
-      });
-    }
-
-    for (const c of complaintsQ.data ?? []) {
-      const updatedToday = c.updated_at?.slice(0, 10) === today;
-      const resolvedToday = c.status === "RESOLVED" && c.resolved_at?.slice(0, 10) === today;
-      if (resolvedToday) {
-        items.push({
-          type: "Complaint Resolved",
-          detail: `${c.complaint_number} — ${c.title}`,
-          at: c.resolved_at!,
-        });
-      } else if (updatedToday) {
-        items.push({
-          type: "Complaint Updated",
-          detail: `${c.complaint_number} — ${c.title}`,
-          at: c.updated_at,
-        });
-      }
-    }
-
-    for (const g of approvedTodayQ.data ?? []) {
-      if (g.warden_approved_at) {
-        items.push({ type: "Gate Pass Approved", detail: g.pass_number, at: g.warden_approved_at });
-      }
-    }
-
-    for (const m of menusQ.data ?? []) {
-      if (m.published_at) {
-        items.push({
-          type: "Menu Published",
-          detail: `${m.meal}${m.title ? ` — ${m.title}` : ""}`,
-          at: m.published_at,
-        });
-      }
-    }
-
-    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 8);
-  }, [attendanceQ.data, complaintsQ.data, approvedTodayQ.data, menusQ.data, today]);
 
   return (
     <div className="space-y-6">
@@ -345,12 +266,19 @@ function WardenBriefPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Recent Activity</CardTitle>
+          {recentActivity.length > 5 && (
+            <Button asChild variant="ghost" size="sm" className="-mr-2 text-primary">
+              <Link to="/warden/activity">
+                See all <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <ol className="space-y-2 text-sm">
-            {recentActivity.map((item, i) => (
+            {recentActivity.slice(0, 5).map((item, i) => (
               <li key={i} className="flex items-start gap-3">
                 <ActivityIcon type={item.type} />
                 <div>
@@ -487,20 +415,3 @@ function SummaryStat({ label, value, tone }: { label: string; value: number; ton
   );
 }
 
-function ActivityIcon({ type }: { type: string }) {
-  const Icon =
-    type === "Gate Pass Approved"
-      ? DoorOpen
-      : type === "Menu Published"
-        ? Utensils
-        : type === "Attendance Submitted"
-          ? CalendarCheck
-          : type.startsWith("Complaint")
-            ? MessageSquareWarning
-            : Activity;
-  return (
-    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-      <Icon className="h-3.5 w-3.5" />
-    </span>
-  );
-}

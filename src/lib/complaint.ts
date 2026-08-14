@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -85,6 +85,13 @@ interface ListOptions {
 
 export function useComplaints(opts: ListOptions) {
   const qc = useQueryClient();
+  // Multiple components can mount useComplaints with the same propertyId at
+  // once (e.g. the daily-brief page's own KPI query plus useRecentActivity's
+  // internal one) — a channel name keyed only on propertyId collides between
+  // instances and Supabase throws "cannot add postgres_changes callbacks...
+  // after subscribe()" on the second .on() call against the already-
+  // subscribed shared channel. Same fix as useGatePasses in ops.ts.
+  const instanceId = useId();
   const key = ["complaints", opts];
   const query = useQuery({
     queryKey: key,
@@ -109,7 +116,7 @@ export function useComplaints(opts: ListOptions) {
   useEffect(() => {
     const filter = opts.propertyId ? `property_id=eq.${opts.propertyId}` : undefined;
     const channel = supabase
-      .channel(`complaints-${opts.propertyId ?? "all"}`)
+      .channel(`complaints-${opts.propertyId ?? "all"}-${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "complaints", filter }, () =>
         qc.invalidateQueries({ queryKey: ["complaints"] }),
       )
@@ -117,7 +124,7 @@ export function useComplaints(opts: ListOptions) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [opts.propertyId, qc]);
+  }, [opts.propertyId, qc, instanceId]);
 
   return query;
 }
