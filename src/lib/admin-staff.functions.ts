@@ -24,10 +24,64 @@ async function assertAdmin(supabase: any, userId: string, tenantId: string) {
 }
 
 /**
- * Invite Warden/Accountant. Creates INVITED tenant_membership and
- * inactive role_assignment. Activation happens on first sign-in
- * (server function `activateStaffAssignments` — call from post-auth
- * flow when a user's email/phone matches an INVITED membership).
+ * Best-effort invite/resend notification (IN_APP + email/SMS depending on
+ * which contact channel the person was invited through). Shared by
+ * `inviteStaff` and `resendStaffInvite` so there's one notification path,
+ * not two.
+ */
+async function sendStaffInviteNotification(
+  supabase: any,
+  args: {
+    inviteeId: string;
+    email: string | null;
+    phone: string | null;
+    role: string;
+    tenantId: string;
+    propertyId?: string | null;
+    referenceId: string;
+  },
+) {
+  const channels: Array<"IN_APP" | "EMAIL" | "SMS"> = ["IN_APP", args.email ? "EMAIL" : "SMS"];
+  for (const ch of channels) {
+    const recipient: Record<string, string | undefined> = {};
+    if (ch === "IN_APP") recipient.userId = args.inviteeId;
+    if (ch === "EMAIL") recipient.email = args.email ?? undefined;
+    if (ch === "SMS") recipient.phone = args.phone ?? undefined;
+    if (!recipient.userId && !recipient.email && !recipient.phone) continue;
+    try {
+      await supabase.functions.invoke("send-notification", {
+        body: {
+          channel: ch,
+          templateKey: "staff_invite",
+          recipient,
+          variables: { role: args.role },
+          eventType: "STAFF_INVITE",
+          tenantId: args.tenantId,
+          propertyId: args.propertyId ?? undefined,
+          referenceId: args.referenceId,
+        },
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+/**
+ * Invite Warden/Accountant. Creates the tenant_membership as INVITED and
+ * the role_assignment as `is_active: false` — a PENDING invitation, not
+ * live access. `role_assignments.is_active` is exactly what every RLS
+ * helper (`is_finance_staff`, `has_tenant_role`, `get_user_role`, etc.)
+ * gates on, so a pending invite genuinely cannot reach any staff route or
+ * RLS-protected data — no separate "pending block" needed anywhere else.
+ * Activation happens the moment the invitee actually signs in for the
+ * first time and proves ownership of the contact info (password sign-in
+ * or OTP verification), via the pre-existing `activateMyInvites()` —
+ * already wired into both `LoginForm.tsx` and `verify-otp.tsx`. This
+ * restores that intended flow; a later change had short-circuited it by
+ * marking new assignments active immediately, which is the bug this
+ * fixes (an invite to a bounced/non-existent email looked identical to a
+ * real active staff member).
  */
 export const inviteStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -47,11 +101,19 @@ export const inviteStaff = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let inviteeId: string | null = null;
     if (data.email) {
-      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("email", data.email).limit(1);
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("email", data.email)
+        .limit(1);
       if (p && p.length) inviteeId = p[0].id;
     }
     if (!inviteeId && phone) {
-      const { data: p } = await supabaseAdmin.from("profiles").select("id").eq("phone", phone).limit(1);
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("phone", phone)
+        .limit(1);
       if (p && p.length) inviteeId = p[0].id;
     }
 
@@ -62,7 +124,41 @@ export const inviteStaff = createServerFn({ method: "POST" })
     // name the shell profile already had. The admin typing a name in this
     // form is a deliberate act — it should always win.
     if (inviteeId && data.full_name) {
-      await supabaseAdmin.from("profiles").update({ full_name: data.full_name }).eq("id", inviteeId);
+      await supabaseAdmin
+        .from("profiles")
+        .update({ full_name: data.full_name })
+        .eq("id", inviteeId);
+    }
+
+    // Duplicate handling: an already-ACTIVE assignment for this exact
+    // person+role+tenant is a real conflict; an already-PENDING one just
+    // means "resend", not "create a second invite".
+    if (inviteeId) {
+      const { data: existingRa } = await supabase
+        .from("role_assignments")
+        .select("id,is_active,revoked_at")
+        .eq("tenant_id", data.tenant_id)
+        .eq("user_id", inviteeId)
+        .eq("role", data.role)
+        .is("revoked_at", null)
+        .order("granted_at", { ascending: false })
+        .limit(1);
+      const existing = existingRa?.[0];
+      if (existing?.is_active) {
+        throw new Error("This person already has active access for this role.");
+      }
+      if (existing && !existing.is_active) {
+        await sendStaffInviteNotification(supabase, {
+          inviteeId,
+          email: data.email ?? null,
+          phone,
+          role: data.role,
+          tenantId: data.tenant_id,
+          propertyId: data.property_id,
+          referenceId: existing.id,
+        });
+        return { role_assignment_id: existing.id, invitee_id: inviteeId, resent: true as const };
+      }
     }
 
     if (!inviteeId) {
@@ -84,27 +180,22 @@ export const inviteStaff = createServerFn({ method: "POST" })
       if (!inviteeId) throw new Error("could not create invitee");
     }
 
-    // tenant_memberships — active immediately. This is an admin adding a
-    // known person (not a formal invite-then-accept flow), and unlike a
-    // self-service signup there's no "prove you own this contact" step to
-    // wait for, so gating on a fragile self-activate-at-first-login round
-    // trip (activateMyInvites) only added a way for this to silently never
-    // finish. Students get the same treatment via confirmStudentAdmission.
+    // tenant_memberships — INVITED, not ACTIVE. `activateMyInvites` flips
+    // this (and joined_at) to ACTIVE on the invitee's first real sign-in.
     const nowIso = new Date().toISOString();
     const { error: mErr } = await supabase.from("tenant_memberships").upsert(
       {
         tenant_id: data.tenant_id,
         user_id: inviteeId,
-        status: "ACTIVE",
+        status: "INVITED",
         invited_by: userId,
         invited_at: nowIso,
-        joined_at: nowIso,
       },
       { onConflict: "tenant_id,user_id" },
     );
     if (mErr) throw mErr;
 
-    // role_assignments — active immediately, same reasoning.
+    // role_assignments — PENDING (is_active: false) until accepted.
     const { data: ra, error: rErr } = await supabase
       .from("role_assignments")
       .insert({
@@ -113,7 +204,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
         role: data.role,
         property_id: data.property_id ?? null,
         block_id: data.block_id ?? null,
-        is_active: true,
+        is_active: false,
         granted_by: userId,
         granted_at: nowIso,
       })
@@ -121,31 +212,59 @@ export const inviteStaff = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw rErr;
 
-    // Fire invite notification (IN_APP + email/SMS if configured); best-effort.
-    const channels: Array<"IN_APP" | "EMAIL" | "SMS"> = ["IN_APP", data.email ? "EMAIL" : "SMS"];
-    for (const ch of channels) {
-      const recipient: Record<string, string | undefined> = {};
-      if (ch === "IN_APP") recipient.userId = inviteeId;
-      if (ch === "EMAIL") recipient.email = data.email ?? undefined;
-      if (ch === "SMS") recipient.phone = phone ?? undefined;
-      if (!recipient.userId && !recipient.email && !recipient.phone) continue;
-      try {
-        await supabase.functions.invoke("send-notification", {
-          body: {
-            channel: ch,
-            templateKey: "staff_invite",
-            recipient,
-            variables: { role: data.role },
-            eventType: "STAFF_INVITE",
-            tenantId: data.tenant_id,
-            propertyId: data.property_id ?? undefined,
-            referenceId: ra.id,
-          },
-        });
-      } catch { /* best-effort */ }
-    }
+    await sendStaffInviteNotification(supabase, {
+      inviteeId,
+      email: data.email ?? null,
+      phone,
+      role: data.role,
+      tenantId: data.tenant_id,
+      propertyId: data.property_id,
+      referenceId: ra.id,
+    });
 
-    return { role_assignment_id: ra.id, invitee_id: inviteeId };
+    return { role_assignment_id: ra.id, invitee_id: inviteeId, resent: false as const };
+  });
+
+/**
+ * Resend the invite notification for a still-pending (not yet accepted,
+ * not revoked) role_assignment. Does not touch is_active/status — the
+ * invitation stays PENDING until the invitee actually signs in.
+ */
+export const resendStaffInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { tenant_id: string; role_assignment_id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId, data.tenant_id);
+
+    const { data: ra, error: raErr } = await supabase
+      .from("role_assignments")
+      .select("id,user_id,role,property_id,is_active,revoked_at")
+      .eq("id", data.role_assignment_id)
+      .eq("tenant_id", data.tenant_id)
+      .single();
+    if (raErr || !ra) throw new Error("Invitation not found");
+    if (ra.revoked_at) throw new Error("This invitation was cancelled");
+    if (ra.is_active) throw new Error("This person already has active access");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("email,phone")
+      .eq("id", ra.user_id)
+      .single();
+
+    await sendStaffInviteNotification(supabase, {
+      inviteeId: ra.user_id,
+      email: profile?.email ?? null,
+      phone: profile?.phone ?? null,
+      role: ra.role,
+      tenantId: data.tenant_id,
+      propertyId: ra.property_id,
+      referenceId: ra.id,
+    });
+
+    return { ok: true };
   });
 
 export const listStaff = createServerFn({ method: "GET" })
@@ -280,7 +399,9 @@ export const updatePropertySettings = createServerFn({ method: "POST" })
       .single();
     if (!prop) throw new Error("property not found");
     await assertAdmin(supabase, userId, prop.tenant_id);
-    const existing = (typeof prop.settings === "object" && prop.settings !== null ? prop.settings : {}) as Record<string, any>;
+    const existing = (
+      typeof prop.settings === "object" && prop.settings !== null ? prop.settings : {}
+    ) as Record<string, any>;
     const merged = { ...existing, ...data.settings };
     const { error } = await supabase
       .from("properties")

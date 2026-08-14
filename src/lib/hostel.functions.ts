@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { csvRowSchema, type CsvRow } from "@/schemas/hostel";
+import { subscriptionCancellationSchema } from "@/schemas/subscription";
 
 /**
  * Bulk-import a Block→Floor→Room→Bed tree from CSV rows.
@@ -92,8 +93,7 @@ export const bulkImportStructure = createServerFn({ method: "POST" })
           floorCache.set(floorKey, floorId);
         }
 
-        const basePaise =
-          row.base_rent != null ? Math.round(row.base_rent * 100) : null;
+        const basePaise = row.base_rent != null ? Math.round(row.base_rent * 100) : null;
         const { data: room, error: rErr } = await supabase
           .from("rooms")
           .insert({
@@ -138,9 +138,7 @@ export const bulkImportStructure = createServerFn({ method: "POST" })
 /** Pre-flight validation only — surfaces errors before the user commits. */
 export const validateCsvRows = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data) =>
-    z.object({ rows: z.array(z.unknown()) }).parse(data),
-  )
+  .validator((data) => z.object({ rows: z.array(z.unknown()) }).parse(data))
   .handler(async ({ data }) => {
     const errors: { row: number; error: string }[] = [];
     const valid: CsvRow[] = [];
@@ -156,4 +154,30 @@ export const validateCsvRows = createServerFn({ method: "POST" })
       }
     }
     return { valid, errors };
+  });
+
+// -------- Hostel Admin self-service subscription cancellation --------
+
+/**
+ * Cancels the calling Hostel Admin's own tenant's ACTIVE subscription and
+ * persists their cancellation feedback. All authorization and the actual
+ * writes happen inside `fn_cancel_own_subscription` (a SECURITY DEFINER
+ * Postgres function, not a raw client mutation) — this server function is a
+ * thin, Zod-validated wrapper, same shape as `assignHostelAdmin` calling
+ * `fn_assign_hostel_admin`.
+ */
+export const cancelMySubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => subscriptionCancellationSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: out, error } = await supabase.rpc("fn_cancel_own_subscription", {
+      p_tenant_id: data.tenant_id,
+      p_cancellation_reason: data.cancellation_reason,
+      p_cancellation_reason_other: data.cancellation_reason_other || undefined,
+      p_continue_in_future: data.continue_in_future,
+      p_additional_feedback: data.additional_feedback || undefined,
+    });
+    if (error) throw new Error(error.message);
+    return out as { subscription_id: string; cancelled_at: string };
   });
