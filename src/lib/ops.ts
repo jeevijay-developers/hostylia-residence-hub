@@ -106,7 +106,9 @@ export function useGateEventsFeed(propertyId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gate_events")
-        .select("*, students(full_name), visitors(name)")
+        .select(
+          "*, students(full_name, allocations(status, rooms(room_number))), visitors(name, phone, students(full_name, allocations(status, rooms(room_number))))",
+        )
         .eq("property_id", propertyId!)
         .order("event_at", { ascending: false })
         .limit(50);

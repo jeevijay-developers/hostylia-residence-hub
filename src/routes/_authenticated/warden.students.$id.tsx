@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BedDouble, Pencil } from "lucide-react";
+import {
+  ArrowLeft,
+  BedDouble,
+  Cake,
+  GraduationCap,
+  Mail,
+  Pencil,
+  Phone,
+  UserRound,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -27,7 +38,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
-import { GuardianCard } from "@/components/students/GuardianCard";
 import { StudentProfileEditDialog } from "@/components/students/StudentProfileEditDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
@@ -96,14 +106,14 @@ function WardenStudentDetailPage() {
   const currentAllocation =
     allocationsQ.data?.find((a) => !a.actual_end_date) ?? allocationsQ.data?.[0];
   const profileDetails = [
-    { label: "Phone", value: s.phone ? displayIndianPhone(s.phone) : null },
-    { label: "Email", value: s.email },
-    { label: "Date of birth", value: s.date_of_birth },
-    { label: "Gender", value: s.gender },
-    { label: "Minor", value: s.is_minor ? "Yes" : "No" },
-    { label: "Institute", value: s.academic_institute },
-    { label: "Course", value: s.course_name },
-    { label: "Academic year", value: s.academic_year },
+    { label: "Phone", value: s.phone ? displayIndianPhone(s.phone) : null, icon: Phone },
+    { label: "Email", value: s.email, icon: Mail },
+    { label: "Date of birth", value: s.date_of_birth, icon: Cake },
+    { label: "Gender", value: s.gender, icon: UserRound },
+    { label: "Minor", value: s.is_minor ? "Yes" : "No", icon: Users },
+    { label: "Institute", value: s.academic_institute, icon: GraduationCap },
+    { label: "Course", value: s.course_name, icon: GraduationCap },
+    { label: "Academic year", value: s.academic_year, icon: GraduationCap },
   ].filter((detail) => detail.value);
 
   return (
@@ -160,8 +170,6 @@ function WardenStudentDetailPage() {
         </Card>
       </section>
 
-      <GuardianCard studentId={id} canEdit />
-
       <section className="grid grid-cols-2 gap-3 sm:gap-5">
         <Card className="min-w-0 shadow-none">
           <CardHeader className="flex-col items-start gap-3 space-y-0">
@@ -187,10 +195,19 @@ function WardenStudentDetailPage() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string | null | boolean }) {
+function Info({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | null | boolean;
+  icon: LucideIcon;
+}) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         {label}
       </p>
       <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
@@ -209,14 +226,19 @@ function AllocationDetails({ allocation }: { allocation: AllocationRow }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className="space-y-1">
-      <p className="font-medium text-foreground">
-        {location || "Accommodation details unavailable"}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {allocation.start_date} →{" "}
-        {allocation.actual_end_date ?? allocation.expected_end_date ?? "Current"}
-      </p>
+    <div className="flex items-start gap-3 rounded-lg border border-success/30 bg-success/10 p-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-success/15 text-success">
+        <BedDouble className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 space-y-0.5">
+        <p className="font-medium text-foreground">
+          {location || "Accommodation details unavailable"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {allocation.start_date} →{" "}
+          {allocation.actual_end_date ?? allocation.expected_end_date ?? "Current"}
+        </p>
+      </div>
     </div>
   );
 }

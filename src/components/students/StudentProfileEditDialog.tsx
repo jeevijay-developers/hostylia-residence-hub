@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,9 @@ import {
 import { studentStaffProfileEditSchema } from "@/schemas/student";
 import { updateStudentProfile } from "@/lib/student.functions";
 import { getErrorMessage } from "@/lib/utils";
+import { displayIndianPhone } from "@/schemas/auth";
+import { fetchStudentGuardians, type StudentGuardianRow } from "@/components/students/GuardianCard";
+import { GuardianDetailsEditDialog } from "@/components/students/GuardianDetailsEditDialog";
 
 export interface StudentProfileEditableFields {
   full_name: string;
@@ -61,6 +65,13 @@ export function StudentProfileEditDialog({
   const [course, setCourse] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [editingGuardian, setEditingGuardian] = useState<StudentGuardianRow | null>(null);
+
+  const guardiansQ = useQuery({
+    queryKey: ["student-guardians", studentId],
+    queryFn: () => fetchStudentGuardians(studentId),
+    enabled: open,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -196,6 +207,62 @@ export function StudentProfileEditDialog({
           </div>
         </div>
 
+        {(guardiansQ.data ?? []).length > 0 && (
+          <div className="space-y-2 border-t border-border pt-4">
+            <Label>Guardian / Parent</Label>
+            {(guardiansQ.data ?? []).map((row) => {
+              const addressLine = [
+                row.guardian?.address?.line1,
+                row.guardian?.address?.city,
+                row.guardian?.address?.state,
+                row.guardian?.address?.pincode,
+              ]
+                .filter(Boolean)
+                .join(", ");
+              return (
+                <div
+                  key={row.guardian_id}
+                  className="flex items-start justify-between gap-3 rounded-md border border-border p-3"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {row.guardian?.full_name ?? "—"}
+                      </p>
+                      {row.is_primary && <Badge variant="outline">Primary</Badge>}
+                    </div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {row.relationship ?? "Guardian"} ·{" "}
+                      {row.guardian?.phone ? displayIndianPhone(row.guardian.phone) : "no phone"}
+                    </p>
+                    {row.guardian?.email && (
+                      <p className="text-xs text-muted-foreground">{row.guardian.email}</p>
+                    )}
+                    {row.guardian?.occupation && (
+                      <p className="text-xs text-muted-foreground">{row.guardian.occupation}</p>
+                    )}
+                    {addressLine && (
+                      <p className="text-xs text-muted-foreground">{addressLine}</p>
+                    )}
+                  </div>
+                  {row.guardian && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      type="button"
+                      title="Edit guardian details"
+                      aria-label="Edit guardian details"
+                      onClick={() => setEditingGuardian(row)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
@@ -210,6 +277,15 @@ export function StudentProfileEditDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {editingGuardian && editingGuardian.guardian && (
+        <GuardianDetailsEditDialog
+          open
+          onOpenChange={(open) => !open && setEditingGuardian(null)}
+          studentId={studentId}
+          guardian={editingGuardian.guardian}
+        />
+      )}
     </Dialog>
   );
 }

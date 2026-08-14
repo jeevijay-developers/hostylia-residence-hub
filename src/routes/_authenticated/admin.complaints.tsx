@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useComplaints, useComplaintCategories, type ComplaintRow } from "@/lib/complaint";
+import { useComplaints, useComplaintCategories, type ComplaintWithRelations } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +99,6 @@ function AdminComplaintsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Complaints" description="Property-wide view with SLA visibility." />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger>
@@ -155,7 +154,7 @@ function AdminComplaintsPage() {
   );
 }
 
-function AdminComplaintRow({ complaint }: { complaint: ComplaintRow }) {
+function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations }) {
   const qc = useQueryClient();
   const { data: role } = useResolvedRole();
   const tenantId = role?.tenantId ?? null;

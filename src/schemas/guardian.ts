@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emailSchema, fullNameSchema, phoneSchema } from "./auth";
+import { addressSchema } from "./profile";
 
 export const guardianPhoneUpdateSchema = z.object({
   student_id: z.string().uuid(),
@@ -8,6 +9,26 @@ export const guardianPhoneUpdateSchema = z.object({
 });
 
 export type GuardianPhoneUpdateInput = z.infer<typeof guardianPhoneUpdateSchema>;
+
+/**
+ * Staff-side (Hostel Admin/Warden) full guardian edit — the richer surface
+ * reached from a student's profile edit dialog, distinct from the
+ * self-service `guardianSelfEditSchema` a parent uses on their own portal.
+ * Unlike the self-edit path, staff are allowed to change `phone` here (same
+ * authorization + audit trail as `guardianPhoneUpdateSchema`), since a
+ * student's guardian contact details are staff-maintained data.
+ */
+export const guardianStaffEditSchema = z.object({
+  student_id: z.string().uuid(),
+  guardian_id: z.string().uuid(),
+  fullName: fullNameSchema,
+  phone: phoneSchema,
+  email: emailSchema.optional().or(z.literal("")),
+  occupation: z.string().trim().max(120).optional().or(z.literal("")),
+  address: addressSchema.optional(),
+});
+
+export type GuardianStaffEditInput = z.infer<typeof guardianStaffEditSchema>;
 
 /**
  * Parent Portal "Edit Profile" — self-service update of a guardian's own

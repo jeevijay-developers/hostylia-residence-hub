@@ -5,9 +5,13 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Check,
+  ChevronRight,
+  ChevronsUpDown,
+  Clock,
   DoorOpen,
   LogIn,
   LogOut,
+  QrCode,
   RefreshCw,
   Search,
   UserPlus,
@@ -17,7 +21,7 @@ import {
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
-import { KpiCard } from "@/components/dashboard/KpiCard";
+import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { CameraQrScanner } from "@/components/gate/CameraQrScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +45,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
 import {
@@ -80,6 +93,27 @@ function roomOf(allocations: RoomAllocation[] | undefined): string | undefined {
   return allocations?.find((a) => a.status === "ACTIVE")?.rooms?.room_number;
 }
 
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+const AVATAR_TONES = [
+  "bg-info/15 text-info",
+  "bg-success/15 text-success",
+  "bg-warning/15 text-warning",
+  "bg-primary/15 text-primary",
+];
+
+function avatarTone(index: number) {
+  return AVATAR_TONES[index % AVATAR_TONES.length];
+}
+
 /** Maps gate-pass/visitor status strings to the existing semantic tone classes (same palette as StepBadge below) so badges are distinguishable at a glance. */
 function statusBadgeClass(status: string): string {
   if (status.includes("REJECT") || status === "CANCELLED")
@@ -98,8 +132,12 @@ function statusBadgeClass(status: string): string {
 }
 
 type FeedEvent = GateEventRow & {
-  students?: { full_name?: string } | null;
-  visitors?: { name?: string } | null;
+  students?: { full_name?: string; allocations?: RoomAllocation[] } | null;
+  visitors?: {
+    name?: string;
+    phone?: string;
+    students?: { full_name?: string; allocations?: RoomAllocation[] } | null;
+  } | null;
 };
 
 const APPROVAL_FILTER_STATUSES: Record<string, string[]> = {
@@ -128,6 +166,7 @@ function WardenGatePage() {
   const createVis = useServerFn(createVisitor);
   const today = todayStr();
 
+  const [tab, setTab] = useState("approvals");
   const [approvalFilter, setApprovalFilter] = useState<
     "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
   >("PENDING");
@@ -218,6 +257,7 @@ function WardenGatePage() {
   );
 
   const [detailsPass, setDetailsPass] = useState<PassWithStudent | null>(null);
+  const [detailsVisitor, setDetailsVisitor] = useState<VisitorWithRelations | null>(null);
   const [visitorView, setVisitorView] = useState<"all" | "expected" | "inside" | "checked_out">(
     "all",
   );
@@ -276,60 +316,95 @@ function WardenGatePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Gate" description="Approvals, QR scan, visitor check-in, live feed." />
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <KpiCard
+      <div className="grid grid-cols-2 gap-3">
+        <KpiSummaryCard
           icon={DoorOpen}
           label="Pending Approvals"
           value={pending.data?.length ?? 0}
+          caption="Requires your action"
           loading={pending.isLoading}
           tone="warning"
-          bareIcon
+          onNavigate={() => {
+            setApprovalFilter("PENDING");
+            setTab("approvals");
+          }}
         />
-        <KpiCard
+        <KpiSummaryCard
           icon={UserPlus}
           label="Visitors Today"
           value={validVisitorsToday.length}
+          caption="New visitors"
           loading={visitors.isLoading}
           tone="info"
-          bareIcon
+          onNavigate={() => setTab("visitors")}
         />
-        <KpiCard
+        <KpiSummaryCard
           icon={Users}
           label="Currently Inside"
           value={visitorsInside.length}
+          caption="On campus now"
           loading={visitors.isLoading}
           tone="success"
-          bareIcon
+          onNavigate={() => {
+            setVisitorView("inside");
+            setTab("visitors");
+          }}
         />
-        <KpiCard
+        <KpiSummaryCard
           icon={LogIn}
           label="Today's Entries"
           value={entriesToday}
+          caption="Total entries"
           loading={events.isLoading}
-          tone="success"
-          bareIcon
+          tone="primary"
+          onNavigate={() => {
+            setFeedFilter("entry");
+            setTab("feed");
+          }}
         />
-        <div className="col-span-2 sm:col-span-1">
-          <KpiCard
+        <div className="col-span-2">
+          <KpiSummaryCard
             icon={LogOut}
             label="Today's Exits"
             value={exitsToday}
+            caption="Total exits"
             loading={events.isLoading}
             tone="muted"
-            bareIcon
+            onNavigate={() => {
+              setFeedFilter("exit");
+              setTab("feed");
+            }}
           />
         </div>
       </div>
 
-      <Tabs defaultValue="approvals">
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="approvals">Approvals ({pending.data?.length ?? 0})</TabsTrigger>
-            <TabsTrigger value="scan">Scan</TabsTrigger>
-            <TabsTrigger value="visitors">Visitors</TabsTrigger>
-            <TabsTrigger value="feed">Live Feed</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab}>
+        <div className="overflow-x-auto border-b border-border">
+          <TabsList className="h-auto justify-start rounded-none border-none bg-transparent p-0">
+            <TabsTrigger
+              value="approvals"
+              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+            >
+              Approvals ({pending.data?.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger
+              value="scan"
+              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+            >
+              Scan
+            </TabsTrigger>
+            <TabsTrigger
+              value="visitors"
+              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+            >
+              Visitors
+            </TabsTrigger>
+            <TabsTrigger
+              value="feed"
+              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+            >
+              Live Feed
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -370,26 +445,46 @@ function WardenGatePage() {
             !filteredApprovals.error &&
             approvalsList.map((p) => (
               <Card key={p.id}>
-                <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">
-                      {p.pass_number} — {p.students?.full_name}
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-warning/15 text-sm font-semibold text-warning">
+                      {initialsOf(p.students?.full_name ?? p.pass_number)}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{p.pass_number}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {p.students?.full_name} · {p.reason}
+                        </p>
+                      </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
+                          Out: {new Date(p.out_at).toLocaleString()}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <LogIn className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
+                          In: {new Date(p.expected_in_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={statusBadgeClass(p.status)}>
+                        {p.status}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {p.reason} · out {new Date(p.out_at).toLocaleString()} → in{" "}
-                      {new Date(p.expected_in_at).toLocaleString()}
-                    </div>
-                    <Badge variant="outline" className={cn("mt-1", statusBadgeClass(p.status))}>
-                      {p.status}
-                    </Badge>
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setDetailsPass(p)}>
+                  <div className="flex shrink-0 flex-row gap-2 sm:w-32 sm:flex-col">
+                    <Button
+                      className="flex-1 sm:flex-none"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setDetailsPass(p)}
+                    >
                       Details
                     </Button>
                     {approvalFilter === "PENDING" && (
                       <>
                         <Button
+                          className="flex-1 sm:flex-none"
                           size="sm"
                           variant="outline"
                           onClick={() => decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })}
@@ -397,6 +492,7 @@ function WardenGatePage() {
                           <X className="h-4 w-4" /> Reject
                         </Button>
                         <Button
+                          className="flex-1 bg-warning text-warning-foreground hover:bg-warning/90 sm:flex-none"
                           size="sm"
                           onClick={() => decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })}
                         >
@@ -425,7 +521,10 @@ function WardenGatePage() {
 
         <TabsContent value="scan" className="space-y-3">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex-row items-center gap-2.5 space-y-0">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <QrCode className="h-4 w-4" aria-hidden="true" />
+              </span>
               <CardTitle className="text-base">QR Scan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -436,22 +535,25 @@ function WardenGatePage() {
                   await scanMut.mutateAsync({ pass_id, token, direction: scanDirection });
                 }}
               />
-              <div className="space-y-2 border-t border-border pt-3">
+              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs text-muted-foreground">
                   Or paste the Pass ID and QR token shown on the student's app.
                 </p>
                 <Input
                   placeholder="Pass ID (UUID)"
+                  className="bg-background"
                   value={passIdInput}
                   onChange={(e) => setPassIdInput(e.target.value)}
                 />
                 <Input
                   placeholder="QR token"
+                  className="bg-background"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
                 />
                 <div className="flex gap-2">
                   <Button
+                    className="flex-1"
                     onClick={() =>
                       scanMut.mutate({ pass_id: passIdInput, token: tokenInput, direction: "OUT" })
                     }
@@ -460,6 +562,7 @@ function WardenGatePage() {
                     <LogOut className="h-4 w-4" /> Check OUT
                   </Button>
                   <Button
+                    className="flex-1"
                     variant="outline"
                     onClick={() =>
                       scanMut.mutate({ pass_id: passIdInput, token: tokenInput, direction: "IN" })
@@ -473,66 +576,104 @@ function WardenGatePage() {
             </CardContent>
           </Card>
           <div>
-            <div className="mb-2 text-sm font-medium">Currently Out</div>
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              Currently Out
+              {!active.isLoading && (
+                <Badge variant="outline" className="border-transparent bg-muted text-muted-foreground">
+                  {((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE").length}
+                </Badge>
+              )}
+            </div>
             {active.isLoading && <GateSkeletonList compact />}
             {!active.isLoading &&
               ((active.data as PassWithStudent[]) ?? [])
                 .filter((p) => p.status === "ACTIVE")
-                .map((p) => (
+                .map((p, i) => (
                   <Card key={p.id} className="mb-2">
-                    <CardContent className="p-3 text-sm">
-                      {p.pass_number} · {p.students?.full_name} · out{" "}
-                      {p.actual_out_at ? new Date(p.actual_out_at).toLocaleTimeString() : "—"}
+                    <CardContent className="flex items-center gap-3 p-3">
+                      <span
+                        className={cn(
+                          "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold",
+                          avatarTone(i),
+                        )}
+                      >
+                        {initialsOf(p.students?.full_name ?? p.pass_number)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {p.pass_number} · {p.students?.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Out since{" "}
+                          {p.actual_out_at ? new Date(p.actual_out_at).toLocaleTimeString() : "—"}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-transparent bg-muted text-muted-foreground"
+                      >
+                        OUT
+                      </Badge>
                     </CardContent>
                   </Card>
                 ))}
+            {!active.isLoading &&
+              ((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE")
+                .length === 0 && (
+                <p className="text-sm text-muted-foreground">No one is currently out.</p>
+              )}
           </div>
         </TabsContent>
 
         <TabsContent value="visitors" className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={visitorView === "all" ? "default" : "outline"}
-                onClick={() => setVisitorView("all")}
-              >
-                All
-              </Button>
-              <Button
-                size="sm"
-                variant={visitorView === "expected" ? "default" : "outline"}
-                onClick={() => setVisitorView("expected")}
-              >
-                Expected Today
-              </Button>
-              <Button
-                size="sm"
-                variant={visitorView === "inside" ? "default" : "outline"}
-                onClick={() => setVisitorView("inside")}
-              >
-                Inside
-              </Button>
-              <Button
-                size="sm"
-                variant={visitorView === "checked_out" ? "default" : "outline"}
-                onClick={() => setVisitorView("checked_out")}
-              >
-                Checked Out
-              </Button>
-            </div>
-            <Button size="sm" onClick={() => setRegisterOpen(true)}>
-              <UserPlus className="h-4 w-4" /> Register Visitor
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <Button
+              size="sm"
+              className="shrink-0"
+              variant={visitorView === "all" ? "default" : "outline"}
+              onClick={() => setVisitorView("all")}
+            >
+              All
+            </Button>
+            <Button
+              size="sm"
+              className="shrink-0"
+              variant={visitorView === "expected" ? "default" : "outline"}
+              onClick={() => setVisitorView("expected")}
+            >
+              Expected Today
+            </Button>
+            <Button
+              size="sm"
+              className="shrink-0"
+              variant={visitorView === "inside" ? "default" : "outline"}
+              onClick={() => setVisitorView("inside")}
+            >
+              Inside
+            </Button>
+            <Button
+              size="sm"
+              className="shrink-0"
+              variant={visitorView === "checked_out" ? "default" : "outline"}
+              onClick={() => setVisitorView("checked_out")}
+            >
+              Checked Out
             </Button>
           </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by visitor, host, room, or phone"
-              className="pl-8"
-              value={visitorSearch}
-              onChange={(e) => setVisitorSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by visitor, host, room, or phone"
+                className="pl-8 text-sm placeholder:text-sm"
+                value={visitorSearch}
+                onChange={(e) => setVisitorSearch(e.target.value)}
+              />
+            </div>
+            <Button size="sm" className="shrink-0" onClick={() => setRegisterOpen(true)}>
+              <UserPlus className="h-4 w-4" /> Register
+            </Button>
           </div>
           {visitors.isLoading && <GateSkeletonList />}
           {!visitors.isLoading && visitors.error && (
@@ -540,7 +681,14 @@ function WardenGatePage() {
           )}
           {!visitors.isLoading &&
             !visitors.error &&
-            visibleVisitors.map((v) => <VisitorCard key={v.id} visitor={v} visMut={visMut} />)}
+            visibleVisitors.map((v, i) => (
+              <VisitorCard
+                key={v.id}
+                visitor={v}
+                avatarIndex={i}
+                onOpenDetails={() => setDetailsVisitor(v)}
+              />
+            ))}
           {!visitors.isLoading && !visitors.error && visibleVisitors.length === 0 && (
             <EmptyState
               title={
@@ -556,12 +704,28 @@ function WardenGatePage() {
               }
             />
           )}
+          {!visitors.isLoading &&
+            !visitors.error &&
+            visibleVisitors.length > 0 &&
+            (visitorView !== "all" || visitorSearch.trim()) && (
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+                onClick={() => {
+                  setVisitorView("all");
+                  setVisitorSearch("");
+                }}
+              >
+                View all visitors <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
         </TabsContent>
 
         <TabsContent value="feed" className="space-y-2">
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             <Button
               size="sm"
+              className="shrink-0"
               variant={feedFilter === "all" ? "default" : "outline"}
               onClick={() => setFeedFilter("all")}
             >
@@ -569,6 +733,7 @@ function WardenGatePage() {
             </Button>
             <Button
               size="sm"
+              className="shrink-0"
               variant={feedFilter === "entry" ? "default" : "outline"}
               onClick={() => setFeedFilter("entry")}
             >
@@ -576,6 +741,7 @@ function WardenGatePage() {
             </Button>
             <Button
               size="sm"
+              className="shrink-0"
               variant={feedFilter === "exit" ? "default" : "outline"}
               onClick={() => setFeedFilter("exit")}
             >
@@ -583,6 +749,7 @@ function WardenGatePage() {
             </Button>
             <Button
               size="sm"
+              className="shrink-0"
               variant={feedFilter === "alerts" ? "default" : "outline"}
               onClick={() => setFeedFilter("alerts")}
             >
@@ -593,7 +760,7 @@ function WardenGatePage() {
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name"
-              className="pl-8"
+              className="pl-8 text-sm placeholder:text-sm"
               value={feedSearch}
               onChange={(e) => setFeedSearch(e.target.value)}
             />
@@ -611,36 +778,24 @@ function WardenGatePage() {
               }
             />
           )}
-          {!events.isLoading && !events.error && feedList.length > 0 && (
-            <div className="divide-y rounded border text-sm">
-              {feedList.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 p-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Badge
-                      variant={ev.direction === "IN" ? "secondary" : "outline"}
-                      className="shrink-0"
-                    >
-                      {ev.direction}
-                    </Badge>
-                    <span className="truncate">
-                      {ev.students?.full_name ?? ev.visitors?.name ?? "—"}
-                    </span>
-                    {ev.is_late && (
-                      <Badge variant="destructive" className="shrink-0">
-                        LATE
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {new Date(ev.event_at).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          {!events.isLoading &&
+            !events.error &&
+            feedList.map((ev, i) => <FeedEventCard key={ev.id} event={ev} avatarIndex={i} />)}
+          {!events.isLoading &&
+            !events.error &&
+            feedList.length > 0 &&
+            (feedFilter !== "all" || feedSearch.trim()) && (
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+                onClick={() => {
+                  setFeedFilter("all");
+                  setFeedSearch("");
+                }}
+              >
+                View all activity <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
         </TabsContent>
       </Tabs>
 
@@ -649,6 +804,16 @@ function WardenGatePage() {
           pass={detailsPass}
           onOpenChange={(open) => {
             if (!open) setDetailsPass(null);
+          }}
+        />
+      )}
+
+      {detailsVisitor && (
+        <VisitorDetailsDialog
+          visitor={detailsVisitor}
+          visMut={visMut}
+          onOpenChange={(open) => {
+            if (!open) setDetailsVisitor(null);
           }}
         />
       )}
@@ -667,58 +832,184 @@ function WardenGatePage() {
 
 function VisitorCard({
   visitor,
+  avatarIndex,
+  onOpenDetails,
+}: {
+  visitor: VisitorWithRelations;
+  avatarIndex: number;
+  onOpenDetails: () => void;
+}) {
+  const activeAlloc = visitor.students?.allocations?.find((a) => a.status === "ACTIVE");
+  const room = activeAlloc?.rooms?.room_number;
+  return (
+    <button type="button" onClick={onOpenDetails} className="block w-full text-left">
+      <Card className="transition-colors hover:bg-accent/40">
+        <CardContent className="flex items-start gap-3 p-3">
+          <span
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold",
+              avatarTone(avatarIndex),
+            )}
+          >
+            {initialsOf(visitor.name)}
+          </span>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="truncate font-medium">
+              {visitor.name}{" "}
+              <span className="text-xs font-normal text-muted-foreground">({visitor.phone})</span>
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              Host: {visitor.students?.full_name ?? "—"}
+              {room ? ` · Room ${room}` : ""}
+            </div>
+            {visitor.expected_at && (
+              <div className="text-xs text-muted-foreground">
+                Expected: {new Date(visitor.expected_at).toLocaleString()}
+              </div>
+            )}
+            <Badge variant="outline" className={cn("mt-1", statusBadgeClass(visitor.status))}>
+              {visitor.status}
+            </Badge>
+          </div>
+          <ChevronRight
+            className="mt-2 h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
+
+function VisitorDetailsDialog({
+  visitor,
   visMut,
+  onOpenChange,
 }: {
   visitor: VisitorWithRelations;
   visMut: ReturnType<
     typeof useMutation<unknown, unknown, { visitor_id: string; direction: "IN" | "OUT" }>
   >;
+  onOpenChange: (open: boolean) => void;
 }) {
   const activeAlloc = visitor.students?.allocations?.find((a) => a.status === "ACTIVE");
   const room = activeAlloc?.rooms?.room_number;
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-start justify-between gap-3 p-3">
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">
-            {visitor.name} <span className="text-xs text-muted-foreground">({visitor.phone})</span>
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{visitor.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="space-y-1">
+            <p>
+              <span className="text-muted-foreground">Phone:</span> {visitor.phone}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Host:</span>{" "}
+              {visitor.students?.full_name ?? "—"}
+              {room ? ` · Room ${room}` : ""}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Purpose:</span> {visitor.purpose}
+            </p>
+            {visitor.expected_at && (
+              <p>
+                <span className="text-muted-foreground">Expected:</span>{" "}
+                {new Date(visitor.expected_at).toLocaleString()}
+              </p>
+            )}
+            {visitor.checked_in_at && (
+              <p>
+                <span className="text-muted-foreground">Checked in:</span>{" "}
+                {new Date(visitor.checked_in_at).toLocaleString()}
+              </p>
+            )}
+            {visitor.checked_out_at && (
+              <p>
+                <span className="text-muted-foreground">Checked out:</span>{" "}
+                {new Date(visitor.checked_out_at).toLocaleString()}
+              </p>
+            )}
           </div>
-          <div className="truncate text-xs">
-            Host: {visitor.students?.full_name ?? "—"}
-            {room ? ` · Room ${room}` : ""} · {visitor.purpose}
-          </div>
-          {visitor.expected_at && (
-            <div className="text-xs text-muted-foreground">
-              Expected {new Date(visitor.expected_at).toLocaleString()}
-            </div>
-          )}
-          {visitor.checked_in_at && visitor.status === "CHECKED_IN" && (
-            <div className="text-xs text-muted-foreground">
-              Checked in {new Date(visitor.checked_in_at).toLocaleTimeString()}
-            </div>
-          )}
-          <Badge variant="outline" className={cn("mt-1", statusBadgeClass(visitor.status))}>
+          <Badge variant="outline" className={statusBadgeClass(visitor.status)}>
             {visitor.status}
           </Badge>
-        </div>
-        <div className="flex shrink-0 gap-2">
           {visitor.status !== "CHECKED_IN" && visitor.status !== "CHECKED_OUT" && (
             <Button
-              size="sm"
-              onClick={() => visMut.mutate({ visitor_id: visitor.id, direction: "IN" })}
+              className="w-full"
+              onClick={() => {
+                visMut.mutate({ visitor_id: visitor.id, direction: "IN" });
+                onOpenChange(false);
+              }}
             >
               <LogIn className="h-4 w-4" /> Check IN
             </Button>
           )}
           {visitor.status === "CHECKED_IN" && (
             <Button
-              size="sm"
+              className="w-full"
               variant="outline"
-              onClick={() => visMut.mutate({ visitor_id: visitor.id, direction: "OUT" })}
+              onClick={() => {
+                visMut.mutate({ visitor_id: visitor.id, direction: "OUT" });
+                onOpenChange(false);
+              }}
             >
               <LogOut className="h-4 w-4" /> Check OUT
             </Button>
           )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FeedEventCard({ event, avatarIndex }: { event: FeedEvent; avatarIndex: number }) {
+  const isVisitorEvent = !!event.visitors;
+  const name = event.students?.full_name ?? event.visitors?.name ?? "—";
+  const room =
+    roomOf(event.students?.allocations) ?? roomOf(event.visitors?.students?.allocations);
+  const hostName = isVisitorEvent ? event.visitors?.students?.full_name : undefined;
+  return (
+    <Card>
+      <CardContent className="flex items-start gap-3 p-3">
+        <span
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold",
+            avatarTone(avatarIndex),
+          )}
+        >
+          {initialsOf(name)}
+        </span>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className={
+                event.direction === "IN"
+                  ? "border-transparent bg-success/15 text-success"
+                  : "border-transparent bg-muted text-muted-foreground"
+              }
+            >
+              {event.direction}
+            </Badge>
+            <span className="truncate font-medium">
+              {name}
+              {isVisitorEvent && event.visitors?.phone ? ` (${event.visitors.phone})` : ""}
+            </span>
+            {event.is_late && (
+              <Badge variant="outline" className="border-transparent bg-destructive/15 text-destructive">
+                LATE
+              </Badge>
+            )}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">
+            {isVisitorEvent && hostName ? `Host: ${hostName}` : null}
+            {room ? `${isVisitorEvent && hostName ? " · " : ""}Room ${room}` : ""}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {new Date(event.event_at).toLocaleString()}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -898,6 +1189,7 @@ function RegisterVisitorDialog({
   const qc = useQueryClient();
   const students = useStudentsInProperty(propertyId);
   const [hostId, setHostId] = useState("");
+  const [hostPickerOpen, setHostPickerOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -949,18 +1241,47 @@ function RegisterVisitorDialog({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>Host Student</Label>
-            <Select value={hostId} onValueChange={setHostId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select student" />
-              </SelectTrigger>
-              <SelectContent>
-                {(students.data ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={hostPickerOpen} onOpenChange={setHostPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={hostPickerOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {hostId
+                    ? ((students.data ?? []).find((s) => s.id === hostId)?.full_name ??
+                      "Select student")
+                    : "Select student"}
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
+                <Command>
+                  <CommandInput placeholder="Search by name…" />
+                  <CommandList>
+                    <CommandEmpty>No student found.</CommandEmpty>
+                    <CommandGroup>
+                      {(students.data ?? []).map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          value={s.full_name}
+                          onSelect={() => {
+                            setHostId(s.id);
+                            setHostPickerOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn("h-4 w-4", hostId === s.id ? "opacity-100" : "opacity-0")}
+                          />
+                          {s.full_name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1.5">
             <Label>Visitor Name</Label>
@@ -982,8 +1303,8 @@ function RegisterVisitorDialog({
               placeholder="e.g. Meeting, delivery"
             />
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="min-w-0 space-y-1.5">
               <Label>Expected Date (optional)</Label>
               <Input
                 type="date"
@@ -991,7 +1312,7 @@ function RegisterVisitorDialog({
                 onChange={(e) => setExpectedDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>Expected Time (optional)</Label>
               <Input
                 type="time"
@@ -1002,11 +1323,12 @@ function RegisterVisitorDialog({
             </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-row justify-end gap-2 space-x-0">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             disabled={!canSubmit || registerMut.isPending}
             onClick={() => registerMut.mutate()}
           >

@@ -164,14 +164,14 @@ function StudentDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex-col items-start gap-3 space-y-0">
               <CardTitle>KYC documents</CardTitle>
               <KycStatus studentId={s.id} />
             </CardHeader>
           </Card>
 
           <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex-col items-start gap-3 space-y-0">
               <CardTitle>Boarding agreement</CardTitle>
               <AgreementViewer studentId={s.id} readOnly />
             </CardHeader>

@@ -147,6 +147,12 @@ export type ComplaintCommentWithAuthor = ComplaintCommentRow & {
   profiles: { full_name: string } | null;
 };
 
+/**
+ * `complaint_comments.author_user_id` has no FK to `profiles` (it's a bare
+ * uuid — see the 20260807125012 migration), so PostgREST can't resolve an
+ * embedded `profiles(full_name)` join and returns 400. Fetch the two
+ * separately and merge client-side instead of relying on embedding.
+ */
 export function useComplaintComments(complaintId: string | null) {
   return useQuery({
     queryKey: ["complaint-comments", complaintId],
@@ -154,13 +160,28 @@ export function useComplaintComments(complaintId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("complaint_comments")
-        .select(
-          "id, tenant_id, property_id, complaint_id, author_user_id, body, created_at, profiles(full_name)",
-        )
+        .select("id, tenant_id, property_id, complaint_id, author_user_id, body, created_at")
         .eq("complaint_id", complaintId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as ComplaintCommentWithAuthor[];
+      const comments = data ?? [];
+
+      const authorIds = Array.from(new Set(comments.map((c) => c.author_user_id)));
+      const authorNames = new Map<string, string>();
+      if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", authorIds);
+        for (const p of profiles ?? []) authorNames.set(p.id, p.full_name);
+      }
+
+      return comments.map((c) => ({
+        ...c,
+        profiles: authorNames.has(c.author_user_id)
+          ? { full_name: authorNames.get(c.author_user_id)! }
+          : null,
+      })) as ComplaintCommentWithAuthor[];
     },
   });
 }

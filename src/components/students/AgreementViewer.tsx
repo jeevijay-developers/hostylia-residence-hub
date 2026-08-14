@@ -6,6 +6,7 @@ import { Clock, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptAgreementClickwrap } from "@/lib/student.functions";
 
@@ -37,6 +38,7 @@ function fnv1a(str: string): string {
 
 export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Props) {
   const [checked, setChecked] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const acceptFn = useServerFn(acceptAgreementClickwrap);
 
   const agreementQ = useQuery({
@@ -83,16 +85,53 @@ export function AgreementViewer({ studentId, readOnly = false, onAccepted }: Pro
   const signed = agreementQ.data.status === "SIGNED";
 
   if (readOnly) {
-    return signed ? (
-      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-success/10 px-3 py-1.5 text-sm font-medium leading-snug text-success">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-        Completed — signed {new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}
-      </span>
-    ) : (
-      <span className="inline-flex max-w-full items-start gap-2 rounded-md bg-warning/10 px-3 py-1.5 text-sm font-medium leading-snug text-warning">
-        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
-        Pending — awaiting student acceptance
-      </span>
+    return (
+      <div
+        className={`w-full space-y-2.5 rounded-lg border p-3 ${
+          signed
+            ? "border-success/30 bg-success/10 text-success"
+            : "border-warning/30 bg-warning/10 text-warning"
+        }`}
+      >
+        <p className="flex items-start gap-2 text-sm font-medium leading-snug">
+          {signed ? (
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          )}
+          {signed
+            ? `Completed — signed ${new Date(agreementQ.data.signed_at ?? "").toLocaleDateString()}`
+            : "Pending — awaiting student acceptance"}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className={`h-8 bg-transparent ${
+            signed
+              ? "border-success/40 text-success hover:bg-success/10"
+              : "border-warning/40 text-warning hover:bg-warning/10"
+          }`}
+          onClick={() => setDetailsOpen(true)}
+        >
+          View document
+        </Button>
+
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Boarding agreement</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground">
+              Template {agreementQ.data.template_version}
+              {signed &&
+                ` · signed ${new Date(agreementQ.data.signed_at ?? "").toLocaleString()} via click-wrap`}
+            </p>
+            <pre className="whitespace-pre-wrap rounded-md bg-muted/40 p-3 text-xs text-foreground">
+              {AGREEMENT_TEXT}
+            </pre>
+          </DialogContent>
+        </Dialog>
+      </div>
     );
   }
 
