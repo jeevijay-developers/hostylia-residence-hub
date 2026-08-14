@@ -203,6 +203,56 @@ SELECT pg_temp.assert_throws(
   'Approver parent for a different student is rejected');
 ROLLBACK;
 
+-- gp_parent_approve RLS policy: parents (not just admins) must be able to
+-- actually reach the UPDATE — this is what decideGatePass's PARENT branch
+-- relies on at runtime.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02: not linked to Student 01
+SELECT pg_temp.assert_eq(
+  (WITH upd AS (
+     UPDATE public.gate_passes SET status='PENDING_WARDEN', parent_approved_by='00000000-0000-0000-0000-000000000041', parent_approved_at=now()
+       WHERE id='11111111-1111-1111-1111-11111111da05' RETURNING 1
+   ) SELECT count(*) FROM upd), 0,
+  'Parent not linked to Student 01 cannot approve gp05 (RLS blocks the row match)');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01: linked + can_approve_gate_pass for Student 01
+SELECT pg_temp.assert_eq(
+  (WITH upd AS (
+     UPDATE public.gate_passes SET status='PENDING_WARDEN', parent_approved_by='00000000-0000-0000-0000-000000000040', parent_approved_at=now()
+       WHERE id='11111111-1111-1111-1111-11111111da05' RETURNING 1
+   ) SELECT count(*) FROM upd), 1,
+  'Approving parent linked to Student 01 can move gp05 PENDING_PARENT -> PENDING_WARDEN');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 9B — Guardian self-update policy + column guard trigger
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01, owns guardian d001
+DO $$ BEGIN
+  UPDATE public.guardians SET full_name='Parent 01 Updated', occupation='Engineer'
+    WHERE id='11111111-1111-1111-1111-11111111d001';
+  RAISE NOTICE 'OK  [Parent can self-edit own guardian name/occupation]';
+END $$;
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.guardians SET phone='+911999999999' WHERE id='11111111-1111-1111-1111-11111111d001'$sql$,
+  'Parent cannot self-edit their own guardian phone (staff-only, SSO identity anchor)');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.guardians SET portal_access_enabled=false WHERE id='11111111-1111-1111-1111-11111111d001'$sql$,
+  'Parent cannot self-edit portal_access_enabled');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02, does not own guardian d001
+SELECT pg_temp.assert_eq(
+  (WITH upd AS (
+     UPDATE public.guardians SET full_name='Hijacked' WHERE id='11111111-1111-1111-1111-11111111d001' RETURNING 1
+   ) SELECT count(*) FROM upd), 0,
+  'Parent cannot edit a guardian row that is not their own (RLS blocks the row match)');
+ROLLBACK;
+
 -- =============================================================================
 -- SECTION 10 — Complaint reopen window guard
 -- =============================================================================
@@ -436,5 +486,66 @@ SELECT pg_temp.assert_ge(
       AND effective_user_id = '00000000-0000-0000-0000-000000000013'),
   1, 'Audit log recorded for the Hostel Admin assignment');
 ROLLBACK; -- undoes both the grant and the audit row; fixture stays intact
+
+-- =============================================================================
+-- SECTION 13 — Parent notices access, relationship-gated (NOT tenant_memberships)
+--
+-- Guards the "notices read by linked parent" policy added in
+-- 20260812100000_parent_notice_access_policy.sql. Parent01 (profile ..040)
+-- is linked via student_guardians to Student 01, whose property is A1
+-- (..a001). The seed's blanket tenant_memberships bulk-insert (range
+-- ..010-..04f) happens to also cover Parent01/02/03's profiles for
+-- convenience elsewhere in this suite — which would let the *old*
+-- tenant-membership policy paper over a missing relationship-based grant.
+-- To actually prove the new policy (not that pre-existing row) is what
+-- grants access, Parent01's tenant_membership row is deleted for the
+-- duration of this transaction before assuming their identity.
+-- =============================================================================
+BEGIN;
+DELETE FROM public.tenant_memberships
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000040';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.tenant_memberships WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000040'),
+  0, 'Sanity: Parent01 tenant_membership row removed for this test');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01 (no tenant_membership), linked to Student 01 @ Property A1
+
+-- Positive: sees the PUBLISHED, audience=ALL notice for their linked child's property.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c01'),
+  1, 'Parent01 (no tenant_membership) can read PUBLISHED/ALL notice for linked child''s property');
+
+-- Negative: audience_type=STUDENTS notice on the SAME property must stay hidden.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c05'),
+  0, 'Parent01 cannot read STUDENTS-only notice even on own child''s property');
+
+-- Negative: DRAFT (unpublished) notice on the SAME property must stay hidden.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c04'),
+  0, 'Parent01 cannot read DRAFT notice on own child''s property');
+
+-- Negative: cross-property denial — audience=ALL/PUBLISHED but a DIFFERENT property (A2), not linked.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE property_id='11111111-1111-1111-1111-11111111a002'),
+  0, 'Parent01 cannot read notices for a property their child is not in (cross-property denial)');
+
+-- Negative: cross-tenant denial.
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE tenant_id='22222222-2222-2222-2222-222222222222'),
+  0, 'Parent01 cannot read Tenant B notices (cross-tenant denial)');
+ROLLBACK;
+
+-- Parent02 (view-only permissions elsewhere — can_pay_fees=false etc.) is still linked to
+-- Student 02 @ Property A1 via an active student_guardians row: notices carry no per-guardian
+-- permission flag (unlike attendance/gate events), so linkage alone must grant read access.
+BEGIN;
+DELETE FROM public.tenant_memberships
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000041';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02 (no tenant_membership)
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.notices WHERE id='11111111-1111-1111-1111-111111118c01'),
+  1, 'Parent02 (view-only elsewhere, no tenant_membership) can still read linked-property ALL notice');
+ROLLBACK;
 
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

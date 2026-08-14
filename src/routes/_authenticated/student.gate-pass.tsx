@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
-import { createGatePass } from "@/lib/operations.functions";
+import { createGatePass, reissueGatePassQrToken } from "@/lib/operations.functions";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 
@@ -21,14 +21,6 @@ export const Route = createFileRoute("/_authenticated/student/gate-pass")({
   component: StudentGatePassPage,
 });
 
-const TOKEN_STORE_KEY = "hostylia.gate-tokens";
-function loadTokens(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? "{}"); } catch { return {}; }
-}
-function saveToken(passId: string, token: string) {
-  const t = loadTokens(); t[passId] = token;
-  localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify(t));
-}
 function randomHex(len = 24): string {
   const b = new Uint8Array(len);
   crypto.getRandomValues(b);
@@ -78,6 +70,9 @@ function StudentGatePassPage() {
   const createMut = useMutation({
     mutationFn: async () => {
       if (!studentQ.data?.id) throw new Error("Student profile missing");
+      // A pass starts PENDING_WARDEN/PENDING_PARENT — not yet scannable, so
+      // this placeholder hash is never actually shown; PassCard issues the
+      // real, retrievable-from-any-device token once the pass is approved.
       const token = randomHex(24);
       const hash = await sha256Hex(token);
       const res = await create({ data: {
@@ -85,9 +80,7 @@ function StudentGatePassPage() {
         out_at: new Date(outAt).toISOString(), expected_in_at: new Date(inAt).toISOString(),
         qr_token_hash: hash,
       } });
-      const pass = res as unknown as { id: string };
-      saveToken(pass.id, token);
-      return pass;
+      return res as unknown as { id: string };
     },
     onSuccess: () => {
       toast.success("Requested");
@@ -106,7 +99,7 @@ function StudentGatePassPage() {
         <CardContent className="space-y-2">
           <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Going out — date</label>
               <Input type="date" value={outDate} onChange={(e) => setOutDate(e.target.value)} />
@@ -148,17 +141,30 @@ function StudentGatePassPage() {
   );
 }
 
+const PENDING_STATUSES = ["PENDING_WARDEN", "PENDING_PARENT"];
+
 function PassCard({ pass }: { pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string } }) {
-  const [qr, setQr] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => {
-    const t = loadTokens()[pass.id];
-    if (!t) return;
-    setToken(t);
-    if (pass.status === "APPROVED" || pass.status === "ACTIVE") {
-      QRCode.toDataURL(JSON.stringify({ id: pass.id, t })).then(setQr).catch(() => null);
-    }
-  }, [pass.id, pass.status]);
+  const reissue = useServerFn(reissueGatePassQrToken);
+  const scannable = pass.status === "APPROVED" || pass.status === "ACTIVE";
+
+  // Issues a fresh token + QR on demand from the backend rather than reading
+  // one out of localStorage — works from any device/browser once logged in.
+  // staleTime/gcTime: Infinity means this only rotates the token once per
+  // (pass, page load), not on every re-render.
+  const qrQ = useQuery({
+    queryKey: ["gate-pass-qr", pass.id],
+    enabled: scannable,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    queryFn: async () => {
+      const token = randomHex(24);
+      const hash = await sha256Hex(token);
+      await reissue({ data: { pass_id: pass.id, qr_token_hash: hash } });
+      const dataUrl = await QRCode.toDataURL(JSON.stringify({ id: pass.id, t: token }));
+      return { dataUrl, token };
+    },
+  });
+
   return (
     <Card><CardContent className="p-3 space-y-2">
       <div className="flex justify-between">
@@ -166,19 +172,27 @@ function PassCard({ pass }: { pass: { id: string; pass_number: string; status: s
           <div className="font-medium">{pass.pass_number}</div>
           <div className="text-xs text-muted-foreground">{pass.reason} · {new Date(pass.out_at).toLocaleString()} → {new Date(pass.expected_in_at).toLocaleString()}</div>
         </div>
-        <Badge variant="secondary">{pass.status}</Badge>
+        <Badge variant="secondary">
+          {PENDING_STATUSES.includes(pass.status) ? "Pending" : pass.status}
+        </Badge>
       </div>
-      {qr && (
-        <div className="flex items-center gap-3">
-          <img src={qr} alt="Gate pass QR" className="h-32 w-32" />
-          <div className="text-xs break-all font-mono">
-            <div>Pass: {pass.id}</div>
-            <div>Token: {token}</div>
-          </div>
+      {scannable && qrQ.isLoading && (
+        <p className="text-xs text-muted-foreground">Preparing QR…</p>
+      )}
+      {scannable && qrQ.isError && (
+        <div className="space-y-1">
+          <p className="text-xs text-destructive">Could not load QR.</p>
+          <Button size="sm" variant="outline" onClick={() => qrQ.refetch()}>Retry</Button>
         </div>
       )}
-      {!token && pass.status === "APPROVED" && (
-        <p className="text-xs text-muted-foreground">QR unavailable on this device (token was stored on the device where you created the pass).</p>
+      {qrQ.data && (
+        <div className="flex items-center gap-3">
+          <img src={qrQ.data.dataUrl} alt="Gate pass QR" className="h-32 w-32" />
+          <div className="text-xs break-all font-mono">
+            <div>Pass: {pass.id}</div>
+            <div>Token: {qrQ.data.token}</div>
+          </div>
+        </div>
       )}
     </CardContent></Card>
   );

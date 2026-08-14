@@ -14,6 +14,11 @@
 //     OTP variable placeholder.
 //   MSG91_OTP_VAR         — optional, name of the template variable that holds
 //     the OTP (defaults to "OTP", MSG91's own default variable name).
+//   DEV_TEST_PHONES        — optional, comma-separated E.164 phone numbers (no
+//     leading "+", matching how GoTrue passes user.phone) allowed to bypass
+//     MSG91 while it's unconfigured (DLT approval pending). ONLY these numbers
+//     get a logged OTP + fake success; every other number still fails closed
+//     with 503 so real users never get a false "OTP sent" with no delivery.
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 
 Deno.serve(async (req) => {
@@ -45,6 +50,19 @@ Deno.serve(async (req) => {
   const TEMPLATE_ID = Deno.env.get("MSG91_TEMPLATE_ID");
   const OTP_VAR = Deno.env.get("MSG91_OTP_VAR") || "OTP";
   if (!AUTH_KEY || !TEMPLATE_ID) {
+    // TEMPORARY (DLT approval pending): MSG91 isn't configured yet, so real SMS
+    // can't go out. For real users this must still fail closed (503) — a fake
+    // "success" with no delivery would strand them on the OTP screen with no
+    // way to get a code. Only an explicit allowlist of test numbers gets a
+    // logged OTP + fake success, so login can be smoke-tested without MSG91.
+    const testPhones = (Deno.env.get("DEV_TEST_PHONES") || "")
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (testPhones.includes(phone)) {
+      console.log(`[send-sms-hook] DEV BYPASS (allowlisted test phone): phone=${phone} otp=${otp}`);
+      return json({}, 200);
+    }
     return json({
       error: { http_code: 503, message: "MSG91 is not configured — add MSG91_AUTH_KEY and MSG91_TEMPLATE_ID." },
     }, 503);

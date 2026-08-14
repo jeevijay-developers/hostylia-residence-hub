@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { normalizeIndianPhone } from "@/schemas/auth";
+import { isDevTestParentPhone } from "@/lib/dev-auth.functions";
 
 const OTP_LIMIT = 5;
 const OTP_WINDOW_SECONDS = 600; // 10 minutes
@@ -25,6 +26,16 @@ export const sendPhoneOtp = createServerFn({ method: "POST" })
     // inviteStaff) — otherwise a bare 10-digit number here silently becomes
     // a different identity than one stored as "+91…".
     const phone = normalizeIndianPhone(data.phone);
+
+    // Local-testing-only Parent login bypass: the dev environment has no
+    // real SMS provider wired up, so skip signInWithOtp entirely for the
+    // designated test phone — the matching fixed OTP is accepted by
+    // devParentTestLogin at verify time instead. No-ops outside dev (see
+    // dev-auth.functions.ts for the env gate).
+    if (isDevTestParentPhone(phone)) {
+      return { ok: true as const, message: null };
+    }
+
     const supabase = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,

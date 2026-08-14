@@ -74,7 +74,7 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
             <Label htmlFor="s-name">Full name *</Label>
             <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="s-phone">Phone</Label>
               <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" />
@@ -84,7 +84,7 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
               <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="s-dob">Date of birth</Label>
               <Input id="s-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
@@ -101,7 +101,7 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 border-t border-border pt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 border-t border-border pt-4">
             <div>
               <Label htmlFor="s-g-name">Guardian name *</Label>
               <Input id="s-g-name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />

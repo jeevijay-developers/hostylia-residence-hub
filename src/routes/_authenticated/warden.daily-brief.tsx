@@ -141,7 +141,11 @@ function WardenBriefPage() {
   const studentsQ = useStudentsInProperty(propertyId);
   const attendanceQ = useAttendance(propertyId, today);
   const complaintsQ = useComplaints({ propertyId });
-  const gatePassesQ = useGatePasses(propertyId, ["PENDING_WARDEN"]);
+  // Matches warden.gate.tsx's own "pending" definition (APPROVAL_FILTER_STATUSES.PENDING):
+  // a request awaiting parent sign-off is still a pending gate pass a warden can act on —
+  // decideGatePass accepts PENDING_WARDEN/PENDING_PARENT/DRAFT for a warden decision — so
+  // filtering to PENDING_WARDEN alone hid still-pending, still-actionable requests.
+  const gatePassesQ = useGatePasses(propertyId, ["PENDING_WARDEN", "PENDING_PARENT"]);
   const visitorsQ = useVisitors(propertyId);
   const menusQ = useMessMenusForDate(propertyId, today);
   const kycQ = useKycQueue();
@@ -253,7 +257,7 @@ function WardenBriefPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Daily brief" description="Your day at a glance." />
+      {/* <PageHeader title="Daily brief" description="Your day at a glance." /> */}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard
@@ -306,158 +310,22 @@ function WardenBriefPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {QUICK_ACTIONS.map((a) => (
-          <Link
-            key={a.to}
-            to={a.to}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition hover:bg-accent"
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <span
-                className={cn(
-                  "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
-                  toneClasses[a.tone],
-                )}
-              >
-                <a.icon className="h-4 w-4" />
-              </span>
-              <span className="truncate text-sm font-medium text-foreground">{a.label}</span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </Link>
-        ))}
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Attendance Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <SummaryStat label="Total" value={attendanceCounts.total} />
-          <SummaryStat label="Present" value={attendanceCounts.PRESENT} tone="text-success" />
-          <SummaryStat label="Absent" value={attendanceCounts.ABSENT} tone="text-destructive" />
-          <SummaryStat label="Late" value={attendanceCounts.LATE} tone="text-warning" />
-          <SummaryStat label="Leave" value={attendanceCounts.ON_LEAVE} tone="text-warning" />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Pending Complaints</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {pendingComplaints.slice(0, 5).map((c) => (
-            <div
-              key={c.id}
-              className="flex items-start justify-between gap-2 rounded-md border border-border p-2 text-sm"
-            >
-              <div className="flex min-w-0 items-start gap-2">
-                <span
-                  className={cn(
-                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                    PRIORITY_DOT_CLASSES[priorityTone(c.priority)],
-                  )}
-                />
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {c.complaint_number}
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                        toneClasses[priorityTone(c.priority)],
-                      )}
-                    >
-                      {c.priority}
-                    </span>
-                  </div>
-                  <div className="truncate">
-                    {c.students?.full_name ?? "—"}
-                    {c.rooms?.room_number ? ` · Room ${c.rooms.room_number}` : ""}
-                  </div>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <StatusBadge status={c.status} />
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/warden/complaints">Open</Link>
-                </Button>
-                <Button size="sm" asChild>
-                  <Link to="/warden/complaints">View</Link>
-                </Button>
-              </div>
-            </div>
-          ))}
-          {complaintsQ.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-          {!complaintsQ.isLoading && pendingComplaints.length === 0 && (
-            <p className="text-sm text-muted-foreground">No pending complaints.</p>
-          )}
-          <Link
-            to="/warden/complaints"
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            View all complaints <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Pending Gate Pass</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {(gatePassesQ.data ?? []).map((p) => {
-            const px = p as typeof p & { students?: { full_name?: string } };
-            return (
-              <div
-                key={p.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-border p-2 text-sm"
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{px.students?.full_name ?? "—"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Requested {new Date(p.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={decideMut.isPending}
-                    onClick={() => decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })}
-                  >
-                    <X className="h-4 w-4" /> Reject
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={decideMut.isPending}
-                    onClick={() => decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })}
-                  >
-                    <Check className="h-4 w-4" /> Approve
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-          {gatePassesQ.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-          {!gatePassesQ.isLoading && gatePassesQ.data?.length === 0 && (
-            <div className="flex items-center gap-3 rounded-md border border-dashed border-border p-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                <DoorOpen className="h-4 w-4" />
-              </span>
-              <p className="text-sm text-muted-foreground">No pending gate pass requests.</p>
-            </div>
-          )}
-          <Link
-            to="/warden/gate"
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            View all gate pass requests <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </CardContent>
-      </Card>
+      <Link
+        to="/warden/mess"
+        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 transition hover:bg-accent"
+      >
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <Utensils className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-medium">Manage Mess Menu</p>
+            <p className="text-xs text-muted-foreground">Publish or update today's mess menu</p>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       <Card>
         <CardHeader>

@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { OccupancyReportPanel, SlaComplianceReportPanel } from "@/components/reports/panels";
+import {
+  OccupancyReportPanel,
+  SlaComplianceReportPanel,
+  AttendanceReportPanel,
+} from "@/components/reports/panels";
 
 /**
  * Warden reports — SLA compliance for their assigned scope and
@@ -45,6 +49,7 @@ function WardenReportsPage() {
         <>
           <SlaComplianceReportPanel propertyId={propertyId} showExport={false} />
           <OccupancyReportPanel propertyId={propertyId} showExport={false} />
+          <AttendanceReportPanel propertyId={propertyId} showExport={false} />
         </>
       )}
     </div>

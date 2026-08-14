@@ -54,6 +54,44 @@ export const createGatePass = createServerFn({ method: "POST" })
     return gp;
   });
 
+const reissueQrSchema = z.object({
+  pass_id: z.string().uuid(),
+  qr_token_hash: z.string().length(64),
+});
+
+/**
+ * Re-issues a gate pass's QR (rotates qr_token_hash). The token itself is
+ * still generated client-side and only its hash reaches here — same as
+ * createGatePass — so the plaintext never touches the server or gets
+ * persisted anywhere. This is what makes the QR retrievable from *any*
+ * device after login: the student's browser calls this on demand instead of
+ * relying on a token that was only ever saved to localStorage on the device
+ * that created the pass. Scanning (scanGatePass) is untouched — it already
+ * just compares a hash, so it doesn't care which device issued the token it's
+ * currently checking.
+ */
+export const reissueGatePassQrToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => reissueQrSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: gp, error: gErr } = await supabase
+      .from("gate_passes")
+      .select("id, status")
+      .eq("id", data.pass_id)
+      .maybeSingle();
+    if (gErr || !gp) throw new Error("Gate pass not found");
+    if (!["APPROVED", "ACTIVE"].includes(gp.status)) {
+      throw new Error(`Cannot issue a QR for a ${gp.status.toLowerCase()} pass`);
+    }
+    const { error } = await supabase
+      .from("gate_passes")
+      .update({ qr_token_hash: data.qr_token_hash })
+      .eq("id", data.pass_id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 const createVisitorSchema = z.object({
   host_student_id: z.string().uuid(),
   name: z.string().trim().min(2).max(120),

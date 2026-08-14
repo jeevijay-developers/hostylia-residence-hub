@@ -73,6 +73,7 @@
     "tabs": {
       "home": "Home",
       "attendance": "Attendance",
+      "gatePass": "Gate Pass",
       "complaints": "Complaints",
       "messages": "Messages",
       "profile": "Profile"
@@ -88,7 +89,8 @@
     "attendance": {
       "title": "Attendance",
       "emptyTitle": "No attendance yet",
-      "emptyBody": "Attendance tracking starts once your hostel activates it."
+      "emptyBody": "Attendance tracking starts once your hostel activates it.",
+      "noReasonRecorded": "No reason recorded"
     },
     "complaints": {
       "title": "Complaints",
@@ -101,6 +103,29 @@
       "startPlaceholder": "Type your message…",
       "systemJoined": "Conversation started with the warden.",
       "noWarden": "No warden is assigned to this property yet. Please try again later."
+    },
+    "gatePass": {
+      "title": "Gate Pass",
+      "needsApproval": "Needs your approval",
+      "noPendingTitle": "Nothing to approve",
+      "noPendingBody": "Out-pass requests awaiting your approval will appear here.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approved": "Pass approved",
+      "rejected": "Pass rejected",
+      "decisionFailed": "Could not record your decision. Please try again.",
+      "recentTitle": "Recent passes",
+      "emptyTitle": "No gate passes yet",
+      "emptyBody": "Gate passes requested for your child will appear here.",
+      "pending": "Pending"
+    },
+    "gateHistory": {
+      "title": "Gate history",
+      "emptyTitle": "No gate activity yet",
+      "emptyBody": "Entry and exit events for your child will appear here.",
+      "in": "In",
+      "out": "Out",
+      "late": "Late"
     },
     "noChildren": "No linked children on your account yet. Please contact the hostel."
   }

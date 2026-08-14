@@ -301,7 +301,14 @@ END $seed$;
 INSERT INTO public.notices (id, tenant_id, property_id, title, body, priority, status, audience_type, published_at)
 VALUES
   ('11111111-1111-1111-1111-111111118c01','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Water shutdown','Maintenance 10-12','IMPORTANT','PUBLISHED','ALL', now()-interval '2 hours'),
-  ('11111111-1111-1111-1111-111111118c02','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Holiday menu','Diwali special','NORMAL','PUBLISHED','STUDENTS', now()-interval '1 day');
+  ('11111111-1111-1111-1111-111111118c02','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Holiday menu','Diwali special','NORMAL','PUBLISHED','STUDENTS', now()-interval '1 day'),
+  -- Property A2, audience ALL, PUBLISHED — parents linked only to Property A1 must NOT see this
+  -- (proves the new parent notice policy scopes by property, not just audience_type).
+  ('11111111-1111-1111-1111-111111118c03','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Fumigation notice','Pest control 6-8pm','NORMAL','PUBLISHED','ALL', now()-interval '3 hours'),
+  -- Property A1, audience ALL, still DRAFT (published_at NULL) — must stay hidden from parents.
+  ('11111111-1111-1111-1111-111111118c04','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Draft — do not publish yet','Internal draft copy','NORMAL','DRAFT','ALL', NULL),
+  -- Property A1, audience STUDENTS only — parents must NOT see this even though the property matches.
+  ('11111111-1111-1111-1111-111111118c05','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Mess headcount reminder','Submit by 9am','NORMAL','PUBLISHED','STUDENTS', now()-interval '5 hours');
 
 INSERT INTO public.notifications (tenant_id, property_id, recipient_user_id, event_type, channel, template_key, payload, status, sent_at, delivered_at, idempotency_key)
 VALUES
@@ -314,7 +321,10 @@ VALUES
   ('11111111-1111-1111-1111-11111111da01','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110001','GP-SEED-0001','Doctor visit','Clinic', now()+interval '1 hour', now()+interval '4 hours','PENDING_WARDEN', false, '00000000-0000-0000-0000-000000000020'),
   ('11111111-1111-1111-1111-11111111da02','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110002','GP-SEED-0002','Home','Home', now()+interval '2 hours', now()+interval '2 days','PENDING_PARENT', true, '00000000-0000-0000-0000-000000000021'),
   ('11111111-1111-1111-1111-11111111da03','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110003','GP-SEED-0003','Shopping','Mall', now()-interval '1 hour', now()+interval '4 hours','APPROVED', false, '00000000-0000-0000-0000-000000000022'),
-  ('11111111-1111-1111-1111-11111111da04','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110004','GP-SEED-0004','Library','Library', now()-interval '3 hours', now()-interval '1 hour','COMPLETED', false, '00000000-0000-0000-0000-000000000023');
+  ('11111111-1111-1111-1111-11111111da04','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110004','GP-SEED-0004','Library','Library', now()-interval '3 hours', now()-interval '1 hour','COMPLETED', false, '00000000-0000-0000-0000-000000000023'),
+  -- Belongs to Student 01, whose linked parent_01 (..040) has can_approve_gate_pass=true — used to
+  -- RLS-test the parent-approval UPDATE policy (gp_parent_approve) directly, not just the trigger.
+  ('11111111-1111-1111-1111-11111111da05','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-11111111b001','11111111-1111-1111-1111-111111110001','GP-SEED-0005','Weekend home visit','Home', now()+interval '1 day', now()+interval '3 days','PENDING_PARENT', true, '00000000-0000-0000-0000-000000000020');
 
 -- ---------- Attendance (last 3 days for active students) ----------------
 INSERT INTO public.attendance (tenant_id, property_id, block_id, student_id, attendance_date, session, status, marked_by, source)

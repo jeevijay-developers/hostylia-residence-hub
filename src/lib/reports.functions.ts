@@ -6,6 +6,12 @@ const propertyFilter = z.object({
   property_id: z.string().uuid(),
 });
 
+const monthlyAttendanceFilter = z.object({
+  property_id: z.string().uuid(),
+  // First-of-month date, e.g. "2026-08-01" — matches v_attendance_monthly_summary.month.
+  month: z.string().regex(/^\d{4}-\d{2}-01$/),
+});
+
 /**
  * Occupancy accuracy per block for a property.
  * View v_occupancy_summary has security_invoker so RLS on `beds` applies.
@@ -115,5 +121,46 @@ export const getSlaComplianceReport = createServerFn({ method: "POST" })
       ...r,
       category_name: r.category_id ? catMap[r.category_id] ?? "(unknown)" : "(uncategorised)",
       warden_name: r.assigned_to ? wardenMap[r.assigned_to] ?? "(unknown)" : "(unassigned)",
+    }));
+  });
+
+/**
+ * Monthly attendance summary, one row per student, for a given calendar
+ * month. Reads v_attendance_monthly_summary (security_invoker — RLS on
+ * `attendance` applies: Admin gets the whole property, Warden gets their
+ * assigned property/block only, since `att_warden_write` is FOR ALL and
+ * already gates SELECT). `.eq("property_id", ...)` further narrows within
+ * whatever RLS already allowed.
+ */
+export const getAttendanceReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => monthlyAttendanceFilter.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
+      .from("v_attendance_monthly_summary" as never)
+      .select("*")
+      .eq("property_id", data.property_id)
+      .eq("month", data.month);
+    if (error) throw new Error(error.message);
+
+    const studentIds = Array.from(
+      new Set((rows ?? []).map((r: any) => r.student_id).filter(Boolean)),
+    ) as string[];
+    let studentInfo: Record<string, { full_name: string; admission_number: string }> = {};
+    if (studentIds.length > 0) {
+      const { data: st } = await supabase
+        .from("students")
+        .select("id, full_name, admission_number")
+        .in("id", studentIds);
+      studentInfo = Object.fromEntries(
+        (st ?? []).map((s) => [s.id, { full_name: s.full_name, admission_number: s.admission_number }]),
+      );
+    }
+
+    return (rows ?? []).map((r: any) => ({
+      ...r,
+      full_name: studentInfo[r.student_id]?.full_name ?? "(unknown)",
+      admission_number: studentInfo[r.student_id]?.admission_number ?? "—",
     }));
   });

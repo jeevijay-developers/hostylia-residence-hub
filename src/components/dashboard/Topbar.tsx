@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, LogOut, Search, User, UserRoundPen } from "lucide-react";
+import { KeyRound, LogOut, Menu, Search, User, UserRoundPen } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -19,19 +19,25 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { ChangePasswordDialog } from "@/components/dashboard/ChangePasswordDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
+import { BrandLockup } from "@/components/BrandLockup";
+import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
+import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 
 interface TopbarProps {
   navItems?: NavItem[];
+  showPropertySwitcher?: boolean;
+  tenantId?: string | null;
 }
 
-export function Topbar({ navItems = [] }: TopbarProps) {
+export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
   const navigate = useNavigate();
@@ -39,6 +45,7 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   const { data: ownProfile } = useQuery({
     queryKey: ["own-profile"],
@@ -63,6 +70,52 @@ export function Topbar({ navItems = [] }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
+      {navItems.length > 0 && (
+        <Sheet open={navOpen} onOpenChange={setNavOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="flex w-72 flex-col p-0">
+            <SheetHeader className="border-b border-border p-4 text-left">
+              <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+              <BrandLockup variant="lockup" className="h-8" />
+            </SheetHeader>
+            {showPropertySwitcher ? (
+              <div className="border-b border-border p-3">
+                <PropertySwitcher tenantId={tenantId ?? null} />
+              </div>
+            ) : null}
+            <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+              {navItems.map((item) => {
+                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setNavOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </SheetContent>
+        </Sheet>
+      )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => {

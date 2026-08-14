@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
+import { GuardianCard } from "@/components/students/GuardianCard";
 import { confirmStudentAdmission } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/students/$id/")({
@@ -115,6 +116,8 @@ function StudentDetailPage() {
         </Card>
 
         <div className="space-y-6">
+          <GuardianCard studentId={id} canEdit />
+
           <Card>
             <CardHeader><CardTitle>Allocation history</CardTitle></CardHeader>
             <CardContent>

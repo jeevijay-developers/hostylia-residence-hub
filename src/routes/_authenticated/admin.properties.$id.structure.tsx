@@ -438,7 +438,7 @@ function AddRoomDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><Label>Capacity</Label><Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} /></div>
             <div><Label>Base rent (₹)</Label><Input type="number" min={0} value={rent} onChange={(e) => setRent(e.target.value)} /></div>
           </div>
