@@ -8,6 +8,8 @@ import {
   CreditCard,
   TrendingDown,
   AlertTriangle,
+  Clock,
+  GraduationCap,
   UserPlus,
   Wallet,
   Flag,
@@ -28,6 +30,7 @@ import {
   listSubscriptionsWithPlan,
   listSupportSessions,
 } from "@/lib/super-admin.functions";
+import { daysRemaining, getExpiryIndicator, relevantEndDate } from "@/lib/subscription-expiry";
 import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/super-admin/dashboard")({
@@ -81,6 +84,18 @@ function SuperAdminDashboardPage() {
     return counts;
   }, [subsQ.data]);
   const pastDueCount = subStatusCounts.PAST_DUE ?? 0;
+
+  const { endingSoonCount, trialsEndingSoonCount } = useMemo(() => {
+    let endingSoon = 0;
+    let trialsEndingSoon = 0;
+    for (const s of subsQ.data ?? []) {
+      const indicator = getExpiryIndicator(s.status, daysRemaining(relevantEndDate(s)));
+      if (indicator !== "ENDING_SOON" && indicator !== "ENDS_TODAY") continue;
+      if (s.status === "TRIAL") trialsEndingSoon += 1;
+      else endingSoon += 1;
+    }
+    return { endingSoonCount: endingSoon, trialsEndingSoonCount: trialsEndingSoon };
+  }, [subsQ.data]);
 
   const tenantNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -217,6 +232,76 @@ function SuperAdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {!subsQ.isLoading &&
+        (pastDueCount > 0 || endingSoonCount > 0 || trialsEndingSoonCount > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Subscription alerts</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {pastDueCount > 0 && (
+                <Link
+                  to="/super-admin/billing"
+                  className={cn(
+                    "flex items-center gap-3 rounded-md border border-border p-3 transition hover:bg-accent",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-md",
+                      toneClasses.destructive,
+                    )}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-semibold">{pastDueCount}</span> overdue subscription
+                    {pastDueCount === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              )}
+              {endingSoonCount > 0 && (
+                <Link
+                  to="/super-admin/billing"
+                  className="flex items-center gap-3 rounded-md border border-border p-3 transition hover:bg-accent"
+                >
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-md",
+                      toneClasses.warning,
+                    )}
+                  >
+                    <Clock className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-semibold">{endingSoonCount}</span> subscription
+                    {endingSoonCount === 1 ? "" : "s"} ending soon
+                  </span>
+                </Link>
+              )}
+              {trialsEndingSoonCount > 0 && (
+                <Link
+                  to="/super-admin/billing"
+                  className="flex items-center gap-3 rounded-md border border-border p-3 transition hover:bg-accent"
+                >
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-md",
+                      toneClasses.info,
+                    )}
+                  >
+                    <GraduationCap className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-semibold">{trialsEndingSoonCount}</span> trial
+                    {trialsEndingSoonCount === 1 ? "" : "s"} ending soon
+                  </span>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       <Card>
         <CardHeader>

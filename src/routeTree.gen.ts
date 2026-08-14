@@ -57,6 +57,7 @@ import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin.students'
+import { Route as AuthenticatedAdminSupportRouteImport } from './routes/_authenticated/admin.support'
 import { Route as AuthenticatedParentAttendanceRouteImport } from './routes/_authenticated/parent.attendance'
 import { Route as AuthenticatedParentComplaintsRouteImport } from './routes/_authenticated/parent.complaints'
 import { Route as AuthenticatedParentMessagesRouteImport } from './routes/_authenticated/parent.messages'
@@ -73,6 +74,8 @@ import { Route as AuthenticatedSuperAdminBillingRouteImport } from './routes/_au
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
 import { Route as AuthenticatedSuperAdminFeatureFlagsRouteImport } from './routes/_authenticated/super-admin.feature-flags'
 import { Route as AuthenticatedSuperAdminImpersonationRouteImport } from './routes/_authenticated/super-admin.impersonation'
+import { Route as AuthenticatedSuperAdminPlansRouteImport } from './routes/_authenticated/super-admin.plans'
+import { Route as AuthenticatedSuperAdminSupportTicketsRouteImport } from './routes/_authenticated/super-admin.support-tickets'
 import { Route as AuthenticatedSuperAdminTenantsRouteImport } from './routes/_authenticated/super-admin.tenants'
 import { Route as AuthenticatedWardenAttendanceRouteImport } from './routes/_authenticated/warden.attendance'
 import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
@@ -92,6 +95,7 @@ import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/admin.students.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
+import { Route as AuthenticatedAdminSupportIdRouteImport } from './routes/_authenticated/admin.support.$id'
 import { Route as AuthenticatedWardenProfileIndexRouteImport } from './routes/_authenticated/warden.profile.index'
 import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './routes/_authenticated/warden.profile.change-password'
 import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
@@ -356,6 +360,12 @@ const AuthenticatedAdminStudentsRoute =
     path: '/students',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSupportRoute =
+  AuthenticatedAdminSupportRouteImport.update({
+    id: '/support',
+    path: '/support',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedParentAttendanceRoute =
   AuthenticatedParentAttendanceRouteImport.update({
     id: '/attendance',
@@ -450,6 +460,18 @@ const AuthenticatedSuperAdminImpersonationRoute =
   AuthenticatedSuperAdminImpersonationRouteImport.update({
     id: '/impersonation',
     path: '/impersonation',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminPlansRoute =
+  AuthenticatedSuperAdminPlansRouteImport.update({
+    id: '/plans',
+    path: '/plans',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminSupportTicketsRoute =
+  AuthenticatedSuperAdminSupportTicketsRouteImport.update({
+    id: '/support-tickets',
+    path: '/support-tickets',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
 const AuthenticatedSuperAdminTenantsRoute =
@@ -564,6 +586,12 @@ const AuthenticatedAdminStudentsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedAdminStudentsRoute,
   } as any)
+const AuthenticatedAdminSupportIdRoute =
+  AuthenticatedAdminSupportIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminSupportRoute,
+  } as any)
 const AuthenticatedWardenProfileIndexRoute =
   AuthenticatedWardenProfileIndexRouteImport.update({
     id: '/profile/',
@@ -655,6 +683,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
+  '/admin/support': typeof AuthenticatedAdminSupportRouteWithChildren
   '/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/parent/messages': typeof AuthenticatedParentMessagesRoute
@@ -671,6 +700,8 @@ export interface FileRoutesByFullPath {
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
   '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
+  '/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
   '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -686,6 +717,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
+  '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
@@ -743,6 +775,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/support': typeof AuthenticatedAdminSupportRouteWithChildren
   '/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/parent/messages': typeof AuthenticatedParentMessagesRoute
@@ -759,6 +792,8 @@ export interface FileRoutesByTo {
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
   '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
+  '/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
   '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -773,6 +808,7 @@ export interface FileRoutesByTo {
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
+  '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/accountant/profile': typeof AuthenticatedAccountantProfileIndexRoute
@@ -835,6 +871,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/students': typeof AuthenticatedAdminStudentsRouteWithChildren
+  '/_authenticated/admin/support': typeof AuthenticatedAdminSupportRouteWithChildren
   '/_authenticated/parent/attendance': typeof AuthenticatedParentAttendanceRoute
   '/_authenticated/parent/complaints': typeof AuthenticatedParentComplaintsRoute
   '/_authenticated/parent/messages': typeof AuthenticatedParentMessagesRoute
@@ -851,6 +888,8 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/_authenticated/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
   '/_authenticated/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
+  '/_authenticated/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
+  '/_authenticated/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
   '/_authenticated/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
   '/_authenticated/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
@@ -866,6 +905,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
+  '/_authenticated/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/_authenticated/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/_authenticated/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/_authenticated/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
@@ -928,6 +968,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/students'
+    | '/admin/support'
     | '/parent/attendance'
     | '/parent/complaints'
     | '/parent/messages'
@@ -944,6 +985,8 @@ export interface FileRouteTypes {
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
     | '/super-admin/impersonation'
+    | '/super-admin/plans'
+    | '/super-admin/support-tickets'
     | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
@@ -959,6 +1002,7 @@ export interface FileRouteTypes {
     | '/admin/finance/payments'
     | '/admin/finance/pnl'
     | '/admin/students/$id'
+    | '/admin/support/$id'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/accountant/profile/'
@@ -1016,6 +1060,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/support'
     | '/parent/attendance'
     | '/parent/complaints'
     | '/parent/messages'
@@ -1032,6 +1077,8 @@ export interface FileRouteTypes {
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
     | '/super-admin/impersonation'
+    | '/super-admin/plans'
+    | '/super-admin/support-tickets'
     | '/super-admin/tenants'
     | '/warden/attendance'
     | '/warden/complaints'
@@ -1046,6 +1093,7 @@ export interface FileRouteTypes {
     | '/admin/finance/invoices'
     | '/admin/finance/payments'
     | '/admin/finance/pnl'
+    | '/admin/support/$id'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/accountant/profile'
@@ -1107,6 +1155,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/students'
+    | '/_authenticated/admin/support'
     | '/_authenticated/parent/attendance'
     | '/_authenticated/parent/complaints'
     | '/_authenticated/parent/messages'
@@ -1123,6 +1172,8 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/dashboard'
     | '/_authenticated/super-admin/feature-flags'
     | '/_authenticated/super-admin/impersonation'
+    | '/_authenticated/super-admin/plans'
+    | '/_authenticated/super-admin/support-tickets'
     | '/_authenticated/super-admin/tenants'
     | '/_authenticated/warden/attendance'
     | '/_authenticated/warden/complaints'
@@ -1138,6 +1189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/payments'
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/students/$id'
+    | '/_authenticated/admin/support/$id'
     | '/_authenticated/warden/profile/change-password'
     | '/_authenticated/warden/profile/edit'
     | '/_authenticated/accountant/profile/'
@@ -1516,6 +1568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/support': {
+      id: '/_authenticated/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AuthenticatedAdminSupportRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/parent/attendance': {
       id: '/_authenticated/parent/attendance'
       path: '/attendance'
@@ -1626,6 +1685,20 @@ declare module '@tanstack/react-router' {
       path: '/impersonation'
       fullPath: '/super-admin/impersonation'
       preLoaderRoute: typeof AuthenticatedSuperAdminImpersonationRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/plans': {
+      id: '/_authenticated/super-admin/plans'
+      path: '/plans'
+      fullPath: '/super-admin/plans'
+      preLoaderRoute: typeof AuthenticatedSuperAdminPlansRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/support-tickets': {
+      id: '/_authenticated/super-admin/support-tickets'
+      path: '/support-tickets'
+      fullPath: '/super-admin/support-tickets'
+      preLoaderRoute: typeof AuthenticatedSuperAdminSupportTicketsRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
     '/_authenticated/super-admin/tenants': {
@@ -1760,6 +1833,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/students/$id'
       preLoaderRoute: typeof AuthenticatedAdminStudentsIdRouteImport
       parentRoute: typeof AuthenticatedAdminStudentsRoute
+    }
+    '/_authenticated/admin/support/$id': {
+      id: '/_authenticated/admin/support/$id'
+      path: '/$id'
+      fullPath: '/admin/support/$id'
+      preLoaderRoute: typeof AuthenticatedAdminSupportIdRouteImport
+      parentRoute: typeof AuthenticatedAdminSupportRoute
     }
     '/_authenticated/warden/profile/': {
       id: '/_authenticated/warden/profile/'
@@ -1933,6 +2013,20 @@ const AuthenticatedAdminStudentsRouteWithChildren =
     AuthenticatedAdminStudentsRouteChildren,
   )
 
+interface AuthenticatedAdminSupportRouteChildren {
+  AuthenticatedAdminSupportIdRoute: typeof AuthenticatedAdminSupportIdRoute
+}
+
+const AuthenticatedAdminSupportRouteChildren: AuthenticatedAdminSupportRouteChildren =
+  {
+    AuthenticatedAdminSupportIdRoute: AuthenticatedAdminSupportIdRoute,
+  }
+
+const AuthenticatedAdminSupportRouteWithChildren =
+  AuthenticatedAdminSupportRoute._addFileChildren(
+    AuthenticatedAdminSupportRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
   AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
@@ -1944,6 +2038,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRouteWithChildren
+  AuthenticatedAdminSupportRoute: typeof AuthenticatedAdminSupportRouteWithChildren
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -1958,6 +2053,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRouteWithChildren,
+  AuthenticatedAdminSupportRoute: AuthenticatedAdminSupportRouteWithChildren,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -2010,6 +2106,8 @@ interface AuthenticatedSuperAdminRouteChildren {
   AuthenticatedSuperAdminDashboardRoute: typeof AuthenticatedSuperAdminDashboardRoute
   AuthenticatedSuperAdminFeatureFlagsRoute: typeof AuthenticatedSuperAdminFeatureFlagsRoute
   AuthenticatedSuperAdminImpersonationRoute: typeof AuthenticatedSuperAdminImpersonationRoute
+  AuthenticatedSuperAdminPlansRoute: typeof AuthenticatedSuperAdminPlansRoute
+  AuthenticatedSuperAdminSupportTicketsRoute: typeof AuthenticatedSuperAdminSupportTicketsRoute
   AuthenticatedSuperAdminTenantsRoute: typeof AuthenticatedSuperAdminTenantsRoute
 }
 
@@ -2022,6 +2120,9 @@ const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren
       AuthenticatedSuperAdminFeatureFlagsRoute,
     AuthenticatedSuperAdminImpersonationRoute:
       AuthenticatedSuperAdminImpersonationRoute,
+    AuthenticatedSuperAdminPlansRoute: AuthenticatedSuperAdminPlansRoute,
+    AuthenticatedSuperAdminSupportTicketsRoute:
+      AuthenticatedSuperAdminSupportTicketsRoute,
     AuthenticatedSuperAdminTenantsRoute: AuthenticatedSuperAdminTenantsRoute,
   }
 

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertSuper(supabase: any, userId: string) {
+export async function assertSuper(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
   if (error) throw error;
   if (!data) throw new Error("SUPER_ADMIN required");
@@ -19,6 +19,7 @@ export const getPlatformMetrics = createServerFn({ method: "GET" })
       active_subscriptions: number;
       tenants_by_status: Record<string, number>;
       churn_30d: number;
+      churned_count_30d: number;
     };
   });
 
@@ -54,6 +55,19 @@ export const setTenantStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type SubscriptionWithPlan = {
+  id: string;
+  tenant_id: string;
+  status: string;
+  custom_price_paise: number | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  trial_ends_at: string | null;
+  cancel_at_period_end: boolean;
+  tenants: { display_name: string } | null;
+  plans: { code: string; name: string; price_paise: number; billing_interval: string } | null;
+};
+
 export const listSubscriptionsWithPlan = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -62,12 +76,18 @@ export const listSubscriptionsWithPlan = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("subscriptions")
       .select(
-        "id,tenant_id,status,current_period_end,plans(code,name,price_paise,billing_interval)",
+        "id,tenant_id,status,custom_price_paise,current_period_start,current_period_end," +
+          "trial_ends_at,cancel_at_period_end," +
+          "tenants(display_name),plans(code,name,price_paise,billing_interval)",
       )
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw error;
-    return data ?? [];
+    // The generated Supabase types don't resolve this multi-embed select
+    // cleanly (same "GenericStringError" class already present elsewhere in
+    // this codebase for complex embedded selects) — the runtime shape is
+    // correct (verified live), only the static type is unknown here.
+    return (data ?? []) as unknown as SubscriptionWithPlan[];
   });
 
 export const listPlans = createServerFn({ method: "GET" })
@@ -136,9 +156,12 @@ export const assignTenantSubscription = createServerFn({ method: "POST" })
 
     const now = new Date();
     const periodEnd = new Date(now.getTime() + data.period_days * 24 * 60 * 60 * 1000);
+    // trial_days is NOT NULL (DB default 7 as of the trial-period-config
+    // migration) — `?? 7` is defensive, matching that default, not a
+    // behavior change for any existing plan row.
     const trialEnd =
       data.status === "TRIAL"
-        ? new Date(now.getTime() + (plan.trial_days ?? 0) * 24 * 60 * 60 * 1000)
+        ? new Date(now.getTime() + (plan.trial_days ?? 7) * 24 * 60 * 60 * 1000)
         : null;
 
     const { data: existing } = await supabase
@@ -493,4 +516,180 @@ export const assignHostelAdmin = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return out as { role_assignment_id: string };
+  });
+
+// -------- Billing → tenant-specific custom price --------
+
+const setCustomPriceSchema = z.object({
+  subscription_id: z.string().uuid(),
+  custom_price_paise: z.number().int().min(0).nullable(),
+});
+
+/**
+ * Super-Admin-only override of a single subscription's effective price,
+ * independent of the shared `plans.price_paise` row (never mutated here —
+ * other tenants on the same plan are unaffected). `null` clears the override
+ * and reverts the tenant to the standard plan price. Only `custom_price_paise`
+ * is ever written — plan/status/period fields are untouched, so this can
+ * never turn a TRIAL subscription into a paid one. Gated by the existing
+ * `subscriptions_write_super` RLS policy (is_super_admin only) in addition to
+ * the explicit assertSuper check, same as `assignTenantSubscription`.
+ */
+export const setTenantCustomPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => setCustomPriceSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from("subscriptions")
+      .select("id,tenant_id,custom_price_paise")
+      .eq("id", data.subscription_id)
+      .single();
+    if (fetchErr) throw fetchErr;
+
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({ custom_price_paise: data.custom_price_paise })
+      .eq("id", data.subscription_id);
+    if (error) throw error;
+
+    // audit_logs has no client-writable INSERT policy (even for super
+    // admins) by design — only service-role can write it.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      tenant_id: existing.tenant_id,
+      actor_user_id: userId,
+      action: "SUBSCRIPTION_CUSTOM_PRICE_CHANGED_BY_SUPER_ADMIN",
+      entity_type: "subscriptions",
+      entity_id: data.subscription_id,
+      before_data: { custom_price_paise: existing.custom_price_paise },
+      after_data: { custom_price_paise: data.custom_price_paise },
+    });
+
+    return { ok: true };
+  });
+
+// -------- Billing → 30-day churn details --------
+
+const listChurnedTenantsSchema = z.object({
+  plan_id: z.string().uuid().nullable().optional(),
+  cancellation_reason: z.string().nullable().optional(),
+  from: z.string().datetime().nullable().optional(),
+  to: z.string().datetime().nullable().optional(),
+});
+
+/**
+ * Tenants whose subscription was CANCELLED within the same 30-day window
+ * `fn_get_platform_metrics()`'s `churn_30d`/`churned_count_30d` already use
+ * (`status = 'CANCELLED' AND cancelled_at >= now() - 30 days`) — this is
+ * deliberately the *same* definition, not a second one; `from`/`to` narrow
+ * further within that window (or before it, for browsing older cohorts),
+ * they don't redefine "churn". `subscription_cancellations` is left-joined
+ * (not inner) so historical cancellations recorded before this feature
+ * existed — which have no feedback row — still show up, feedback fields
+ * simply null (rendered as "Not provided" in the UI, never faked).
+ */
+export const listChurnedTenants = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => listChurnedTenantsSchema.parse(d ?? {}))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+
+    const from = data.from ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    let query = supabase
+      .from("subscriptions")
+      .select(
+        "id,tenant_id,plan_id,status,starts_at,cancelled_at,custom_price_paise," +
+          "tenants(display_name)," +
+          "plans(name,price_paise,billing_interval)," +
+          "subscription_cancellations(cancellation_reason,cancellation_reason_other,continue_in_future,additional_feedback,cancelled_at)",
+      )
+      .eq("status", "CANCELLED")
+      .gte("cancelled_at", from)
+      .order("cancelled_at", { ascending: false })
+      .limit(500);
+
+    if (data.to) query = query.lte("cancelled_at", data.to);
+    if (data.plan_id) query = query.eq("plan_id", data.plan_id);
+
+    const { data: rows, error } = await query;
+    if (error) throw error;
+
+    // The generated Supabase types don't resolve this reverse-FK embed
+    // (subscription_cancellations.subscription_id -> subscriptions.id)
+    // cleanly, matching the same "GenericStringError" class already present
+    // elsewhere in this codebase for complex embedded selects — the runtime
+    // shape is correct (verified live), only the static type is unknown here.
+    type ChurnRow = {
+      subscription_cancellations: { cancellation_reason: string }[] | null;
+    };
+    const typedRows = (rows ?? []) as unknown as ChurnRow[];
+
+    const filtered = data.cancellation_reason
+      ? typedRows.filter(
+          (r) =>
+            r.subscription_cancellations?.[0]?.cancellation_reason === data.cancellation_reason,
+        )
+      : typedRows;
+
+    return filtered;
+  });
+
+// -------- Plans → trial period configuration --------
+
+const updateTrialDaysSchema = z.object({
+  plan_id: z.string().uuid(),
+  trial_days: z.number().int().min(0),
+});
+
+/**
+ * Super-Admin-only: configure how many trial days a plan grants (Starter,
+ * Professional, Enterprise, ...). Reused everywhere a trial is started —
+ * `fn_provision_tenant` (self-serve signup) and `assignTenantSubscription`
+ * (manual Super Admin assignment) both already compute
+ * `trial_end = trial_start + plan.trial_days` dynamically, so this only ever
+ * needs to change the one `plans.trial_days` value; no trial-calculation
+ * logic lives here or anywhere else. Only `trial_days` is written — price,
+ * billing interval, and every other plan field are untouched. Gated by the
+ * existing `plans_write_super` RLS policy (is_super_admin only, same policy
+ * `assignTenantSubscription`'s plan reads and `setTenantCustomPrice` rely on
+ * elsewhere) in addition to the explicit assertSuper check.
+ */
+export const updatePlanTrialDays = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => updateTrialDaysSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from("plans")
+      .select("id,name,trial_days")
+      .eq("id", data.plan_id)
+      .single();
+    if (fetchErr) throw fetchErr;
+
+    const { error: updateErr } = await supabase
+      .from("plans")
+      .update({ trial_days: data.trial_days })
+      .eq("id", data.plan_id);
+    if (updateErr) throw updateErr;
+
+    // audit_logs has no client-writable INSERT policy (even for super
+    // admins) by design — only service-role can write it.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_user_id: userId,
+      action: "PLAN_TRIAL_DAYS_CHANGED_BY_SUPER_ADMIN",
+      entity_type: "plans",
+      entity_id: data.plan_id,
+      before_data: { trial_days: existing.trial_days },
+      after_data: { trial_days: data.trial_days },
+    });
+
+    return { ok: true };
   });

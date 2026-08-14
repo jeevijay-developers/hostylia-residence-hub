@@ -22,6 +22,7 @@ import {
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
+import { ChangePasswordDialog } from "@/components/dashboard/ChangePasswordDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
 import type { NavItem } from "@/lib/dashboard-nav";
@@ -36,6 +37,7 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   const { data: ownProfile } = useQuery({
@@ -46,6 +48,7 @@ export function Topbar({ navItems = [] }: TopbarProps) {
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
   const { data: resolved } = useResolvedRole();
   const isAccountant = resolved?.role === "ACCOUNTANT";
+  const isAdmin = resolved?.role === "HOSTEL_ADMIN";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -149,6 +152,18 @@ export function Topbar({ navItems = [] }: TopbarProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
+          ) : isAdmin ? (
+            <>
+              <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
+                <UserRoundPen className="mr-2 h-4 w-4" />
+                Edit Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Change Password
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
           ) : (
             <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
               <UserRoundPen className="mr-2 h-4 w-4" />
@@ -169,6 +184,9 @@ export function Topbar({ navItems = [] }: TopbarProps) {
 
       {!isAccountant && (
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+      )}
+      {isAdmin && (
+        <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
       )}
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </header>

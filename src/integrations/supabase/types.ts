@@ -3457,6 +3457,67 @@ export type Database = {
           },
         ]
       }
+      subscription_cancellations: {
+        Row: {
+          additional_feedback: string | null
+          cancellation_reason: string
+          cancellation_reason_other: string | null
+          cancelled_at: string
+          cancelled_by: string
+          continue_in_future: boolean | null
+          created_at: string
+          id: string
+          subscription_id: string
+          tenant_id: string
+        }
+        Insert: {
+          additional_feedback?: string | null
+          cancellation_reason: string
+          cancellation_reason_other?: string | null
+          cancelled_at?: string
+          cancelled_by: string
+          continue_in_future?: boolean | null
+          created_at?: string
+          id?: string
+          subscription_id: string
+          tenant_id: string
+        }
+        Update: {
+          additional_feedback?: string | null
+          cancellation_reason?: string
+          cancellation_reason_other?: string | null
+          cancelled_at?: string
+          cancelled_by?: string
+          continue_in_future?: boolean | null
+          created_at?: string
+          id?: string
+          subscription_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_cancellations_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_cancellations_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_cancellations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -3464,6 +3525,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
+          custom_price_paise: number | null
           id: string
           plan_id: string
           provider: string | null
@@ -3481,6 +3543,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          custom_price_paise?: number | null
           id?: string
           plan_id: string
           provider?: string | null
@@ -3498,6 +3561,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          custom_price_paise?: number | null
           id?: string
           plan_id?: string
           provider?: string | null
@@ -3575,6 +3639,151 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "support_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_messages: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          is_internal_note: boolean
+          message: string
+          tenant_id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          is_internal_note?: boolean
+          message: string
+          tenant_id: string
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          is_internal_note?: boolean
+          message?: string
+          tenant_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          priority: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          subject: string
+          support_session_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          closed_at?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          priority?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject: string
+          support_session_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string
+          support_session_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_support_session_id_fkey"
+            columns: ["support_session_id"]
+            isOneToOne: false
+            referencedRelation: "support_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4078,6 +4287,20 @@ export type Database = {
           p_target_user_id: string
           p_tenant_id: string
         }
+        Returns: Json
+      }
+      fn_cancel_own_subscription: {
+        Args: {
+          p_additional_feedback?: string
+          p_cancellation_reason: string
+          p_cancellation_reason_other?: string
+          p_continue_in_future?: boolean
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      fn_close_own_support_ticket: {
+        Args: { p_ticket_id: string }
         Returns: Json
       }
       fn_dispatch_notification: {
