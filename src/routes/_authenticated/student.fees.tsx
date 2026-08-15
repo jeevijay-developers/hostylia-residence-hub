@@ -31,7 +31,7 @@ function StudentFeesPage() {
 
   return (
     <div className="space-y-4 p-4">
-      <PageHeader title="Fees" description="Your invoices and payment history." />
+      <PageHeader title="" description="Your invoices and payment history." />
       <StudentFeesList studentId={q.data.id} />
       <p className="text-xs text-muted-foreground">
         Online payment powered by Razorpay. If the pay button fails, ask your admin

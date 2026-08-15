@@ -58,7 +58,7 @@ function StudentMessPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Mess" description="Today's menu and your feedback." />
+      <PageHeader title="" description="Today's menu and your feedback." />
       {(menusQ.data ?? []).map((m) => (
         <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
       ))}

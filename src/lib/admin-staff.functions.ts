@@ -3,6 +3,47 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
 
+// The independently-RLS'd finance resources an Accountant has by default and
+// a Warden can be individually granted (see can_manage_*() in
+// 20260814070000_warden_granular_finance_permissions.sql) — widen this
+// alongside that migration's CHECK constraint if more keys are added.
+//
+// The independently-RLS'd operational resources a Warden has by default and
+// an Accountant can be individually granted (see can_manage_*() in
+// 20260814090000_accountant_granular_operational_permissions.sql).
+// `mess_menus` also covers mess menu items and headcount; `feedback` is the
+// staff-authored survey tool (feedback_surveys/feedback_responses), not the
+// per-meal mess rating (which staff can only read, nothing to "manage").
+//
+// Fully granular per-verb pilot (see can_view_invoices()/can_create_students()
+// etc. in 20260814110000_granular_crud_pilot_students_invoices.sql):
+// `invoices_view` also covers receipts and aging/DSO reports; `invoices_edit`
+// also covers GST invoicing fields and discounts/waivers — neither is a
+// separate RLS-gated resource. Students has no `students_view` key — every
+// role already has View by default, so there's no gap to grant.
+const staffPermissionsSchema = z
+  .object({
+    fee_plans: z.boolean(),
+    payments: z.boolean(),
+    refunds: z.boolean(),
+    invoices_view: z.boolean(),
+    invoices_create: z.boolean(),
+    invoices_edit: z.boolean(),
+    invoices_delete: z.boolean(),
+    attendance: z.boolean(),
+    complaints: z.boolean(),
+    gate_passes: z.boolean(),
+    gate_events: z.boolean(),
+    visitors: z.boolean(),
+    notices: z.boolean(),
+    mess_menus: z.boolean(),
+    feedback: z.boolean(),
+    students_create: z.boolean(),
+    students_edit: z.boolean(),
+    students_delete: z.boolean(),
+  })
+  .partial();
+
 const inviteSchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid().nullable().optional(),
@@ -11,6 +52,8 @@ const inviteSchema = z.object({
   email: z.string().email().nullable().optional(),
   phone: z.string().trim().min(6).nullable().optional(),
   role: z.enum(["WARDEN", "ACCOUNTANT"]),
+  // Omitted/empty = use the role's default access, unchanged.
+  permissions: staffPermissionsSchema.optional(),
 });
 
 async function assertAdmin(supabase: any, userId: string, tenantId: string) {
@@ -207,6 +250,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
         is_active: false,
         granted_by: userId,
         granted_at: nowIso,
+        permissions: data.permissions ?? {},
       })
       .select()
       .single();
@@ -275,7 +319,7 @@ export const listStaff = createServerFn({ method: "GET" })
     await assertAdmin(supabase, userId, data.tenant_id);
     const { data: rows, error } = await supabase
       .from("role_assignments")
-      .select("id,user_id,role,property_id,block_id,is_active,granted_at,revoked_at")
+      .select("id,user_id,role,property_id,block_id,is_active,granted_at,revoked_at,permissions")
       .eq("tenant_id", data.tenant_id)
       .in("role", ["WARDEN", "ACCOUNTANT", "HOSTEL_ADMIN"])
       .order("granted_at", { ascending: false });
@@ -315,6 +359,9 @@ const updateStaffSchema = z.object({
   role_assignment_id: z.string().uuid(),
   full_name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(6),
+  // Omitted = leave permissions untouched. An explicit {} clears any
+  // existing override, reverting the staff member to their role default.
+  permissions: staffPermissionsSchema.optional(),
 });
 
 export const updateStaff = createServerFn({ method: "POST" })
@@ -326,7 +373,7 @@ export const updateStaff = createServerFn({ method: "POST" })
 
     const { data: ra, error: raErr } = await supabase
       .from("role_assignments")
-      .select("user_id")
+      .select("user_id, role")
       .eq("id", data.role_assignment_id)
       .eq("tenant_id", data.tenant_id)
       .single();
@@ -340,6 +387,22 @@ export const updateStaff = createServerFn({ method: "POST" })
       .update({ full_name: data.full_name, phone: normalizeIndianPhone(data.phone) })
       .eq("id", ra.user_id);
     if (error) throw error;
+
+    if (data.permissions !== undefined) {
+      // Hostel Admin already has unconditional access to every feature —
+      // customizing wouldn't mean anything, and a stray `finance: false`
+      // could get read as revoking their own access.
+      if (ra.role === "HOSTEL_ADMIN") {
+        throw new Error("Permissions cannot be customized for a Hostel Admin");
+      }
+      const { error: permErr } = await supabase
+        .from("role_assignments")
+        .update({ permissions: data.permissions })
+        .eq("id", data.role_assignment_id)
+        .eq("tenant_id", data.tenant_id);
+      if (permErr) throw permErr;
+    }
+
     return { ok: true };
   });
 

@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ParentPageFrame } from "@/components/parent/ParentPageFrame";
 import { ComplaintTrackerList } from "@/components/parent/ComplaintTrackerList";
 
@@ -10,10 +8,8 @@ export const Route = createFileRoute("/_authenticated/parent/complaints")({
 });
 
 function ParentComplaintsPage() {
-  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <PageHeader title={t("parent.complaints.title")} />
       <ParentPageFrame requirePermission="can_view_complaints">
         {(child) => <ComplaintTrackerList studentId={child.student_id} />}
       </ParentPageFrame>

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintForm } from "@/components/complaints/ComplaintForm";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
 import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
@@ -27,7 +26,6 @@ function StudentComplaintsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Complaints" description="Report an issue and track it here." />
       <Card>
         <CardHeader>
           <CardTitle>New complaint</CardTitle>

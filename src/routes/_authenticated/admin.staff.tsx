@@ -3,13 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Loader2, Mail, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
+import { Loader2, Mail, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -37,11 +39,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
@@ -62,12 +65,120 @@ export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
 });
 
+type PermissionKey =
+  | "fee_plans"
+  | "payments"
+  | "refunds"
+  | "invoices_view"
+  | "invoices_create"
+  | "invoices_edit"
+  | "invoices_delete"
+  | "attendance"
+  | "complaints"
+  | "gate_passes"
+  | "gate_events"
+  | "visitors"
+  | "notices"
+  | "mess_menus"
+  | "feedback"
+  | "students_create"
+  | "students_edit"
+  | "students_delete";
+
+type StaffPermissions = Partial<Record<PermissionKey, boolean>>;
+
 interface StaffRow {
   id: string;
   role: string;
   is_active: boolean;
   revoked_at: string | null;
+  permissions?: StaffPermissions | null;
   profile?: { full_name?: string | null; email?: string | null; phone?: string | null } | null;
+}
+
+// The independently-RLS'd finance resources an Accountant has by default and
+// a Warden can be individually granted — mirrors can_manage_*() in
+// 20260814070000_warden_granular_finance_permissions.sql. Invoices is fully
+// granular per-verb (pilot — see can_view_invoices() etc. in
+// 20260814110000_granular_crud_pilot_students_invoices.sql): View also
+// covers receipts and aging/DSO reports; Edit also covers GST invoicing
+// fields and discounts/waivers — neither is a separate RLS-gated resource.
+const FINANCE_PERMISSION_ITEMS: { key: PermissionKey; label: string; helper?: string }[] = [
+  { key: "fee_plans", label: "Fee Plans" },
+  {
+    key: "invoices_view",
+    label: "View Invoices",
+    helper: "Also covers viewing receipts and aging/DSO reports.",
+  },
+  { key: "invoices_create", label: "Create Invoices" },
+  {
+    key: "invoices_edit",
+    label: "Edit Invoices",
+    helper: "Also covers GST invoicing fields and discounts/waivers.",
+  },
+  { key: "invoices_delete", label: "Delete Invoices" },
+  { key: "payments", label: "Cash/Cheque Payments" },
+  { key: "refunds", label: "Refunds" },
+];
+
+// The independently-RLS'd operational resources a Warden has by default and
+// an Accountant can be individually granted — mirrors can_manage_*() in
+// 20260814090000_accountant_granular_operational_permissions.sql.
+// `mess_menus` also covers mess menu items and headcount recording; those
+// aren't separate RLS-gated resources. `feedback` is the staff-authored
+// survey tool, not the per-meal mess rating (staff can only view that one —
+// there's nothing to "manage").
+const OPERATIONAL_PERMISSION_ITEMS: { key: PermissionKey; label: string; helper?: string }[] = [
+  { key: "attendance", label: "Manage Attendance" },
+  { key: "complaints", label: "Manage Complaints" },
+  { key: "gate_passes", label: "Manage Gate Pass/Out-Pass" },
+  { key: "gate_events", label: "Manage Gate Events" },
+  { key: "visitors", label: "Manage Visitors" },
+  { key: "notices", label: "Manage Notices" },
+  { key: "mess_menus", label: "Manage Mess Menu", helper: "Also covers menu items and headcount." },
+  { key: "feedback", label: "Manage Feedback" },
+];
+
+// Students (pilot — see can_create_students() etc. in the same migration as
+// the invoice split): Admin has View/Create/Edit/Delete. Read off the actual
+// current RLS, not the PRD table (whose "Warden: VE" undersells what the
+// real policies already grant) — Warden already has View/Create/Edit by
+// default via separate pre-existing policies, so only Delete is a gap for
+// them. Accountant already has View by default; Create/Edit/Delete are all
+// gaps. Neither role gets a "View Students" item since neither lacks it.
+const STUDENT_PERMISSION_ITEMS_FOR_WARDEN: { key: PermissionKey; label: string }[] = [
+  { key: "students_delete", label: "Delete Students" },
+];
+const STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT: { key: PermissionKey; label: string }[] = [
+  { key: "students_create", label: "Create Students" },
+  { key: "students_edit", label: "Edit Students" },
+  { key: "students_delete", label: "Delete Students" },
+];
+
+const ALL_PERMISSION_ITEMS = [
+  ...FINANCE_PERMISSION_ITEMS,
+  ...OPERATIONAL_PERMISSION_ITEMS,
+  ...STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT,
+];
+
+// The checklist to show for "Customize Permissions": the *other* role's
+// permissions — the ones this role doesn't have by default and an Admin can
+// individually grant.
+function permissionItemsForRole(role: "WARDEN" | "ACCOUNTANT") {
+  return role === "WARDEN"
+    ? [...FINANCE_PERMISSION_ITEMS, ...STUDENT_PERMISSION_ITEMS_FOR_WARDEN]
+    : [...OPERATIONAL_PERMISSION_ITEMS, ...STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT];
+}
+
+function otherRoleLabel(role: "WARDEN" | "ACCOUNTANT"): string {
+  return role === "WARDEN" ? "Accountant" : "Warden";
+}
+
+// Every item in permissionItemsForRole(role) is, by construction, something
+// this role does not have by default — so the checklist always starts
+// unchecked.
+function defaultPermissions(role: "WARDEN" | "ACCOUNTANT"): StaffPermissions {
+  return Object.fromEntries(permissionItemsForRole(role).map((item) => [item.key, false]));
 }
 
 /** Roles are stored as enum values; never show the raw token to a user. */
@@ -123,16 +234,25 @@ function AdminStaffPage() {
   });
   const staff = useMemo(() => (staffQ.data ?? []) as StaffRow[], [staffQ.data]);
 
+  const [addOpen, setAddOpen] = useState(false);
   const [addRole, setAddRole] = useState<"WARDEN" | "ACCOUNTANT" | null>(null);
   const [addMode, setAddMode] = useState<"phone" | "email">("phone");
   const [staffName, setStaffName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [addCustomizePerms, setAddCustomizePerms] = useState(false);
+  const [addPermissions, setAddPermissions] = useState<StaffPermissions>(
+    defaultPermissions("WARDEN"),
+  );
   const [pendingRevoke, setPendingRevoke] = useState<StaffRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StaffRow | null>(null);
   const [editRow, setEditRow] = useState<StaffRow | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editCustomizePerms, setEditCustomizePerms] = useState(false);
+  const [editPermissions, setEditPermissions] = useState<StaffPermissions>(
+    defaultPermissions("WARDEN"),
+  );
   const [duplicateContact, setDuplicateContact] = useState<string | null>(null);
 
   const activeContacts = useMemo(() => {
@@ -179,6 +299,7 @@ function AdminStaffPage() {
           phone: addMode === "phone" ? phone || null : null,
           email: addMode === "email" ? email || null : null,
           role: addRole!,
+          permissions: addCustomizePerms ? addPermissions : undefined,
         },
       }),
     onSuccess: (out) => {
@@ -191,10 +312,12 @@ function AdminStaffPage() {
             : "Invitation sent — they'll get access once they set up sign-in via the invite email.",
         );
       }
+      setAddOpen(false);
       setAddRole(null);
       setStaffName("");
       setPhone("");
       setEmail("");
+      setAddCustomizePerms(false);
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
     onError: (e) => toast.error(errorMessage(e, "Could not add them")),
@@ -226,6 +349,7 @@ function AdminStaffPage() {
           role_assignment_id: editRow!.id,
           full_name: editName,
           phone: editPhone,
+          permissions: editCustomizePerms ? editPermissions : {},
         },
       }),
     onSuccess: () => {
@@ -252,6 +376,7 @@ function AdminStaffPage() {
   const canInvite =
     !invite.isPending &&
     !duplicateContact &&
+    !!addRole &&
     staffName.trim().length >= 2 &&
     (addMode === "phone" ? phone.trim() !== "" : email.trim() !== "");
 
@@ -270,39 +395,57 @@ function AdminStaffPage() {
         title="Staff"
         description="Add Wardens and Accountants; revoke access when they leave."
         actions={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>
-                <UserPlus className="h-4 w-4" /> Add <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setAddRole("WARDEN")}>Warden</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setAddRole("ACCOUNTANT")}>
-                Accountant
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            onClick={() => {
+              setAddRole(null);
+              setAddCustomizePerms(false);
+              setAddPermissions(defaultPermissions("WARDEN"));
+              setAddOpen(true);
+            }}
+          >
+            <UserPlus className="h-4 w-4" /> Add
+          </Button>
         }
       />
 
       <Dialog
-        open={!!addRole}
+        open={addOpen}
         onOpenChange={(open) => {
+          setAddOpen(open);
           if (!open) {
             setAddRole(null);
             setAddMode("phone");
             setStaffName("");
             setPhone("");
             setEmail("");
+            setAddCustomizePerms(false);
           }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add {addRole ? STAFF_ROLE_LABEL[addRole] : ""}</DialogTitle>
+            <DialogTitle>Add {addRole ? STAFF_ROLE_LABEL[addRole] : "staff"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-role">Role</Label>
+              <Select
+                value={addRole ?? undefined}
+                onValueChange={(v) => {
+                  const role = v as "WARDEN" | "ACCOUNTANT";
+                  setAddRole(role);
+                  if (addCustomizePerms) setAddPermissions(defaultPermissions(role));
+                }}
+              >
+                <SelectTrigger id="add-staff-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
+                  <SelectItem value="WARDEN">Warden</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="add-staff-name">Name</Label>
               <Input
@@ -352,9 +495,53 @@ function AdminStaffPage() {
             </Tabs>
 
             {duplicateContact && <p className="text-sm text-destructive">{duplicateContact}</p>}
+
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="add-customize-perms" className="text-sm">
+                    Customize Permissions
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {addRole
+                      ? `By default a ${STAFF_ROLE_LABEL[addRole]} does not have ${otherRoleLabel(addRole)} permissions — grant specific ones below.`
+                      : ""}
+                  </p>
+                </div>
+                <Switch
+                  id="add-customize-perms"
+                  checked={addCustomizePerms}
+                  onCheckedChange={(v) => {
+                    setAddCustomizePerms(v);
+                    if (v && addRole) setAddPermissions(defaultPermissions(addRole));
+                  }}
+                />
+              </div>
+              {addCustomizePerms && addRole && (
+                <div className="space-y-2">
+                  {permissionItemsForRole(addRole).map((item) => (
+                    <label key={item.key} className="flex items-start gap-2 text-sm">
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={addPermissions[item.key]}
+                        onCheckedChange={(v) =>
+                          setAddPermissions((prev) => ({ ...prev, [item.key]: v === true }))
+                        }
+                      />
+                      <span>
+                        {item.label}
+                        {item.helper && (
+                          <span className="block text-xs text-muted-foreground">{item.helper}</span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddRole(null)}>
+            <Button variant="ghost" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
             <Button disabled={!canInvite} onClick={() => invite.mutate()}>
@@ -424,7 +611,30 @@ function AdminStaffPage() {
                         (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
                         "—"}
                     </TableCell>
-                    <TableCell>{ROLE_LABEL[s.role] ?? s.role}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ROLE_LABEL[s.role] ?? s.role}
+                        {s.role !== "HOSTEL_ADMIN" &&
+                          ALL_PERMISSION_ITEMS.map((item) => {
+                            const override = s.permissions?.[item.key];
+                            if (override === undefined) return null;
+                            const granted = override === true;
+                            return (
+                              <Badge
+                                key={item.key}
+                                variant="outline"
+                                className={
+                                  granted
+                                    ? "bg-bed-occupied/15 text-bed-occupied"
+                                    : "bg-bed-blocked/15 text-bed-blocked"
+                                }
+                              >
+                                {granted ? "+" : "−"} {item.label}
+                              </Badge>
+                            );
+                          })}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <StaffStatusBadge row={s} />
                     </TableCell>
@@ -476,6 +686,21 @@ function AdminStaffPage() {
                                   setEditName(s.profile?.full_name ?? "");
                                   setEditPhone(
                                     s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
+                                  );
+                                  const role = s.role as "WARDEN" | "ACCOUNTANT";
+                                  const items = permissionItemsForRole(role);
+                                  const hasOverride = items.some(
+                                    (item) => s.permissions?.[item.key] !== undefined,
+                                  );
+                                  setEditCustomizePerms(hasOverride);
+                                  const defaults = defaultPermissions(role);
+                                  setEditPermissions(
+                                    Object.fromEntries(
+                                      items.map((item) => [
+                                        item.key,
+                                        s.permissions?.[item.key] ?? defaults[item.key],
+                                      ]),
+                                    ),
                                   );
                                 }}
                               >
@@ -603,6 +828,58 @@ function AdminStaffPage() {
                 placeholder="+91 98765 43210"
               />
             </div>
+
+            {editRow && editRow.role !== "HOSTEL_ADMIN" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label htmlFor="edit-customize-perms" className="text-sm">
+                      Customize Permissions
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {`By default a ${ROLE_LABEL[editRow.role] ?? editRow.role} does not have ${otherRoleLabel(
+                        editRow.role as "WARDEN" | "ACCOUNTANT",
+                      )} permissions — grant specific ones below.`}
+                    </p>
+                  </div>
+                  <Switch
+                    id="edit-customize-perms"
+                    checked={editCustomizePerms}
+                    onCheckedChange={(v) => {
+                      setEditCustomizePerms(v);
+                      if (v) {
+                        setEditPermissions(
+                          defaultPermissions(editRow.role as "WARDEN" | "ACCOUNTANT"),
+                        );
+                      }
+                    }}
+                  />
+                </div>
+                {editCustomizePerms && (
+                  <div className="space-y-2">
+                    {permissionItemsForRole(editRow.role as "WARDEN" | "ACCOUNTANT").map((item) => (
+                      <label key={item.key} className="flex items-start gap-2 text-sm">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={editPermissions[item.key]}
+                          onCheckedChange={(v) =>
+                            setEditPermissions((prev) => ({ ...prev, [item.key]: v === true }))
+                          }
+                        />
+                        <span>
+                          {item.label}
+                          {item.helper && (
+                            <span className="block text-xs text-muted-foreground">
+                              {item.helper}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditRow(null)}>

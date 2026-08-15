@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -159,7 +159,7 @@ function StudentProfilePage() {
   if (!studentQ.data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="My Profile" />
+        <PageHeader title="" />
         <p className="text-sm text-muted-foreground">
           No student record is linked to your account yet.
         </p>
@@ -200,16 +200,13 @@ function StudentProfilePage() {
   return (
     <div className="flex h-full flex-col gap-3">
       <PageHeader
-        title="My Profile"
+        title=""
         description={`Admission #${s.admission_number}`}
         actions={<StudentStatusBadge status={s.status} />}
       />
 
       <Card className="gap-3 py-4">
-        <CardHeader className="px-4">
-          <CardTitle className="text-sm">Your details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-x-3 gap-y-2 px-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-x-3 gap-y-2 px-4 pt-4 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="p-name" className="text-xs">
               Full name

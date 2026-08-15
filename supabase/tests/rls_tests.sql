@@ -548,4 +548,171 @@ SELECT pg_temp.assert_eq(
   1, 'Parent02 (view-only elsewhere, no tenant_membership) can still read linked-property ALL notice');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION 13 — Per-staff custom permission override (role_assignments.permissions)
+--
+-- Guards can_manage_invoices()/can_manage_refunds()'s override branch added
+-- in 20260813150000_role_assignment_custom_permissions.sql and made granular
+-- (fee_plans/invoices/payments/refunds instead of one blanket "finance" key)
+-- in 20260814070000_warden_granular_finance_permissions.sql. Warden_A_blockA
+-- (uid ..011, property A1) has no baseline finance access; Accountant_A
+-- (uid ..013) always does. Both permission edits happen inside the test
+-- transaction and roll back, so no other section/seed state is affected.
+-- =============================================================================
+BEGIN;
+-- Baseline: Warden cannot read Tenant A invoices without an override.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'WardenA (no override) cannot read Tenant A invoices');
+ROLLBACK;
+
+BEGIN;
+-- Admin grants this Warden Invoices only — Refunds must stay off.
+UPDATE public.role_assignments SET permissions = '{"invoices": true}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000011';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA, invoices-enabled only
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'WardenA with permissions.invoices=true can read Tenant A invoices');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.refunds WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'WardenA with permissions.invoices=true (refunds not granted) still cannot read Tenant A refunds');
+ROLLBACK;
+
+BEGIN;
+-- Admin explicitly disables invoice access for an Accountant (default role access revoked).
+UPDATE public.role_assignments SET permissions = '{"invoices": false}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000013';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A, invoices-disabled
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'AccountantA with permissions.invoices=false cannot read Tenant A invoices');
+ROLLBACK;
+
+BEGIN;
+-- Sanity: with no override (default {}), Accountant keeps normal default access.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A, unchanged
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'AccountantA (no override) still reads Tenant A invoices by role default');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 14 — Per-staff custom permission override, operational side
+-- (role_assignments.permissions: attendance/complaints/gate_passes/gate_events/
+-- visitors/notices/mess_menus/feedback), added in
+-- 20260814090000_accountant_granular_operational_permissions.sql. Mirrors
+-- Section 13 in the opposite direction: Accountant_A (uid ..013) has no
+-- baseline operational access; Warden_A_blockA (uid ..011) always does.
+-- =============================================================================
+BEGIN;
+-- Baseline: Accountant cannot read Tenant A attendance without an override.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.attendance WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'AccountantA (no override) cannot read Tenant A attendance');
+ROLLBACK;
+
+BEGIN;
+-- Admin grants this Accountant Attendance only — Gate Passes must stay off.
+UPDATE public.role_assignments SET permissions = '{"attendance": true}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000013';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A, attendance-enabled only
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.attendance WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'AccountantA with permissions.attendance=true can read Tenant A attendance');
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.gate_passes WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'AccountantA with permissions.attendance=true (gate_passes not granted) still cannot read Tenant A gate passes');
+ROLLBACK;
+
+BEGIN;
+-- Admin explicitly disables attendance access for a Warden (default role access revoked).
+UPDATE public.role_assignments SET permissions = '{"attendance": false}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000011';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA, attendance-disabled
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.attendance WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  0, 'WardenA with permissions.attendance=false cannot read Tenant A attendance');
+ROLLBACK;
+
+BEGIN;
+-- Sanity: with no override (default {}), Warden keeps normal default access.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA, unchanged
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.attendance WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'WardenA (no override) still reads Tenant A attendance by role default');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION 15 — Fully granular per-verb permissions (View/Create/Edit/Delete),
+-- pilot on Invoices + Students, added in
+-- 20260814110000_granular_crud_pilot_students_invoices.sql. Proves the four
+-- invoice verbs are independently gated (not just the resource as a whole),
+-- and that Students' opt-in Create/Edit/Delete layer doesn't disturb the
+-- pre-existing role-based Warden Create/Edit or Accountant View.
+-- =============================================================================
+BEGIN;
+-- Grant WardenA View only on invoices — Create must stay off.
+UPDATE public.role_assignments SET permissions = '{"invoices_view": true}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000011';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA, invoices_view only
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'WardenA with permissions.invoices_view=true can read Tenant A invoices');
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.invoices SET notes='edited by warden' WHERE id='11111111-1111-1111-1111-111111110e04'$sql$,
+  'WardenA with only invoices_view=true cannot edit an invoice');
+ROLLBACK;
+
+BEGIN;
+-- Sanity: AccountantA keeps full default invoice access with no override (view+edit).
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A, unchanged
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.invoices WHERE tenant_id='11111111-1111-1111-1111-111111111111'),
+  1, 'AccountantA (no override) still reads Tenant A invoices by role default');
+UPDATE public.invoices SET notes='reviewed' WHERE id='11111111-1111-1111-1111-111111110e04';
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e04' AND notes='reviewed'),
+  1, 'AccountantA (no override) can still edit Tenant A invoices by role default');
+ROLLBACK;
+
+BEGIN;
+-- Baseline: AccountantA cannot create a student without an override.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A
+SELECT pg_temp.assert_throws(
+  $sql$INSERT INTO public.students (tenant_id, property_id, admission_number, full_name, status)
+       VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','ADM-TEST-01','Test Student','APPLICANT')$sql$,
+  'AccountantA (no override) cannot create a student');
+ROLLBACK;
+
+BEGIN;
+-- Admin grants AccountantA students_create — Delete must stay off.
+UPDATE public.role_assignments SET permissions = '{"students_create": true}'::jsonb
+  WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND user_id='00000000-0000-0000-0000-000000000013';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant_A, students_create only
+INSERT INTO public.students (tenant_id, property_id, admission_number, full_name, status)
+  VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','ADM-TEST-02','Test Student 2','APPLICANT');
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.students WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND admission_number='ADM-TEST-02'),
+  1, 'AccountantA with permissions.students_create=true can create a student');
+SELECT pg_temp.assert_throws(
+  $sql$DELETE FROM public.students WHERE admission_number='ADM-TEST-02'$sql$,
+  'AccountantA with only students_create=true still cannot delete a student');
+ROLLBACK;
+
+BEGIN;
+-- Sanity: WardenA keeps default Create/Edit on students with no override (unaffected by the new opt-in Delete layer).
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden_A_blockA, unchanged
+INSERT INTO public.students (tenant_id, property_id, admission_number, full_name, status)
+  VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','ADM-TEST-03','Test Student 3','APPLICANT');
+SELECT pg_temp.assert_ge(
+  (SELECT count(*) FROM public.students WHERE tenant_id='11111111-1111-1111-1111-111111111111' AND admission_number='ADM-TEST-03'),
+  1, 'WardenA (no override) still creates students by role default');
+SELECT pg_temp.assert_throws(
+  $sql$DELETE FROM public.students WHERE admission_number='ADM-TEST-03'$sql$,
+  'WardenA (no override) still cannot delete a student');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

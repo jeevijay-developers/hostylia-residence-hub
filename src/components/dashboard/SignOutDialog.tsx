@@ -13,14 +13,21 @@ import { signOut } from "@/lib/auth";
 interface SignOutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  title?: string;
+  confirmLabel?: string;
 }
 
-export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
+export function SignOutDialog({
+  open,
+  onOpenChange,
+  title = "Sign out?",
+  confirmLabel = "Sign out",
+}: SignOutDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Sign out?</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
             You'll need to sign in again to get back to your dashboard.
           </AlertDialogDescription>
@@ -33,7 +40,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
               window.location.href = "/login";
             }}
           >
-            Sign out
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

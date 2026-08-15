@@ -3132,6 +3132,7 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          permissions: Json
           property_id: string | null
           revoked_at: string | null
           revoked_by: string | null
@@ -3147,6 +3148,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          permissions?: Json
           property_id?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
@@ -3162,6 +3164,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          permissions?: Json
           property_id?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
@@ -4232,6 +4235,101 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      can_create_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_create_students: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_students: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_students: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_attendance: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_manage_complaints: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_manage_fee_plans: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_feedback: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_gate_events: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_gate_passes: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_manage_mess_menus: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_notices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_payments: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_refunds: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_visitors: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_complaints: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_gate_passes: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: {
           p_bucket_key: string
@@ -4384,16 +4482,50 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      has_finance_permission: {
+        Args: {
+          _key: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_operational_permission_property: {
+        Args: {
+          _key: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_operational_permission_scope: {
+        Args: {
+          _block_id: string
+          _key: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role_permission: {
+        Args: {
+          _default_role: Database["public"]["Enums"]["app_role"]
+          _key: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_tenant_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _tenant_id: string
           _user_id: string
         }
-        Returns: boolean
-      }
-      is_finance_staff: {
-        Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       is_guardian_of_property: {

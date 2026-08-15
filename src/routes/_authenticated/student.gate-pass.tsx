@@ -6,7 +6,6 @@ import QRCode from "qrcode";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Send } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,7 +92,6 @@ function StudentGatePassPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Gate Pass" description="Request a pass and show your QR at the gate." />
       <Card>
         <CardHeader><CardTitle className="text-base">New Request</CardTitle></CardHeader>
         <CardContent className="space-y-2">

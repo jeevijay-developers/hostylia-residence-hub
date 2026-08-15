@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ParentPageFrame, useParentChild } from "@/components/parent/ParentPageFrame";
 import { WardenChatThread } from "@/components/parent/WardenChatThread";
 
@@ -10,10 +8,8 @@ export const Route = createFileRoute("/_authenticated/parent/messages")({
 });
 
 function ParentMessagesPage() {
-  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <PageHeader title={t("parent.messages.title")} />
       <ParentPageFrame>
         {(child) => <ChatFrame studentId={child.student_id} />}
       </ParentPageFrame>
