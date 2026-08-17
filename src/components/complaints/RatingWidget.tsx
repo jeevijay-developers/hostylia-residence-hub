@@ -54,7 +54,7 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
   if (complaint.rating != null) {
     const savedRating = complaint.rating;
     return (
-      <div className="flex items-center gap-1 rounded-md border border-border bg-card p-3">
+      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-3">
         {[1, 2, 3, 4, 5].map((n) => (
           <Star
             key={n}
@@ -68,7 +68,7 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-border bg-card p-3">
+    <div className="space-y-3 rounded-xl border border-border bg-card p-3">
       <p className="text-sm font-medium">Rate this resolution</p>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -94,13 +94,14 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
         placeholder="Optional comment"
       />
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => saveRating.mutate()} disabled={saveRating.isPending}>
+        <Button size="sm" className="rounded-full" onClick={() => saveRating.mutate()} disabled={saveRating.isPending}>
           Save rating
         </Button>
         {canReopen && (
           <Button
             size="sm"
             variant="outline"
+            className="rounded-full"
             onClick={() => reopen.mutate()}
             disabled={reopen.isPending}
           >

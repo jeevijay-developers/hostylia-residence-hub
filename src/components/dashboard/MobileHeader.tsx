@@ -97,6 +97,7 @@ export function MobileHeader() {
             className="min-h-10"
             onClick={() => setSignOutOpen(true)}
           >
+            <LogOut className="mr-1.5 h-4 w-4" />
             Logout
           </Button>
         )}

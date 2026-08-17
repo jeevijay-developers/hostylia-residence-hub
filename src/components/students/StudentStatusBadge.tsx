@@ -12,7 +12,8 @@ const COLORS: Record<string, string> = {
 
 export function StudentStatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant="outline" className={COLORS[status] ?? ""}>
+    <Badge variant="outline" className={`gap-1.5 rounded-full ${COLORS[status] ?? ""}`}>
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {status.replace(/_/g, " ")}
     </Badge>
   );

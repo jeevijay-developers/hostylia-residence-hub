@@ -1,9 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Clock, Loader2, Save, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  BedDouble,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  Clock,
+  FileText,
+  GraduationCap,
+  Loader2,
+  Mail,
+  Phone,
+  Save,
+  Shield,
+  ShieldCheck,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -199,136 +216,121 @@ function StudentProfilePage() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <PageHeader
-        title=""
-        description={`Admission #${s.admission_number}`}
-        actions={<StudentStatusBadge status={s.status} />}
-      />
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+          Admission #{s.admission_number}
+        </h1>
+        <StudentStatusBadge status={s.status} />
+      </div>
 
-      <Card className="gap-3 py-4">
-        <CardContent className="grid grid-cols-1 gap-x-3 gap-y-2 px-4 pt-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label htmlFor="p-name" className="text-xs">
-              Full name
-            </Label>
-            <Input
-              id="p-name"
-              className="h-9"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-            {fieldErrors.full_name && (
-              <p className="text-xs text-destructive">{fieldErrors.full_name}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-phone" className="text-xs">
-              Phone
-            </Label>
-            <Input
-              id="p-phone"
-              className="h-9"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+919876543210"
-            />
-            {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-email" className="text-xs">
-              Email
-            </Label>
-            <Input
-              id="p-email"
-              className="h-9"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-dob" className="text-xs">
-              Date of birth
-            </Label>
-            <Input
-              id="p-dob"
-              className="h-9"
-              type="date"
-              value={dob}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => setDob(e.target.value)}
-            />
-            {fieldErrors.date_of_birth && (
-              <p className="text-xs text-destructive">{fieldErrors.date_of_birth}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-gender" className="text-xs">
-              Gender
-            </Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="p-gender" className="h-9">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MALE">Male</SelectItem>
-                <SelectItem value="FEMALE">Female</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-institute" className="text-xs">
-              Institute
-            </Label>
-            <Input
-              id="p-institute"
-              className="h-9"
-              value={institute}
-              onChange={(e) => setInstitute(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="p-course" className="text-xs">
-              Course
-            </Label>
-            <Input
-              id="p-course"
-              className="h-9"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="p-year" className="text-xs">
-              Academic year
-            </Label>
-            <Input
-              id="p-year"
-              className="h-9"
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">KYC documents</Label>
-            <button
-              type="button"
-              onClick={() => setKycDialogOpen(true)}
-              className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+      <Card className="gap-3 border-primary/30 py-4">
+        <CardContent className="space-y-5 px-4 pt-4">
+          <SectionHeading icon={User} title="Personal Information" tone="info" />
+          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
+            <IconField icon={User} label="Full name" htmlFor="p-name" error={fieldErrors.full_name}>
+              <Input
+                id="p-name"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </IconField>
+            <IconField icon={Phone} label="Phone" htmlFor="p-phone" trailingIcon={Phone} error={fieldErrors.phone}>
+              <Input
+                id="p-phone"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+919876543210"
+              />
+            </IconField>
+            <IconField icon={Mail} label="Email" htmlFor="p-email" trailingIcon={Mail} error={fieldErrors.email}>
+              <Input
+                id="p-email"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </IconField>
+            <IconField
+              icon={CalendarDays}
+              label="Date of birth"
+              htmlFor="p-dob"
+              trailingIcon={CalendarDays}
+              error={fieldErrors.date_of_birth}
             >
-              <span>{kycSubmitted ? "Submitted" : "Tap to complete"}</span>
-              <KycOverallBadge docs={docs} />
-            </button>
+              <Input
+                id="p-dob"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                type="date"
+                value={dob}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDob(e.target.value)}
+              />
+            </IconField>
+            <IconField icon={User} label="Gender" htmlFor="p-gender">
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger
+                  id="p-gender"
+                  className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus:ring-0"
+                >
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MALE">Male</SelectItem>
+                  <SelectItem value="FEMALE">Female</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </IconField>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Room / bed assigned</Label>
-            <div className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
-              {stayText}
-            </div>
+
+          <div className="border-t border-border" />
+
+          <SectionHeading icon={GraduationCap} title="Academic Information" tone="primary" />
+          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-3">
+            <IconField icon={Building2} label="Institute" htmlFor="p-institute" trailingIcon={Building2}>
+              <Input
+                id="p-institute"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                value={institute}
+                onChange={(e) => setInstitute(e.target.value)}
+              />
+            </IconField>
+            <IconField icon={BookOpen} label="Course" htmlFor="p-course" trailingIcon={BookOpen}>
+              <Input
+                id="p-course"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+              />
+            </IconField>
+            <IconField icon={CalendarDays} label="Academic year" htmlFor="p-year" trailingIcon={CalendarDays}>
+              <Input
+                id="p-year"
+                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                placeholder="—"
+              />
+            </IconField>
+          </div>
+
+          <div className="border-t border-border" />
+
+          <SectionHeading icon={Shield} title="KYC & Accommodation" tone="success" />
+          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setKycDialogOpen(true)} className="w-full text-left">
+              <IconField icon={FileText} label="KYC documents" trailingSlot={<KycOverallBadge docs={docs} />}>
+                <span className="text-base text-foreground">
+                  {kycSubmitted ? "Submitted" : "Tap to complete"}
+                </span>
+              </IconField>
+            </button>
+            <IconField icon={BedDouble} label="Room / bed assigned" trailingIcon={BedDouble}>
+              <span className="text-base text-foreground">{stayText}</span>
+            </IconField>
           </div>
         </CardContent>
       </Card>
@@ -365,6 +367,66 @@ function StudentProfilePage() {
         )}
         Save changes
       </Button>
+    </div>
+  );
+}
+
+const SECTION_TONE = {
+  info: "bg-info/15 text-info",
+  primary: "bg-primary/15 text-primary",
+  success: "bg-success/15 text-success",
+} as const;
+
+function SectionHeading({
+  icon: Icon,
+  title,
+  tone = "primary",
+}: {
+  icon: LucideIcon;
+  title: string;
+  tone?: keyof typeof SECTION_TONE;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${SECTION_TONE[tone]}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="text-sm font-semibold text-foreground">{title}</span>
+    </div>
+  );
+}
+
+function IconField({
+  icon: Icon,
+  label,
+  htmlFor,
+  trailingIcon: TrailingIcon,
+  trailingSlot,
+  error,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  htmlFor?: string;
+  trailingIcon?: LucideIcon;
+  trailingSlot?: ReactNode;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="rounded-md border border-input bg-muted/20 px-3 py-2">
+        <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Icon className="h-3.5 w-3.5 text-info" />
+          {label}
+        </Label>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">{children}</div>
+          {TrailingIcon && <TrailingIcon className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          {trailingSlot}
+        </div>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

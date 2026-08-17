@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { MessageSquare, Send, Soup, Star, Sunrise, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,10 @@ function StudentMessPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="" description="Today's menu and your feedback." />
+      <PageHeader
+        title="Today's menu and your feedback."
+        description="Help us serve you better every day."
+      />
       {(menusQ.data ?? []).map((m) => (
         <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
       ))}
@@ -66,6 +69,14 @@ function StudentMessPage() {
     </div>
   );
 }
+
+const MEAL_STYLE: Record<string, { icon: LucideIcon; iconBg: string; iconText: string }> = {
+  BREAKFAST: { icon: Sunrise, iconBg: "bg-warning/15", iconText: "text-warning" },
+  LUNCH: { icon: UtensilsCrossed, iconBg: "bg-success/15", iconText: "text-success" },
+  DINNER: { icon: UtensilsCrossed, iconBg: "bg-success/15", iconText: "text-success" },
+  SNACKS: { icon: Soup, iconBg: "bg-primary/15", iconText: "text-primary" },
+};
+const DEFAULT_MEAL_STYLE = { icon: UtensilsCrossed, iconBg: "bg-muted", iconText: "text-muted-foreground" };
 
 function MenuCard({ menu, submittedRating, student, kycComplete, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; onSubmitted: () => void }) {
   const [rating, setRating] = useState(5);
@@ -82,25 +93,61 @@ function MenuCard({ menu, submittedRating, student, kycComplete, onSubmitted }: 
     onSuccess: () => { toast.success("Thanks!"); onSubmitted(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+  const style = MEAL_STYLE[menu.meal] ?? DEFAULT_MEAL_STYLE;
+  const MealIcon = style.icon;
   return (
-    <Card><CardContent className="p-3 space-y-2">
-      <div className="flex justify-between">
-        <div>
-          <div className="font-medium">{menu.meal} {menu.title ? `— ${menu.title}` : ""}</div>
-          <div className="text-xs text-muted-foreground">{(menu.mess_menu_items ?? []).map((i) => i.item_name).join(", ")}</div>
+    <Card><CardContent className="p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${style.iconBg} ${style.iconText}`}>
+            <MealIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="font-semibold uppercase tracking-wide text-foreground">
+              {menu.meal} {menu.title ? `— ${menu.title}` : ""}
+            </div>
+            <div className="text-xs uppercase text-muted-foreground">{(menu.mess_menu_items ?? []).map((i) => i.item_name).join(" ")}</div>
+          </div>
         </div>
         {submittedRating && <Badge variant="secondary">⭐ {submittedRating}</Badge>}
       </div>
       {!submittedRating && (
-        <div className="space-y-2 pt-2 border-t">
-          <div className="flex gap-1">
-            {[1,2,3,4,5].map((n) => (
-              <Button key={n} size="sm" variant={rating === n ? "default" : "outline"} onClick={() => setRating(n)}>{n}</Button>
-            ))}
+        <div className="space-y-3 border-t border-border pt-3">
+          <div>
+            <p className="mb-1 text-sm text-muted-foreground">Rate your meal</p>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRating(n)}
+                  className="p-0.5"
+                  aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
+                >
+                  <Star
+                    className={`h-6 w-6 ${n <= rating ? "fill-warning text-warning" : "text-muted-foreground"}`}
+                  />
+                </button>
+              ))}
+            </div>
           </div>
-          <Textarea placeholder="Comment (optional)" value={comment} onChange={(e) => setComment(e.target.value)} rows={2} />
+          <div className="relative">
+            <MessageSquare className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Textarea
+              placeholder="Comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={2}
+              className="pl-9"
+            />
+          </div>
           {!kycComplete && <KycGateNotice message="Complete your KYC to submit mess feedback." />}
-          <Button size="sm" onClick={() => submitMut.mutate()} disabled={!kycComplete || submitMut.isPending}>
+          <Button
+            size="sm"
+            className="rounded-full"
+            onClick={() => submitMut.mutate()}
+            disabled={!kycComplete || submitMut.isPending}
+          >
             <Send className="h-4 w-4" /> Submit
           </Button>
         </div>

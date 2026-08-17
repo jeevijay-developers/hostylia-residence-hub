@@ -76,9 +76,9 @@ export function ComplaintCard({
         </div>
         <p className="line-clamp-3 text-sm text-muted-foreground">{complaint.description}</p>
         {complaint.resolution_summary && (
-          <div className="rounded-md border border-success/30 bg-success/5 p-2 text-xs">
-            <span className="font-semibold text-success">Resolution:</span>{" "}
-            {complaint.resolution_summary}
+          <div className="inline-flex items-start gap-1 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1.5 text-xs">
+            <span className="font-semibold text-success">Resolution:</span>
+            <span className="text-foreground">{complaint.resolution_summary}</span>
           </div>
         )}
         {actions && <div className="flex flex-wrap gap-2 pt-1">{actions}</div>}

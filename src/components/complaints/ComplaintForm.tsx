@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Info, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,20 +99,22 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
       className="space-y-4"
       onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}
     >
-      <div className="space-y-1">
-        <Label>Category</Label>
-        <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger><SelectValue placeholder="Pick a category" /></SelectTrigger>
-          <SelectContent>
-            {(cats.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        <Label>Title</Label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label>Category</Label>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger><SelectValue placeholder="Pick a category" /></SelectTrigger>
+            <SelectContent>
+              {(cats.data ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Title</Label>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Enter title" />
+        </div>
       </div>
       <div className="space-y-1">
         <Label>Description</Label>
@@ -122,55 +124,55 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
           rows={4}
           maxLength={4000}
           required
+          placeholder="Describe your issue…"
         />
       </div>
-      <div className="space-y-1">
-        <Label>Priority (optional)</Label>
-        <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger><SelectValue placeholder="Use category default" /></SelectTrigger>
-          <SelectContent>
-            {["LOW","MEDIUM","HIGH","URGENT"].map((p) => (
-              <SelectItem key={p} value={p}>{p}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        <Label>Photo (optional)</Label>
-        <div className="flex flex-wrap gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent">
-            <Camera size={16} /> Take photo
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent">
-            <Upload size={16} /> Upload
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          {photo && <span className="self-center truncate text-xs text-muted-foreground">{photo.name}</span>}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label>Priority (optional)</Label>
+          <Select value={priority} onValueChange={setPriority}>
+            <SelectTrigger><SelectValue placeholder="Use category default" /></SelectTrigger>
+            <SelectContent>
+              {["LOW","MEDIUM","HIGH","URGENT"].map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Photo (optional)</Label>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent">
+              <Camera size={16} /> Take photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent">
+              <Upload size={16} /> Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+          {photo && <span className="block truncate text-xs text-muted-foreground">{photo.name}</span>}
         </div>
       </div>
-      {student.data?.allocation ? (
-        <p className="text-xs text-muted-foreground">
-          Auto-tagging room/bed from your current allocation.
-        </p>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          You don't have an active allocation — the complaint will be filed against the property.
-        </p>
-      )}
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        {student.data?.allocation
+          ? "Auto-tagging room/bed from your current allocation."
+          : "You don't have an active allocation — the complaint will be filed against the property."}
+      </p>
       {!kycComplete && <KycGateNotice message="Complete your KYC to submit a complaint." />}
-      <Button type="submit" disabled={!kycComplete || submit.isPending}>
+      <Button type="submit" className="rounded-full" disabled={!kycComplete || submit.isPending}>
         {submit.isPending ? "Submitting…" : "Submit complaint"}
       </Button>
     </form>

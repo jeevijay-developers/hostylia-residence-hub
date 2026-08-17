@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Eye, Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -55,6 +56,13 @@ export function NoticeComposer({ propertyId }: Props) {
 
   const tenantId = usePropertyTenantId(propertyId);
   const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
+  const sortedNotices = useMemo(
+    () =>
+      [...notices].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [notices],
+  );
 
   const [viewingNotice, setViewingNotice] = useState<NoticeRow | null>(null);
   const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
@@ -113,7 +121,7 @@ export function NoticeComposer({ propertyId }: Props) {
   const canSubmit = title.trim().length >= 3 && body.trim().length >= 3 && channels.length > 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="grid gap-6">
       <Card className="p-4">
         <h2 className="mb-4 font-semibold">Compose notice</h2>
         <div className="space-y-3">
@@ -197,11 +205,11 @@ export function NoticeComposer({ propertyId }: Props) {
 
       <Card className="p-4">
         <h2 className="mb-4 font-semibold">Recent notices</h2>
-        {notices.length === 0 ? (
+        {sortedNotices.length === 0 ? (
           <p className="text-sm text-muted-foreground">No notices yet.</p>
         ) : (
           <ul className="space-y-3">
-            {notices.slice(0, 10).map((n: NoticeRow) => (
+            {sortedNotices.slice(0, 10).map((n: NoticeRow) => (
               <li key={n.id} className="rounded-md border border-border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -218,22 +226,36 @@ export function NoticeComposer({ propertyId }: Props) {
                   <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>{n.status}</Badge>
                 </div>
                 <div className="mt-2 flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => setViewingNotice(n)}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => openEdit(n)}
-                  >
-                    Edit
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setViewingNotice(n)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">View</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => openEdit(n)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
                     <Button
                       variant="ghost"

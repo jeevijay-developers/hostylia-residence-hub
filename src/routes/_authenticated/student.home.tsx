@@ -2,8 +2,11 @@ import type { ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Bed,
+  Building2,
   CalendarCheck,
   ChevronRight,
+  DoorOpen,
   Ticket,
   Utensils,
   Wallet,
@@ -88,21 +91,86 @@ function StudentHomePage() {
     },
   });
 
+  const propertyQ = useQuery({
+    queryKey: ["property-name", propertyId],
+    enabled: !!propertyId,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("properties")
+        .select("name")
+        .eq("id", propertyId!)
+        .maybeSingle();
+      return data?.name ?? null;
+    },
+  });
+
   const bed = allocQ.data?.bed as
     { code: string; room: { room_number: string } | null } | null | undefined;
   const firstName = profileQ.data?.full_name?.trim().split(" ")[0];
   const greeting = getGreeting(new Date().getHours());
+  const initial = firstName?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
-          {greeting}{firstName ? `, ${firstName}` : ""} 👋
-        </h1>
-        {bed && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {bed.room?.room_number && `Room ${bed.room.room_number} • `}Bed {bed.code}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+              {greeting}
+              {firstName ? (
+                <>
+                  ,<br />
+                  <span className="text-primary">{firstName}</span> 👋
+                </>
+              ) : (
+                " 👋"
+              )}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">Stay updated. Stay ahead.</p>
+          </div>
+          <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-2 ring-primary/40">
+            {initial}
+            <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-success" />
+          </span>
+        </div>
+
+        {(bed || propertyQ.data) && (
+          <div className="mt-4 flex items-stretch divide-x divide-border rounded-xl border border-border bg-card p-2">
+            {bed?.room?.room_number && (
+              <div className="flex flex-1 items-center gap-2 px-2 py-1">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground">
+                  <DoorOpen className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-[11px] text-muted-foreground">Room</span>
+                  <span className="block text-sm font-semibold text-foreground">{bed.room.room_number}</span>
+                </span>
+              </div>
+            )}
+            {bed && (
+              <div className="flex flex-1 items-center gap-2 px-2 py-1">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-info text-info-foreground">
+                  <Bed className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-[11px] text-muted-foreground">Bed</span>
+                  <span className="block text-sm font-semibold text-foreground">{bed.code}</span>
+                </span>
+              </div>
+            )}
+            {propertyQ.data && (
+              <div className="flex flex-1 items-center gap-2 px-2 py-1">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-success text-success-foreground">
+                  <Building2 className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-[11px] text-muted-foreground">Hostel</span>
+                  <span className="block truncate text-sm font-semibold text-foreground">{propertyQ.data}</span>
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -120,39 +188,56 @@ function StudentHomePage() {
 
       {studentId && (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <AttendanceSection studentId={studentId} />
             <FeesSection studentId={studentId} />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <GatePassSection studentId={studentId} />
-            <MessSection propertyId={propertyId} />
-          </div>
+          <GatePassSection studentId={studentId} />
+          <MessSection propertyId={propertyId} />
         </div>
       )}
     </div>
   );
 }
 
+const TONE_STYLES = {
+  success: { border: "border-success/40", iconBg: "bg-success", iconText: "text-success-foreground" },
+  info: { border: "border-info/40", iconBg: "bg-info", iconText: "text-info-foreground" },
+  primary: { border: "border-primary/40", iconBg: "bg-primary", iconText: "text-primary-foreground" },
+  warning: { border: "border-warning/40", iconBg: "bg-warning", iconText: "text-warning-foreground" },
+} as const;
+
 function HomeSectionCard({
   icon: Icon,
   title,
   children,
   action,
+  tone = "primary",
+  to,
 }: {
   icon: LucideIcon;
   title: string;
   children: ReactNode;
   action: ReactNode;
+  tone?: keyof typeof TONE_STYLES;
+  to?: string;
 }) {
+  const styles = TONE_STYLES[tone];
   return (
-    <Card>
+    <Card className={styles.border}>
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Icon className="h-4 w-4" />
-          </span>
-          <span className="text-sm font-semibold text-foreground">{title}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${styles.iconBg} ${styles.iconText}`}>
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-semibold text-foreground">{title}</span>
+          </div>
+          {to && (
+            <Link to={to} className="text-muted-foreground">
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
         {children}
         {action}
@@ -187,6 +272,8 @@ function AttendanceSection({ studentId }: { studentId: string }) {
     <HomeSectionCard
       icon={CalendarCheck}
       title="Attendance"
+      tone="success"
+      to="/student/attendance"
       action={
         <Button variant="outline" size="sm" className="w-full" asChild>
           <Link to="/student/attendance">
@@ -238,6 +325,8 @@ function FeesSection({ studentId }: { studentId: string }) {
     <HomeSectionCard
       icon={Wallet}
       title="Fees"
+      tone="info"
+      to="/student/fees"
       action={
         <Button variant="outline" size="sm" className="w-full" asChild>
           <Link to="/student/fees">
@@ -294,6 +383,8 @@ function GatePassSection({ studentId }: { studentId: string }) {
     <HomeSectionCard
       icon={Ticket}
       title="Gate Pass"
+      tone="primary"
+      to="/student/gate-pass"
       action={
         isPending ? (
           <Button variant="outline" size="sm" className="w-full" disabled>
@@ -343,6 +434,8 @@ function MessSection({ propertyId }: { propertyId: string | null }) {
     <HomeSectionCard
       icon={Utensils}
       title="Today's Mess"
+      tone="warning"
+      to="/student/mess"
       action={
         <Button variant="outline" size="sm" className="w-full" asChild>
           <Link to="/student/mess">
@@ -356,20 +449,18 @@ function MessSection({ propertyId }: { propertyId: string | null }) {
       ) : menus.length === 0 ? (
         <p className="text-xs text-muted-foreground">No menu published for today.</p>
       ) : (
-        <div className="space-y-1">
+        <div className="grid grid-cols-3 divide-x divide-border">
           {menus.map((m) => (
-            <div key={m.id} className="text-xs">
-              <span className="font-medium text-foreground">{m.meal}</span>
-              {m.title ? ` — ${m.title}` : ""}
+            <div key={m.id} className="px-2 first:pl-0">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{m.meal}</p>
+              {m.title && <p className="text-sm font-medium text-foreground">{m.title}</p>}
               {(m.mess_menu_items ?? []).length > 0 && (
-                <span className="text-muted-foreground">
-                  {" "}
-                  ·{" "}
+                <p className="text-xs text-muted-foreground">
                   {(m.mess_menu_items ?? [])
                     .map((i: { item_name: string }) => i.item_name)
                     .slice(0, 3)
                     .join(", ")}
-                </span>
+                </p>
               )}
             </div>
           ))}
