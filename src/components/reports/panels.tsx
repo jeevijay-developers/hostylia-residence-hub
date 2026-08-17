@@ -5,12 +5,7 @@ import { ReportTable, type Column } from "@/components/reports/ReportTable";
 import { ExportButton } from "@/components/reports/ExportButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  OccupancyChart,
-  DsoChart,
-  SlaComplianceChart,
-  AttendanceChart,
-} from "@/components/reports/charts";
+import { OccupancyChart, DsoChart, SlaComplianceChart } from "@/components/reports/charts";
 import {
   getOccupancyReport,
   getAgingReport,
@@ -305,7 +300,6 @@ export function AttendanceReportPanel({
         </div>
       )}
 
-      {rows.length > 0 && <AttendanceChart data={rows} />}
       <ReportTable
         rows={rows}
         columns={attendanceCols}

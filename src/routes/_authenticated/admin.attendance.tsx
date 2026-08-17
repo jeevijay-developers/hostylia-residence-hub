@@ -33,6 +33,7 @@ import { useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage } from "@/lib/utils";
+import { AttendanceReportPanel } from "@/components/reports/panels";
 
 export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
@@ -196,6 +197,13 @@ function AdminAttendancePage() {
         title="Attendance"
         description="Bulk-mark: default all Present, flag exceptions."
       />
+
+      {/* Same monthly view + CSV/PDF export already used on the parent
+          dashboard's attendance section (MonthlyAttendanceReport) and on
+          /admin/reports — property-wide here instead of per-student, via
+          the existing v_attendance_monthly_summary view/report fn. */}
+      <AttendanceReportPanel propertyId={propertyId} />
+
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="date"

@@ -10,8 +10,12 @@ import {
 
 /**
  * Warden reports — SLA compliance for their assigned scope and
- * block/property occupancy. No finance data. Export is intentionally
- * hidden per PRD §7 RBAC matrix (Warden has no export capability).
+ * block/property occupancy. No finance data (Occupancy/SLA export stays
+ * hidden — Warden has no export right on those rows of PRD §7's matrix).
+ * Attendance export IS shown: PRD §7's "Reports & analytics" row grants
+ * Warden "VX (assigned)" — View + Export scoped to their own assignment —
+ * separately from the raw "Attendance" row (VCED, no X) that only governs
+ * the daily bulk-mark screen.
  */
 export const Route = createFileRoute("/_authenticated/warden/reports")({
   component: WardenReportsPage,
@@ -40,7 +44,10 @@ function WardenReportsPage() {
   const propertyId = q.data;
   return (
     <div className="space-y-8 p-4">
-      <PageHeader title="Reports" description="Your scope only. Export is not available for Wardens." />
+      <PageHeader
+        title="Reports"
+        description="Your scope only. Attendance can be downloaded; occupancy and SLA are view-only."
+      />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           No assigned property scope yet. Ask your admin to assign a block or property.
@@ -49,7 +56,7 @@ function WardenReportsPage() {
         <>
           <SlaComplianceReportPanel propertyId={propertyId} showExport={false} />
           <OccupancyReportPanel propertyId={propertyId} showExport={false} />
-          <AttendanceReportPanel propertyId={propertyId} showExport={false} />
+          <AttendanceReportPanel propertyId={propertyId} />
         </>
       )}
     </div>
