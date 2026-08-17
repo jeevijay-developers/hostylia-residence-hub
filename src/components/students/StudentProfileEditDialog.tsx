@@ -25,7 +25,7 @@ import {
 import { studentStaffProfileEditSchema } from "@/schemas/student";
 import { updateStudentProfile } from "@/lib/student.functions";
 import { getErrorMessage } from "@/lib/utils";
-import { displayIndianPhone } from "@/schemas/auth";
+import { displayIndianPhone, indianPhoneSchema, sanitizeIndianPhoneInput } from "@/schemas/auth";
 import { fetchStudentGuardians, type StudentGuardianRow } from "@/components/students/GuardianCard";
 import { GuardianDetailsEditDialog } from "@/components/students/GuardianDetailsEditDialog";
 
@@ -66,6 +66,12 @@ export function StudentProfileEditDialog({
   const [academicYear, setAcademicYear] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [editingGuardian, setEditingGuardian] = useState<StudentGuardianRow | null>(null);
+
+  const phoneParse = indianPhoneSchema.safeParse(phone.trim());
+  const phoneInvalid = !phoneParse.success;
+  const phoneErrorMessage = phone.trim()
+    ? (phoneInvalid ? phoneParse.error.issues[0]?.message : undefined)
+    : fieldErrors.phone;
 
   const guardiansQ = useQuery({
     queryKey: ["student-guardians", studentId],
@@ -144,10 +150,10 @@ export function StudentProfileEditDialog({
               type="tel"
               inputMode="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(sanitizeIndianPhoneInput(e.target.value))}
               placeholder="+91 98765 43210"
             />
-            {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
+            {phoneErrorMessage && <p className="text-xs text-destructive">{phoneErrorMessage}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sp-email">Email</Label>
@@ -269,7 +275,7 @@ export function StudentProfileEditDialog({
           </Button>
           <Button
             type="button"
-            disabled={save.isPending || fullName.trim() === ""}
+            disabled={save.isPending || fullName.trim() === "" || phoneInvalid}
             onClick={() => save.mutate()}
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

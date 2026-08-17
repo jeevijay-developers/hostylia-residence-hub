@@ -70,6 +70,7 @@ import {
   scanGatePass,
   checkVisitor,
   createVisitor,
+  isExpectedYearValid,
 } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage } from "@/lib/utils";
@@ -1223,8 +1224,14 @@ function RegisterVisitorDialog({
     onError: (e) => toast.error(getErrorMessage(e, "Could not register visitor.")),
   });
 
+  const expectedDateInvalid = !!expectedDate && !isExpectedYearValid(expectedDate);
+
   const canSubmit =
-    !!hostId && name.trim().length >= 2 && phone.trim().length >= 6 && purpose.trim().length >= 2;
+    !!hostId &&
+    name.trim().length >= 2 &&
+    phone.trim().length >= 6 &&
+    purpose.trim().length >= 2 &&
+    !expectedDateInvalid;
 
   return (
     <Dialog
@@ -1309,8 +1316,14 @@ function RegisterVisitorDialog({
               <Input
                 type="date"
                 value={expectedDate}
+                min={`${new Date().getFullYear()}-01-01`}
+                max={`${new Date().getFullYear()}-12-31`}
                 onChange={(e) => setExpectedDate(e.target.value)}
+                aria-invalid={expectedDateInvalid}
               />
+              {expectedDateInvalid && (
+                <p className="text-xs text-destructive">Enter a valid date within the current year</p>
+              )}
             </div>
             <div className="min-w-0 space-y-1.5">
               <Label>Expected Time (optional)</Label>
