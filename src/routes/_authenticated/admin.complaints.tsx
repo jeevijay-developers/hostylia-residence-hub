@@ -25,8 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useComplaintsPaged, useComplaintCategories, type ComplaintRow } from "@/lib/complaint";
-import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { useComplaints, useComplaintCategories, type ComplaintWithRelations } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,47 +68,39 @@ function useBlocks(propertyId: string | null | undefined) {
   });
 }
 
-const COMPLAINTS_PAGE_SIZE = 20;
-
 function AdminComplaintsPage() {
   const propId = usePropertyStore((s) => s.activePropertyId);
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [block, setBlock] = useState("ALL");
-  const [page, setPage] = useState(0);
-  const all = useComplaintsPaged({
-    propertyId: propId,
-    status: status === "ALL" ? null : status,
-    categoryId: category === "ALL" ? null : category,
-    blockId: block === "ALL" ? null : block,
-    page,
-    pageSize: COMPLAINTS_PAGE_SIZE,
-  });
+  const all = useComplaints({ propertyId: propId });
   const cats = useComplaintCategories(propId);
   const blocksQ = useBlocks(propId);
 
-  const list = all.data?.rows ?? [];
-  const total = all.data?.total ?? 0;
+  const blockNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (blocksQ.data ?? []).forEach((b) => m.set(b.id, b.name));
+    return m;
+  }, [blocksQ.data]);
 
-  // Populated from the property's actual blocks (small, bounded lookup) —
-  // not derived from the current page of complaints, which would make the
-  // filter's own options depend on what happened to be on the visible page.
-  const blockOptions = useMemo(
-    () => [{ id: "none", name: "No block" }, ...(blocksQ.data ?? [])],
-    [blocksQ.data],
-  );
+  const list = useMemo(() => {
+    let l = all.data ?? [];
+    if (status !== "ALL") l = l.filter((c) => c.status === status);
+    if (category !== "ALL") l = l.filter((c) => c.category_id === category);
+    if (block !== "ALL") l = l.filter((c) => (c.block_id ?? "none") === block);
+    return l;
+  }, [all.data, status, category, block]);
+
+  const blockIds = useMemo(() => {
+    const set = new Set<string>();
+    (all.data ?? []).forEach((c) => set.add(c.block_id ?? "none"));
+    return Array.from(set);
+  }, [all.data]);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Complaints" description="Property-wide view with SLA visibility." />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v);
-            setPage(0);
-          }}
-        >
+        <Select value={status} onValueChange={setStatus}>
           <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -121,13 +112,7 @@ function AdminComplaintsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={category}
-          onValueChange={(v) => {
-            setCategory(v);
-            setPage(0);
-          }}
-        >
+        <Select value={category} onValueChange={setCategory}>
           <SelectTrigger>
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -140,21 +125,15 @@ function AdminComplaintsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={block}
-          onValueChange={(v) => {
-            setBlock(v);
-            setPage(0);
-          }}
-        >
+        <Select value={block} onValueChange={setBlock}>
           <SelectTrigger>
             <SelectValue placeholder="Block" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All blocks</SelectItem>
-            {blockOptions.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.name}
+            {blockIds.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b === "none" ? "No block" : (blockNameMap.get(b) ?? "Unnamed block")}
               </SelectItem>
             ))}
           </SelectContent>
@@ -163,33 +142,19 @@ function AdminComplaintsPage() {
       {!propId && (
         <p className="text-sm text-muted-foreground">Select a property to view complaints.</p>
       )}
-      {all.isError ? (
-        <p className="text-sm text-destructive">
-          {all.error instanceof Error ? all.error.message : "Could not load complaints."}
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {list.map((c) => (
-            <AdminComplaintRow key={c.id} complaint={c} />
-          ))}
-          {propId && !all.isLoading && list.length === 0 && (
-            <p className="text-sm text-muted-foreground">No complaints match these filters.</p>
-          )}
-        </div>
-      )}
-      {!all.isLoading && !all.isError && total > 0 && (
-        <PaginationBar
-          page={page}
-          pageSize={COMPLAINTS_PAGE_SIZE}
-          total={total}
-          onPageChange={setPage}
-        />
-      )}
+      <div className="space-y-3">
+        {list.map((c) => (
+          <AdminComplaintRow key={c.id} complaint={c} />
+        ))}
+        {propId && !all.isLoading && list.length === 0 && (
+          <p className="text-sm text-muted-foreground">No complaints match these filters.</p>
+        )}
+      </div>
     </div>
   );
 }
 
-function AdminComplaintRow({ complaint }: { complaint: ComplaintRow }) {
+function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations }) {
   const qc = useQueryClient();
   const { data: role } = useResolvedRole();
   const tenantId = role?.tenantId ?? null;

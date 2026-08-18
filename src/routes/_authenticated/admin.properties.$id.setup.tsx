@@ -420,8 +420,9 @@ function PropertySetupPage() {
       <div className="flex justify-between">
         <Button
           variant="ghost"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
+          onClick={() =>
+            step === 0 ? nav({ to: "/admin/properties" }) : setStep((s) => Math.max(0, s - 1))
+          }
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>

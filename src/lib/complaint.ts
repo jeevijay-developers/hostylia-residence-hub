@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -85,6 +85,13 @@ interface ListOptions {
 
 export function useComplaints(opts: ListOptions) {
   const qc = useQueryClient();
+  // Multiple components can mount useComplaints with the same propertyId at
+  // once (e.g. the daily-brief page's own KPI query plus useRecentActivity's
+  // internal one) — a channel name keyed only on propertyId collides between
+  // instances and Supabase throws "cannot add postgres_changes callbacks...
+  // after subscribe()" on the second .on() call against the already-
+  // subscribed shared channel. Same fix as useGatePasses in ops.ts.
+  const instanceId = useId();
   const key = ["complaints", opts];
   const query = useQuery({
     queryKey: key,
@@ -109,7 +116,7 @@ export function useComplaints(opts: ListOptions) {
   useEffect(() => {
     const filter = opts.propertyId ? `property_id=eq.${opts.propertyId}` : undefined;
     const channel = supabase
-      .channel(`complaints-${opts.propertyId ?? "all"}`)
+      .channel(`complaints-${opts.propertyId ?? "all"}-${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "complaints", filter }, () =>
         qc.invalidateQueries({ queryKey: ["complaints"] }),
       )
@@ -117,7 +124,7 @@ export function useComplaints(opts: ListOptions) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [opts.propertyId, qc]);
+  }, [opts.propertyId, qc, instanceId]);
 
   return query;
 }
@@ -209,6 +216,12 @@ export type ComplaintCommentWithAuthor = ComplaintCommentRow & {
   profiles: { full_name: string } | null;
 };
 
+/**
+ * `complaint_comments.author_user_id` has no FK to `profiles` (it's a bare
+ * uuid — see the 20260807125012 migration), so PostgREST can't resolve an
+ * embedded `profiles(full_name)` join and returns 400. Fetch the two
+ * separately and merge client-side instead of relying on embedding.
+ */
 export function useComplaintComments(complaintId: string | null) {
   return useQuery({
     queryKey: ["complaint-comments", complaintId],
@@ -216,13 +229,28 @@ export function useComplaintComments(complaintId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("complaint_comments")
-        .select(
-          "id, tenant_id, property_id, complaint_id, author_user_id, body, created_at, profiles(full_name)",
-        )
+        .select("id, tenant_id, property_id, complaint_id, author_user_id, body, created_at")
         .eq("complaint_id", complaintId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as ComplaintCommentWithAuthor[];
+      const comments = data ?? [];
+
+      const authorIds = Array.from(new Set(comments.map((c) => c.author_user_id)));
+      const authorNames = new Map<string, string>();
+      if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", authorIds);
+        for (const p of profiles ?? []) authorNames.set(p.id, p.full_name);
+      }
+
+      return comments.map((c) => ({
+        ...c,
+        profiles: authorNames.has(c.author_user_id)
+          ? { full_name: authorNames.get(c.author_user_id)! }
+          : null,
+      })) as ComplaintCommentWithAuthor[];
     },
   });
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { AlertCircle, CheckCircle2, ChevronRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,17 @@ import { createRazorpayOrder } from "@/lib/finance.functions";
 import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
-import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
+
+const INVOICE_STATUS_ICON: Record<InvoiceStatus, typeof CheckCircle2 | null> = {
+  DRAFT: null,
+  ISSUED: null,
+  PARTIALLY_PAID: null,
+  PAID: CheckCircle2,
+  OVERDUE: AlertCircle,
+  VOID: null,
+  PARTIALLY_REFUNDED: null,
+  REFUNDED: null,
+};
 
 export function StudentFeesList({ studentId }: { studentId: string }) {
   const qc = useQueryClient();
@@ -36,55 +47,68 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
       openRazorpayCheckout(out).catch((e) => toast.error(e.message));
       qc.invalidateQueries({ queryKey: ["student-invoices"] });
     },
-    onError: (e) =>
-      toast.error(
-        e instanceof Error ? e.message : "Payment unavailable — Razorpay keys not configured.",
-      ),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Payment unavailable — Razorpay keys not configured."),
   });
 
-  if (q.isLoading) return <ListSkeleton />;
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   const rows = q.data ?? [];
   if (!rows.length) return <p className="text-sm text-muted-foreground">No invoices yet.</p>;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {!kycComplete && <KycGateNotice message="Complete your KYC to pay your fees online." />}
-      {rows.map((i) => (
-        <div key={i.id} className="rounded-md border border-border bg-card p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-xs">{i.invoice_number}</p>
-              <p className="text-sm">Due {i.due_date}</p>
-              <Badge className={INVOICE_STATUS_TONE[i.status as InvoiceStatus] ?? ""}>
+      {rows.map((i) => {
+        const StatusIcon = INVOICE_STATUS_ICON[i.status as InvoiceStatus];
+        return (
+          <div key={i.id} className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-info/15 text-info">
+                  <FileText className="h-5 w-5" />
+                </span>
+                <div>
+                  <Badge variant="secondary" className="mb-1 text-[11px] font-normal">
+                    Invoice
+                  </Badge>
+                  <p className="font-mono text-sm font-semibold text-foreground">{i.invoice_number}</p>
+                  <p className="text-sm text-muted-foreground">Due {i.due_date}</p>
+                </div>
+              </div>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <Badge className={`gap-1 ${INVOICE_STATUS_TONE[i.status as InvoiceStatus] ?? ""}`}>
+                {StatusIcon && <StatusIcon className="h-3.5 w-3.5" />}
                 {i.status}
               </Badge>
+              <div className="text-right">
+                <p className="text-xl font-semibold">{formatInr(i.balance_paise)}</p>
+                <p className="text-xs text-muted-foreground">of {formatInr(i.total_paise)}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-semibold">{formatInr(i.balance_paise)}</p>
-              <p className="text-xs text-muted-foreground">of {formatInr(i.total_paise)}</p>
-              {i.balance_paise > 0 && i.status !== "VOID" && (
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => pay.mutate(i.id)}
-                  disabled={!kycComplete || pay.isPending}
-                >
-                  {pay.isPending ? "Opening…" : "Pay now"}
-                </Button>
-              )}
-            </div>
+
+            {i.balance_paise > 0 && i.status !== "VOID" && (
+              <Button
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => pay.mutate(i.id)}
+                disabled={!kycComplete || pay.isPending}
+              >
+                {pay.isPending ? "Opening…" : "Pay now"}
+              </Button>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 async function openRazorpayCheckout(order: {
-  order_id: string;
-  key_id: string;
-  amount_paise: number;
-  currency: string;
+  order_id: string; key_id: string; amount_paise: number; currency: string;
 }) {
   if (!(window as any).Razorpay) {
     await new Promise<void>((resolve, reject) => {

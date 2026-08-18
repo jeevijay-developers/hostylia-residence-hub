@@ -10,17 +10,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
 import { GuardianPhoneEditDialog } from "@/components/students/GuardianPhoneEditDialog";
 
+export interface GuardianAddress {
+  line1?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
 export interface StudentGuardianRow {
   guardian_id: string;
   relationship: string | null;
   is_primary: boolean;
-  guardian: { id: string; full_name: string; phone: string } | null;
+  guardian: {
+    id: string;
+    full_name: string;
+    phone: string;
+    email: string | null;
+    occupation: string | null;
+    address: GuardianAddress | null;
+  } | null;
 }
 
-async function fetchStudentGuardians(studentId: string): Promise<StudentGuardianRow[]> {
+export async function fetchStudentGuardians(studentId: string): Promise<StudentGuardianRow[]> {
   const { data, error } = await supabase
     .from("student_guardians")
-    .select("guardian_id, relationship, is_primary, guardian:guardians(id, full_name, phone)")
+    .select(
+      "guardian_id, relationship, is_primary, guardian:guardians(id, full_name, phone, email, occupation, address)",
+    )
     .eq("student_id", studentId)
     .is("unlinked_at", null)
     .order("is_primary", { ascending: false });
@@ -67,7 +83,7 @@ export function GuardianCard({ studentId, canEdit }: GuardianCardProps) {
                 </p>
                 {row.is_primary && <Badge variant="outline">Primary</Badge>}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 {row.relationship ?? "Guardian"} ·{" "}
                 {row.guardian?.phone ? displayIndianPhone(row.guardian.phone) : "no phone"}
               </p>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 import { LogOut, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,11 +19,11 @@ import { MessagesPanel } from "@/components/warden/MessagesPanel";
 import { useResolvedRole } from "@/lib/user-role";
 
 export function MobileHeader() {
-  const { t } = useTranslation();
   const { data: resolved } = useResolvedRole();
   const [signOutOpen, setSignOutOpen] = useState(false);
   const isWarden = resolved?.role === "WARDEN";
   const isParent = resolved?.role === "PARENT";
+  const isStudent = resolved?.role === "STUDENT";
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
@@ -34,6 +33,7 @@ export function MobileHeader() {
       <div className="flex items-center gap-1">
         {isWarden && <MessagesPanel />}
         <NotificationBell />
+        {!isStudent && <LanguageSwitcher />}
         {isWarden ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -97,11 +97,17 @@ export function MobileHeader() {
             className="min-h-10"
             onClick={() => setSignOutOpen(true)}
           >
-            {t("common.signOut")}
+            <LogOut className="mr-1.5 h-4 w-4" />
+            Logout
           </Button>
         )}
       </div>
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        title={isParent || isStudent ? "Logout?" : undefined}
+        confirmLabel={isParent || isStudent ? "Logout" : undefined}
+      />
     </header>
   );
 }

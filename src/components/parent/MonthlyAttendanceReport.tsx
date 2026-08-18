@@ -78,11 +78,13 @@ function daysInMonth(monthInput: string): number {
 export function MonthlyAttendanceReport({
   studentId,
   canExport = true,
+  initialMonth,
 }: {
   studentId: string;
   canExport?: boolean;
+  initialMonth?: string;
 }) {
-  const [monthInput, setMonthInput] = useState(currentMonthValue()); // "YYYY-MM"
+  const [monthInput, setMonthInput] = useState(initialMonth ?? currentMonthValue()); // "YYYY-MM"
   const monthStart = `${monthInput}-01`;
   const monthEnd = `${monthInput}-${String(daysInMonth(monthInput)).padStart(2, "0")}`;
 

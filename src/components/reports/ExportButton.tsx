@@ -23,7 +23,10 @@ interface Props<Row extends Record<string, unknown>> {
  * Exports the same on-screen rows as CSV or PDF — no Edge Function,
  * no server round-trip. Data scope is whatever the server already
  * returned under RLS, so this cannot leak outside the caller's scope.
- * Not rendered for Warden per PRD §7 RBAC matrix.
+ * Whether a given caller shows this button is a per-report `showExport`
+ * decision made by the page rendering the panel, driven by that report's
+ * own row in PRD §7's RBAC matrix — Warden has no export right on
+ * Occupancy/SLA but does on Reports & analytics (e.g. attendance).
  */
 export function ExportButton<Row extends Record<string, unknown>>({
   filename,

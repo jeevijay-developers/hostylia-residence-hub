@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { Camera, CheckCircle2, Loader2, RotateCcw, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, Loader2, LogIn, LogOut, RotateCcw, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -155,22 +155,33 @@ export function CameraQrScanner({
         <Button
           type="button"
           size="sm"
+          className="flex-1"
           variant={direction === "OUT" ? "default" : "outline"}
           disabled={state === "scanning" || state === "validating"}
           onClick={() => onDirectionChange("OUT")}
         >
-          Check OUT
+          <LogOut className="h-4 w-4" /> Check OUT
         </Button>
         <Button
           type="button"
           size="sm"
+          className="flex-1"
           variant={direction === "IN" ? "default" : "outline"}
           disabled={state === "scanning" || state === "validating"}
           onClick={() => onDirectionChange("IN")}
         >
-          Check IN
+          <LogIn className="h-4 w-4" /> Check IN
         </Button>
       </div>
+
+      {(state === "idle" || state === "denied") && (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30 py-8 text-center">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
+            <Camera className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <p className="text-xs text-muted-foreground">Camera is off — start it to scan a pass</p>
+        </div>
+      )}
 
       {(state === "scanning" || state === "validating") && (
         <div className="relative overflow-hidden rounded-md border border-border bg-black">

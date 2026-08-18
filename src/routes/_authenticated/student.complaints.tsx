@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, MessageSquare } from "lucide-react";
-import { PageHeader } from "@/components/dashboard/PageHeader";
+import { ChevronDown, ClipboardList, FileEdit, MessageSquare } from "lucide-react";
 import { ComplaintForm } from "@/components/complaints/ComplaintForm";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
 import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
@@ -12,7 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useComplaints, useStudentSelf, type ComplaintWithRelations } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
 
 export const Route = createFileRoute("/_authenticated/student/complaints")({
   component: StudentComplaintsPage,
@@ -28,22 +26,30 @@ function StudentComplaintsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Complaints" description="Report an issue and track it here." />
       <Card>
         <CardHeader>
-          <CardTitle>New complaint</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <FileEdit className="h-4 w-4" />
+            </span>
+            New complaint
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ComplaintForm />
         </CardContent>
       </Card>
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Your complaints</h2>
-        {complaints.isLoading && <ListSkeleton rows={3} />}
-        {!complaints.isLoading &&
-          (complaints.data ?? []).map((c) => (
-            <StudentComplaintItem key={c.id} complaint={c} userId={role.data?.userId ?? null} />
-          ))}
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <ClipboardList className="h-4 w-4" />
+          </span>
+          Your complaints
+        </h2>
+        {complaints.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {(complaints.data ?? []).map((c) => (
+          <StudentComplaintItem key={c.id} complaint={c} userId={role.data?.userId ?? null} />
+        ))}
         {complaints.data && complaints.data.length === 0 && (
           <p className="text-sm text-muted-foreground">No complaints yet.</p>
         )}
@@ -63,13 +69,13 @@ function StudentComplaintItem({
   const [conversationOpen, setConversationOpen] = useState(false);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <ComplaintCard
         complaint={complaint}
         actions={
           <Collapsible open={statusOpen} onOpenChange={setStatusOpen} className="w-full">
             <CollapsibleTrigger asChild>
-              <Button type="button" variant="outline" size="sm">
+              <Button type="button" variant="outline" size="sm" className="rounded-full">
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${statusOpen ? "rotate-180" : ""}`}
                 />
@@ -77,7 +83,7 @@ function StudentComplaintItem({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-3">
-              <div className="rounded-md border border-border bg-muted/30 p-3">
+              <div className="rounded-xl border border-border bg-muted/30 p-3">
                 <ComplaintTimeline complaint={complaint} />
               </div>
             </CollapsibleContent>
@@ -85,14 +91,14 @@ function StudentComplaintItem({
         }
       />
       <RatingWidget complaint={complaint} />
-      <div className="rounded-md border border-border bg-card p-3">
+      <div className="rounded-xl border border-border bg-card p-3">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="h-7 px-2 text-xs"
+          className="h-8 rounded-full px-3 text-xs"
           onClick={() => setConversationOpen((v) => !v)}
         >
-          <MessageSquare className="h-3 w-3" />{" "}
+          <MessageSquare className="h-3.5 w-3.5" />{" "}
           {conversationOpen ? "Hide conversation" : "Show conversation"}
         </Button>
         {conversationOpen && (

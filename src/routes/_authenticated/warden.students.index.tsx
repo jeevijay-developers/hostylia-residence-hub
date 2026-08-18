@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Info, Search, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -61,23 +61,29 @@ function WardenStudentsPage() {
 
       {!studentsQ.isLoading && !propQ.isLoading && students.length > 0 && (
         <section aria-label="Student directory">
-          <div className="mb-2.5 flex items-center justify-between px-0.5">
-            <p className="text-xs font-medium text-muted-foreground">
+          <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
               {search.trim()
                 ? `${students.length} match${students.length === 1 ? "" : "es"}`
                 : `${students.length} students`}
             </p>
-            <p className="text-xs text-muted-foreground">Select a student to view details</p>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Select a student to view details
+              <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            </p>
           </div>
           <div className="overflow-hidden rounded-xl border border-border bg-card">
-            {students.map((s) => (
+            {students.map((s, i) => (
               <Link
                 key={s.id}
                 to="/warden/students/$id"
                 params={{ id: s.id }}
                 className="group flex min-h-[76px] items-center gap-3 border-b border-border px-3.5 py-3 last:border-b-0 transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary active:bg-accent"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                <span
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-semibold ${avatarTone(i)}`}
+                >
                   {initials(s.full_name)}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -99,6 +105,17 @@ function WardenStudentsPage() {
       )}
     </div>
   );
+}
+
+const AVATAR_TONES = [
+  "bg-success/15 text-success",
+  "bg-warning/15 text-warning",
+  "bg-accent/15 text-accent",
+  "bg-primary/15 text-primary",
+];
+
+function avatarTone(index: number) {
+  return AVATAR_TONES[index % AVATAR_TONES.length];
 }
 
 function initials(name: string) {
