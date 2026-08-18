@@ -26,10 +26,7 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/verify-otp")({
   validateSearch: searchSchema,
   head: () => ({
-    meta: [
-      { title: "Verify code — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Verify code — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: VerifyOtpPage,
 });

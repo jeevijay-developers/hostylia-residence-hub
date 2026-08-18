@@ -40,13 +40,27 @@ const occupancyCols: Column<OccupancyRow>[] = [
   { key: "vacant_beds", header: "Vacant", align: "right", sortable: true },
   { key: "maintenance_beds", header: "Maintenance", align: "right", sortable: true },
   { key: "blocked_beds", header: "Blocked", align: "right", sortable: true },
-  { key: "occupancy_pct", header: "Occupancy %", align: "right", sortable: true,
-    render: (r) => `${r.occupancy_pct}%` },
+  {
+    key: "occupancy_pct",
+    header: "Occupancy %",
+    align: "right",
+    sortable: true,
+    render: (r) => `${r.occupancy_pct}%`,
+  },
 ];
 
-const occupancyCsv: CsvColumn<OccupancyRow>[] = occupancyCols.map((c) => ({ key: c.key, label: c.header }));
+const occupancyCsv: CsvColumn<OccupancyRow>[] = occupancyCols.map((c) => ({
+  key: c.key,
+  label: c.header,
+}));
 
-export function OccupancyReportPanel({ propertyId, showExport = true }: { propertyId: string; showExport?: boolean }) {
+export function OccupancyReportPanel({
+  propertyId,
+  showExport = true,
+}: {
+  propertyId: string;
+  showExport?: boolean;
+}) {
   const fn = useServerFn(getOccupancyReport);
   const q = useQuery({
     queryKey: ["report-occupancy", propertyId],
@@ -90,8 +104,13 @@ const agingCols: Column<AgingInvoiceRow>[] = [
   { key: "due_date", header: "Due", sortable: true },
   { key: "days_overdue", header: "Days overdue", align: "right", sortable: true },
   { key: "aging_bucket", header: "Bucket", sortable: true },
-  { key: "balance_paise", header: "Outstanding", align: "right", sortable: true,
-    render: (r) => formatInr(r.balance_paise) },
+  {
+    key: "balance_paise",
+    header: "Outstanding",
+    align: "right",
+    sortable: true,
+    render: (r) => formatInr(r.balance_paise),
+  },
   { key: "status", header: "Status", sortable: true },
 ];
 
@@ -105,7 +124,13 @@ const agingCsv: CsvColumn<AgingInvoiceRow>[] = [
   { key: "status", label: "Status" },
 ];
 
-export function AgingReportPanel({ propertyId, showExport = true }: { propertyId: string; showExport?: boolean }) {
+export function AgingReportPanel({
+  propertyId,
+  showExport = true,
+}: {
+  propertyId: string;
+  showExport?: boolean;
+}) {
   const fn = useServerFn(getAgingReport);
   const q = useQuery({
     queryKey: ["report-aging", propertyId],
@@ -159,13 +184,24 @@ const slaCols: Column<SlaRow>[] = [
   { key: "total_complaints", header: "Total", align: "right", sortable: true },
   { key: "resolved_within_sla", header: "Within SLA", align: "right", sortable: true },
   { key: "breached", header: "Breached", align: "right", sortable: true },
-  { key: "sla_compliance_pct", header: "Compliance %", align: "right", sortable: true,
-    render: (r) => r.sla_compliance_pct === null ? "—" : `${r.sla_compliance_pct}%` },
+  {
+    key: "sla_compliance_pct",
+    header: "Compliance %",
+    align: "right",
+    sortable: true,
+    render: (r) => (r.sla_compliance_pct === null ? "—" : `${r.sla_compliance_pct}%`),
+  },
 ];
 
 const slaCsv: CsvColumn<SlaRow>[] = slaCols.map((c) => ({ key: c.key, label: c.header }));
 
-export function SlaComplianceReportPanel({ propertyId, showExport = true }: { propertyId: string; showExport?: boolean }) {
+export function SlaComplianceReportPanel({
+  propertyId,
+  showExport = true,
+}: {
+  propertyId: string;
+  showExport?: boolean;
+}) {
   const fn = useServerFn(getSlaComplianceReport);
   const q = useQuery({
     queryKey: ["report-sla", propertyId],
@@ -317,8 +353,17 @@ export function AttendanceReportPanel({
 
 /* ----------------------- shared KPI ----------------------- */
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) {
-  const t = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
+function Kpi({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "success" | "warning";
+}) {
+  const t =
+    tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
   return (
     <div className="rounded-md border border-border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>

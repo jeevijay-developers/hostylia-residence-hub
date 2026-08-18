@@ -26,7 +26,9 @@ export function ComplaintTrackerList({ studentId }: { studentId: string }) {
   }
   return (
     <div className="space-y-3">
-      {list.map((c) => <ComplaintCard key={c.id} complaint={c} />)}
+      {list.map((c) => (
+        <ComplaintCard key={c.id} complaint={c} />
+      ))}
     </div>
   );
 }

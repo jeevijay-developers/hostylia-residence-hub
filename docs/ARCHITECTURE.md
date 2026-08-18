@@ -563,19 +563,10 @@ Example:
 
 ```js
 export const studentKeys = {
-  all: ['students'],
-  list: ({ tenantId, propertyId, filters }) => [
-    'students',
-    tenantId,
-    propertyId,
-    filters
-  ],
-  detail: ({ tenantId, studentId }) => [
-    'student',
-    tenantId,
-    studentId
-  ]
-}
+  all: ["students"],
+  list: ({ tenantId, propertyId, filters }) => ["students", tenantId, propertyId, filters],
+  detail: ({ tenantId, studentId }) => ["student", tenantId, studentId],
+};
 ```
 
 Query keys must include tenant and property context where relevant.
@@ -1639,7 +1630,6 @@ Example indexes:
 (tenant_id, created_at)
 ```
 
-
 ## 26.3 Scale Seams and Capacity
 
 Hostylia's target market is Indian coaching-institute hostels and PGs. At that scale the binding constraint is **concurrency and connection discipline**, not row count — Postgres handles the data volume comfortably. This section documents the deliberate seams that let the system scale later without a rewrite, and the rules that keep v1 healthy.
@@ -1654,12 +1644,12 @@ Hostylia's target market is Indian coaching-institute hostels and PGs. At that s
 
 ### Documented seams (deferred, not built in v1)
 
-| Concern | v1 implementation | Future upgrade (Stage 3, behind the same seam) |
-|---|---|---|
-| Rate limiting | `checkRateLimit(key, limit, windowSeconds)` — Postgres `SECURITY DEFINER` function over the `rate_limits` table | Swap the function body to call **Upstash Redis over HTTP**. No call site changes. |
-| Read-heavy reporting | Primary Postgres + indexed views | Supabase **read replicas**; point read-only report queries at the replica. |
-| Background work | `background_jobs` outbox + scheduled Edge Functions | Dedicated **worker tier** consuming the same job table. |
-| Caching hot aggregates | Indexed views + TanStack Query client cache | Optional cache layer behind a service function. |
+| Concern                | v1 implementation                                                                                               | Future upgrade (Stage 3, behind the same seam)                                    |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Rate limiting          | `checkRateLimit(key, limit, windowSeconds)` — Postgres `SECURITY DEFINER` function over the `rate_limits` table | Swap the function body to call **Upstash Redis over HTTP**. No call site changes. |
+| Read-heavy reporting   | Primary Postgres + indexed views                                                                                | Supabase **read replicas**; point read-only report queries at the replica.        |
+| Background work        | `background_jobs` outbox + scheduled Edge Functions                                                             | Dedicated **worker tier** consuming the same job table.                           |
+| Caching hot aggregates | Indexed views + TanStack Query client cache                                                                     | Optional cache layer behind a service function.                                   |
 
 Each seam is a single, named indirection point. Redis, replicas, and a worker tier are **out-of-band components Lovable cannot manage**, so introducing any of them requires an ADR (`Rules.md` Sec. 36.3) and is explicitly deferred (`Rules.md` Sec. 3.4). The rate-limiter seam is the reference pattern: one function, one call path, storage swappable underneath.
 
@@ -2014,29 +2004,29 @@ A feature is compliant when:
 
 ## 37. Architecture Summary
 
-| Area | Decision |
-|---|---|
-| Frontend | React + Vite |
-| Language | TypeScript (strict) + TSX |
-| Routing | React Router DOM |
-| Data fetching | TanStack Query + Supabase client |
-| Forms | React Hook Form + Zod (shared schemas, `z.infer` types) |
-| Backend | Supabase |
-| Database | Supabase PostgreSQL |
-| Authentication | Supabase Auth |
-| Authorization | RLS + role/property/block/relationship checks |
-| Secure workflows | Supabase Edge Functions + PostgreSQL functions |
-| Storage | Supabase Storage |
-| Realtime | Supabase Realtime, selectively |
-| Background work | Database outbox/jobs + scheduled Edge Functions |
-| Payments | Razorpay-compatible Edge Functions |
-| Notifications | SMS, WhatsApp, email adapters |
-| Deployment | Static React hosting + Supabase |
-| Styling | Tailwind CSS + shadcn/ui (semantic tokens, no raw hex) |
-| Rate limiting | Postgres `checkRateLimit()` in v1; Upstash Redis is the documented Stage-3 swap |
-| E-signature | Click-wrap in v1; Aadhaar eSign in Stage 2 |
-| Mobile | Responsive web, no native app |
-| v1 exclusions | AI, biometrics, public API, native app, extra roles |
+| Area             | Decision                                                                        |
+| ---------------- | ------------------------------------------------------------------------------- |
+| Frontend         | React + Vite                                                                    |
+| Language         | TypeScript (strict) + TSX                                                       |
+| Routing          | React Router DOM                                                                |
+| Data fetching    | TanStack Query + Supabase client                                                |
+| Forms            | React Hook Form + Zod (shared schemas, `z.infer` types)                         |
+| Backend          | Supabase                                                                        |
+| Database         | Supabase PostgreSQL                                                             |
+| Authentication   | Supabase Auth                                                                   |
+| Authorization    | RLS + role/property/block/relationship checks                                   |
+| Secure workflows | Supabase Edge Functions + PostgreSQL functions                                  |
+| Storage          | Supabase Storage                                                                |
+| Realtime         | Supabase Realtime, selectively                                                  |
+| Background work  | Database outbox/jobs + scheduled Edge Functions                                 |
+| Payments         | Razorpay-compatible Edge Functions                                              |
+| Notifications    | SMS, WhatsApp, email adapters                                                   |
+| Deployment       | Static React hosting + Supabase                                                 |
+| Styling          | Tailwind CSS + shadcn/ui (semantic tokens, no raw hex)                          |
+| Rate limiting    | Postgres `checkRateLimit()` in v1; Upstash Redis is the documented Stage-3 swap |
+| E-signature      | Click-wrap in v1; Aadhaar eSign in Stage 2                                      |
+| Mobile           | Responsive web, no native app                                                   |
+| v1 exclusions    | AI, biometrics, public API, native app, extra roles                             |
 
 ---
 
@@ -2052,4 +2042,4 @@ After approving this architecture, create:
 
 ---
 
-*End of Architecture.md*
+_End of Architecture.md_

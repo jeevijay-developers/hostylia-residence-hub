@@ -11,7 +11,10 @@ export function formatInr(paise: number | null | undefined): string {
   }).format(rupees);
 }
 
-export function agingBucket(dueDate: string, today = new Date()): "current" | "0-30" | "31-60" | "60+" {
+export function agingBucket(
+  dueDate: string,
+  today = new Date(),
+): "current" | "0-30" | "31-60" | "60+" {
   const due = new Date(dueDate);
   const days = Math.floor((today.getTime() - due.getTime()) / (86400 * 1000));
   if (days <= 0) return "current";
@@ -21,8 +24,14 @@ export function agingBucket(dueDate: string, today = new Date()): "current" | "0
 }
 
 export type InvoiceStatus =
-  | "DRAFT" | "ISSUED" | "PARTIALLY_PAID" | "PAID"
-  | "OVERDUE" | "VOID" | "PARTIALLY_REFUNDED" | "REFUNDED";
+  | "DRAFT"
+  | "ISSUED"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "OVERDUE"
+  | "VOID"
+  | "PARTIALLY_REFUNDED"
+  | "REFUNDED";
 
 export const INVOICE_STATUS_TONE: Record<InvoiceStatus, string> = {
   DRAFT: "bg-muted text-muted-foreground",

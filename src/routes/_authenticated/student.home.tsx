@@ -14,6 +14,7 @@ import { KycGateNotice } from "@/components/students/KycGateNotice";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useKycComplete } from "@/lib/kyc";
 import { useStudentSelf } from "@/lib/complaint";
@@ -97,7 +98,8 @@ function StudentHomePage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
-          {greeting}{firstName ? `, ${firstName}` : ""} 👋
+          {greeting}
+          {firstName ? `, ${firstName}` : ""} 👋
         </h1>
         {bed && (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -110,7 +112,18 @@ function StudentHomePage() {
         <KycGateNotice message="Complete your KYC to unlock fees, gate pass, mess and complaints." />
       )}
 
-      {student.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {student.isLoading && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </div>
+      )}
 
       {!student.isLoading && !studentId && (
         <p className="text-sm text-muted-foreground">
@@ -196,7 +209,7 @@ function AttendanceSection({ studentId }: { studentId: string }) {
       }
     >
       {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <Skeleton className="h-6 w-24" />
       ) : marked === 0 ? (
         <p className="text-xs text-muted-foreground">No attendance recorded yet.</p>
       ) : (
@@ -247,7 +260,7 @@ function FeesSection({ studentId }: { studentId: string }) {
       }
     >
       {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <Skeleton className="h-6 w-24" />
       ) : totalOutstanding === 0 ? (
         <p className="text-sm text-success">No outstanding dues.</p>
       ) : (
@@ -309,7 +322,7 @@ function GatePassSection({ studentId }: { studentId: string }) {
       }
     >
       {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <Skeleton className="h-6 w-24" />
       ) : status ? (
         <Badge variant="secondary">{isPending ? "Pending" : status}</Badge>
       ) : (
@@ -352,7 +365,7 @@ function MessSection({ propertyId }: { propertyId: string | null }) {
       }
     >
       {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <Skeleton className="h-6 w-24" />
       ) : menus.length === 0 ? (
         <p className="text-xs text-muted-foreground">No menu published for today.</p>
       ) : (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,6 +7,8 @@ import { Check, ChevronsUpDown, Download, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { InvoiceTable, type InvoiceRow } from "@/components/finance/InvoiceTable";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +66,8 @@ const STATUSES = [
   "REFUNDED",
 ];
 
+const INVOICES_PAGE_SIZE = 20;
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -84,44 +88,69 @@ function AdminInvoicesPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listPropertyInvoices);
   const [status, setStatus] = useState("ALL");
+  const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const q = useQuery({
-    queryKey: ["invoices", propertyId],
+    queryKey: ["invoices", propertyId, status, page],
     enabled: !!propertyId,
-    queryFn: () => listFn({ data: { property_id: propertyId! } }),
+    queryFn: () =>
+      listFn({
+        data: {
+          property_id: propertyId!,
+          status: status === "ALL" ? undefined : status,
+          page,
+          pageSize: INVOICES_PAGE_SIZE,
+        },
+      }),
   });
-  const filtered = useMemo(() => {
-    const rows = (q.data ?? []) as InvoiceRow[];
-    return status === "ALL" ? rows : rows.filter((r) => r.status === status);
-  }, [q.data, status]);
+  const rows = (q.data?.rows ?? []) as InvoiceRow[];
+  const total = q.data?.total ?? 0;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detailRow, setDetailRow] = useState<InvoiceRow | null>(null);
 
-  function exportCsv() {
-    downloadCsv(
-      `invoices-${propertyId}-${todayIso()}.csv`,
-      [
-        "Invoice #",
-        "Student",
-        "Issue date",
-        "Due date",
-        "Status",
-        "Total (INR)",
-        "Paid (INR)",
-        "Balance (INR)",
-      ],
-      filtered.map((r) => [
-        r.invoice_number,
-        r.students?.full_name ?? "",
-        r.issue_date,
-        r.due_date,
-        r.status,
-        (r.total_paise / 100).toFixed(2),
-        (r.paid_paise / 100).toFixed(2),
-        (r.balance_paise / 100).toFixed(2),
-      ]),
-    );
+  // CSV export needs every matching invoice, not just the visible page — a
+  // separate one-shot fetch (still server-side, RLS-scoped) rather than
+  // pulling the full dataset into the paginated view's own query.
+  async function exportCsv() {
+    if (!propertyId) return;
+    setExporting(true);
+    try {
+      const all = await listFn({
+        data: {
+          property_id: propertyId,
+          status: status === "ALL" ? undefined : status,
+          page: 0,
+          pageSize: 10000,
+        },
+      });
+      downloadCsv(
+        `invoices-${propertyId}-${todayIso()}.csv`,
+        [
+          "Invoice #",
+          "Student",
+          "Issue date",
+          "Due date",
+          "Status",
+          "Total (INR)",
+          "Paid (INR)",
+          "Balance (INR)",
+        ],
+        (all.rows as InvoiceRow[]).map((r) => [
+          r.invoice_number,
+          r.students?.full_name ?? "",
+          r.issue_date,
+          r.due_date,
+          r.status,
+          (r.total_paise / 100).toFixed(2),
+          (r.paid_paise / 100).toFixed(2),
+          (r.balance_paise / 100).toFixed(2),
+        ]),
+      );
+    } finally {
+      setExporting(false);
+    }
   }
 
   if (!propertyId)
@@ -138,9 +167,9 @@ function AdminInvoicesPage() {
               variant="outline"
               size="sm"
               onClick={exportCsv}
-              disabled={filtered.length === 0}
+              disabled={total === 0 || exporting}
             >
-              <Download className="h-4 w-4" /> Export CSV
+              <Download className="h-4 w-4" /> {exporting ? "Exporting…" : "Export CSV"}
             </Button>
             {isHostelAdmin && (
               <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -151,7 +180,13 @@ function AdminInvoicesPage() {
         }
       />
 
-      <Select value={status} onValueChange={setStatus}>
+      <Select
+        value={status}
+        onValueChange={(v) => {
+          setStatus(v);
+          setPage(0);
+        }}
+      >
         <SelectTrigger className="w-52">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
@@ -164,7 +199,25 @@ function AdminInvoicesPage() {
         </SelectContent>
       </Select>
 
-      <InvoiceTable rows={filtered} onSelect={isHostelAdmin ? setDetailRow : undefined} />
+      {q.isLoading ? (
+        <Skeleton className="h-64 w-full" />
+      ) : q.isError ? (
+        <p className="text-sm text-destructive">
+          {q.error instanceof Error ? q.error.message : "Could not load invoices."}
+        </p>
+      ) : (
+        <>
+          <InvoiceTable rows={rows} onSelect={isHostelAdmin ? setDetailRow : undefined} />
+          {total > 0 && (
+            <PaginationBar
+              page={page}
+              pageSize={INVOICES_PAGE_SIZE}
+              total={total}
+              onPageChange={setPage}
+            />
+          )}
+        </>
+      )}
 
       {isHostelAdmin && (
         <CreateInvoiceDialog

@@ -289,18 +289,18 @@ uq_<table>_<columns>
 
 Most tenant-owned business tables should include the following where appropriate:
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | Primary key, default `gen_random_uuid()` |
-| `tenant_id` | `uuid` | Required, references `tenants.id` |
-| `property_id` | `uuid` | Required for property-scoped data |
-| `created_at` | `timestamptz` | Required, default `now()` |
-| `updated_at` | `timestamptz` | Required, default `now()` |
-| `created_by` | `uuid` | Nullable, references `profiles.id` |
-| `updated_by` | `uuid` | Nullable, references `profiles.id` |
-| `deleted_at` | `timestamptz` | Nullable |
-| `deleted_by` | `uuid` | Nullable, references `profiles.id` |
-| `deletion_reason` | `text` | Nullable |
+| Column            | Type          | Rules                                    |
+| ----------------- | ------------- | ---------------------------------------- |
+| `id`              | `uuid`        | Primary key, default `gen_random_uuid()` |
+| `tenant_id`       | `uuid`        | Required, references `tenants.id`        |
+| `property_id`     | `uuid`        | Required for property-scoped data        |
+| `created_at`      | `timestamptz` | Required, default `now()`                |
+| `updated_at`      | `timestamptz` | Required, default `now()`                |
+| `created_by`      | `uuid`        | Nullable, references `profiles.id`       |
+| `updated_by`      | `uuid`        | Nullable, references `profiles.id`       |
+| `deleted_at`      | `timestamptz` | Nullable                                 |
+| `deleted_by`      | `uuid`        | Nullable, references `profiles.id`       |
+| `deletion_reason` | `text`        | Nullable                                 |
 
 Not every append-only table needs `updated_at` or soft-delete columns.
 
@@ -356,21 +356,21 @@ Represents a Hostylia customer account.
 
 Usually one tenant maps to one hostel operator or hostel chain.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `slug` | `citext` | Required, unique |
-| `display_name` | `text` | Required |
-| `legal_name` | `text` | Nullable |
-| `status` | `text` | `TRIAL`, `ACTIVE`, `PAST_DUE`, `SUSPENDED`, `CANCELLED` |
-| `default_locale` | `text` | Default `en` |
-| `default_currency` | `char(3)` | Default `INR` |
-| `timezone` | `text` | Default `Asia/Kolkata` |
-| `onboarding_status` | `text` | `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `BLOCKED` |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
-| `suspended_at` | `timestamptz` | Nullable |
-| `cancelled_at` | `timestamptz` | Nullable |
+| Column              | Type          | Rules                                                   |
+| ------------------- | ------------- | ------------------------------------------------------- |
+| `id`                | `uuid`        | PK                                                      |
+| `slug`              | `citext`      | Required, unique                                        |
+| `display_name`      | `text`        | Required                                                |
+| `legal_name`        | `text`        | Nullable                                                |
+| `status`            | `text`        | `TRIAL`, `ACTIVE`, `PAST_DUE`, `SUSPENDED`, `CANCELLED` |
+| `default_locale`    | `text`        | Default `en`                                            |
+| `default_currency`  | `char(3)`     | Default `INR`                                           |
+| `timezone`          | `text`        | Default `Asia/Kolkata`                                  |
+| `onboarding_status` | `text`        | `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `BLOCKED`    |
+| `created_at`        | `timestamptz` | Default `now()`                                         |
+| `updated_at`        | `timestamptz` | Default `now()`                                         |
+| `suspended_at`      | `timestamptz` | Nullable                                                |
+| `cancelled_at`      | `timestamptz` | Nullable                                                |
 
 ### Constraints
 
@@ -394,19 +394,19 @@ index(created_at)
 
 Represents the owner, company or chain under a tenant.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `legal_name` | `text` | Nullable |
-| `gstin` | `text` | Nullable |
-| `pan_last4` | `text` | Nullable; do not store full PAN unless approved |
-| `billing_email` | `citext` | Nullable |
-| `billing_phone` | `text` | Nullable |
-| `registered_address` | `jsonb` | Nullable; structured address |
-| `status` | `text` | `ACTIVE`, `INACTIVE` |
-| standard audit columns |  |  |
+| Column                 | Type     | Rules                                           |
+| ---------------------- | -------- | ----------------------------------------------- |
+| `id`                   | `uuid`   | PK                                              |
+| `tenant_id`            | `uuid`   | Required                                        |
+| `name`                 | `text`   | Required                                        |
+| `legal_name`           | `text`   | Nullable                                        |
+| `gstin`                | `text`   | Nullable                                        |
+| `pan_last4`            | `text`   | Nullable; do not store full PAN unless approved |
+| `billing_email`        | `citext` | Nullable                                        |
+| `billing_phone`        | `text`   | Nullable                                        |
+| `registered_address`   | `jsonb`  | Nullable; structured address                    |
+| `status`               | `text`   | `ACTIVE`, `INACTIVE`                            |
+| standard audit columns |          |                                                 |
 
 ### Relationships
 
@@ -428,21 +428,21 @@ gstin validation handled by application/database check where practical
 
 Defines Hostylia SaaS plans.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `code` | `citext` | Unique |
-| `name` | `text` | Required |
-| `description` | `text` | Nullable |
-| `billing_interval` | `text` | `MONTHLY`, `QUARTERLY`, `YEARLY`, `CUSTOM` |
-| `price_paise` | `bigint` | Non-negative |
-| `currency` | `char(3)` | Default `INR` |
-| `trial_days` | `integer` | Default `0` |
-| `max_properties` | `integer` | Nullable means unlimited |
-| `max_staff_seats` | `integer` | Nullable |
-| `is_active` | `boolean` | Default `true` |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column             | Type          | Rules                                      |
+| ------------------ | ------------- | ------------------------------------------ |
+| `id`               | `uuid`        | PK                                         |
+| `code`             | `citext`      | Unique                                     |
+| `name`             | `text`        | Required                                   |
+| `description`      | `text`        | Nullable                                   |
+| `billing_interval` | `text`        | `MONTHLY`, `QUARTERLY`, `YEARLY`, `CUSTOM` |
+| `price_paise`      | `bigint`      | Non-negative                               |
+| `currency`         | `char(3)`     | Default `INR`                              |
+| `trial_days`       | `integer`     | Default `0`                                |
+| `max_properties`   | `integer`     | Nullable means unlimited                   |
+| `max_staff_seats`  | `integer`     | Nullable                                   |
+| `is_active`        | `boolean`     | Default `true`                             |
+| `created_at`       | `timestamptz` | Default `now()`                            |
+| `updated_at`       | `timestamptz` | Default `now()`                            |
 
 ---
 
@@ -450,16 +450,16 @@ Defines Hostylia SaaS plans.
 
 Defines feature entitlements for plans.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `plan_id` | `uuid` | Required |
-| `feature_key` | `text` | Required |
-| `enabled` | `boolean` | Default `false` |
-| `limit_value` | `bigint` | Nullable |
-| `configuration` | `jsonb` | Default `{}` |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column          | Type          | Rules           |
+| --------------- | ------------- | --------------- |
+| `id`            | `uuid`        | PK              |
+| `plan_id`       | `uuid`        | Required        |
+| `feature_key`   | `text`        | Required        |
+| `enabled`       | `boolean`     | Default `false` |
+| `limit_value`   | `bigint`      | Nullable        |
+| `configuration` | `jsonb`       | Default `{}`    |
+| `created_at`    | `timestamptz` | Default `now()` |
+| `updated_at`    | `timestamptz` | Default `now()` |
 
 ### Constraint
 
@@ -473,23 +473,23 @@ unique(plan_id, feature_key)
 
 Tracks each tenant's SaaS subscription.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `plan_id` | `uuid` | Required |
-| `status` | `text` | `TRIAL`, `ACTIVE`, `PAST_DUE`, `PAUSED`, `CANCELLED` |
-| `starts_at` | `timestamptz` | Required |
-| `trial_ends_at` | `timestamptz` | Nullable |
-| `current_period_start` | `timestamptz` | Nullable |
-| `current_period_end` | `timestamptz` | Nullable |
-| `cancel_at_period_end` | `boolean` | Default `false` |
-| `cancelled_at` | `timestamptz` | Nullable |
-| `provider` | `text` | Nullable |
-| `provider_customer_ref` | `text` | Nullable |
-| `provider_subscription_ref` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column                      | Type          | Rules                                                |
+| --------------------------- | ------------- | ---------------------------------------------------- |
+| `id`                        | `uuid`        | PK                                                   |
+| `tenant_id`                 | `uuid`        | Required                                             |
+| `plan_id`                   | `uuid`        | Required                                             |
+| `status`                    | `text`        | `TRIAL`, `ACTIVE`, `PAST_DUE`, `PAUSED`, `CANCELLED` |
+| `starts_at`                 | `timestamptz` | Required                                             |
+| `trial_ends_at`             | `timestamptz` | Nullable                                             |
+| `current_period_start`      | `timestamptz` | Nullable                                             |
+| `current_period_end`        | `timestamptz` | Nullable                                             |
+| `cancel_at_period_end`      | `boolean`     | Default `false`                                      |
+| `cancelled_at`              | `timestamptz` | Nullable                                             |
+| `provider`                  | `text`        | Nullable                                             |
+| `provider_customer_ref`     | `text`        | Nullable                                             |
+| `provider_subscription_ref` | `text`        | Nullable                                             |
+| `created_at`                | `timestamptz` | Default `now()`                                      |
+| `updated_at`                | `timestamptz` | Default `now()`                                      |
 
 ### Indexes
 
@@ -504,19 +504,19 @@ unique(provider, provider_subscription_ref) where provider_subscription_ref is n
 
 Allows Super Admin to enable or disable a feature per tenant.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `feature_key` | `text` | Required |
-| `enabled` | `boolean` | Required |
-| `limit_value` | `bigint` | Nullable |
-| `configuration` | `jsonb` | Default `{}` |
-| `reason` | `text` | Required |
-| `expires_at` | `timestamptz` | Nullable |
-| `created_by` | `uuid` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column          | Type          | Rules           |
+| --------------- | ------------- | --------------- |
+| `id`            | `uuid`        | PK              |
+| `tenant_id`     | `uuid`        | Required        |
+| `feature_key`   | `text`        | Required        |
+| `enabled`       | `boolean`     | Required        |
+| `limit_value`   | `bigint`      | Nullable        |
+| `configuration` | `jsonb`       | Default `{}`    |
+| `reason`        | `text`        | Required        |
+| `expires_at`    | `timestamptz` | Nullable        |
+| `created_by`    | `uuid`        | Required        |
+| `created_at`    | `timestamptz` | Default `now()` |
+| `updated_at`    | `timestamptz` | Default `now()` |
 
 ### Constraint
 
@@ -530,21 +530,21 @@ unique(tenant_id, feature_key)
 
 Controls Super Admin impersonation.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `super_admin_user_id` | `uuid` | Required |
-| `target_user_id` | `uuid` | Required |
-| `reason` | `text` | Required |
-| `support_reference` | `text` | Nullable |
-| `consent_recorded` | `boolean` | Default `false` |
-| `access_mode` | `text` | `READ_ONLY`, `STANDARD`, `ELEVATED` |
-| `started_at` | `timestamptz` | Required |
-| `expires_at` | `timestamptz` | Required; maximum 60 minutes |
-| `ended_at` | `timestamptz` | Nullable |
-| `ended_reason` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column                | Type          | Rules                               |
+| --------------------- | ------------- | ----------------------------------- |
+| `id`                  | `uuid`        | PK                                  |
+| `tenant_id`           | `uuid`        | Required                            |
+| `super_admin_user_id` | `uuid`        | Required                            |
+| `target_user_id`      | `uuid`        | Required                            |
+| `reason`              | `text`        | Required                            |
+| `support_reference`   | `text`        | Nullable                            |
+| `consent_recorded`    | `boolean`     | Default `false`                     |
+| `access_mode`         | `text`        | `READ_ONLY`, `STANDARD`, `ELEVATED` |
+| `started_at`          | `timestamptz` | Required                            |
+| `expires_at`          | `timestamptz` | Required; maximum 60 minutes        |
+| `ended_at`            | `timestamptz` | Nullable                            |
+| `ended_reason`        | `text`        | Nullable                            |
+| `created_at`          | `timestamptz` | Default `now()`                     |
 
 ### Constraints
 
@@ -561,26 +561,26 @@ target_user_id != super_admin_user_id
 
 Application profile linked one-to-one with `auth.users`.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK and FK to `auth.users.id` |
-| `full_name` | `text` | Required |
-| `preferred_name` | `text` | Nullable |
-| `phone` | `text` | Nullable |
-| `email` | `citext` | Nullable |
-| `avatar_path` | `text` | Nullable — object path in the `avatars` storage bucket, not a full URL |
-| `locale` | `text` | Default `en` |
-| `status` | `text` | `ACTIVE`, `INVITED`, `SUSPENDED`, `DISABLED` |
-| `last_active_at` | `timestamptz` | Nullable |
-| `gender` | `text` | Nullable — `MALE`, `FEMALE`, `OTHER` |
-| `date_of_birth` | `date` | Nullable |
-| `blood_group` | `text` | Nullable — `A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-` |
-| `address` | `jsonb` | Nullable — `{ line1, city, state, pincode }` |
-| `alternate_phone` | `text` | Nullable |
-| `emergency_contact_name` | `text` | Nullable |
-| `emergency_contact_number` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column                     | Type          | Rules                                                                  |
+| -------------------------- | ------------- | ---------------------------------------------------------------------- |
+| `id`                       | `uuid`        | PK and FK to `auth.users.id`                                           |
+| `full_name`                | `text`        | Required                                                               |
+| `preferred_name`           | `text`        | Nullable                                                               |
+| `phone`                    | `text`        | Nullable                                                               |
+| `email`                    | `citext`      | Nullable                                                               |
+| `avatar_path`              | `text`        | Nullable — object path in the `avatars` storage bucket, not a full URL |
+| `locale`                   | `text`        | Default `en`                                                           |
+| `status`                   | `text`        | `ACTIVE`, `INVITED`, `SUSPENDED`, `DISABLED`                           |
+| `last_active_at`           | `timestamptz` | Nullable                                                               |
+| `gender`                   | `text`        | Nullable — `MALE`, `FEMALE`, `OTHER`                                   |
+| `date_of_birth`            | `date`        | Nullable                                                               |
+| `blood_group`              | `text`        | Nullable — `A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`            |
+| `address`                  | `jsonb`       | Nullable — `{ line1, city, state, pincode }`                           |
+| `alternate_phone`          | `text`        | Nullable                                                               |
+| `emergency_contact_name`   | `text`        | Nullable                                                               |
+| `emergency_contact_number` | `text`        | Nullable                                                               |
+| `created_at`               | `timestamptz` | Default `now()`                                                        |
+| `updated_at`               | `timestamptz` | Default `now()`                                                        |
 
 ### Notes
 
@@ -606,16 +606,16 @@ Stores Hostylia internal platform roles.
 
 v1 only supports `SUPER_ADMIN`.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `user_id` | `uuid` | Required |
-| `role` | `app_role` | Must be `SUPER_ADMIN` |
-| `is_active` | `boolean` | Default `true` |
-| `granted_by` | `uuid` | Nullable |
-| `granted_at` | `timestamptz` | Default `now()` |
-| `revoked_by` | `uuid` | Nullable |
-| `revoked_at` | `timestamptz` | Nullable |
+| Column       | Type          | Rules                 |
+| ------------ | ------------- | --------------------- |
+| `id`         | `uuid`        | PK                    |
+| `user_id`    | `uuid`        | Required              |
+| `role`       | `app_role`    | Must be `SUPER_ADMIN` |
+| `is_active`  | `boolean`     | Default `true`        |
+| `granted_by` | `uuid`        | Nullable              |
+| `granted_at` | `timestamptz` | Default `now()`       |
+| `revoked_by` | `uuid`        | Nullable              |
+| `revoked_at` | `timestamptz` | Nullable              |
 
 ### Constraint
 
@@ -629,18 +629,18 @@ unique active SUPER_ADMIN assignment per user
 
 Connects users to tenants.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `user_id` | `uuid` | Required |
-| `status` | `text` | `INVITED`, `ACTIVE`, `SUSPENDED`, `REVOKED` |
-| `invited_by` | `uuid` | Nullable |
-| `invited_at` | `timestamptz` | Nullable |
-| `joined_at` | `timestamptz` | Nullable |
-| `revoked_at` | `timestamptz` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column       | Type          | Rules                                       |
+| ------------ | ------------- | ------------------------------------------- |
+| `id`         | `uuid`        | PK                                          |
+| `tenant_id`  | `uuid`        | Required                                    |
+| `user_id`    | `uuid`        | Required                                    |
+| `status`     | `text`        | `INVITED`, `ACTIVE`, `SUSPENDED`, `REVOKED` |
+| `invited_by` | `uuid`        | Nullable                                    |
+| `invited_at` | `timestamptz` | Nullable                                    |
+| `joined_at`  | `timestamptz` | Nullable                                    |
+| `revoked_at` | `timestamptz` | Nullable                                    |
+| `created_at` | `timestamptz` | Default `now()`                             |
+| `updated_at` | `timestamptz` | Default `now()`                             |
 
 ### Constraint
 
@@ -654,21 +654,21 @@ unique(tenant_id, user_id)
 
 Stores tenant roles and their scope.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `user_id` | `uuid` | Required |
-| `role` | `app_role` | Cannot be `SUPER_ADMIN` |
-| `property_id` | `uuid` | Nullable |
-| `block_id` | `uuid` | Nullable |
-| `is_active` | `boolean` | Default `true` |
-| `granted_by` | `uuid` | Nullable |
-| `granted_at` | `timestamptz` | Default `now()` |
-| `revoked_by` | `uuid` | Nullable |
-| `revoked_at` | `timestamptz` | Nullable |
-| `notes` | `text` | Nullable |
-| `employee_id` | `text` | Nullable at the DDL level, but always set — see below |
+| Column        | Type          | Rules                                                 |
+| ------------- | ------------- | ----------------------------------------------------- |
+| `id`          | `uuid`        | PK                                                    |
+| `tenant_id`   | `uuid`        | Required                                              |
+| `user_id`     | `uuid`        | Required                                              |
+| `role`        | `app_role`    | Cannot be `SUPER_ADMIN`                               |
+| `property_id` | `uuid`        | Nullable                                              |
+| `block_id`    | `uuid`        | Nullable                                              |
+| `is_active`   | `boolean`     | Default `true`                                        |
+| `granted_by`  | `uuid`        | Nullable                                              |
+| `granted_at`  | `timestamptz` | Default `now()`                                       |
+| `revoked_by`  | `uuid`        | Nullable                                              |
+| `revoked_at`  | `timestamptz` | Nullable                                              |
+| `notes`       | `text`        | Nullable                                              |
+| `employee_id` | `text`        | Nullable at the DDL level, but always set — see below |
 
 ### `employee_id` generation
 
@@ -725,33 +725,33 @@ index(tenant_id, block_id, role, is_active)
 
 Represents a hostel or PG building.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `organization_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `slug` | `citext` | Required |
-| `property_type` | `text` | `HOSTEL`, `PG`, `DORMITORY`, `COACHING_HOSTEL` |
-| `gender_policy` | `text` | `MALE`, `FEMALE`, `COED`, `CUSTOM` |
-| `status` | `text` | `DRAFT`, `ACTIVE`, `INACTIVE`, `SUSPENDED` |
-| `address_line_1` | `text` | Required |
-| `address_line_2` | `text` | Nullable |
-| `landmark` | `text` | Nullable |
-| `city` | `text` | Required |
-| `state` | `text` | Required |
-| `postal_code` | `text` | Required |
-| `country_code` | `char(2)` | Default `IN` |
-| `latitude` | `numeric(9,6)` | Nullable |
-| `longitude` | `numeric(9,6)` | Nullable |
-| `timezone` | `text` | Default `Asia/Kolkata` |
-| `phone` | `text` | Nullable |
-| `email` | `citext` | Nullable |
-| `logo_path` | `text` | Nullable |
-| `brand_primary_color` | `text` | Nullable |
-| `brand_secondary_color` | `text` | Nullable |
-| `settings` | `jsonb` | Default `{}` |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type           | Rules                                          |
+| ---------------------------------- | -------------- | ---------------------------------------------- |
+| `id`                               | `uuid`         | PK                                             |
+| `tenant_id`                        | `uuid`         | Required                                       |
+| `organization_id`                  | `uuid`         | Required                                       |
+| `name`                             | `text`         | Required                                       |
+| `slug`                             | `citext`       | Required                                       |
+| `property_type`                    | `text`         | `HOSTEL`, `PG`, `DORMITORY`, `COACHING_HOSTEL` |
+| `gender_policy`                    | `text`         | `MALE`, `FEMALE`, `COED`, `CUSTOM`             |
+| `status`                           | `text`         | `DRAFT`, `ACTIVE`, `INACTIVE`, `SUSPENDED`     |
+| `address_line_1`                   | `text`         | Required                                       |
+| `address_line_2`                   | `text`         | Nullable                                       |
+| `landmark`                         | `text`         | Nullable                                       |
+| `city`                             | `text`         | Required                                       |
+| `state`                            | `text`         | Required                                       |
+| `postal_code`                      | `text`         | Required                                       |
+| `country_code`                     | `char(2)`      | Default `IN`                                   |
+| `latitude`                         | `numeric(9,6)` | Nullable                                       |
+| `longitude`                        | `numeric(9,6)` | Nullable                                       |
+| `timezone`                         | `text`         | Default `Asia/Kolkata`                         |
+| `phone`                            | `text`         | Nullable                                       |
+| `email`                            | `citext`       | Nullable                                       |
+| `logo_path`                        | `text`         | Nullable                                       |
+| `brand_primary_color`              | `text`         | Nullable                                       |
+| `brand_secondary_color`            | `text`         | Nullable                                       |
+| `settings`                         | `jsonb`        | Default `{}`                                   |
+| standard audit/soft-delete columns |                |                                                |
 
 ### Constraints
 
@@ -764,32 +764,32 @@ organization must belong to tenant
 
 ## 21. `property_amenities`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `description` | `text` | Nullable |
-| `icon_key` | `text` | Nullable |
-| `is_active` | `boolean` | Default `true` |
-| standard audit columns |  |  |
+| Column                 | Type      | Rules          |
+| ---------------------- | --------- | -------------- |
+| `id`                   | `uuid`    | PK             |
+| `tenant_id`            | `uuid`    | Required       |
+| `property_id`          | `uuid`    | Required       |
+| `name`                 | `text`    | Required       |
+| `description`          | `text`    | Nullable       |
+| `icon_key`             | `text`    | Nullable       |
+| `is_active`            | `boolean` | Default `true` |
+| standard audit columns |           |                |
 
 ---
 
 ## 22. `property_rules`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `title` | `text` | Required |
-| `body` | `text` | Required |
-| `category` | `text` | Nullable |
-| `display_order` | `integer` | Default `0` |
-| `is_active` | `boolean` | Default `true` |
-| standard audit columns |  |  |
+| Column                 | Type      | Rules          |
+| ---------------------- | --------- | -------------- |
+| `id`                   | `uuid`    | PK             |
+| `tenant_id`            | `uuid`    | Required       |
+| `property_id`          | `uuid`    | Required       |
+| `title`                | `text`    | Required       |
+| `body`                 | `text`    | Required       |
+| `category`             | `text`    | Nullable       |
+| `display_order`        | `integer` | Default `0`    |
+| `is_active`            | `boolean` | Default `true` |
+| standard audit columns |           |                |
 
 ---
 
@@ -797,21 +797,21 @@ organization must belong to tenant
 
 Stores metadata for property photos.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `storage_bucket` | `text` | Required |
-| `storage_path` | `text` | Required |
-| `media_type` | `text` | `IMAGE`, `VIDEO` |
-| `alt_text` | `text` | Nullable |
-| `caption` | `text` | Nullable |
-| `is_cover` | `boolean` | Default `false` |
-| `display_order` | `integer` | Default `0` |
-| `created_by` | `uuid` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `deleted_at` | `timestamptz` | Nullable |
+| Column           | Type          | Rules            |
+| ---------------- | ------------- | ---------------- |
+| `id`             | `uuid`        | PK               |
+| `tenant_id`      | `uuid`        | Required         |
+| `property_id`    | `uuid`        | Required         |
+| `storage_bucket` | `text`        | Required         |
+| `storage_path`   | `text`        | Required         |
+| `media_type`     | `text`        | `IMAGE`, `VIDEO` |
+| `alt_text`       | `text`        | Nullable         |
+| `caption`        | `text`        | Nullable         |
+| `is_cover`       | `boolean`     | Default `false`  |
+| `display_order`  | `integer`     | Default `0`      |
+| `created_by`     | `uuid`        | Nullable         |
+| `created_at`     | `timestamptz` | Default `now()`  |
+| `deleted_at`     | `timestamptz` | Nullable         |
 
 ---
 
@@ -819,17 +819,17 @@ Stores metadata for property photos.
 
 Optional wing or tower level.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `code` | `text` | Nullable |
-| `gender_policy` | `text` | Nullable |
-| `status` | `text` | `ACTIVE`, `INACTIVE` |
-| `display_order` | `integer` | Default `0` |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type      | Rules                |
+| ---------------------------------- | --------- | -------------------- |
+| `id`                               | `uuid`    | PK                   |
+| `tenant_id`                        | `uuid`    | Required             |
+| `property_id`                      | `uuid`    | Required             |
+| `name`                             | `text`    | Required             |
+| `code`                             | `text`    | Nullable             |
+| `gender_policy`                    | `text`    | Nullable             |
+| `status`                           | `text`    | `ACTIVE`, `INACTIVE` |
+| `display_order`                    | `integer` | Default `0`          |
+| standard audit/soft-delete columns |           |                      |
 
 ### Constraint
 
@@ -841,17 +841,17 @@ unique(property_id, name) where deleted_at is null
 
 ## 25. `floors`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `name` | `text` | Required |
-| `floor_number` | `integer` | Nullable |
-| `layout_metadata` | `jsonb` | Default `{}` |
-| `display_order` | `integer` | Default `0` |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type      | Rules        |
+| ---------------------------------- | --------- | ------------ |
+| `id`                               | `uuid`    | PK           |
+| `tenant_id`                        | `uuid`    | Required     |
+| `property_id`                      | `uuid`    | Required     |
+| `block_id`                         | `uuid`    | Nullable     |
+| `name`                             | `text`    | Required     |
+| `floor_number`                     | `integer` | Nullable     |
+| `layout_metadata`                  | `jsonb`   | Default `{}` |
+| `display_order`                    | `integer` | Default `0`  |
+| standard audit/soft-delete columns |           |              |
 
 ### Constraint
 
@@ -864,22 +864,22 @@ unique(property_id, block_id, name) where deleted_at is null
 
 ## 26. `rooms`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `floor_id` | `uuid` | Required |
-| `room_number` | `text` | Required |
-| `room_type` | `text` | `SINGLE`, `DOUBLE`, `TRIPLE`, `DORM`, `CUSTOM` |
-| `capacity` | `integer` | Required, greater than `0` |
-| `base_rent_paise` | `bigint` | Non-negative |
-| `currency` | `char(3)` | Default `INR` |
-| `status` | `text` | `ACTIVE`, `BLOCKED`, `MAINTENANCE`, `INACTIVE` |
-| `amenities` | `jsonb` | Default `[]` |
-| `notes` | `text` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type      | Rules                                          |
+| ---------------------------------- | --------- | ---------------------------------------------- |
+| `id`                               | `uuid`    | PK                                             |
+| `tenant_id`                        | `uuid`    | Required                                       |
+| `property_id`                      | `uuid`    | Required                                       |
+| `block_id`                         | `uuid`    | Nullable                                       |
+| `floor_id`                         | `uuid`    | Required                                       |
+| `room_number`                      | `text`    | Required                                       |
+| `room_type`                        | `text`    | `SINGLE`, `DOUBLE`, `TRIPLE`, `DORM`, `CUSTOM` |
+| `capacity`                         | `integer` | Required, greater than `0`                     |
+| `base_rent_paise`                  | `bigint`  | Non-negative                                   |
+| `currency`                         | `char(3)` | Default `INR`                                  |
+| `status`                           | `text`    | `ACTIVE`, `BLOCKED`, `MAINTENANCE`, `INACTIVE` |
+| `amenities`                        | `jsonb`   | Default `[]`                                   |
+| `notes`                            | `text`    | Nullable                                       |
+| standard audit/soft-delete columns |           |                                                |
 
 ### Constraints
 
@@ -895,21 +895,21 @@ unique(property_id, room_number) where deleted_at is null
 
 Smallest billable inventory unit.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `floor_id` | `uuid` | Required |
-| `room_id` | `uuid` | Required |
-| `code` | `text` | Required |
-| `status` | `text` | `VACANT`, `OCCUPIED`, `BLOCKED`, `MAINTENANCE` |
-| `rent_override_paise` | `bigint` | Nullable |
-| `currency` | `char(3)` | Default `INR` |
-| `maintenance_until` | `timestamptz` | Nullable |
-| `notes` | `text` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                          |
+| ---------------------------------- | ------------- | ---------------------------------------------- |
+| `id`                               | `uuid`        | PK                                             |
+| `tenant_id`                        | `uuid`        | Required                                       |
+| `property_id`                      | `uuid`        | Required                                       |
+| `block_id`                         | `uuid`        | Nullable                                       |
+| `floor_id`                         | `uuid`        | Required                                       |
+| `room_id`                          | `uuid`        | Required                                       |
+| `code`                             | `text`        | Required                                       |
+| `status`                           | `text`        | `VACANT`, `OCCUPIED`, `BLOCKED`, `MAINTENANCE` |
+| `rent_override_paise`              | `bigint`      | Nullable                                       |
+| `currency`                         | `char(3)`     | Default `INR`                                  |
+| `maintenance_until`                | `timestamptz` | Nullable                                       |
+| `notes`                            | `text`        | Nullable                                       |
+| standard audit/soft-delete columns |               |                                                |
 
 ### Constraints
 
@@ -935,29 +935,29 @@ where deleted_at is null;
 
 Represents active and archived residents.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `profile_id` | `uuid` | Nullable, unique when linked |
-| `admission_number` | `text` | Required |
-| `full_name` | `text` | Required |
-| `date_of_birth` | `date` | Nullable |
-| `gender` | `text` | Nullable |
-| `phone` | `text` | Nullable |
-| `email` | `citext` | Nullable |
-| `photo_path` | `text` | Nullable |
-| `academic_institute` | `text` | Nullable |
-| `course_name` | `text` | Nullable |
-| `academic_year` | `text` | Nullable |
-| `status` | `text` | `APPLICANT`, `VERIFIED`, `ACTIVE`, `NOTICE_GIVEN`, `MOVED_OUT`, `ARCHIVED`, `REJECTED` |
-| `is_minor` | `boolean` | Derived or stored |
-| `portal_access_enabled` | `boolean` | Default `false` |
-| `joined_at` | `date` | Nullable |
-| `moved_out_at` | `date` | Nullable |
-| `metadata` | `jsonb` | Default `{}` |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type      | Rules                                                                                  |
+| ---------------------------------- | --------- | -------------------------------------------------------------------------------------- |
+| `id`                               | `uuid`    | PK                                                                                     |
+| `tenant_id`                        | `uuid`    | Required                                                                               |
+| `property_id`                      | `uuid`    | Required                                                                               |
+| `profile_id`                       | `uuid`    | Nullable, unique when linked                                                           |
+| `admission_number`                 | `text`    | Required                                                                               |
+| `full_name`                        | `text`    | Required                                                                               |
+| `date_of_birth`                    | `date`    | Nullable                                                                               |
+| `gender`                           | `text`    | Nullable                                                                               |
+| `phone`                            | `text`    | Nullable                                                                               |
+| `email`                            | `citext`  | Nullable                                                                               |
+| `photo_path`                       | `text`    | Nullable                                                                               |
+| `academic_institute`               | `text`    | Nullable                                                                               |
+| `course_name`                      | `text`    | Nullable                                                                               |
+| `academic_year`                    | `text`    | Nullable                                                                               |
+| `status`                           | `text`    | `APPLICANT`, `VERIFIED`, `ACTIVE`, `NOTICE_GIVEN`, `MOVED_OUT`, `ARCHIVED`, `REJECTED` |
+| `is_minor`                         | `boolean` | Derived or stored                                                                      |
+| `portal_access_enabled`            | `boolean` | Default `false`                                                                        |
+| `joined_at`                        | `date`    | Nullable                                                                               |
+| `moved_out_at`                     | `date`    | Nullable                                                                               |
+| `metadata`                         | `jsonb`   | Default `{}`                                                                           |
+| standard audit/soft-delete columns |           |                                                                                        |
 
 ### Constraints
 
@@ -977,19 +977,19 @@ profile_id unique where not null
 
 Represents parent or guardian records.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `profile_id` | `uuid` | Nullable |
-| `full_name` | `text` | Required |
-| `phone` | `text` | Required |
-| `email` | `citext` | Nullable |
-| `occupation` | `text` | Nullable |
-| `address` | `jsonb` | Nullable |
-| `portal_access_enabled` | `boolean` | Default `true` |
-| `status` | `text` | `ACTIVE`, `INACTIVE`, `BLOCKED` |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type      | Rules                           |
+| ---------------------------------- | --------- | ------------------------------- |
+| `id`                               | `uuid`    | PK                              |
+| `tenant_id`                        | `uuid`    | Required                        |
+| `profile_id`                       | `uuid`    | Nullable                        |
+| `full_name`                        | `text`    | Required                        |
+| `phone`                            | `text`    | Required                        |
+| `email`                            | `citext`  | Nullable                        |
+| `occupation`                       | `text`    | Nullable                        |
+| `address`                          | `jsonb`   | Nullable                        |
+| `portal_access_enabled`            | `boolean` | Default `true`                  |
+| `status`                           | `text`    | `ACTIVE`, `INACTIVE`, `BLOCKED` |
+| standard audit/soft-delete columns |           |                                 |
 
 ### Indexes
 
@@ -1004,24 +1004,24 @@ index(profile_id) where profile_id is not null
 
 Many-to-many relationship between students and guardians.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `guardian_id` | `uuid` | Required |
-| `relationship` | `text` | Required |
-| `is_primary` | `boolean` | Default `false` |
-| `is_emergency_contact` | `boolean` | Default `false` |
-| `can_pay_fees` | `boolean` | Default `true` |
-| `can_view_attendance` | `boolean` | Default `true` |
-| `can_view_gate_events` | `boolean` | Default `true` |
-| `can_view_complaints` | `boolean` | Default `true` |
-| `can_approve_gate_pass` | `boolean` | Default `false` |
-| `portal_access_enabled` | `boolean` | Default `true` |
-| `linked_at` | `timestamptz` | Default `now()` |
-| `unlinked_at` | `timestamptz` | Nullable |
-| `created_by` | `uuid` | Nullable |
+| Column                  | Type          | Rules           |
+| ----------------------- | ------------- | --------------- |
+| `id`                    | `uuid`        | PK              |
+| `tenant_id`             | `uuid`        | Required        |
+| `student_id`            | `uuid`        | Required        |
+| `guardian_id`           | `uuid`        | Required        |
+| `relationship`          | `text`        | Required        |
+| `is_primary`            | `boolean`     | Default `false` |
+| `is_emergency_contact`  | `boolean`     | Default `false` |
+| `can_pay_fees`          | `boolean`     | Default `true`  |
+| `can_view_attendance`   | `boolean`     | Default `true`  |
+| `can_view_gate_events`  | `boolean`     | Default `true`  |
+| `can_view_complaints`   | `boolean`     | Default `true`  |
+| `can_approve_gate_pass` | `boolean`     | Default `false` |
+| `portal_access_enabled` | `boolean`     | Default `true`  |
+| `linked_at`             | `timestamptz` | Default `now()` |
+| `unlinked_at`           | `timestamptz` | Nullable        |
+| `created_by`            | `uuid`        | Nullable        |
 
 ### Constraints
 
@@ -1037,28 +1037,28 @@ only one active primary guardian per student
 
 Stores public and staff-created admission applications.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `application_number` | `text` | Required |
-| `submitted_by_type` | `text` | `STUDENT`, `PARENT`, `STAFF` |
-| `student_name` | `text` | Required |
-| `student_phone` | `text` | Nullable |
-| `student_email` | `citext` | Nullable |
-| `date_of_birth` | `date` | Nullable |
-| `guardian_name` | `text` | Nullable |
-| `guardian_phone` | `text` | Nullable |
-| `preferred_room_type` | `text` | Nullable |
-| `preferred_move_in_date` | `date` | Nullable |
-| `form_data` | `jsonb` | Default `{}` |
-| `status` | `text` | `DRAFT`, `SUBMITTED`, `UNDER_REVIEW`, `VERIFIED`, `APPROVED`, `REJECTED`, `CONVERTED`, `CANCELLED` |
-| `reviewed_by` | `uuid` | Nullable |
-| `reviewed_at` | `timestamptz` | Nullable |
-| `decision_reason` | `text` | Nullable |
-| `converted_student_id` | `uuid` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                                                              |
+| ---------------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                               | `uuid`        | PK                                                                                                 |
+| `tenant_id`                        | `uuid`        | Required                                                                                           |
+| `property_id`                      | `uuid`        | Required                                                                                           |
+| `application_number`               | `text`        | Required                                                                                           |
+| `submitted_by_type`                | `text`        | `STUDENT`, `PARENT`, `STAFF`                                                                       |
+| `student_name`                     | `text`        | Required                                                                                           |
+| `student_phone`                    | `text`        | Nullable                                                                                           |
+| `student_email`                    | `citext`      | Nullable                                                                                           |
+| `date_of_birth`                    | `date`        | Nullable                                                                                           |
+| `guardian_name`                    | `text`        | Nullable                                                                                           |
+| `guardian_phone`                   | `text`        | Nullable                                                                                           |
+| `preferred_room_type`              | `text`        | Nullable                                                                                           |
+| `preferred_move_in_date`           | `date`        | Nullable                                                                                           |
+| `form_data`                        | `jsonb`       | Default `{}`                                                                                       |
+| `status`                           | `text`        | `DRAFT`, `SUBMITTED`, `UNDER_REVIEW`, `VERIFIED`, `APPROVED`, `REJECTED`, `CONVERTED`, `CANCELLED` |
+| `reviewed_by`                      | `uuid`        | Nullable                                                                                           |
+| `reviewed_at`                      | `timestamptz` | Nullable                                                                                           |
+| `decision_reason`                  | `text`        | Nullable                                                                                           |
+| `converted_student_id`             | `uuid`        | Nullable                                                                                           |
+| standard audit/soft-delete columns |               |                                                                                                    |
 
 ### Constraint
 
@@ -1072,29 +1072,29 @@ unique(property_id, application_number)
 
 Metadata for files stored in Supabase Storage.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Nullable |
-| `owner_type` | `text` | `STUDENT`, `GUARDIAN`, `ADMISSION`, `ALLOCATION`, `PROPERTY`, `COMPLAINT`, `VISITOR`, `INVOICE`, `RECEIPT`, `OTHER` |
-| `owner_id` | `uuid` | Required |
-| `document_type` | `text` | Required |
-| `storage_bucket` | `text` | Required |
-| `storage_path` | `text` | Required |
-| `original_filename` | `text` | Required |
-| `mime_type` | `text` | Required |
-| `size_bytes` | `bigint` | Non-negative |
-| `checksum` | `text` | Nullable |
-| `status` | `text` | `UPLOADING`, `PROCESSING`, `AVAILABLE`, `REJECTED`, `QUARANTINED`, `DELETED` |
-| `verification_status` | `text` | `NOT_REQUIRED`, `PENDING`, `VERIFIED`, `REJECTED` |
-| `verified_by` | `uuid` | Nullable |
-| `verified_at` | `timestamptz` | Nullable |
-| `rejection_reason` | `text` | Nullable |
-| `created_by` | `uuid` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `deleted_at` | `timestamptz` | Nullable |
-| `deleted_by` | `uuid` | Nullable |
+| Column                | Type          | Rules                                                                                                               |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | `uuid`        | PK                                                                                                                  |
+| `tenant_id`           | `uuid`        | Required                                                                                                            |
+| `property_id`         | `uuid`        | Nullable                                                                                                            |
+| `owner_type`          | `text`        | `STUDENT`, `GUARDIAN`, `ADMISSION`, `ALLOCATION`, `PROPERTY`, `COMPLAINT`, `VISITOR`, `INVOICE`, `RECEIPT`, `OTHER` |
+| `owner_id`            | `uuid`        | Required                                                                                                            |
+| `document_type`       | `text`        | Required                                                                                                            |
+| `storage_bucket`      | `text`        | Required                                                                                                            |
+| `storage_path`        | `text`        | Required                                                                                                            |
+| `original_filename`   | `text`        | Required                                                                                                            |
+| `mime_type`           | `text`        | Required                                                                                                            |
+| `size_bytes`          | `bigint`      | Non-negative                                                                                                        |
+| `checksum`            | `text`        | Nullable                                                                                                            |
+| `status`              | `text`        | `UPLOADING`, `PROCESSING`, `AVAILABLE`, `REJECTED`, `QUARANTINED`, `DELETED`                                        |
+| `verification_status` | `text`        | `NOT_REQUIRED`, `PENDING`, `VERIFIED`, `REJECTED`                                                                   |
+| `verified_by`         | `uuid`        | Nullable                                                                                                            |
+| `verified_at`         | `timestamptz` | Nullable                                                                                                            |
+| `rejection_reason`    | `text`        | Nullable                                                                                                            |
+| `created_by`          | `uuid`        | Nullable                                                                                                            |
+| `created_at`          | `timestamptz` | Default `now()`                                                                                                     |
+| `deleted_at`          | `timestamptz` | Nullable                                                                                                            |
+| `deleted_by`          | `uuid`        | Nullable                                                                                                            |
 
 ### Constraints
 
@@ -1109,24 +1109,24 @@ size_bytes >= 0
 
 Digital boarding agreements.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Nullable |
-| `template_version` | `text` | Required |
-| `document_id` | `uuid` | Nullable |
-| `status` | `text` | `DRAFT`, `SENT`, `VIEWED`, `SIGNED`, `DECLINED`, `VOID` |
-| `sent_at` | `timestamptz` | Nullable |
-| `signed_at` | `timestamptz` | Nullable |
-| `signed_by_user_id` | `uuid` | Nullable |
-| `signature_method` | `text` | `OTP`, `CLICK_CONSENT`, `EXTERNAL_ESIGN` |
-| `signature_evidence` | `jsonb` | Default `{}` |
-| `voided_at` | `timestamptz` | Nullable |
-| `void_reason` | `text` | Nullable |
-| standard audit columns |  |  |
+| Column                 | Type          | Rules                                                   |
+| ---------------------- | ------------- | ------------------------------------------------------- |
+| `id`                   | `uuid`        | PK                                                      |
+| `tenant_id`            | `uuid`        | Required                                                |
+| `property_id`          | `uuid`        | Required                                                |
+| `student_id`           | `uuid`        | Required                                                |
+| `allocation_id`        | `uuid`        | Nullable                                                |
+| `template_version`     | `text`        | Required                                                |
+| `document_id`          | `uuid`        | Nullable                                                |
+| `status`               | `text`        | `DRAFT`, `SENT`, `VIEWED`, `SIGNED`, `DECLINED`, `VOID` |
+| `sent_at`              | `timestamptz` | Nullable                                                |
+| `signed_at`            | `timestamptz` | Nullable                                                |
+| `signed_by_user_id`    | `uuid`        | Nullable                                                |
+| `signature_method`     | `text`        | `OTP`, `CLICK_CONSENT`, `EXTERNAL_ESIGN`                |
+| `signature_evidence`   | `jsonb`       | Default `{}`                                            |
+| `voided_at`            | `timestamptz` | Nullable                                                |
+| `void_reason`          | `text`        | Nullable                                                |
+| standard audit columns |               |                                                         |
 
 ---
 
@@ -1134,31 +1134,31 @@ Digital boarding agreements.
 
 Connects a student to a bed.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `bed_id` | `uuid` | Required |
-| `room_id` | `uuid` | Required |
-| `floor_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `fee_plan_id` | `uuid` | Nullable |
-| `status` | `text` | `DRAFT`, `PENDING_AGREEMENT`, `PENDING_PAYMENT`, `ACTIVE`, `NOTICE_GIVEN`, `MOVE_OUT_INSPECTION`, `CLOSED`, `CANCELLED` |
-| `start_date` | `date` | Required |
-| `expected_end_date` | `date` | Nullable |
-| `actual_end_date` | `date` | Nullable |
-| `rent_snapshot_paise` | `bigint` | Required |
-| `deposit_snapshot_paise` | `bigint` | Default `0` |
-| `currency` | `char(3)` | Default `INR` |
-| `billing_cycle_day` | `smallint` | Between `1` and `28` |
-| `lock_in_until` | `date` | Nullable |
-| `notice_period_days` | `integer` | Default `0` |
-| `agreement_id` | `uuid` | Nullable |
-| `activated_at` | `timestamptz` | Nullable |
-| `closed_at` | `timestamptz` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                                                                                   |
+| ---------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`                               | `uuid`        | PK                                                                                                                      |
+| `tenant_id`                        | `uuid`        | Required                                                                                                                |
+| `property_id`                      | `uuid`        | Required                                                                                                                |
+| `student_id`                       | `uuid`        | Required                                                                                                                |
+| `bed_id`                           | `uuid`        | Required                                                                                                                |
+| `room_id`                          | `uuid`        | Required                                                                                                                |
+| `floor_id`                         | `uuid`        | Required                                                                                                                |
+| `block_id`                         | `uuid`        | Nullable                                                                                                                |
+| `fee_plan_id`                      | `uuid`        | Nullable                                                                                                                |
+| `status`                           | `text`        | `DRAFT`, `PENDING_AGREEMENT`, `PENDING_PAYMENT`, `ACTIVE`, `NOTICE_GIVEN`, `MOVE_OUT_INSPECTION`, `CLOSED`, `CANCELLED` |
+| `start_date`                       | `date`        | Required                                                                                                                |
+| `expected_end_date`                | `date`        | Nullable                                                                                                                |
+| `actual_end_date`                  | `date`        | Nullable                                                                                                                |
+| `rent_snapshot_paise`              | `bigint`      | Required                                                                                                                |
+| `deposit_snapshot_paise`           | `bigint`      | Default `0`                                                                                                             |
+| `currency`                         | `char(3)`     | Default `INR`                                                                                                           |
+| `billing_cycle_day`                | `smallint`    | Between `1` and `28`                                                                                                    |
+| `lock_in_until`                    | `date`        | Nullable                                                                                                                |
+| `notice_period_days`               | `integer`     | Default `0`                                                                                                             |
+| `agreement_id`                     | `uuid`        | Nullable                                                                                                                |
+| `activated_at`                     | `timestamptz` | Nullable                                                                                                                |
+| `closed_at`                        | `timestamptz` | Nullable                                                                                                                |
+| standard audit/soft-delete columns |               |                                                                                                                         |
 
 ### Critical constraints
 
@@ -1200,48 +1200,48 @@ and deleted_at is null;
 
 Tracks bed swaps.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Required |
-| `from_bed_id` | `uuid` | Required |
-| `to_bed_id` | `uuid` | Required |
-| `requested_by` | `uuid` | Required |
-| `approved_by` | `uuid` | Nullable |
-| `reason` | `text` | Required |
-| `status` | `text` | `REQUESTED`, `APPROVED`, `REJECTED`, `COMPLETED`, `CANCELLED` |
-| `requested_at` | `timestamptz` | Default `now()` |
-| `completed_at` | `timestamptz` | Nullable |
+| Column          | Type          | Rules                                                         |
+| --------------- | ------------- | ------------------------------------------------------------- |
+| `id`            | `uuid`        | PK                                                            |
+| `tenant_id`     | `uuid`        | Required                                                      |
+| `property_id`   | `uuid`        | Required                                                      |
+| `allocation_id` | `uuid`        | Required                                                      |
+| `from_bed_id`   | `uuid`        | Required                                                      |
+| `to_bed_id`     | `uuid`        | Required                                                      |
+| `requested_by`  | `uuid`        | Required                                                      |
+| `approved_by`   | `uuid`        | Nullable                                                      |
+| `reason`        | `text`        | Required                                                      |
+| `status`        | `text`        | `REQUESTED`, `APPROVED`, `REJECTED`, `COMPLETED`, `CANCELLED` |
+| `requested_at`  | `timestamptz` | Default `now()`                                               |
+| `completed_at`  | `timestamptz` | Nullable                                                      |
 
 ---
 
 ## 36. `move_out_requests`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Required |
-| `requested_by` | `uuid` | Required |
-| `requested_move_out_date` | `date` | Required |
-| `reason` | `text` | Nullable |
-| `notice_received_at` | `timestamptz` | Default `now()` |
-| `status` | `text` | `REQUESTED`, `NOTICE_VALIDATION`, `INSPECTION_PENDING`, `FINANCE_PENDING`, `APPROVED`, `COMPLETED`, `REJECTED`, `CANCELLED` |
-| `inspection_completed_by` | `uuid` | Nullable |
-| `inspection_completed_at` | `timestamptz` | Nullable |
-| `inspection_notes` | `text` | Nullable |
-| `dues_paise` | `bigint` | Default `0` |
-| `deposit_balance_paise` | `bigint` | Default `0` |
-| `deduction_paise` | `bigint` | Default `0` |
-| `estimated_refund_paise` | `bigint` | Default `0` |
-| `approved_by` | `uuid` | Nullable |
-| `approved_at` | `timestamptz` | Nullable |
-| `completed_at` | `timestamptz` | Nullable |
-| standard audit columns |  |  |
+| Column                    | Type          | Rules                                                                                                                       |
+| ------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`                      | `uuid`        | PK                                                                                                                          |
+| `tenant_id`               | `uuid`        | Required                                                                                                                    |
+| `property_id`             | `uuid`        | Required                                                                                                                    |
+| `student_id`              | `uuid`        | Required                                                                                                                    |
+| `allocation_id`           | `uuid`        | Required                                                                                                                    |
+| `requested_by`            | `uuid`        | Required                                                                                                                    |
+| `requested_move_out_date` | `date`        | Required                                                                                                                    |
+| `reason`                  | `text`        | Nullable                                                                                                                    |
+| `notice_received_at`      | `timestamptz` | Default `now()`                                                                                                             |
+| `status`                  | `text`        | `REQUESTED`, `NOTICE_VALIDATION`, `INSPECTION_PENDING`, `FINANCE_PENDING`, `APPROVED`, `COMPLETED`, `REJECTED`, `CANCELLED` |
+| `inspection_completed_by` | `uuid`        | Nullable                                                                                                                    |
+| `inspection_completed_at` | `timestamptz` | Nullable                                                                                                                    |
+| `inspection_notes`        | `text`        | Nullable                                                                                                                    |
+| `dues_paise`              | `bigint`      | Default `0`                                                                                                                 |
+| `deposit_balance_paise`   | `bigint`      | Default `0`                                                                                                                 |
+| `deduction_paise`         | `bigint`      | Default `0`                                                                                                                 |
+| `estimated_refund_paise`  | `bigint`      | Default `0`                                                                                                                 |
+| `approved_by`             | `uuid`        | Nullable                                                                                                                    |
+| `approved_at`             | `timestamptz` | Nullable                                                                                                                    |
+| `completed_at`            | `timestamptz` | Nullable                                                                                                                    |
+| standard audit columns    |               |                                                                                                                             |
 
 ---
 
@@ -1249,23 +1249,23 @@ Tracks bed swaps.
 
 ## 37. `fee_plans`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `code` | `text` | Required |
-| `billing_frequency` | `text` | `MONTHLY`, `QUARTERLY`, `HALF_YEARLY`, `YEARLY`, `ONE_TIME`, `CUSTOM` |
-| `currency` | `char(3)` | Default `INR` |
-| `due_day` | `smallint` | Between `1` and `28` |
-| `grace_period_days` | `integer` | Default `0` |
-| `late_fee_type` | `text` | `NONE`, `FIXED`, `PERCENTAGE` |
-| `late_fee_value` | `bigint` | Default `0` |
-| `status` | `text` | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED` |
-| `effective_from` | `date` | Required |
-| `effective_until` | `date` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type       | Rules                                                                 |
+| ---------------------------------- | ---------- | --------------------------------------------------------------------- |
+| `id`                               | `uuid`     | PK                                                                    |
+| `tenant_id`                        | `uuid`     | Required                                                              |
+| `property_id`                      | `uuid`     | Required                                                              |
+| `name`                             | `text`     | Required                                                              |
+| `code`                             | `text`     | Required                                                              |
+| `billing_frequency`                | `text`     | `MONTHLY`, `QUARTERLY`, `HALF_YEARLY`, `YEARLY`, `ONE_TIME`, `CUSTOM` |
+| `currency`                         | `char(3)`  | Default `INR`                                                         |
+| `due_day`                          | `smallint` | Between `1` and `28`                                                  |
+| `grace_period_days`                | `integer`  | Default `0`                                                           |
+| `late_fee_type`                    | `text`     | `NONE`, `FIXED`, `PERCENTAGE`                                         |
+| `late_fee_value`                   | `bigint`   | Default `0`                                                           |
+| `status`                           | `text`     | `DRAFT`, `ACTIVE`, `INACTIVE`, `ARCHIVED`                             |
+| `effective_from`                   | `date`     | Required                                                              |
+| `effective_until`                  | `date`     | Nullable                                                              |
+| standard audit/soft-delete columns |            |                                                                       |
 
 ### Constraint
 
@@ -1277,21 +1277,21 @@ unique(property_id, code) where deleted_at is null
 
 ## 38. `fee_plan_components`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `fee_plan_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `component_type` | `text` | `RENT`, `MESS`, `DEPOSIT`, `MAINTENANCE`, `ONE_TIME`, `LATE_FEE`, `OTHER` |
-| `amount_paise` | `bigint` | Non-negative |
-| `is_refundable` | `boolean` | Default `false` |
-| `is_taxable` | `boolean` | Default `false` |
-| `tax_rate_basis_points` | `integer` | Default `0` |
-| `display_order` | `integer` | Default `0` |
-| `is_active` | `boolean` | Default `true` |
-| standard audit columns |  |  |
+| Column                  | Type      | Rules                                                                     |
+| ----------------------- | --------- | ------------------------------------------------------------------------- |
+| `id`                    | `uuid`    | PK                                                                        |
+| `tenant_id`             | `uuid`    | Required                                                                  |
+| `property_id`           | `uuid`    | Required                                                                  |
+| `fee_plan_id`           | `uuid`    | Required                                                                  |
+| `name`                  | `text`    | Required                                                                  |
+| `component_type`        | `text`    | `RENT`, `MESS`, `DEPOSIT`, `MAINTENANCE`, `ONE_TIME`, `LATE_FEE`, `OTHER` |
+| `amount_paise`          | `bigint`  | Non-negative                                                              |
+| `is_refundable`         | `boolean` | Default `false`                                                           |
+| `is_taxable`            | `boolean` | Default `false`                                                           |
+| `tax_rate_basis_points` | `integer` | Default `0`                                                               |
+| `display_order`         | `integer` | Default `0`                                                               |
+| `is_active`             | `boolean` | Default `true`                                                            |
+| standard audit columns  |           |                                                                           |
 
 ---
 
@@ -1299,19 +1299,19 @@ unique(property_id, code) where deleted_at is null
 
 Allows fee-plan assignment independent of allocation history.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Nullable |
-| `fee_plan_id` | `uuid` | Required |
-| `effective_from` | `date` | Required |
-| `effective_until` | `date` | Nullable |
-| `overrides` | `jsonb` | Default `{}` |
-| `status` | `text` | `ACTIVE`, `ENDED`, `CANCELLED` |
-| standard audit columns |  |  |
+| Column                 | Type    | Rules                          |
+| ---------------------- | ------- | ------------------------------ |
+| `id`                   | `uuid`  | PK                             |
+| `tenant_id`            | `uuid`  | Required                       |
+| `property_id`          | `uuid`  | Required                       |
+| `student_id`           | `uuid`  | Required                       |
+| `allocation_id`        | `uuid`  | Nullable                       |
+| `fee_plan_id`          | `uuid`  | Required                       |
+| `effective_from`       | `date`  | Required                       |
+| `effective_until`      | `date`  | Nullable                       |
+| `overrides`            | `jsonb` | Default `{}`                   |
+| `status`               | `text`  | `ACTIVE`, `ENDED`, `CANCELLED` |
+| standard audit columns |         |                                |
 
 ### Constraint
 
@@ -1321,38 +1321,38 @@ Overlapping active assignments for the same fee purpose must be prevented by app
 
 ## 40. `invoices`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Nullable |
-| `fee_plan_id` | `uuid` | Nullable |
-| `invoice_number` | `text` | Required |
-| `billing_period_start` | `date` | Nullable |
-| `billing_period_end` | `date` | Nullable |
-| `issue_date` | `date` | Required |
-| `due_date` | `date` | Required |
-| `status` | `text` | `DRAFT`, `ISSUED`, `PARTIALLY_PAID`, `PAID`, `OVERDUE`, `VOID`, `PARTIALLY_REFUNDED`, `REFUNDED` |
-| `subtotal_paise` | `bigint` | Non-negative |
-| `discount_paise` | `bigint` | Default `0` |
-| `tax_paise` | `bigint` | Default `0` |
-| `late_fee_paise` | `bigint` | Default `0` |
-| `total_paise` | `bigint` | Non-negative |
-| `paid_paise` | `bigint` | Default `0` |
-| `refunded_paise` | `bigint` | Default `0` |
-| `balance_paise` | `bigint` | Non-negative |
-| `currency` | `char(3)` | Default `INR` |
-| `gst_invoice` | `boolean` | Default `false` |
-| `seller_gstin_snapshot` | `text` | Nullable |
-| `buyer_gstin_snapshot` | `text` | Nullable |
-| `notes` | `text` | Nullable |
-| `issued_at` | `timestamptz` | Nullable |
-| `voided_at` | `timestamptz` | Nullable |
-| `voided_by` | `uuid` | Nullable |
-| `void_reason` | `text` | Nullable |
-| standard audit columns |  |  |
+| Column                  | Type          | Rules                                                                                            |
+| ----------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                    | `uuid`        | PK                                                                                               |
+| `tenant_id`             | `uuid`        | Required                                                                                         |
+| `property_id`           | `uuid`        | Required                                                                                         |
+| `student_id`            | `uuid`        | Required                                                                                         |
+| `allocation_id`         | `uuid`        | Nullable                                                                                         |
+| `fee_plan_id`           | `uuid`        | Nullable                                                                                         |
+| `invoice_number`        | `text`        | Required                                                                                         |
+| `billing_period_start`  | `date`        | Nullable                                                                                         |
+| `billing_period_end`    | `date`        | Nullable                                                                                         |
+| `issue_date`            | `date`        | Required                                                                                         |
+| `due_date`              | `date`        | Required                                                                                         |
+| `status`                | `text`        | `DRAFT`, `ISSUED`, `PARTIALLY_PAID`, `PAID`, `OVERDUE`, `VOID`, `PARTIALLY_REFUNDED`, `REFUNDED` |
+| `subtotal_paise`        | `bigint`      | Non-negative                                                                                     |
+| `discount_paise`        | `bigint`      | Default `0`                                                                                      |
+| `tax_paise`             | `bigint`      | Default `0`                                                                                      |
+| `late_fee_paise`        | `bigint`      | Default `0`                                                                                      |
+| `total_paise`           | `bigint`      | Non-negative                                                                                     |
+| `paid_paise`            | `bigint`      | Default `0`                                                                                      |
+| `refunded_paise`        | `bigint`      | Default `0`                                                                                      |
+| `balance_paise`         | `bigint`      | Non-negative                                                                                     |
+| `currency`              | `char(3)`     | Default `INR`                                                                                    |
+| `gst_invoice`           | `boolean`     | Default `false`                                                                                  |
+| `seller_gstin_snapshot` | `text`        | Nullable                                                                                         |
+| `buyer_gstin_snapshot`  | `text`        | Nullable                                                                                         |
+| `notes`                 | `text`        | Nullable                                                                                         |
+| `issued_at`             | `timestamptz` | Nullable                                                                                         |
+| `voided_at`             | `timestamptz` | Nullable                                                                                         |
+| `voided_by`             | `uuid`        | Nullable                                                                                         |
+| `void_reason`           | `text`        | Nullable                                                                                         |
+| standard audit columns  |               |                                                                                                  |
 
 ### Constraints
 
@@ -1378,24 +1378,24 @@ Apply only when those values are not null and the invoice is not void.
 
 ## 41. `invoice_items`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `invoice_id` | `uuid` | Required |
-| `fee_component_id` | `uuid` | Nullable |
-| `description` | `text` | Required |
-| `quantity` | `numeric(12,3)` | Default `1` |
-| `unit_amount_paise` | `bigint` | Non-negative |
-| `subtotal_paise` | `bigint` | Non-negative |
-| `discount_paise` | `bigint` | Default `0` |
-| `tax_rate_basis_points` | `integer` | Default `0` |
-| `tax_paise` | `bigint` | Default `0` |
-| `total_paise` | `bigint` | Non-negative |
-| `display_order` | `integer` | Default `0` |
-| `metadata` | `jsonb` | Default `{}` |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column                  | Type            | Rules           |
+| ----------------------- | --------------- | --------------- |
+| `id`                    | `uuid`          | PK              |
+| `tenant_id`             | `uuid`          | Required        |
+| `property_id`           | `uuid`          | Required        |
+| `invoice_id`            | `uuid`          | Required        |
+| `fee_component_id`      | `uuid`          | Nullable        |
+| `description`           | `text`          | Required        |
+| `quantity`              | `numeric(12,3)` | Default `1`     |
+| `unit_amount_paise`     | `bigint`        | Non-negative    |
+| `subtotal_paise`        | `bigint`        | Non-negative    |
+| `discount_paise`        | `bigint`        | Default `0`     |
+| `tax_rate_basis_points` | `integer`       | Default `0`     |
+| `tax_paise`             | `bigint`        | Default `0`     |
+| `total_paise`           | `bigint`        | Non-negative    |
+| `display_order`         | `integer`       | Default `0`     |
+| `metadata`              | `jsonb`         | Default `{}`    |
+| `created_at`            | `timestamptz`   | Default `now()` |
 
 Invoice items should be treated as immutable after issuance except through a controlled invoice revision/void flow.
 
@@ -1405,22 +1405,22 @@ Invoice items should be treated as immutable after issuance except through a con
 
 Tracks gateway checkout orders.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `created_by_user_id` | `uuid` | Required |
-| `provider` | `text` | Required |
-| `provider_order_ref` | `text` | Required |
-| `amount_paise` | `bigint` | Required |
-| `currency` | `char(3)` | Default `INR` |
-| `status` | `text` | `CREATED`, `PENDING`, `PAID`, `FAILED`, `EXPIRED`, `CANCELLED` |
-| `idempotency_key` | `text` | Required |
-| `expires_at` | `timestamptz` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column               | Type          | Rules                                                          |
+| -------------------- | ------------- | -------------------------------------------------------------- |
+| `id`                 | `uuid`        | PK                                                             |
+| `tenant_id`          | `uuid`        | Required                                                       |
+| `property_id`        | `uuid`        | Required                                                       |
+| `student_id`         | `uuid`        | Required                                                       |
+| `created_by_user_id` | `uuid`        | Required                                                       |
+| `provider`           | `text`        | Required                                                       |
+| `provider_order_ref` | `text`        | Required                                                       |
+| `amount_paise`       | `bigint`      | Required                                                       |
+| `currency`           | `char(3)`     | Default `INR`                                                  |
+| `status`             | `text`        | `CREATED`, `PENDING`, `PAID`, `FAILED`, `EXPIRED`, `CANCELLED` |
+| `idempotency_key`    | `text`        | Required                                                       |
+| `expires_at`         | `timestamptz` | Nullable                                                       |
+| `created_at`         | `timestamptz` | Default `now()`                                                |
+| `updated_at`         | `timestamptz` | Default `now()`                                                |
 
 ### Constraints
 
@@ -1435,29 +1435,29 @@ unique(tenant_id, idempotency_key)
 
 Represents successful or attempted payments.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `payment_order_id` | `uuid` | Nullable |
-| `payment_number` | `text` | Required |
-| `mode` | `text` | `UPI`, `CARD`, `NETBANKING`, `CASH`, `CHEQUE`, `BANK_TRANSFER`, `OTHER` |
-| `provider` | `text` | Nullable |
-| `provider_payment_ref` | `text` | Nullable |
-| `provider_order_ref` | `text` | Nullable |
-| `amount_paise` | `bigint` | Required |
-| `currency` | `char(3)` | Default `INR` |
-| `status` | `text` | `CREATED`, `PENDING`, `AUTHORIZED`, `CAPTURED`, `FAILED`, `CANCELLED`, `PARTIALLY_REFUNDED`, `REFUNDED` |
-| `paid_at` | `timestamptz` | Nullable |
-| `recorded_by` | `uuid` | Nullable |
-| `offline_reference` | `text` | Nullable |
-| `cheque_date` | `date` | Nullable |
-| `notes` | `text` | Nullable |
-| `metadata` | `jsonb` | Default `{}` |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column                 | Type          | Rules                                                                                                   |
+| ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| `id`                   | `uuid`        | PK                                                                                                      |
+| `tenant_id`            | `uuid`        | Required                                                                                                |
+| `property_id`          | `uuid`        | Required                                                                                                |
+| `student_id`           | `uuid`        | Required                                                                                                |
+| `payment_order_id`     | `uuid`        | Nullable                                                                                                |
+| `payment_number`       | `text`        | Required                                                                                                |
+| `mode`                 | `text`        | `UPI`, `CARD`, `NETBANKING`, `CASH`, `CHEQUE`, `BANK_TRANSFER`, `OTHER`                                 |
+| `provider`             | `text`        | Nullable                                                                                                |
+| `provider_payment_ref` | `text`        | Nullable                                                                                                |
+| `provider_order_ref`   | `text`        | Nullable                                                                                                |
+| `amount_paise`         | `bigint`      | Required                                                                                                |
+| `currency`             | `char(3)`     | Default `INR`                                                                                           |
+| `status`               | `text`        | `CREATED`, `PENDING`, `AUTHORIZED`, `CAPTURED`, `FAILED`, `CANCELLED`, `PARTIALLY_REFUNDED`, `REFUNDED` |
+| `paid_at`              | `timestamptz` | Nullable                                                                                                |
+| `recorded_by`          | `uuid`        | Nullable                                                                                                |
+| `offline_reference`    | `text`        | Nullable                                                                                                |
+| `cheque_date`          | `date`        | Nullable                                                                                                |
+| `notes`                | `text`        | Nullable                                                                                                |
+| `metadata`             | `jsonb`       | Default `{}`                                                                                            |
+| `created_at`           | `timestamptz` | Default `now()`                                                                                         |
+| `updated_at`           | `timestamptz` | Default `now()`                                                                                         |
 
 ### Constraints
 
@@ -1473,16 +1473,16 @@ unique(provider, provider_payment_ref) where provider_payment_ref is not null
 
 Maps one payment to one or more invoices.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `payment_id` | `uuid` | Required |
-| `invoice_id` | `uuid` | Required |
-| `amount_paise` | `bigint` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `created_by` | `uuid` | Nullable |
+| Column         | Type          | Rules           |
+| -------------- | ------------- | --------------- |
+| `id`           | `uuid`        | PK              |
+| `tenant_id`    | `uuid`        | Required        |
+| `property_id`  | `uuid`        | Required        |
+| `payment_id`   | `uuid`        | Required        |
+| `invoice_id`   | `uuid`        | Required        |
+| `amount_paise` | `bigint`      | Required        |
+| `created_at`   | `timestamptz` | Default `now()` |
+| `created_by`   | `uuid`        | Nullable        |
 
 ### Constraints
 
@@ -1496,21 +1496,21 @@ sum allocations <= payment captured amount
 
 ## 45. `receipts`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `payment_id` | `uuid` | Required |
-| `receipt_number` | `text` | Required |
-| `document_id` | `uuid` | Nullable |
-| `issued_at` | `timestamptz` | Default `now()` |
-| `issued_by` | `uuid` | Nullable |
-| `status` | `text` | `PENDING`, `ISSUED`, `VOID` |
-| `voided_at` | `timestamptz` | Nullable |
-| `voided_by` | `uuid` | Nullable |
-| `void_reason` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column           | Type          | Rules                       |
+| ---------------- | ------------- | --------------------------- |
+| `id`             | `uuid`        | PK                          |
+| `tenant_id`      | `uuid`        | Required                    |
+| `property_id`    | `uuid`        | Required                    |
+| `payment_id`     | `uuid`        | Required                    |
+| `receipt_number` | `text`        | Required                    |
+| `document_id`    | `uuid`        | Nullable                    |
+| `issued_at`      | `timestamptz` | Default `now()`             |
+| `issued_by`      | `uuid`        | Nullable                    |
+| `status`         | `text`        | `PENDING`, `ISSUED`, `VOID` |
+| `voided_at`      | `timestamptz` | Nullable                    |
+| `voided_by`      | `uuid`        | Nullable                    |
+| `void_reason`    | `text`        | Nullable                    |
+| `created_at`     | `timestamptz` | Default `now()`             |
 
 ### Constraints
 
@@ -1525,24 +1525,24 @@ unique(payment_id) where status != 'VOID'
 
 Tracks proposed and approved discounts.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `invoice_id` | `uuid` | Nullable |
-| `discount_type` | `text` | `FIXED`, `PERCENTAGE` |
-| `value` | `bigint` | Required |
-| `calculated_amount_paise` | `bigint` | Required |
-| `reason` | `text` | Required |
-| `status` | `text` | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `APPLIED`, `CANCELLED` |
-| `requested_by` | `uuid` | Required |
-| `requested_at` | `timestamptz` | Default `now()` |
-| `approved_by` | `uuid` | Nullable |
-| `approved_at` | `timestamptz` | Nullable |
-| `decision_reason` | `text` | Nullable |
-| standard audit columns |  |  |
+| Column                    | Type          | Rules                                                                       |
+| ------------------------- | ------------- | --------------------------------------------------------------------------- |
+| `id`                      | `uuid`        | PK                                                                          |
+| `tenant_id`               | `uuid`        | Required                                                                    |
+| `property_id`             | `uuid`        | Required                                                                    |
+| `student_id`              | `uuid`        | Required                                                                    |
+| `invoice_id`              | `uuid`        | Nullable                                                                    |
+| `discount_type`           | `text`        | `FIXED`, `PERCENTAGE`                                                       |
+| `value`                   | `bigint`      | Required                                                                    |
+| `calculated_amount_paise` | `bigint`      | Required                                                                    |
+| `reason`                  | `text`        | Required                                                                    |
+| `status`                  | `text`        | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `APPLIED`, `CANCELLED` |
+| `requested_by`            | `uuid`        | Required                                                                    |
+| `requested_at`            | `timestamptz` | Default `now()`                                                             |
+| `approved_by`             | `uuid`        | Nullable                                                                    |
+| `approved_at`             | `timestamptz` | Nullable                                                                    |
+| `decision_reason`         | `text`        | Nullable                                                                    |
+| standard audit columns    |               |                                                                             |
 
 ---
 
@@ -1550,50 +1550,50 @@ Tracks proposed and approved discounts.
 
 Tracks fee waivers.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `invoice_id` | `uuid` | Nullable |
-| `amount_paise` | `bigint` | Required |
-| `reason` | `text` | Required |
-| `status` | `text` | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `APPLIED`, `CANCELLED` |
-| `requested_by` | `uuid` | Required |
-| `requested_at` | `timestamptz` | Default `now()` |
-| `approved_by` | `uuid` | Nullable |
-| `approved_at` | `timestamptz` | Nullable |
-| `decision_reason` | `text` | Nullable |
-| standard audit columns |  |  |
+| Column                 | Type          | Rules                                                                       |
+| ---------------------- | ------------- | --------------------------------------------------------------------------- |
+| `id`                   | `uuid`        | PK                                                                          |
+| `tenant_id`            | `uuid`        | Required                                                                    |
+| `property_id`          | `uuid`        | Required                                                                    |
+| `student_id`           | `uuid`        | Required                                                                    |
+| `invoice_id`           | `uuid`        | Nullable                                                                    |
+| `amount_paise`         | `bigint`      | Required                                                                    |
+| `reason`               | `text`        | Required                                                                    |
+| `status`               | `text`        | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `APPLIED`, `CANCELLED` |
+| `requested_by`         | `uuid`        | Required                                                                    |
+| `requested_at`         | `timestamptz` | Default `now()`                                                             |
+| `approved_by`          | `uuid`        | Nullable                                                                    |
+| `approved_at`          | `timestamptz` | Nullable                                                                    |
+| `decision_reason`      | `text`        | Nullable                                                                    |
+| standard audit columns |               |                                                                             |
 
 ---
 
 ## 48. `refunds`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `payment_id` | `uuid` | Required |
-| `refund_number` | `text` | Required |
-| `amount_paise` | `bigint` | Required |
-| `currency` | `char(3)` | Default `INR` |
-| `reason` | `text` | Required |
-| `mode` | `text` | `ORIGINAL_METHOD`, `BANK_TRANSFER`, `CASH`, `OTHER` |
-| `status` | `text` | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `PROCESSING`, `COMPLETED`, `REJECTED`, `FAILED`, `CANCELLED` |
-| `initiated_by` | `uuid` | Required |
-| `initiated_at` | `timestamptz` | Default `now()` |
-| `approved_by` | `uuid` | Nullable |
-| `approved_at` | `timestamptz` | Nullable |
-| `decision_reason` | `text` | Nullable |
-| `provider_refund_ref` | `text` | Nullable |
-| `expected_completion_at` | `timestamptz` | Nullable |
-| `completed_at` | `timestamptz` | Nullable |
-| `failure_reason` | `text` | Nullable |
-| standard audit columns |  |  |
+| Column                   | Type          | Rules                                                                                                 |
+| ------------------------ | ------------- | ----------------------------------------------------------------------------------------------------- |
+| `id`                     | `uuid`        | PK                                                                                                    |
+| `tenant_id`              | `uuid`        | Required                                                                                              |
+| `property_id`            | `uuid`        | Required                                                                                              |
+| `student_id`             | `uuid`        | Required                                                                                              |
+| `payment_id`             | `uuid`        | Required                                                                                              |
+| `refund_number`          | `text`        | Required                                                                                              |
+| `amount_paise`           | `bigint`      | Required                                                                                              |
+| `currency`               | `char(3)`     | Default `INR`                                                                                         |
+| `reason`                 | `text`        | Required                                                                                              |
+| `mode`                   | `text`        | `ORIGINAL_METHOD`, `BANK_TRANSFER`, `CASH`, `OTHER`                                                   |
+| `status`                 | `text`        | `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `PROCESSING`, `COMPLETED`, `REJECTED`, `FAILED`, `CANCELLED` |
+| `initiated_by`           | `uuid`        | Required                                                                                              |
+| `initiated_at`           | `timestamptz` | Default `now()`                                                                                       |
+| `approved_by`            | `uuid`        | Nullable                                                                                              |
+| `approved_at`            | `timestamptz` | Nullable                                                                                              |
+| `decision_reason`        | `text`        | Nullable                                                                                              |
+| `provider_refund_ref`    | `text`        | Nullable                                                                                              |
+| `expected_completion_at` | `timestamptz` | Nullable                                                                                              |
+| `completed_at`           | `timestamptz` | Nullable                                                                                              |
+| `failure_reason`         | `text`        | Nullable                                                                                              |
+| standard audit columns   |               |                                                                                                       |
 
 ### Constraints
 
@@ -1610,21 +1610,21 @@ sum completed refunds <= captured payment amount
 
 Append-only deposit ledger.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `allocation_id` | `uuid` | Required |
-| `entry_type` | `text` | `DEPOSIT_CHARGED`, `DEPOSIT_RECEIVED`, `DEDUCTION`, `ADJUSTMENT`, `REFUND_INITIATED`, `REFUND_COMPLETED`, `REVERSAL` |
-| `amount_paise` | `bigint` | Required |
-| `direction` | `text` | `DEBIT`, `CREDIT` |
-| `reference_type` | `text` | Nullable |
-| `reference_id` | `uuid` | Nullable |
-| `description` | `text` | Required |
-| `created_by` | `uuid` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column           | Type          | Rules                                                                                                                |
+| ---------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `id`             | `uuid`        | PK                                                                                                                   |
+| `tenant_id`      | `uuid`        | Required                                                                                                             |
+| `property_id`    | `uuid`        | Required                                                                                                             |
+| `student_id`     | `uuid`        | Required                                                                                                             |
+| `allocation_id`  | `uuid`        | Required                                                                                                             |
+| `entry_type`     | `text`        | `DEPOSIT_CHARGED`, `DEPOSIT_RECEIVED`, `DEDUCTION`, `ADJUSTMENT`, `REFUND_INITIATED`, `REFUND_COMPLETED`, `REVERSAL` |
+| `amount_paise`   | `bigint`      | Required                                                                                                             |
+| `direction`      | `text`        | `DEBIT`, `CREDIT`                                                                                                    |
+| `reference_type` | `text`        | Nullable                                                                                                             |
+| `reference_id`   | `uuid`        | Nullable                                                                                                             |
+| `description`    | `text`        | Required                                                                                                             |
+| `created_by`     | `uuid`        | Nullable                                                                                                             |
+| `created_at`     | `timestamptz` | Default `now()`                                                                                                      |
 
 Entries must not be updated or deleted through normal application workflows.
 
@@ -1650,21 +1650,21 @@ Until product approval:
 
 One record per student per attendance date/session.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `student_id` | `uuid` | Required |
-| `attendance_date` | `date` | Required |
-| `session` | `text` | Default `DAILY`; may support `MORNING`, `EVENING` |
-| `status` | `text` | `PRESENT`, `ABSENT`, `ON_LEAVE`, `OUT_PASS`, `NOT_MARKED` |
-| `marked_by` | `uuid` | Required |
-| `marked_at` | `timestamptz` | Default `now()` |
-| `source` | `text` | `MANUAL`, `BULK`, `IMPORT`, `SYSTEM` |
-| `notes` | `text` | Nullable |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column            | Type          | Rules                                                     |
+| ----------------- | ------------- | --------------------------------------------------------- |
+| `id`              | `uuid`        | PK                                                        |
+| `tenant_id`       | `uuid`        | Required                                                  |
+| `property_id`     | `uuid`        | Required                                                  |
+| `block_id`        | `uuid`        | Nullable                                                  |
+| `student_id`      | `uuid`        | Required                                                  |
+| `attendance_date` | `date`        | Required                                                  |
+| `session`         | `text`        | Default `DAILY`; may support `MORNING`, `EVENING`         |
+| `status`          | `text`        | `PRESENT`, `ABSENT`, `ON_LEAVE`, `OUT_PASS`, `NOT_MARKED` |
+| `marked_by`       | `uuid`        | Required                                                  |
+| `marked_at`       | `timestamptz` | Default `now()`                                           |
+| `source`          | `text`        | `MANUAL`, `BULK`, `IMPORT`, `SYSTEM`                      |
+| `notes`           | `text`        | Nullable                                                  |
+| `updated_at`      | `timestamptz` | Default `now()`                                           |
 
 ### Constraint
 
@@ -1676,49 +1676,49 @@ unique(student_id, attendance_date, session)
 
 ## 52. `complaint_categories`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `description` | `text` | Nullable |
-| `default_priority` | `text` | `LOW`, `MEDIUM`, `HIGH`, `URGENT` |
-| `sla_minutes` | `integer` | Required |
-| `is_active` | `boolean` | Default `true` |
-| `display_order` | `integer` | Default `0` |
-| standard audit columns |  |  |
+| Column                 | Type      | Rules                             |
+| ---------------------- | --------- | --------------------------------- |
+| `id`                   | `uuid`    | PK                                |
+| `tenant_id`            | `uuid`    | Required                          |
+| `property_id`          | `uuid`    | Required                          |
+| `name`                 | `text`    | Required                          |
+| `description`          | `text`    | Nullable                          |
+| `default_priority`     | `text`    | `LOW`, `MEDIUM`, `HIGH`, `URGENT` |
+| `sla_minutes`          | `integer` | Required                          |
+| `is_active`            | `boolean` | Default `true`                    |
+| `display_order`        | `integer` | Default `0`                       |
+| standard audit columns |           |                                   |
 
 ---
 
 ## 53. `complaints`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `room_id` | `uuid` | Nullable |
-| `bed_id` | `uuid` | Nullable |
-| `student_id` | `uuid` | Required |
-| `category_id` | `uuid` | Required |
-| `complaint_number` | `text` | Required |
-| `title` | `text` | Required |
-| `description` | `text` | Required |
-| `priority` | `text` | `LOW`, `MEDIUM`, `HIGH`, `URGENT` |
-| `status` | `text` | `OPEN`, `ASSIGNED`, `IN_PROGRESS`, `WAITING_FOR_STUDENT`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED` |
-| `assigned_to` | `uuid` | Nullable |
-| `assigned_at` | `timestamptz` | Nullable |
-| `sla_due_at` | `timestamptz` | Required |
-| `sla_breached_at` | `timestamptz` | Nullable |
-| `resolved_at` | `timestamptz` | Nullable |
-| `closed_at` | `timestamptz` | Nullable |
-| `resolution_summary` | `text` | Nullable |
-| `rating` | `smallint` | Nullable, between `1` and `5` |
-| `rating_comment` | `text` | Nullable |
-| `reopen_until` | `timestamptz` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                                                                   |
+| ---------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| `id`                               | `uuid`        | PK                                                                                                      |
+| `tenant_id`                        | `uuid`        | Required                                                                                                |
+| `property_id`                      | `uuid`        | Required                                                                                                |
+| `block_id`                         | `uuid`        | Nullable                                                                                                |
+| `room_id`                          | `uuid`        | Nullable                                                                                                |
+| `bed_id`                           | `uuid`        | Nullable                                                                                                |
+| `student_id`                       | `uuid`        | Required                                                                                                |
+| `category_id`                      | `uuid`        | Required                                                                                                |
+| `complaint_number`                 | `text`        | Required                                                                                                |
+| `title`                            | `text`        | Required                                                                                                |
+| `description`                      | `text`        | Required                                                                                                |
+| `priority`                         | `text`        | `LOW`, `MEDIUM`, `HIGH`, `URGENT`                                                                       |
+| `status`                           | `text`        | `OPEN`, `ASSIGNED`, `IN_PROGRESS`, `WAITING_FOR_STUDENT`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED` |
+| `assigned_to`                      | `uuid`        | Nullable                                                                                                |
+| `assigned_at`                      | `timestamptz` | Nullable                                                                                                |
+| `sla_due_at`                       | `timestamptz` | Required                                                                                                |
+| `sla_breached_at`                  | `timestamptz` | Nullable                                                                                                |
+| `resolved_at`                      | `timestamptz` | Nullable                                                                                                |
+| `closed_at`                        | `timestamptz` | Nullable                                                                                                |
+| `resolution_summary`               | `text`        | Nullable                                                                                                |
+| `rating`                           | `smallint`    | Nullable, between `1` and `5`                                                                           |
+| `rating_comment`                   | `text`        | Nullable                                                                                                |
+| `reopen_until`                     | `timestamptz` | Nullable                                                                                                |
+| standard audit/soft-delete columns |               |                                                                                                         |
 
 ### Constraint
 
@@ -1733,34 +1733,34 @@ assigned user must be an authorized Warden/Admin
 
 Append-only complaint timeline.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `complaint_id` | `uuid` | Required |
-| `actor_user_id` | `uuid` | Nullable |
-| `activity_type` | `text` | `CREATED`, `ASSIGNED`, `STATUS_CHANGED`, `COMMENT`, `MEDIA_ADDED`, `RESOLVED`, `CLOSED`, `REOPENED`, `ESCALATED` |
-| `from_status` | `text` | Nullable |
-| `to_status` | `text` | Nullable |
-| `comment` | `text` | Nullable |
-| `metadata` | `jsonb` | Default `{}` |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column          | Type          | Rules                                                                                                            |
+| --------------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `id`            | `uuid`        | PK                                                                                                               |
+| `tenant_id`     | `uuid`        | Required                                                                                                         |
+| `property_id`   | `uuid`        | Required                                                                                                         |
+| `complaint_id`  | `uuid`        | Required                                                                                                         |
+| `actor_user_id` | `uuid`        | Nullable                                                                                                         |
+| `activity_type` | `text`        | `CREATED`, `ASSIGNED`, `STATUS_CHANGED`, `COMMENT`, `MEDIA_ADDED`, `RESOLVED`, `CLOSED`, `REOPENED`, `ESCALATED` |
+| `from_status`   | `text`        | Nullable                                                                                                         |
+| `to_status`     | `text`        | Nullable                                                                                                         |
+| `comment`       | `text`        | Nullable                                                                                                         |
+| `metadata`      | `jsonb`       | Default `{}`                                                                                                     |
+| `created_at`    | `timestamptz` | Default `now()`                                                                                                  |
 
 ---
 
 ## 55. `complaint_media`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `complaint_id` | `uuid` | Required |
-| `document_id` | `uuid` | Required |
-| `media_purpose` | `text` | `EVIDENCE`, `PROGRESS`, `RESOLUTION` |
-| `uploaded_by` | `uuid` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column          | Type          | Rules                                |
+| --------------- | ------------- | ------------------------------------ |
+| `id`            | `uuid`        | PK                                   |
+| `tenant_id`     | `uuid`        | Required                             |
+| `property_id`   | `uuid`        | Required                             |
+| `complaint_id`  | `uuid`        | Required                             |
+| `document_id`   | `uuid`        | Required                             |
+| `media_purpose` | `text`        | `EVIDENCE`, `PROGRESS`, `RESOLUTION` |
+| `uploaded_by`   | `uuid`        | Required                             |
+| `created_at`    | `timestamptz` | Default `now()`                      |
 
 ---
 
@@ -1768,30 +1768,30 @@ Append-only complaint timeline.
 
 ## 56. `gate_passes`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `student_id` | `uuid` | Required |
-| `pass_number` | `text` | Required |
-| `reason` | `text` | Required |
-| `destination` | `text` | Nullable |
-| `out_at` | `timestamptz` | Required |
-| `expected_in_at` | `timestamptz` | Required |
-| `status` | `text` | `DRAFT`, `PENDING_WARDEN`, `PENDING_PARENT`, `APPROVED`, `REJECTED`, `ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED` |
-| `requires_parent_approval` | `boolean` | Default `false` |
-| `warden_approved_by` | `uuid` | Nullable |
-| `warden_approved_at` | `timestamptz` | Nullable |
-| `parent_approved_by` | `uuid` | Nullable |
-| `parent_approved_at` | `timestamptz` | Nullable |
-| `decision_reason` | `text` | Nullable |
-| `qr_token_hash` | `text` | Nullable |
-| `qr_expires_at` | `timestamptz` | Nullable |
-| `actual_out_at` | `timestamptz` | Nullable |
-| `actual_in_at` | `timestamptz` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                                                                              |
+| ---------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `id`                               | `uuid`        | PK                                                                                                                 |
+| `tenant_id`                        | `uuid`        | Required                                                                                                           |
+| `property_id`                      | `uuid`        | Required                                                                                                           |
+| `block_id`                         | `uuid`        | Nullable                                                                                                           |
+| `student_id`                       | `uuid`        | Required                                                                                                           |
+| `pass_number`                      | `text`        | Required                                                                                                           |
+| `reason`                           | `text`        | Required                                                                                                           |
+| `destination`                      | `text`        | Nullable                                                                                                           |
+| `out_at`                           | `timestamptz` | Required                                                                                                           |
+| `expected_in_at`                   | `timestamptz` | Required                                                                                                           |
+| `status`                           | `text`        | `DRAFT`, `PENDING_WARDEN`, `PENDING_PARENT`, `APPROVED`, `REJECTED`, `ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED` |
+| `requires_parent_approval`         | `boolean`     | Default `false`                                                                                                    |
+| `warden_approved_by`               | `uuid`        | Nullable                                                                                                           |
+| `warden_approved_at`               | `timestamptz` | Nullable                                                                                                           |
+| `parent_approved_by`               | `uuid`        | Nullable                                                                                                           |
+| `parent_approved_at`               | `timestamptz` | Nullable                                                                                                           |
+| `decision_reason`                  | `text`        | Nullable                                                                                                           |
+| `qr_token_hash`                    | `text`        | Nullable                                                                                                           |
+| `qr_expires_at`                    | `timestamptz` | Nullable                                                                                                           |
+| `actual_out_at`                    | `timestamptz` | Nullable                                                                                                           |
+| `actual_in_at`                     | `timestamptz` | Nullable                                                                                                           |
+| standard audit/soft-delete columns |               |                                                                                                                    |
 
 ### Constraints
 
@@ -1807,17 +1807,17 @@ parent approval user must be an active linked guardian
 
 Allows explicit approval history and future multi-step rules.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `gate_pass_id` | `uuid` | Required |
-| `approver_type` | `text` | `WARDEN`, `PARENT`, `HOSTEL_ADMIN` |
-| `approver_user_id` | `uuid` | Required |
-| `decision` | `text` | `APPROVED`, `REJECTED` |
-| `reason` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column             | Type          | Rules                              |
+| ------------------ | ------------- | ---------------------------------- |
+| `id`               | `uuid`        | PK                                 |
+| `tenant_id`        | `uuid`        | Required                           |
+| `property_id`      | `uuid`        | Required                           |
+| `gate_pass_id`     | `uuid`        | Required                           |
+| `approver_type`    | `text`        | `WARDEN`, `PARENT`, `HOSTEL_ADMIN` |
+| `approver_user_id` | `uuid`        | Required                           |
+| `decision`         | `text`        | `APPROVED`, `REJECTED`             |
+| `reason`           | `text`        | Nullable                           |
+| `created_at`       | `timestamptz` | Default `now()`                    |
 
 ---
 
@@ -1825,24 +1825,24 @@ Allows explicit approval history and future multi-step rules.
 
 Append-only entry and exit history.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `block_id` | `uuid` | Nullable |
-| `student_id` | `uuid` | Nullable |
-| `visitor_id` | `uuid` | Nullable |
-| `gate_pass_id` | `uuid` | Nullable |
-| `direction` | `text` | `IN`, `OUT` |
-| `method` | `text` | `QR`, `MANUAL` |
-| `event_at` | `timestamptz` | Default `now()` |
-| `recorded_by` | `uuid` | Required |
-| `device_id` | `text` | Nullable |
-| `idempotency_key` | `text` | Required |
-| `is_late` | `boolean` | Default `false` |
-| `notes` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column            | Type          | Rules           |
+| ----------------- | ------------- | --------------- |
+| `id`              | `uuid`        | PK              |
+| `tenant_id`       | `uuid`        | Required        |
+| `property_id`     | `uuid`        | Required        |
+| `block_id`        | `uuid`        | Nullable        |
+| `student_id`      | `uuid`        | Nullable        |
+| `visitor_id`      | `uuid`        | Nullable        |
+| `gate_pass_id`    | `uuid`        | Nullable        |
+| `direction`       | `text`        | `IN`, `OUT`     |
+| `method`          | `text`        | `QR`, `MANUAL`  |
+| `event_at`        | `timestamptz` | Default `now()` |
+| `recorded_by`     | `uuid`        | Required        |
+| `device_id`       | `text`        | Nullable        |
+| `idempotency_key` | `text`        | Required        |
+| `is_late`         | `boolean`     | Default `false` |
+| `notes`           | `text`        | Nullable        |
+| `created_at`      | `timestamptz` | Default `now()` |
 
 ### Constraints
 
@@ -1857,24 +1857,24 @@ Gate events must not be updated or deleted through normal UI workflows.
 
 ## 59. `visitors`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `host_student_id` | `uuid` | Required |
-| `name` | `text` | Required |
-| `phone` | `text` | Required |
-| `purpose` | `text` | Required |
-| `photo_document_id` | `uuid` | Nullable |
-| `id_document_id` | `uuid` | Nullable |
-| `status` | `text` | `REQUESTED`, `APPROVED`, `REJECTED`, `CHECKED_IN`, `CHECKED_OUT`, `EXPIRED`, `CANCELLED` |
-| `expected_at` | `timestamptz` | Nullable |
-| `approved_by` | `uuid` | Nullable |
-| `approved_at` | `timestamptz` | Nullable |
-| `checked_in_at` | `timestamptz` | Nullable |
-| `checked_out_at` | `timestamptz` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                                                    |
+| ---------------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
+| `id`                               | `uuid`        | PK                                                                                       |
+| `tenant_id`                        | `uuid`        | Required                                                                                 |
+| `property_id`                      | `uuid`        | Required                                                                                 |
+| `host_student_id`                  | `uuid`        | Required                                                                                 |
+| `name`                             | `text`        | Required                                                                                 |
+| `phone`                            | `text`        | Required                                                                                 |
+| `purpose`                          | `text`        | Required                                                                                 |
+| `photo_document_id`                | `uuid`        | Nullable                                                                                 |
+| `id_document_id`                   | `uuid`        | Nullable                                                                                 |
+| `status`                           | `text`        | `REQUESTED`, `APPROVED`, `REJECTED`, `CHECKED_IN`, `CHECKED_OUT`, `EXPIRED`, `CANCELLED` |
+| `expected_at`                      | `timestamptz` | Nullable                                                                                 |
+| `approved_by`                      | `uuid`        | Nullable                                                                                 |
+| `approved_at`                      | `timestamptz` | Nullable                                                                                 |
+| `checked_in_at`                    | `timestamptz` | Nullable                                                                                 |
+| `checked_out_at`                   | `timestamptz` | Nullable                                                                                 |
+| standard audit/soft-delete columns |               |                                                                                          |
 
 ---
 
@@ -1882,19 +1882,19 @@ Gate events must not be updated or deleted through normal UI workflows.
 
 ## 60. `mess_menus`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `menu_date` | `date` | Required |
-| `meal` | `text` | `BREAKFAST`, `LUNCH`, `SNACKS`, `DINNER`, `OTHER` |
-| `title` | `text` | Nullable |
-| `notes` | `text` | Nullable |
-| `status` | `text` | `DRAFT`, `PUBLISHED`, `CANCELLED` |
-| `published_by` | `uuid` | Nullable |
-| `published_at` | `timestamptz` | Nullable |
-| standard audit columns |  |  |
+| Column                 | Type          | Rules                                             |
+| ---------------------- | ------------- | ------------------------------------------------- |
+| `id`                   | `uuid`        | PK                                                |
+| `tenant_id`            | `uuid`        | Required                                          |
+| `property_id`          | `uuid`        | Required                                          |
+| `menu_date`            | `date`        | Required                                          |
+| `meal`                 | `text`        | `BREAKFAST`, `LUNCH`, `SNACKS`, `DINNER`, `OTHER` |
+| `title`                | `text`        | Nullable                                          |
+| `notes`                | `text`        | Nullable                                          |
+| `status`               | `text`        | `DRAFT`, `PUBLISHED`, `CANCELLED`                 |
+| `published_by`         | `uuid`        | Nullable                                          |
+| `published_at`         | `timestamptz` | Nullable                                          |
+| standard audit columns |               |                                                   |
 
 ### Constraint
 
@@ -1906,50 +1906,50 @@ unique(property_id, menu_date, meal)
 
 ## 61. `mess_menu_items`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `mess_menu_id` | `uuid` | Required |
-| `item_name` | `text` | Required |
-| `description` | `text` | Nullable |
-| `is_vegetarian` | `boolean` | Nullable |
-| `allergen_notes` | `text` | Nullable |
-| `display_order` | `integer` | Default `0` |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column           | Type          | Rules           |
+| ---------------- | ------------- | --------------- |
+| `id`             | `uuid`        | PK              |
+| `tenant_id`      | `uuid`        | Required        |
+| `property_id`    | `uuid`        | Required        |
+| `mess_menu_id`   | `uuid`        | Required        |
+| `item_name`      | `text`        | Required        |
+| `description`    | `text`        | Nullable        |
+| `is_vegetarian`  | `boolean`     | Nullable        |
+| `allergen_notes` | `text`        | Nullable        |
+| `display_order`  | `integer`     | Default `0`     |
+| `created_at`     | `timestamptz` | Default `now()` |
 
 ---
 
 ## 62. `mess_headcounts`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `mess_menu_id` | `uuid` | Required |
-| `expected_count` | `integer` | Default `0` |
-| `actual_count` | `integer` | Nullable |
-| `recorded_by` | `uuid` | Nullable |
-| `recorded_at` | `timestamptz` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column           | Type          | Rules           |
+| ---------------- | ------------- | --------------- |
+| `id`             | `uuid`        | PK              |
+| `tenant_id`      | `uuid`        | Required        |
+| `property_id`    | `uuid`        | Required        |
+| `mess_menu_id`   | `uuid`        | Required        |
+| `expected_count` | `integer`     | Default `0`     |
+| `actual_count`   | `integer`     | Nullable        |
+| `recorded_by`    | `uuid`        | Nullable        |
+| `recorded_at`    | `timestamptz` | Nullable        |
+| `created_at`     | `timestamptz` | Default `now()` |
+| `updated_at`     | `timestamptz` | Default `now()` |
 
 ---
 
 ## 63. `mess_feedback`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `mess_menu_id` | `uuid` | Required |
-| `student_id` | `uuid` | Required |
-| `rating` | `smallint` | Between `1` and `5` |
-| `comment` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column         | Type          | Rules               |
+| -------------- | ------------- | ------------------- |
+| `id`           | `uuid`        | PK                  |
+| `tenant_id`    | `uuid`        | Required            |
+| `property_id`  | `uuid`        | Required            |
+| `mess_menu_id` | `uuid`        | Required            |
+| `student_id`   | `uuid`        | Required            |
+| `rating`       | `smallint`    | Between `1` and `5` |
+| `comment`      | `text`        | Nullable            |
+| `created_at`   | `timestamptz` | Default `now()`     |
 
 ### Constraint
 
@@ -1961,22 +1961,22 @@ unique(mess_menu_id, student_id)
 
 ## 64. `notices`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `title` | `text` | Required |
-| `body` | `text` | Required |
-| `priority` | `text` | `NORMAL`, `IMPORTANT`, `URGENT` |
-| `status` | `text` | `DRAFT`, `SCHEDULED`, `PUBLISHED`, `EXPIRED`, `CANCELLED` |
-| `audience_type` | `text` | `ALL`, `STUDENTS`, `PARENTS`, `WARDENS`, `ACCOUNTANTS`, `CUSTOM` |
-| `channels` | `text[]` | Example: `IN_APP`, `SMS`, `WHATSAPP`, `EMAIL` |
-| `publish_at` | `timestamptz` | Nullable |
-| `expires_at` | `timestamptz` | Nullable |
-| `published_by` | `uuid` | Nullable |
-| `published_at` | `timestamptz` | Nullable |
-| standard audit/soft-delete columns |  |  |
+| Column                             | Type          | Rules                                                            |
+| ---------------------------------- | ------------- | ---------------------------------------------------------------- |
+| `id`                               | `uuid`        | PK                                                               |
+| `tenant_id`                        | `uuid`        | Required                                                         |
+| `property_id`                      | `uuid`        | Required                                                         |
+| `title`                            | `text`        | Required                                                         |
+| `body`                             | `text`        | Required                                                         |
+| `priority`                         | `text`        | `NORMAL`, `IMPORTANT`, `URGENT`                                  |
+| `status`                           | `text`        | `DRAFT`, `SCHEDULED`, `PUBLISHED`, `EXPIRED`, `CANCELLED`        |
+| `audience_type`                    | `text`        | `ALL`, `STUDENTS`, `PARENTS`, `WARDENS`, `ACCOUNTANTS`, `CUSTOM` |
+| `channels`                         | `text[]`      | Example: `IN_APP`, `SMS`, `WHATSAPP`, `EMAIL`                    |
+| `publish_at`                       | `timestamptz` | Nullable                                                         |
+| `expires_at`                       | `timestamptz` | Nullable                                                         |
+| `published_by`                     | `uuid`        | Nullable                                                         |
+| `published_at`                     | `timestamptz` | Nullable                                                         |
+| standard audit/soft-delete columns |               |                                                                  |
 
 ---
 
@@ -1984,16 +1984,16 @@ unique(mess_menu_id, student_id)
 
 Used for custom targeting.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `notice_id` | `uuid` | Required |
-| `target_type` | `text` | `BLOCK`, `ROOM`, `STUDENT`, `GUARDIAN`, `ROLE` |
-| `target_id` | `uuid` | Nullable |
-| `target_value` | `text` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column         | Type          | Rules                                          |
+| -------------- | ------------- | ---------------------------------------------- |
+| `id`           | `uuid`        | PK                                             |
+| `tenant_id`    | `uuid`        | Required                                       |
+| `property_id`  | `uuid`        | Required                                       |
+| `notice_id`    | `uuid`        | Required                                       |
+| `target_type`  | `text`        | `BLOCK`, `ROOM`, `STUDENT`, `GUARDIAN`, `ROLE` |
+| `target_id`    | `uuid`        | Nullable                                       |
+| `target_value` | `text`        | Nullable                                       |
+| `created_at`   | `timestamptz` | Default `now()`                                |
 
 ---
 
@@ -2001,33 +2001,33 @@ Used for custom targeting.
 
 General operational surveys.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `title` | `text` | Required |
-| `category` | `text` | `MESS`, `CLEANLINESS`, `WARDEN`, `GENERAL` |
-| `questions` | `jsonb` | Required |
-| `status` | `text` | `DRAFT`, `PUBLISHED`, `CLOSED` |
-| `starts_at` | `timestamptz` | Nullable |
-| `ends_at` | `timestamptz` | Nullable |
-| standard audit columns |  |  |
+| Column                 | Type          | Rules                                      |
+| ---------------------- | ------------- | ------------------------------------------ |
+| `id`                   | `uuid`        | PK                                         |
+| `tenant_id`            | `uuid`        | Required                                   |
+| `property_id`          | `uuid`        | Required                                   |
+| `title`                | `text`        | Required                                   |
+| `category`             | `text`        | `MESS`, `CLEANLINESS`, `WARDEN`, `GENERAL` |
+| `questions`            | `jsonb`       | Required                                   |
+| `status`               | `text`        | `DRAFT`, `PUBLISHED`, `CLOSED`             |
+| `starts_at`            | `timestamptz` | Nullable                                   |
+| `ends_at`              | `timestamptz` | Nullable                                   |
+| standard audit columns |               |                                            |
 
 ---
 
 ## 67. `feedback_responses`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `survey_id` | `uuid` | Required |
-| `respondent_user_id` | `uuid` | Required |
-| `student_id` | `uuid` | Nullable |
-| `answers` | `jsonb` | Required |
-| `submitted_at` | `timestamptz` | Default `now()` |
+| Column               | Type          | Rules           |
+| -------------------- | ------------- | --------------- |
+| `id`                 | `uuid`        | PK              |
+| `tenant_id`          | `uuid`        | Required        |
+| `property_id`        | `uuid`        | Required        |
+| `survey_id`          | `uuid`        | Required        |
+| `respondent_user_id` | `uuid`        | Required        |
+| `student_id`         | `uuid`        | Nullable        |
+| `answers`            | `jsonb`       | Required        |
+| `submitted_at`       | `timestamptz` | Default `now()` |
 
 ---
 
@@ -2037,33 +2037,33 @@ General operational surveys.
 
 Supports Parent-to-Warden and future approved internal messaging.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `conversation_type` | `text` | `PARENT_WARDEN`, `STUDENT_WARDEN`, `SUPPORT` |
-| `student_id` | `uuid` | Nullable |
-| `subject` | `text` | Nullable |
-| `status` | `text` | `OPEN`, `CLOSED`, `ARCHIVED` |
-| `created_by` | `uuid` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column              | Type          | Rules                                        |
+| ------------------- | ------------- | -------------------------------------------- |
+| `id`                | `uuid`        | PK                                           |
+| `tenant_id`         | `uuid`        | Required                                     |
+| `property_id`       | `uuid`        | Required                                     |
+| `conversation_type` | `text`        | `PARENT_WARDEN`, `STUDENT_WARDEN`, `SUPPORT` |
+| `student_id`        | `uuid`        | Nullable                                     |
+| `subject`           | `text`        | Nullable                                     |
+| `status`            | `text`        | `OPEN`, `CLOSED`, `ARCHIVED`                 |
+| `created_by`        | `uuid`        | Required                                     |
+| `created_at`        | `timestamptz` | Default `now()`                              |
+| `updated_at`        | `timestamptz` | Default `now()`                              |
 
 ---
 
 ## 69. `conversation_participants`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `conversation_id` | `uuid` | Required |
-| `user_id` | `uuid` | Required |
-| `participant_role` | `app_role` | Required |
-| `joined_at` | `timestamptz` | Default `now()` |
-| `left_at` | `timestamptz` | Nullable |
-| `last_read_at` | `timestamptz` | Nullable |
+| Column             | Type          | Rules           |
+| ------------------ | ------------- | --------------- |
+| `id`               | `uuid`        | PK              |
+| `tenant_id`        | `uuid`        | Required        |
+| `conversation_id`  | `uuid`        | Required        |
+| `user_id`          | `uuid`        | Required        |
+| `participant_role` | `app_role`    | Required        |
+| `joined_at`        | `timestamptz` | Default `now()` |
+| `left_at`          | `timestamptz` | Nullable        |
+| `last_read_at`     | `timestamptz` | Nullable        |
 
 ### Constraint
 
@@ -2075,19 +2075,19 @@ unique(conversation_id, user_id)
 
 ## 70. `messages`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `conversation_id` | `uuid` | Required |
-| `sender_user_id` | `uuid` | Required |
-| `message_type` | `text` | `TEXT`, `IMAGE`, `FILE`, `SYSTEM` |
-| `body` | `text` | Nullable |
-| `document_id` | `uuid` | Nullable |
-| `sent_at` | `timestamptz` | Default `now()` |
-| `edited_at` | `timestamptz` | Nullable |
-| `deleted_at` | `timestamptz` | Nullable |
+| Column            | Type          | Rules                             |
+| ----------------- | ------------- | --------------------------------- |
+| `id`              | `uuid`        | PK                                |
+| `tenant_id`       | `uuid`        | Required                          |
+| `property_id`     | `uuid`        | Required                          |
+| `conversation_id` | `uuid`        | Required                          |
+| `sender_user_id`  | `uuid`        | Required                          |
+| `message_type`    | `text`        | `TEXT`, `IMAGE`, `FILE`, `SYSTEM` |
+| `body`            | `text`        | Nullable                          |
+| `document_id`     | `uuid`        | Nullable                          |
+| `sent_at`         | `timestamptz` | Default `now()`                   |
+| `edited_at`       | `timestamptz` | Nullable                          |
+| `deleted_at`      | `timestamptz` | Nullable                          |
 
 ### Constraints
 
@@ -2104,26 +2104,26 @@ body or document_id required
 
 Represents a notification intent.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Nullable |
-| `recipient_user_id` | `uuid` | Nullable |
-| `recipient_phone` | `text` | Nullable |
-| `recipient_email` | `citext` | Nullable |
-| `event_type` | `text` | Required |
-| `channel` | `text` | `IN_APP`, `SMS`, `WHATSAPP`, `EMAIL` |
-| `template_key` | `text` | Required |
-| `locale` | `text` | Default `en` |
-| `payload` | `jsonb` | Default `{}` |
-| `status` | `text` | `PENDING`, `PROCESSING`, `SENT`, `DELIVERED`, `FAILED`, `CANCELLED` |
-| `scheduled_for` | `timestamptz` | Default `now()` |
-| `sent_at` | `timestamptz` | Nullable |
-| `delivered_at` | `timestamptz` | Nullable |
-| `idempotency_key` | `text` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column              | Type          | Rules                                                               |
+| ------------------- | ------------- | ------------------------------------------------------------------- |
+| `id`                | `uuid`        | PK                                                                  |
+| `tenant_id`         | `uuid`        | Required                                                            |
+| `property_id`       | `uuid`        | Nullable                                                            |
+| `recipient_user_id` | `uuid`        | Nullable                                                            |
+| `recipient_phone`   | `text`        | Nullable                                                            |
+| `recipient_email`   | `citext`      | Nullable                                                            |
+| `event_type`        | `text`        | Required                                                            |
+| `channel`           | `text`        | `IN_APP`, `SMS`, `WHATSAPP`, `EMAIL`                                |
+| `template_key`      | `text`        | Required                                                            |
+| `locale`            | `text`        | Default `en`                                                        |
+| `payload`           | `jsonb`       | Default `{}`                                                        |
+| `status`            | `text`        | `PENDING`, `PROCESSING`, `SENT`, `DELIVERED`, `FAILED`, `CANCELLED` |
+| `scheduled_for`     | `timestamptz` | Default `now()`                                                     |
+| `sent_at`           | `timestamptz` | Nullable                                                            |
+| `delivered_at`      | `timestamptz` | Nullable                                                            |
+| `idempotency_key`   | `text`        | Required                                                            |
+| `created_at`        | `timestamptz` | Default `now()`                                                     |
+| `updated_at`        | `timestamptz` | Default `now()`                                                     |
 
 ### Constraint
 
@@ -2137,19 +2137,19 @@ unique(tenant_id, idempotency_key)
 
 Append-only provider attempts.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `notification_id` | `uuid` | Required |
-| `attempt_number` | `integer` | Required |
-| `provider` | `text` | Required |
-| `provider_message_ref` | `text` | Nullable |
-| `status` | `text` | `STARTED`, `ACCEPTED`, `DELIVERED`, `FAILED` |
-| `response_code` | `text` | Nullable |
-| `error_code` | `text` | Nullable |
-| `error_message` | `text` | Nullable, redacted |
-| `attempted_at` | `timestamptz` | Default `now()` |
-| `completed_at` | `timestamptz` | Nullable |
+| Column                 | Type          | Rules                                        |
+| ---------------------- | ------------- | -------------------------------------------- |
+| `id`                   | `uuid`        | PK                                           |
+| `notification_id`      | `uuid`        | Required                                     |
+| `attempt_number`       | `integer`     | Required                                     |
+| `provider`             | `text`        | Required                                     |
+| `provider_message_ref` | `text`        | Nullable                                     |
+| `status`               | `text`        | `STARTED`, `ACCEPTED`, `DELIVERED`, `FAILED` |
+| `response_code`        | `text`        | Nullable                                     |
+| `error_code`           | `text`        | Nullable                                     |
+| `error_message`        | `text`        | Nullable, redacted                           |
+| `attempted_at`         | `timestamptz` | Default `now()`                              |
+| `completed_at`         | `timestamptz` | Nullable                                     |
 
 ---
 
@@ -2157,24 +2157,24 @@ Append-only provider attempts.
 
 Durable job queue/outbox.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Nullable for platform jobs |
-| `property_id` | `uuid` | Nullable |
-| `job_type` | `text` | Required |
-| `payload` | `jsonb` | Default `{}` |
-| `status` | `text` | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `DEAD_LETTER`, `CANCELLED` |
-| `priority` | `smallint` | Default `5` |
-| `attempt_count` | `integer` | Default `0` |
-| `max_attempts` | `integer` | Default `5` |
-| `run_after` | `timestamptz` | Default `now()` |
-| `locked_at` | `timestamptz` | Nullable |
-| `locked_by` | `text` | Nullable |
-| `last_error` | `text` | Nullable, redacted |
-| `idempotency_key` | `text` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `completed_at` | `timestamptz` | Nullable |
+| Column            | Type          | Rules                                                                      |
+| ----------------- | ------------- | -------------------------------------------------------------------------- |
+| `id`              | `uuid`        | PK                                                                         |
+| `tenant_id`       | `uuid`        | Nullable for platform jobs                                                 |
+| `property_id`     | `uuid`        | Nullable                                                                   |
+| `job_type`        | `text`        | Required                                                                   |
+| `payload`         | `jsonb`       | Default `{}`                                                               |
+| `status`          | `text`        | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `DEAD_LETTER`, `CANCELLED` |
+| `priority`        | `smallint`    | Default `5`                                                                |
+| `attempt_count`   | `integer`     | Default `0`                                                                |
+| `max_attempts`    | `integer`     | Default `5`                                                                |
+| `run_after`       | `timestamptz` | Default `now()`                                                            |
+| `locked_at`       | `timestamptz` | Nullable                                                                   |
+| `locked_by`       | `text`        | Nullable                                                                   |
+| `last_error`      | `text`        | Nullable, redacted                                                         |
+| `idempotency_key` | `text`        | Required                                                                   |
+| `created_at`      | `timestamptz` | Default `now()`                                                            |
+| `completed_at`    | `timestamptz` | Nullable                                                                   |
 
 ### Constraint
 
@@ -2186,23 +2186,23 @@ unique(job_type, idempotency_key)
 
 ## 74. `webhook_events`
 
-Stores **inbound** external webhook events that Hostylia receives from providers (e.g. Razorpay payment callbacks). This is in v1 scope. It is unrelated to *outbound* public webhooks/APIs for customers, which are Stage 3 and out of v1 scope per `PRD.md` Sec. 12.
+Stores **inbound** external webhook events that Hostylia receives from providers (e.g. Razorpay payment callbacks). This is in v1 scope. It is unrelated to _outbound_ public webhooks/APIs for customers, which are Stage 3 and out of v1 scope per `PRD.md` Sec. 12.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `provider` | `text` | Required |
-| `event_type` | `text` | Required |
-| `provider_event_ref` | `text` | Required |
-| `tenant_id` | `uuid` | Nullable until resolved |
-| `signature_valid` | `boolean` | Required |
-| `payload_hash` | `text` | Required |
-| `payload` | `jsonb` | Redacted as needed |
-| `status` | `text` | `RECEIVED`, `PROCESSING`, `PROCESSED`, `IGNORED`, `FAILED` |
-| `attempt_count` | `integer` | Default `0` |
-| `received_at` | `timestamptz` | Default `now()` |
-| `processed_at` | `timestamptz` | Nullable |
-| `last_error` | `text` | Nullable |
+| Column               | Type          | Rules                                                      |
+| -------------------- | ------------- | ---------------------------------------------------------- |
+| `id`                 | `uuid`        | PK                                                         |
+| `provider`           | `text`        | Required                                                   |
+| `event_type`         | `text`        | Required                                                   |
+| `provider_event_ref` | `text`        | Required                                                   |
+| `tenant_id`          | `uuid`        | Nullable until resolved                                    |
+| `signature_valid`    | `boolean`     | Required                                                   |
+| `payload_hash`       | `text`        | Required                                                   |
+| `payload`            | `jsonb`       | Redacted as needed                                         |
+| `status`             | `text`        | `RECEIVED`, `PROCESSING`, `PROCESSED`, `IGNORED`, `FAILED` |
+| `attempt_count`      | `integer`     | Default `0`                                                |
+| `received_at`        | `timestamptz` | Default `now()`                                            |
+| `processed_at`       | `timestamptz` | Nullable                                                   |
+| `last_error`         | `text`        | Nullable                                                   |
 
 ### Constraint
 
@@ -2214,19 +2214,19 @@ unique(provider, provider_event_ref)
 
 ## 75. `idempotency_keys`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Nullable |
-| `scope` | `text` | Required |
-| `idempotency_key` | `text` | Required |
-| `request_hash` | `text` | Required |
-| `response_status` | `integer` | Nullable |
-| `response_body` | `jsonb` | Nullable |
-| `resource_type` | `text` | Nullable |
-| `resource_id` | `uuid` | Nullable |
-| `expires_at` | `timestamptz` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column            | Type          | Rules           |
+| ----------------- | ------------- | --------------- |
+| `id`              | `uuid`        | PK              |
+| `tenant_id`       | `uuid`        | Nullable        |
+| `scope`           | `text`        | Required        |
+| `idempotency_key` | `text`        | Required        |
+| `request_hash`    | `text`        | Required        |
+| `response_status` | `integer`     | Nullable        |
+| `response_body`   | `jsonb`       | Nullable        |
+| `resource_type`   | `text`        | Nullable        |
+| `resource_id`     | `uuid`        | Nullable        |
+| `expires_at`      | `timestamptz` | Required        |
+| `created_at`      | `timestamptz` | Default `now()` |
 
 ### Constraint
 
@@ -2240,15 +2240,15 @@ unique(tenant_id, scope, idempotency_key)
 
 Postgres-backed rate limiting for v1. Read and written only through the `checkRateLimit(key, limit, window_seconds)` `SECURITY DEFINER` function; Edge Functions never touch this table directly. This is the deferred-Redis seam (see `Architecture.md` Sec. 26.3): when volume outgrows Postgres, the function body is repointed at Upstash Redis over HTTP and this table is retired, with no change to call sites.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `bucket_key` | `text` | Required. Composite key, e.g. `otp:+9198…`, `login:<ip>`, `payment_order:<tenant>:<user>` |
-| `window_start` | `timestamptz` | Required. Start of the current fixed window |
-| `counter` | `integer` | Default `0`. Requests in the current window |
-| `expires_at` | `timestamptz` | Required. When this window row may be reaped |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Default `now()` |
+| Column         | Type          | Rules                                                                                     |
+| -------------- | ------------- | ----------------------------------------------------------------------------------------- |
+| `id`           | `uuid`        | PK                                                                                        |
+| `bucket_key`   | `text`        | Required. Composite key, e.g. `otp:+9198…`, `login:<ip>`, `payment_order:<tenant>:<user>` |
+| `window_start` | `timestamptz` | Required. Start of the current fixed window                                               |
+| `counter`      | `integer`     | Default `0`. Requests in the current window                                               |
+| `expires_at`   | `timestamptz` | Required. When this window row may be reaped                                              |
+| `created_at`   | `timestamptz` | Default `now()`                                                                           |
+| `updated_at`   | `timestamptz` | Default `now()`                                                                           |
 
 ### Constraint
 
@@ -2271,38 +2271,38 @@ Applies to the endpoints listed in `Rules.md` Sec. 29.5 (login, OTP request/veri
 
 ## 76. `import_jobs`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Required |
-| `import_type` | `text` | `ROOMS_BEDS`, `STUDENTS`, `ADMISSIONS`, `PAYMENTS` |
-| `source_document_id` | `uuid` | Required |
-| `status` | `text` | `UPLOADED`, `VALIDATING`, `VALIDATED`, `PROCESSING`, `COMPLETED`, `PARTIAL`, `FAILED`, `CANCELLED` |
-| `total_rows` | `integer` | Default `0` |
-| `valid_rows` | `integer` | Default `0` |
-| `invalid_rows` | `integer` | Default `0` |
-| `processed_rows` | `integer` | Default `0` |
-| `created_by` | `uuid` | Required |
-| `created_at` | `timestamptz` | Default `now()` |
-| `completed_at` | `timestamptz` | Nullable |
-| `error_summary` | `jsonb` | Default `{}` |
+| Column               | Type          | Rules                                                                                              |
+| -------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                 | `uuid`        | PK                                                                                                 |
+| `tenant_id`          | `uuid`        | Required                                                                                           |
+| `property_id`        | `uuid`        | Required                                                                                           |
+| `import_type`        | `text`        | `ROOMS_BEDS`, `STUDENTS`, `ADMISSIONS`, `PAYMENTS`                                                 |
+| `source_document_id` | `uuid`        | Required                                                                                           |
+| `status`             | `text`        | `UPLOADED`, `VALIDATING`, `VALIDATED`, `PROCESSING`, `COMPLETED`, `PARTIAL`, `FAILED`, `CANCELLED` |
+| `total_rows`         | `integer`     | Default `0`                                                                                        |
+| `valid_rows`         | `integer`     | Default `0`                                                                                        |
+| `invalid_rows`       | `integer`     | Default `0`                                                                                        |
+| `processed_rows`     | `integer`     | Default `0`                                                                                        |
+| `created_by`         | `uuid`        | Required                                                                                           |
+| `created_at`         | `timestamptz` | Default `now()`                                                                                    |
+| `completed_at`       | `timestamptz` | Nullable                                                                                           |
+| `error_summary`      | `jsonb`       | Default `{}`                                                                                       |
 
 ---
 
 ## 77. `import_job_rows`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `import_job_id` | `uuid` | Required |
-| `row_number` | `integer` | Required |
-| `source_data` | `jsonb` | Required |
-| `normalized_data` | `jsonb` | Nullable |
-| `status` | `text` | `VALID`, `INVALID`, `IMPORTED`, `FAILED`, `SKIPPED` |
-| `errors` | `jsonb` | Default `[]` |
-| `created_resource_type` | `text` | Nullable |
-| `created_resource_id` | `uuid` | Nullable |
+| Column                  | Type      | Rules                                               |
+| ----------------------- | --------- | --------------------------------------------------- |
+| `id`                    | `uuid`    | PK                                                  |
+| `import_job_id`         | `uuid`    | Required                                            |
+| `row_number`            | `integer` | Required                                            |
+| `source_data`           | `jsonb`   | Required                                            |
+| `normalized_data`       | `jsonb`   | Nullable                                            |
+| `status`                | `text`    | `VALID`, `INVALID`, `IMPORTED`, `FAILED`, `SKIPPED` |
+| `errors`                | `jsonb`   | Default `[]`                                        |
+| `created_resource_type` | `text`    | Nullable                                            |
+| `created_resource_id`   | `uuid`    | Nullable                                            |
 
 ### Constraint
 
@@ -2314,20 +2314,20 @@ unique(import_job_id, row_number)
 
 ## 78. `export_jobs`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `property_id` | `uuid` | Nullable |
-| `requested_by` | `uuid` | Required |
-| `export_type` | `text` | Required |
-| `filters` | `jsonb` | Default `{}` |
-| `status` | `text` | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `EXPIRED` |
-| `document_id` | `uuid` | Nullable |
-| `expires_at` | `timestamptz` | Nullable |
-| `created_at` | `timestamptz` | Default `now()` |
-| `completed_at` | `timestamptz` | Nullable |
-| `error_message` | `text` | Nullable |
+| Column          | Type          | Rules                                                     |
+| --------------- | ------------- | --------------------------------------------------------- |
+| `id`            | `uuid`        | PK                                                        |
+| `tenant_id`     | `uuid`        | Required                                                  |
+| `property_id`   | `uuid`        | Nullable                                                  |
+| `requested_by`  | `uuid`        | Required                                                  |
+| `export_type`   | `text`        | Required                                                  |
+| `filters`       | `jsonb`       | Default `{}`                                              |
+| `status`        | `text`        | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `EXPIRED` |
+| `document_id`   | `uuid`        | Nullable                                                  |
+| `expires_at`    | `timestamptz` | Nullable                                                  |
+| `created_at`    | `timestamptz` | Default `now()`                                           |
+| `completed_at`  | `timestamptz` | Nullable                                                  |
+| `error_message` | `text`        | Nullable                                                  |
 
 ---
 
@@ -2337,24 +2337,24 @@ unique(import_job_id, row_number)
 
 Append-only record of mutations and privileged access.
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Nullable for platform events |
-| `property_id` | `uuid` | Nullable |
-| `actor_user_id` | `uuid` | Nullable for system jobs |
-| `effective_user_id` | `uuid` | Nullable |
-| `support_session_id` | `uuid` | Nullable |
-| `action` | `text` | Required |
-| `entity_type` | `text` | Required |
-| `entity_id` | `uuid` | Nullable |
-| `before_data` | `jsonb` | Nullable, redacted |
-| `after_data` | `jsonb` | Nullable, redacted |
-| `request_id` | `text` | Nullable |
-| `ip_address` | `inet` | Nullable |
-| `user_agent` | `text` | Nullable |
-| `metadata` | `jsonb` | Default `{}` |
-| `created_at` | `timestamptz` | Default `now()` |
+| Column               | Type          | Rules                        |
+| -------------------- | ------------- | ---------------------------- |
+| `id`                 | `uuid`        | PK                           |
+| `tenant_id`          | `uuid`        | Nullable for platform events |
+| `property_id`        | `uuid`        | Nullable                     |
+| `actor_user_id`      | `uuid`        | Nullable for system jobs     |
+| `effective_user_id`  | `uuid`        | Nullable                     |
+| `support_session_id` | `uuid`        | Nullable                     |
+| `action`             | `text`        | Required                     |
+| `entity_type`        | `text`        | Required                     |
+| `entity_id`          | `uuid`        | Nullable                     |
+| `before_data`        | `jsonb`       | Nullable, redacted           |
+| `after_data`         | `jsonb`       | Nullable, redacted           |
+| `request_id`         | `text`        | Nullable                     |
+| `ip_address`         | `inet`        | Nullable                     |
+| `user_agent`         | `text`        | Nullable                     |
+| `metadata`           | `jsonb`       | Default `{}`                 |
+| `created_at`         | `timestamptz` | Default `now()`              |
 
 ### Rules
 
@@ -2367,22 +2367,22 @@ Append-only record of mutations and privileged access.
 
 ## 80. `privacy_requests`
 
-| Column | Type | Rules |
-|---|---|---|
-| `id` | `uuid` | PK |
-| `tenant_id` | `uuid` | Required |
-| `requester_user_id` | `uuid` | Required |
-| `student_id` | `uuid` | Nullable |
-| `guardian_id` | `uuid` | Nullable |
-| `request_type` | `text` | `EXPORT`, `CORRECTION`, `DELETION`, `ACCESS` |
-| `status` | `text` | `SUBMITTED`, `IDENTITY_VERIFICATION`, `IN_REVIEW`, `IN_PROGRESS`, `COMPLETED`, `REJECTED`, `CANCELLED` |
-| `reason` | `text` | Nullable |
-| `submitted_at` | `timestamptz` | Default `now()` |
-| `verified_at` | `timestamptz` | Nullable |
-| `completed_at` | `timestamptz` | Nullable |
-| `completed_by` | `uuid` | Nullable |
-| `decision_notes` | `text` | Nullable |
-| `export_job_id` | `uuid` | Nullable |
+| Column              | Type          | Rules                                                                                                  |
+| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
+| `id`                | `uuid`        | PK                                                                                                     |
+| `tenant_id`         | `uuid`        | Required                                                                                               |
+| `requester_user_id` | `uuid`        | Required                                                                                               |
+| `student_id`        | `uuid`        | Nullable                                                                                               |
+| `guardian_id`       | `uuid`        | Nullable                                                                                               |
+| `request_type`      | `text`        | `EXPORT`, `CORRECTION`, `DELETION`, `ACCESS`                                                           |
+| `status`            | `text`        | `SUBMITTED`, `IDENTITY_VERIFICATION`, `IN_REVIEW`, `IN_PROGRESS`, `COMPLETED`, `REJECTED`, `CANCELLED` |
+| `reason`            | `text`        | Nullable                                                                                               |
+| `submitted_at`      | `timestamptz` | Default `now()`                                                                                        |
+| `verified_at`       | `timestamptz` | Nullable                                                                                               |
+| `completed_at`      | `timestamptz` | Nullable                                                                                               |
+| `completed_by`      | `uuid`        | Nullable                                                                                               |
+| `decision_notes`    | `text`        | Nullable                                                                                               |
+| `export_job_id`     | `uuid`        | Nullable                                                                                               |
 
 ---
 
@@ -3072,16 +3072,16 @@ churn_rate
 
 ## 107. Recommended buckets
 
-| Bucket | Visibility | Purpose |
-|---|---|---|
-| `property-media` | Public or signed based on file | Logos and gallery |
-| `kyc-documents` | Private | Student and guardian KYC |
-| `student-media` | Private | Student photos |
-| `complaint-media` | Private | Complaint evidence |
-| `visitor-documents` | Private | Visitor photo and ID |
-| `agreements` | Private | Signed agreements |
-| `receipts` | Private | Generated receipts |
-| `exports` | Private | Temporary exports |
+| Bucket              | Visibility                     | Purpose                  |
+| ------------------- | ------------------------------ | ------------------------ |
+| `property-media`    | Public or signed based on file | Logos and gallery        |
+| `kyc-documents`     | Private                        | Student and guardian KYC |
+| `student-media`     | Private                        | Student photos           |
+| `complaint-media`   | Private                        | Complaint evidence       |
+| `visitor-documents` | Private                        | Visitor photo and ID     |
+| `agreements`        | Private                        | Signed agreements        |
+| `receipts`          | Private                        | Generated receipts       |
+| `exports`           | Private                        | Temporary exports        |
 
 ### Rules
 
@@ -3368,4 +3368,4 @@ erDiagram
 
 ---
 
-*End of DB-Schema.md*
+_End of DB-Schema.md_

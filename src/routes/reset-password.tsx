@@ -15,10 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
-    meta: [
-      { title: "Reset password — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Reset password — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: ResetPasswordPage,
 });
@@ -74,7 +71,8 @@ function ResetPasswordPage() {
       }
       setState("updated");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not update password. Please try again.";
+      const message =
+        err instanceof Error ? err.message : "Could not update password. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -142,7 +140,9 @@ function ResetPasswordPage() {
             {...register("password")}
           />
           {errors.password ? (
-            <p className="text-sm text-destructive" role="alert">{errors.password.message}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {errors.password.message}
+            </p>
           ) : null}
         </div>
         <div className="space-y-2">
@@ -157,11 +157,17 @@ function ResetPasswordPage() {
             {...register("confirmPassword")}
           />
           {errors.confirmPassword ? (
-            <p className="text-sm text-destructive" role="alert">{errors.confirmPassword.message}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {errors.confirmPassword.message}
+            </p>
           ) : null}
         </div>
         <Button type="submit" disabled={submitting} className="min-h-11 w-full">
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <KeyRound className="h-4 w-4" />
+          )}
           {t("auth.updatePassword")}
         </Button>
       </form>

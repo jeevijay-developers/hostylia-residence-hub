@@ -14,7 +14,8 @@ export function FeatureCard({
   const toneClasses = {
     teal: "bg-[color-mix(in_oklab,var(--soft-teal)_18%,transparent)] text-soft-teal",
     blue: "bg-[color-mix(in_oklab,var(--brand-blue)_20%,transparent)] text-[color:var(--brand-blue)]",
-    green: "bg-[color-mix(in_oklab,var(--trust-green)_22%,transparent)] text-[color:var(--trust-green)]",
+    green:
+      "bg-[color-mix(in_oklab,var(--trust-green)_22%,transparent)] text-[color:var(--trust-green)]",
     gold: "bg-[color-mix(in_oklab,var(--gold)_22%,transparent)] text-gold",
   }[tone];
 

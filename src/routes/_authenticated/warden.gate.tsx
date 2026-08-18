@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Check,
   DoorOpen,
+  Loader2,
   LogIn,
   LogOut,
   RefreshCw,
@@ -18,7 +19,6 @@ import {
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { CameraQrScanner } from "@/components/gate/CameraQrScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +60,13 @@ import {
 } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage } from "@/lib/utils";
+
+// jsQR + camera decoding only matters once the Scan tab is opened — most
+// visits to this page (Approvals/Visitors/Live Feed) never touch it, so it's
+// deferred out of this route's initial chunk instead of bundled eagerly.
+const CameraQrScanner = lazy(() =>
+  import("@/components/gate/CameraQrScanner").then((m) => ({ default: m.CameraQrScanner })),
+);
 
 export const Route = createFileRoute("/_authenticated/warden/gate")({
   component: WardenGatePage,
@@ -429,13 +436,21 @@ function WardenGatePage() {
               <CardTitle className="text-base">QR Scan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <CameraQrScanner
-                direction={scanDirection}
-                onDirectionChange={setScanDirection}
-                onDetected={async ({ pass_id, token }) => {
-                  await scanMut.mutateAsync({ pass_id, token, direction: scanDirection });
-                }}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex min-h-[200px] items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                }
+              >
+                <CameraQrScanner
+                  direction={scanDirection}
+                  onDirectionChange={setScanDirection}
+                  onDetected={async ({ pass_id, token }) => {
+                    await scanMut.mutateAsync({ pass_id, token, direction: scanDirection });
+                  }}
+                />
+              </Suspense>
               <div className="space-y-2 border-t border-border pt-3">
                 <p className="text-xs text-muted-foreground">
                   Or paste the Pass ID and QR token shown on the student's app.

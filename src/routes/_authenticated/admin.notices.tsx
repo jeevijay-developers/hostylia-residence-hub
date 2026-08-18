@@ -12,11 +12,16 @@ function AdminNoticesPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   return (
     <div className="space-y-6">
-      <PageHeader title="Notices" description="Manage and publish announcements for the active property." />
+      <PageHeader
+        title="Notices"
+        description="Manage and publish announcements for the active property."
+      />
       {propertyId ? (
         <NoticeComposer propertyId={propertyId} />
       ) : (
-        <p className="text-sm text-muted-foreground">Select a property from the switcher to compose notices.</p>
+        <p className="text-sm text-muted-foreground">
+          Select a property from the switcher to compose notices.
+        </p>
       )}
     </div>
   );

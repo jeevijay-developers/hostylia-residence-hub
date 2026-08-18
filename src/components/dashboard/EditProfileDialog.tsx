@@ -116,11 +116,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            disabled={!profile || save.isPending}
-            onClick={() => save.mutate()}
-          >
+          <Button type="button" disabled={!profile || save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {save.isPending ? "Saving…" : "Save changes"}
           </Button>

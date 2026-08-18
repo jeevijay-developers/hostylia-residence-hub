@@ -31,7 +31,13 @@ function MoveOutWizard() {
         .from("allocations")
         .select("*")
         .eq("student_id", id)
-        .in("status", ["ACTIVE", "NOTICE_GIVEN", "MOVE_OUT_INSPECTION", "PENDING_PAYMENT", "PENDING_AGREEMENT"])
+        .in("status", [
+          "ACTIVE",
+          "NOTICE_GIVEN",
+          "MOVE_OUT_INSPECTION",
+          "PENDING_PAYMENT",
+          "PENDING_AGREEMENT",
+        ])
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -49,7 +55,8 @@ function MoveOutWizard() {
 
   const moveOutFn = useServerFn(moveOutAllocation);
   const mut = useMutation({
-    mutationFn: async () => moveOutFn({ data: { allocation_id: allocQ.data!.id, actual_end_date: actualEnd } }),
+    mutationFn: async () =>
+      moveOutFn({ data: { allocation_id: allocQ.data!.id, actual_end_date: actualEnd } }),
     onSuccess: () => {
       toast.success("Student moved out — record archived");
       nav({ to: "/admin/students/$id", params: { id } });
@@ -60,9 +67,14 @@ function MoveOutWizard() {
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm">
-        <Link to="/admin/students/$id" params={{ id }}><ArrowLeft className="h-4 w-4" /> Back</Link>
+        <Link to="/admin/students/$id" params={{ id }}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Link>
       </Button>
-      <PageHeader title="Move out" description="Close the active allocation and archive the student." />
+      <PageHeader
+        title="Move out"
+        description="Close the active allocation and archive the student."
+      />
 
       {allocQ.isLoading ? (
         <Skeleton className="h-40 w-full" />
@@ -72,7 +84,9 @@ function MoveOutWizard() {
         </p>
       ) : (
         <Card>
-          <CardHeader><CardTitle>Move-out details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Move-out details</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Info label="Notice period" value={`${allocQ.data.notice_period_days ?? 0} days`} />
@@ -92,10 +106,19 @@ function MoveOutWizard() {
             </p>
             <div>
               <Label htmlFor="ae">Actual move-out date</Label>
-              <Input id="ae" type="date" value={actualEnd} onChange={(e) => setActualEnd(e.target.value)} />
+              <Input
+                id="ae"
+                type="date"
+                value={actualEnd}
+                onChange={(e) => setActualEnd(e.target.value)}
+              />
             </div>
             <Button className="min-h-11" disabled={mut.isPending} onClick={() => mut.mutate()}>
-              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
+              {mut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <DoorOpen className="h-4 w-4" />
+              )}
               Confirm move-out & archive
             </Button>
           </CardContent>

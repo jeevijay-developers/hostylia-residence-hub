@@ -32,4 +32,3 @@ export function MobileShell({ allow, navItems, children }: MobileShellProps) {
     </RoleGuard>
   );
 }
-

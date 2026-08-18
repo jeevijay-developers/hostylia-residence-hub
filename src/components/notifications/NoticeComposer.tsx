@@ -21,7 +21,11 @@ import { useTenantNotices, type NoticeRow } from "@/lib/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
 const CHANNELS = [
@@ -67,7 +71,12 @@ export function NoticeComposer({ propertyId }: Props) {
     mutationFn: async () => {
       if (!editingNotice) throw new Error("No notice selected");
       return editFn({
-        data: { notice_id: editingNotice.id, title: editTitle, body: editBody, priority: editPriority },
+        data: {
+          notice_id: editingNotice.id,
+          title: editTitle,
+          body: editBody,
+          priority: editPriority,
+        },
       });
     },
     onSuccess: () => {
@@ -103,8 +112,12 @@ export function NoticeComposer({ propertyId }: Props) {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Notice created${r.dispatched ? ` — ${r.dispatched} notification(s) dispatched` : ""}`);
-      setTitle(""); setBody(""); setPublishAt("");
+      toast.success(
+        `Notice created${r.dispatched ? ` — ${r.dispatched} notification(s) dispatched` : ""}`,
+      );
+      setTitle("");
+      setBody("");
+      setPublishAt("");
       qc.invalidateQueries({ queryKey: ["notices"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -119,17 +132,29 @@ export function NoticeComposer({ propertyId }: Props) {
         <div className="space-y-3">
           <div>
             <Label htmlFor="notice-title">Title</Label>
-            <Input id="notice-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+            <Input
+              id="notice-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={200}
+            />
           </div>
           <div>
             <Label htmlFor="notice-body">Body</Label>
-            <Textarea id="notice-body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} />
+            <Textarea
+              id="notice-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={5}
+            />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label>Priority</Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NORMAL">Normal</SelectItem>
                   <SelectItem value="IMPORTANT">Important</SelectItem>
@@ -140,9 +165,15 @@ export function NoticeComposer({ propertyId }: Props) {
             <div>
               <Label>Audience</Label>
               <Select value={audience} onValueChange={(v) => setAudience(v as typeof audience)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  {AUDIENCES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                  {AUDIENCES.map((a) => (
+                    <SelectItem key={a} value={a}>
+                      {a}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -172,10 +203,16 @@ export function NoticeComposer({ propertyId }: Props) {
                   );
                   return !enabled ? (
                     <Tooltip key={c.key}>
-                      <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
-                      <TooltipContent>Provider not configured. Add Twilio/Resend secrets to enable.</TooltipContent>
+                      <TooltipTrigger asChild>
+                        <span>{button}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Provider not configured. Add Twilio/Resend secrets to enable.
+                      </TooltipContent>
                     </Tooltip>
-                  ) : button;
+                  ) : (
+                    button
+                  );
                 })}
               </div>
             </TooltipProvider>
@@ -186,10 +223,16 @@ export function NoticeComposer({ propertyId }: Props) {
               id="notice-schedule"
               type="datetime-local"
               value={publishAt}
-              onChange={(e) => setPublishAt(e.target.value ? new Date(e.target.value).toISOString() : "")}
+              onChange={(e) =>
+                setPublishAt(e.target.value ? new Date(e.target.value).toISOString() : "")
+              }
             />
           </div>
-          <Button onClick={() => publish.mutate()} disabled={!canSubmit || publish.isPending} className="w-full">
+          <Button
+            onClick={() => publish.mutate()}
+            disabled={!canSubmit || publish.isPending}
+            className="w-full"
+          >
             {publishAt ? "Schedule notice" : "Publish now"}
           </Button>
         </div>
@@ -215,7 +258,9 @@ export function NoticeComposer({ propertyId }: Props) {
                       </p>
                     )}
                   </div>
-                  <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>{n.status}</Badge>
+                  <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>
+                    {n.status}
+                  </Badge>
                 </div>
                 <div className="mt-2 flex items-center gap-1">
                   <Button
@@ -278,7 +323,9 @@ export function NoticeComposer({ propertyId }: Props) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setViewingNotice(null)}>Close</Button>
+            <Button variant="ghost" onClick={() => setViewingNotice(null)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -309,8 +356,13 @@ export function NoticeComposer({ propertyId }: Props) {
             </div>
             <div>
               <Label>Priority</Label>
-              <Select value={editPriority} onValueChange={(v) => setEditPriority(v as typeof editPriority)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={editPriority}
+                onValueChange={(v) => setEditPriority(v as typeof editPriority)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NORMAL">Normal</SelectItem>
                   <SelectItem value="IMPORTANT">Important</SelectItem>
@@ -326,7 +378,9 @@ export function NoticeComposer({ propertyId }: Props) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditingNotice(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setEditingNotice(null)}>
+              Cancel
+            </Button>
             <Button
               disabled={editTitle.trim().length < 3 || editBody.trim().length < 3 || edit.isPending}
               onClick={() => edit.mutate()}

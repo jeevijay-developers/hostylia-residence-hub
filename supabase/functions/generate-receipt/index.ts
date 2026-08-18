@@ -22,7 +22,9 @@ Deno.serve(async (req) => {
 
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, tenant_id, property_id, student_id, invoice_id, payment_number, amount_paise, mode, paid_at, students(full_name), invoices(invoice_number)")
+      .select(
+        "id, tenant_id, property_id, student_id, invoice_id, payment_number, amount_paise, mode, paid_at, students(full_name), invoices(invoice_number)",
+      )
       .eq("id", payment_id)
       .single();
     if (error || !pay) return json({ error: "Payment not found" }, 404, cors);
@@ -65,9 +67,17 @@ Deno.serve(async (req) => {
     // Dispatch notifications via unified sender (Phase 10).
     try {
       const { data: student } = await admin
-        .from("students").select("id, profile_id, email").eq("id", pay.student_id).maybeSingle();
+        .from("students")
+        .select("id, profile_id, email")
+        .eq("id", pay.student_id)
+        .maybeSingle();
 
-      const dispatch = async (opts: { channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL"; userId?: string; phone?: string; email?: string }) => {
+      const dispatch = async (opts: {
+        channel: "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL";
+        userId?: string;
+        phone?: string;
+        email?: string;
+      }) => {
         await admin.functions.invoke("send-notification", {
           body: {
             channel: opts.channel,

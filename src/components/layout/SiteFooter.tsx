@@ -52,19 +52,33 @@ export function SiteFooter() {
               institutional residences. One intelligent platform.
             </p>
             <div className="mt-5 space-y-2 text-sm text-soft-grey">
-              <p className="flex items-center gap-2"><Globe size={14} className="text-soft-teal" /> hostylia.com</p>
-              <p className="flex items-center gap-2"><Mail size={14} className="text-soft-teal" /> hello@hostylia.com</p>
-              <p className="flex items-center gap-2"><Phone size={14} className="text-soft-teal" /> +91 86194 83010</p>
-              <p className="flex items-start gap-2"><MapPin size={14} className="mt-0.5 text-soft-teal" /> H No 1, Sai Extension Colony, Bengaluru — Jeevijay Technologies Pvt Ltd</p>
+              <p className="flex items-center gap-2">
+                <Globe size={14} className="text-soft-teal" /> hostylia.com
+              </p>
+              <p className="flex items-center gap-2">
+                <Mail size={14} className="text-soft-teal" /> hello@hostylia.com
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone size={14} className="text-soft-teal" /> +91 86194 83010
+              </p>
+              <p className="flex items-start gap-2">
+                <MapPin size={14} className="mt-0.5 text-soft-teal" /> H No 1, Sai Extension Colony,
+                Bengaluru — Jeevijay Technologies Pvt Ltd
+              </p>
             </div>
           </div>
           {cols.map((col) => (
             <div key={col.title}>
-              <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-gold">{col.title}</h4>
+              <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-gold">
+                {col.title}
+              </h4>
               <ul className="space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link to={l.to} className="text-sm text-soft-grey transition-colors hover:text-white">
+                    <Link
+                      to={l.to}
+                      className="text-sm text-soft-grey transition-colors hover:text-white"
+                    >
                       {l.label}
                     </Link>
                   </li>

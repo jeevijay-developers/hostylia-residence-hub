@@ -7,4 +7,7 @@ const phone = "+916260946173";
 const anon = createClient(url, anonKey, { auth: { persistSession: false } });
 
 const { error: otpErr } = await anon.auth.signInWithOtp({ phone });
-console.log("signInWithOtp ->", { otpErr: otpErr?.message ?? null, sentAt: new Date().toISOString() });
+console.log("signInWithOtp ->", {
+  otpErr: otpErr?.message ?? null,
+  sentAt: new Date().toISOString(),
+});

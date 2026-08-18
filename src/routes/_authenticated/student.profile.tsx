@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Clock, Loader2, Save, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { FormSkeleton } from "@/components/dashboard/FormSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,7 +154,12 @@ function StudentProfilePage() {
   });
 
   if (studentQ.isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+    return (
+      <div className="space-y-6">
+        <PageHeader title="My Profile" />
+        <FormSkeleton fields={5} />
+      </div>
+    );
   }
 
   if (!studentQ.data) {

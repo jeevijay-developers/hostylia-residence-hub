@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInr } from "@/lib/finance";
@@ -27,7 +28,9 @@ export function ChildSnapshotCard({ child }: { child: ParentChild }) {
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-3">
           <span className="font-display text-lg">{child.student_name}</span>
-          <Badge variant="secondary" className="text-xs">{child.status}</Badge>
+          <Badge variant="secondary" className="text-xs">
+            {child.status}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -42,7 +45,12 @@ export function ChildSnapshotCard({ child }: { child: ParentChild }) {
               {t("parent.snapshot.feesTitle")}
             </div>
             <p className="mt-1 text-sm">
-              Outstanding: <span className="font-semibold">{formatInr(dueQ.data ?? 0)}</span>
+              Outstanding:{" "}
+              {dueQ.isLoading ? (
+                <Skeleton className="inline-block h-4 w-16 align-middle" />
+              ) : (
+                <span className="font-semibold">{formatInr(dueQ.data ?? 0)}</span>
+              )}
             </p>
           </div>
         )}

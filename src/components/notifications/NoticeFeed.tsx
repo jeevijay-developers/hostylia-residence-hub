@@ -1,6 +1,7 @@
 import { useTenantNotices, type NoticeRow } from "@/lib/notifications";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 
 interface Props {
@@ -22,7 +23,21 @@ export function NoticeFeed({ tenantId, propertyId, audienceFilter, emptyLabel }:
     ? data.filter((n) => audienceFilter.includes(n.audience_type) || n.audience_type === "ALL")
     : data;
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading notices…</p>;
+  if (isLoading)
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="mt-3 h-3 w-full" />
+            <Skeleton className="mt-2 h-3 w-2/3" />
+          </Card>
+        ))}
+      </div>
+    );
   if (filtered.length === 0)
     return <p className="text-sm text-muted-foreground">{emptyLabel ?? "No notices yet."}</p>;
 

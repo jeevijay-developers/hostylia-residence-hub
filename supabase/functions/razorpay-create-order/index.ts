@@ -14,7 +14,11 @@ Deno.serve(async (req) => {
     const KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
     const KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     if (!KEY_ID || !KEY_SECRET) {
-      return json({ error: "Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." }, 503, cors);
+      return json(
+        { error: "Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." },
+        503,
+        cors,
+      );
     }
 
     const { invoice_id } = await req.json();
@@ -61,28 +65,36 @@ Deno.serve(async (req) => {
     const order = await rzp.json();
     if (!rzp.ok) return json({ error: "Razorpay error", detail: order }, 502, cors);
 
-    const { data: po, error: poErr } = await admin.from("payment_orders").insert({
-      tenant_id: inv.tenant_id,
-      property_id: inv.property_id,
-      student_id: inv.student_id,
-      invoice_id: inv.id,
-      created_by_user_id: userId,
-      provider: "razorpay",
-      provider_order_ref: order.id,
-      amount_paise: inv.balance_paise,
-      currency: inv.currency,
-      status: "PENDING",
-      idempotency_key: idempotencyKey,
-    }).select("id").single();
+    const { data: po, error: poErr } = await admin
+      .from("payment_orders")
+      .insert({
+        tenant_id: inv.tenant_id,
+        property_id: inv.property_id,
+        student_id: inv.student_id,
+        invoice_id: inv.id,
+        created_by_user_id: userId,
+        provider: "razorpay",
+        provider_order_ref: order.id,
+        amount_paise: inv.balance_paise,
+        currency: inv.currency,
+        status: "PENDING",
+        idempotency_key: idempotencyKey,
+      })
+      .select("id")
+      .single();
     if (poErr) return json({ error: poErr.message }, 500, cors);
 
-    return json({
-      order_id: order.id,
-      key_id: KEY_ID,
-      amount_paise: inv.balance_paise,
-      currency: inv.currency,
-      payment_order_id: po.id,
-    }, 200, cors);
+    return json(
+      {
+        order_id: order.id,
+        key_id: KEY_ID,
+        amount_paise: inv.balance_paise,
+        currency: inv.currency,
+        payment_order_id: po.id,
+      },
+      200,
+      cors,
+    );
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Internal error" }, 500, cors);
   }

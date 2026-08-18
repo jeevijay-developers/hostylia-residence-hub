@@ -27,15 +27,16 @@ function StudentFeesPage() {
   });
 
   if (q.isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
-  if (!q.data) return <p className="p-6 text-sm text-muted-foreground">Student profile not linked.</p>;
+  if (!q.data)
+    return <p className="p-6 text-sm text-muted-foreground">Student profile not linked.</p>;
 
   return (
     <div className="space-y-4 p-4">
       <PageHeader title="Fees" description="Your invoices and payment history." />
       <StudentFeesList studentId={q.data.id} />
       <p className="text-xs text-muted-foreground">
-        Online payment powered by Razorpay. If the pay button fails, ask your admin
-        to configure Razorpay keys.
+        Online payment powered by Razorpay. If the pay button fails, ask your admin to configure
+        Razorpay keys.
       </p>
     </div>
   );

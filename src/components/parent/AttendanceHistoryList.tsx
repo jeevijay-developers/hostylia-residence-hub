@@ -32,19 +32,23 @@ export function AttendanceHistoryList({
   const q = useQuery({
     queryKey: ["parent-attendance", studentId],
     queryFn: async () => {
-      const { data } = await supabase.from("attendance").select("*")
+      const { data } = await supabase
+        .from("attendance")
+        .select("*")
         .eq("student_id", studentId)
-        .order("attendance_date", { ascending: false }).limit(30);
+        .order("attendance_date", { ascending: false })
+        .limit(30);
       return data ?? [];
     },
   });
   if (q.isLoading) return <div className="text-sm text-muted-foreground p-4">Loading…</div>;
-  if (!q.data?.length) return (
-    <EmptyState
-      title={emptyTitle ?? t("parent.attendance.emptyTitle")}
-      description={emptyDescription ?? t("parent.attendance.emptyBody")}
-    />
-  );
+  if (!q.data?.length)
+    return (
+      <EmptyState
+        title={emptyTitle ?? t("parent.attendance.emptyTitle")}
+        description={emptyDescription ?? t("parent.attendance.emptyBody")}
+      />
+    );
   return (
     <div className="divide-y rounded border">
       {q.data.map((a) => (

@@ -11,10 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
@@ -58,10 +66,30 @@ function StructurePage() {
     enabled: !!propertyId,
     queryFn: async () => {
       const [blocks, floors, rooms, beds] = await Promise.all([
-        supabase.from("blocks").select("*").eq("property_id", propertyId).is("deleted_at", null).order("display_order"),
-        supabase.from("floors").select("*").eq("property_id", propertyId).is("deleted_at", null).order("display_order"),
-        supabase.from("rooms").select("*").eq("property_id", propertyId).is("deleted_at", null).order("room_number"),
-        supabase.from("beds").select("id, room_id, code, status").eq("property_id", propertyId).is("deleted_at", null).order("code"),
+        supabase
+          .from("blocks")
+          .select("*")
+          .eq("property_id", propertyId)
+          .is("deleted_at", null)
+          .order("display_order"),
+        supabase
+          .from("floors")
+          .select("*")
+          .eq("property_id", propertyId)
+          .is("deleted_at", null)
+          .order("display_order"),
+        supabase
+          .from("rooms")
+          .select("*")
+          .eq("property_id", propertyId)
+          .is("deleted_at", null)
+          .order("room_number"),
+        supabase
+          .from("beds")
+          .select("id, room_id, code, status")
+          .eq("property_id", propertyId)
+          .is("deleted_at", null)
+          .order("code"),
       ]);
       if (blocks.error) throw blocks.error;
       if (floors.error) throw floors.error;
@@ -156,7 +184,14 @@ function StructurePage() {
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 No block (floors direct on property)
               </CardTitle>
-              <Button size="sm" variant="ghost" onClick={() => { setFloorParentBlock(null); setAddFloorOpen(true); }}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setFloorParentBlock(null);
+                  setAddFloorOpen(true);
+                }}
+              >
                 <Plus className="h-4 w-4" /> Floor
               </Button>
             </CardHeader>
@@ -170,7 +205,11 @@ function StructurePage() {
                     floor={f}
                     rooms={rooms.filter((r) => r.floor_id === f.id)}
                     beds={beds}
-                    onAddRoom={() => { setRoomParentFloor(f.id); setRoomParentBlock(null); setAddRoomOpen(true); }}
+                    onAddRoom={() => {
+                      setRoomParentFloor(f.id);
+                      setRoomParentBlock(null);
+                      setAddRoomOpen(true);
+                    }}
                   />
                 ))
               )}
@@ -214,13 +253,40 @@ function StructurePage() {
   );
 }
 
-interface Block { id: string; name: string; code: string | null; status: string }
-interface Floor { id: string; name: string; block_id: string | null; floor_number: number | null }
-interface Room { id: string; floor_id: string; block_id: string | null; room_number: string; capacity: number; status: string }
-interface Bed { id: string; room_id: string; code: string; status: string }
+interface Block {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+}
+interface Floor {
+  id: string;
+  name: string;
+  block_id: string | null;
+  floor_number: number | null;
+}
+interface Room {
+  id: string;
+  floor_id: string;
+  block_id: string | null;
+  room_number: string;
+  capacity: number;
+  status: string;
+}
+interface Bed {
+  id: string;
+  room_id: string;
+  code: string;
+  status: string;
+}
 
 function BlockCard({
-  block, floors, rooms, beds, onAddFloor, onAddRoom,
+  block,
+  floors,
+  rooms,
+  beds,
+  onAddFloor,
+  onAddRoom,
 }: {
   block: Block;
   floors: Floor[];
@@ -261,7 +327,10 @@ function BlockCard({
 }
 
 function FloorRow({
-  floor, rooms, beds, onAddRoom,
+  floor,
+  rooms,
+  beds,
+  onAddRoom,
 }: {
   floor: Floor;
   rooms: Room[];
@@ -275,8 +344,12 @@ function FloorRow({
         <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium">
           <ChevronRight className={cn("h-4 w-4 transition", open && "rotate-90")} />
           {floor.name}
-          {floor.floor_number != null && <span className="text-muted-foreground">· L{floor.floor_number}</span>}
-          <Badge variant="outline" className="ml-2">{rooms.length} rooms</Badge>
+          {floor.floor_number != null && (
+            <span className="text-muted-foreground">· L{floor.floor_number}</span>
+          )}
+          <Badge variant="outline" className="ml-2">
+            {rooms.length} rooms
+          </Badge>
         </CollapsibleTrigger>
         <Button size="sm" variant="ghost" onClick={onAddRoom}>
           <Plus className="h-4 w-4" /> Room
@@ -294,7 +367,8 @@ function FloorRow({
               <div key={r.id} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">
-                    Room {r.room_number} <span className="text-muted-foreground">· capacity {r.capacity}</span>
+                    Room {r.room_number}{" "}
+                    <span className="text-muted-foreground">· capacity {r.capacity}</span>
                   </span>
                   <Badge variant="secondary">{r.status}</Badge>
                 </div>
@@ -311,33 +385,59 @@ function FloorRow({
 /* ============ Add dialogs ============ */
 
 function AddBlockDialog({
-  open, onOpenChange, tenantId, propertyId, onDone,
+  open,
+  onOpenChange,
+  tenantId,
+  propertyId,
+  onDone,
 }: {
-  open: boolean; onOpenChange: (v: boolean) => void;
-  tenantId: string; propertyId: string; onDone: () => void;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tenantId: string;
+  propertyId: string;
+  onDone: () => void;
 }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const mut = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("blocks").insert({
-        tenant_id: tenantId, property_id: propertyId, name: name.trim(), code: code.trim() || null,
+        tenant_id: tenantId,
+        property_id: propertyId,
+        name: name.trim(),
+        code: code.trim() || null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Block added"); onDone(); onOpenChange(false); setName(""); setCode(""); },
+    onSuccess: () => {
+      toast.success("Block added");
+      onDone();
+      onOpenChange(false);
+      setName("");
+      setCode("");
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add block</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add block</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div><Label>Code (optional)</Label><Input value={code} onChange={(e) => setCode(e.target.value)} /></div>
+          <div>
+            <Label>Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label>Code (optional)</Label>
+            <Input value={code} onChange={(e) => setCode(e.target.value)} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
             <Plus className="h-4 w-4" /> Add
           </Button>
@@ -348,34 +448,66 @@ function AddBlockDialog({
 }
 
 function AddFloorDialog({
-  open, onOpenChange, tenantId, propertyId, blockId, onDone,
+  open,
+  onOpenChange,
+  tenantId,
+  propertyId,
+  blockId,
+  onDone,
 }: {
-  open: boolean; onOpenChange: (v: boolean) => void;
-  tenantId: string; propertyId: string; blockId: string | null; onDone: () => void;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tenantId: string;
+  propertyId: string;
+  blockId: string | null;
+  onDone: () => void;
 }) {
   const [name, setName] = useState("");
   const [num, setNum] = useState("");
   const mut = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("floors").insert({
-        tenant_id: tenantId, property_id: propertyId, block_id: blockId,
-        name: name.trim(), floor_number: num ? Number(num) : null,
+        tenant_id: tenantId,
+        property_id: propertyId,
+        block_id: blockId,
+        name: name.trim(),
+        floor_number: num ? Number(num) : null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Floor added"); onDone(); onOpenChange(false); setName(""); setNum(""); },
+    onSuccess: () => {
+      toast.success("Floor added");
+      onDone();
+      onOpenChange(false);
+      setName("");
+      setNum("");
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add floor</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add floor</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ground / First / …" /></div>
-          <div><Label>Floor number (optional)</Label><Input type="number" value={num} onChange={(e) => setNum(e.target.value)} /></div>
+          <div>
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ground / First / …"
+            />
+          </div>
+          <div>
+            <Label>Floor number (optional)</Label>
+            <Input type="number" value={num} onChange={(e) => setNum(e.target.value)} />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
             <Plus className="h-4 w-4" /> Add
           </Button>
@@ -386,11 +518,21 @@ function AddFloorDialog({
 }
 
 function AddRoomDialog({
-  open, onOpenChange, tenantId, propertyId, floorId, blockId, onDone,
+  open,
+  onOpenChange,
+  tenantId,
+  propertyId,
+  floorId,
+  blockId,
+  onDone,
 }: {
-  open: boolean; onOpenChange: (v: boolean) => void;
-  tenantId: string; propertyId: string;
-  floorId: string | null; blockId: string | null; onDone: () => void;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tenantId: string;
+  propertyId: string;
+  floorId: string | null;
+  blockId: string | null;
+  onDone: () => void;
 }) {
   const [number, setNumber] = useState("");
   const [type, setType] = useState("DOUBLE");
@@ -400,51 +542,89 @@ function AddRoomDialog({
     mutationFn: async () => {
       if (!floorId) throw new Error("No floor selected");
       const capN = Math.max(1, Number(capacity));
-      const { data: room, error } = await supabase.from("rooms").insert({
-        tenant_id: tenantId, property_id: propertyId, block_id: blockId, floor_id: floorId,
-        room_number: number.trim(), room_type: type, capacity: capN,
-        base_rent_paise: rent ? Math.round(Number(rent) * 100) : null,
-      }).select("id").single();
+      const { data: room, error } = await supabase
+        .from("rooms")
+        .insert({
+          tenant_id: tenantId,
+          property_id: propertyId,
+          block_id: blockId,
+          floor_id: floorId,
+          room_number: number.trim(),
+          room_type: type,
+          capacity: capN,
+          base_rent_paise: rent ? Math.round(Number(rent) * 100) : null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
       // Auto-generate beds B1..BN
       const beds = Array.from({ length: capN }, (_, k) => ({
-        tenant_id: tenantId, property_id: propertyId, block_id: blockId,
-        floor_id: floorId, room_id: room.id, code: `B${k + 1}`,
+        tenant_id: tenantId,
+        property_id: propertyId,
+        block_id: blockId,
+        floor_id: floorId,
+        room_id: room.id,
+        code: `B${k + 1}`,
       }));
       const { error: bErr } = await supabase.from("beds").insert(beds);
       if (bErr) throw bErr;
     },
     onSuccess: () => {
       toast.success("Room + beds added");
-      onDone(); onOpenChange(false);
-      setNumber(""); setCapacity("2"); setRent("");
+      onDone();
+      onOpenChange(false);
+      setNumber("");
+      setCapacity("2");
+      setRent("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add room</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add room</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div><Label>Room number</Label><Input value={number} onChange={(e) => setNumber(e.target.value)} /></div>
+          <div>
+            <Label>Room number</Label>
+            <Input value={number} onChange={(e) => setNumber(e.target.value)} />
+          </div>
           <div>
             <Label>Type</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {["SINGLE","DOUBLE","TRIPLE","DORM","CUSTOM"].map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                {["SINGLE", "DOUBLE", "TRIPLE", "DORM", "CUSTOM"].map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div><Label>Capacity</Label><Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} /></div>
-            <div><Label>Base rent (₹)</Label><Input type="number" min={0} value={rent} onChange={(e) => setRent(e.target.value)} /></div>
+            <div>
+              <Label>Capacity</Label>
+              <Input
+                type="number"
+                min={1}
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Base rent (₹)</Label>
+              <Input type="number" min={0} value={rent} onChange={(e) => setRent(e.target.value)} />
+            </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={!number.trim() || mut.isPending}>
             <Plus className="h-4 w-4" /> Add room + beds
           </Button>

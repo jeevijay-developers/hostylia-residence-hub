@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useComplaints, useStudentSelf, type ComplaintWithRelations } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
 
 export const Route = createFileRoute("/_authenticated/student/complaints")({
   component: StudentComplaintsPage,
@@ -38,10 +39,11 @@ function StudentComplaintsPage() {
       </Card>
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Your complaints</h2>
-        {complaints.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {(complaints.data ?? []).map((c) => (
-          <StudentComplaintItem key={c.id} complaint={c} userId={role.data?.userId ?? null} />
-        ))}
+        {complaints.isLoading && <ListSkeleton rows={3} />}
+        {!complaints.isLoading &&
+          (complaints.data ?? []).map((c) => (
+            <StudentComplaintItem key={c.id} complaint={c} userId={role.data?.userId ?? null} />
+          ))}
         {complaints.data && complaints.data.length === 0 && (
           <p className="text-sm text-muted-foreground">No complaints yet.</p>
         )}

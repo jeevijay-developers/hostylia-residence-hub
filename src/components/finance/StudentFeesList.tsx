@@ -8,6 +8,7 @@ import { createRazorpayOrder } from "@/lib/finance.functions";
 import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
+import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
 
 export function StudentFeesList({ studentId }: { studentId: string }) {
   const qc = useQueryClient();
@@ -35,10 +36,13 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
       openRazorpayCheckout(out).catch((e) => toast.error(e.message));
       qc.invalidateQueries({ queryKey: ["student-invoices"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Payment unavailable — Razorpay keys not configured."),
+    onError: (e) =>
+      toast.error(
+        e instanceof Error ? e.message : "Payment unavailable — Razorpay keys not configured.",
+      ),
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <ListSkeleton />;
   const rows = q.data ?? [];
   if (!rows.length) return <p className="text-sm text-muted-foreground">No invoices yet.</p>;
 
@@ -51,15 +55,20 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
             <div>
               <p className="font-mono text-xs">{i.invoice_number}</p>
               <p className="text-sm">Due {i.due_date}</p>
-              <Badge className={INVOICE_STATUS_TONE[i.status as InvoiceStatus] ?? ""}>{i.status}</Badge>
+              <Badge className={INVOICE_STATUS_TONE[i.status as InvoiceStatus] ?? ""}>
+                {i.status}
+              </Badge>
             </div>
             <div className="text-right">
               <p className="text-lg font-semibold">{formatInr(i.balance_paise)}</p>
               <p className="text-xs text-muted-foreground">of {formatInr(i.total_paise)}</p>
               {i.balance_paise > 0 && i.status !== "VOID" && (
-                <Button size="sm" className="mt-2"
+                <Button
+                  size="sm"
+                  className="mt-2"
                   onClick={() => pay.mutate(i.id)}
-                  disabled={!kycComplete || pay.isPending}>
+                  disabled={!kycComplete || pay.isPending}
+                >
                   {pay.isPending ? "Opening…" : "Pay now"}
                 </Button>
               )}
@@ -72,7 +81,10 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
 }
 
 async function openRazorpayCheckout(order: {
-  order_id: string; key_id: string; amount_paise: number; currency: string;
+  order_id: string;
+  key_id: string;
+  amount_paise: number;
+  currency: string;
 }) {
   if (!(window as any).Razorpay) {
     await new Promise<void>((resolve, reject) => {

@@ -8,7 +8,9 @@ const noticeSchema = z.object({
   title: z.string().trim().min(3).max(200),
   body: z.string().trim().min(3).max(4000),
   priority: z.enum(["NORMAL", "IMPORTANT", "URGENT"]).default("NORMAL"),
-  audience_type: z.enum(["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS", "CUSTOM"]).default("ALL"),
+  audience_type: z
+    .enum(["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS", "CUSTOM"])
+    .default("ALL"),
   channels: z.array(z.enum(["IN_APP", "SMS", "WHATSAPP", "EMAIL"])).min(1),
   publish_at: z.string().datetime().optional().nullable(),
   publish_now: z.boolean().default(true),
@@ -61,32 +63,42 @@ export const publishNotice = createServerFn({ method: "POST" })
         .select("profile_id, phone, email")
         .eq("property_id", data.property_id)
         .is("deleted_at", null);
-      for (const s of students ?? []) if (s.profile_id) recipients.push({ user_id: s.profile_id, phone: s.phone, email: s.email });
+      for (const s of students ?? [])
+        if (s.profile_id)
+          recipients.push({ user_id: s.profile_id, phone: s.phone, email: s.email });
     }
     if (["ALL", "PARENTS"].includes(data.audience_type)) {
       const { data: guardians } = await supabaseAdmin
         .from("guardians")
         .select("profile_id, phone, email, tenant_id")
         .eq("tenant_id", data.tenant_id);
-      for (const g of guardians ?? []) if (g.profile_id) recipients.push({ user_id: g.profile_id, phone: g.phone, email: g.email });
+      for (const g of guardians ?? [])
+        if (g.profile_id)
+          recipients.push({ user_id: g.profile_id, phone: g.phone, email: g.email });
     }
     if (["ALL", "WARDENS", "ACCOUNTANTS"].includes(data.audience_type)) {
-      const roles = data.audience_type === "ALL"
-        ? ["WARDEN", "ACCOUNTANT", "HOSTEL_ADMIN"]
-        : data.audience_type === "WARDENS"
-          ? ["WARDEN"]
-          : ["ACCOUNTANT"];
+      const roles =
+        data.audience_type === "ALL"
+          ? ["WARDEN", "ACCOUNTANT", "HOSTEL_ADMIN"]
+          : data.audience_type === "WARDENS"
+            ? ["WARDEN"]
+            : ["ACCOUNTANT"];
       const { data: ras } = await supabaseAdmin
         .from("role_assignments")
         .select("user_id")
         .eq("tenant_id", data.tenant_id)
         .in("role", roles as never[])
         .is("revoked_at", null);
-      const userIds = Array.from(new Set((ras ?? []).map((r) => r.user_id).filter(Boolean))) as string[];
+      const userIds = Array.from(
+        new Set((ras ?? []).map((r) => r.user_id).filter(Boolean)),
+      ) as string[];
       if (userIds.length) {
         const { data: profiles } = await supabaseAdmin
-          .from("profiles").select("id, phone, email").in("id", userIds);
-        for (const p of profiles ?? []) recipients.push({ user_id: p.id, phone: p.phone, email: p.email });
+          .from("profiles")
+          .select("id, phone, email")
+          .in("id", userIds);
+        for (const p of profiles ?? [])
+          recipients.push({ user_id: p.id, phone: p.phone, email: p.email });
       }
     }
 
@@ -99,8 +111,14 @@ export const publishNotice = createServerFn({ method: "POST" })
       for (const ch of data.channels) {
         const recipient: Record<string, string | undefined> = {};
         if (ch === "IN_APP") recipient.userId = r.user_id;
-        if (ch === "SMS" || ch === "WHATSAPP") { recipient.phone = r.phone ?? undefined; if (!recipient.phone) continue; }
-        if (ch === "EMAIL") { recipient.email = r.email ?? undefined; if (!recipient.email) continue; }
+        if (ch === "SMS" || ch === "WHATSAPP") {
+          recipient.phone = r.phone ?? undefined;
+          if (!recipient.phone) continue;
+        }
+        if (ch === "EMAIL") {
+          recipient.email = r.email ?? undefined;
+          if (!recipient.email) continue;
+        }
         await supabase.functions.invoke("send-notification", {
           body: {
             channel: ch,

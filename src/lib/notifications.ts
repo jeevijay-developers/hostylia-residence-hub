@@ -79,10 +79,7 @@ export async function markNotificationRead(id: string) {
 
 export async function markAllRead(ids: string[]) {
   if (!ids.length) return;
-  await supabase
-    .from("notifications")
-    .update({ read_at: new Date().toISOString() })
-    .in("id", ids);
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).in("id", ids);
 }
 
 /**
@@ -124,10 +121,8 @@ export function useTenantNotices(
     const filter = tenantId ? `tenant_id=eq.${tenantId}` : `property_id=eq.${propertyId}`;
     const channel = supabase
       .channel(topic)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notices", filter },
-        () => qc.invalidateQueries({ queryKey: ["notices"] }),
+      .on("postgres_changes", { event: "*", schema: "public", table: "notices", filter }, () =>
+        qc.invalidateQueries({ queryKey: ["notices"] }),
       )
       .subscribe();
     return () => {

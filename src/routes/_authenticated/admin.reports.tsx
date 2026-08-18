@@ -14,7 +14,8 @@ export const Route = createFileRoute("/_authenticated/admin/reports")({
 
 function AdminReportsPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
-  if (!propertyId) return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
+  if (!propertyId)
+    return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
   return (
     <div className="space-y-8">
       <PageHeader

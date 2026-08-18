@@ -14,9 +14,7 @@ function ParentMessagesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("parent.messages.title")} />
-      <ParentPageFrame>
-        {(child) => <ChatFrame studentId={child.student_id} />}
-      </ParentPageFrame>
+      <ParentPageFrame>{(child) => <ChatFrame studentId={child.student_id} />}</ParentPageFrame>
     </div>
   );
 }

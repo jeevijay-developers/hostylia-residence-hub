@@ -1659,7 +1659,7 @@ Validate all:
 - The CSV importer for that entity
 - The inferred TypeScript type (`type Student = z.infer<typeof studentSchema>`)
 
-Never hand-write a second copy of a field's validation in a different file. Client-side validation and server-side validation must run the *same* schema object, not two parallel implementations. Client validation is UX; the Edge Function re-validating with the same schema is the security boundary — the browser is never trusted (Sec. 18.1).
+Never hand-write a second copy of a field's validation in a different file. Client-side validation and server-side validation must run the _same_ schema object, not two parallel implementations. Client validation is UX; the Edge Function re-validating with the same schema is the security boundary — the browser is never trusted (Sec. 18.1).
 
 **Login / signup are the worked reference.** Define once and reuse: email (`z.string().email()`), phone (E.164 via a shared `phoneSchema`), password policy (length + composition), and OTP shape (fixed-length numeric). Any auth screen or auth Edge Function uses these shared schemas — no re-implementation.
 
@@ -1678,9 +1678,9 @@ Apply to:
 - Export
 - Messaging
 
-**v1 implementation is Postgres-backed.** All rate limiting goes through a single function, `checkRateLimit(key, limit, windowSeconds)`, implemented as a Postgres `SECURITY DEFINER` function backed by the `rate_limits` table (see `DB-Schema.md`). Every rate-limited Edge Function calls it *before* doing work (before sending an OTP, creating a payment order, accepting an admission, etc.).
+**v1 implementation is Postgres-backed.** All rate limiting goes through a single function, `checkRateLimit(key, limit, windowSeconds)`, implemented as a Postgres `SECURITY DEFINER` function backed by the `rate_limits` table (see `DB-Schema.md`). Every rate-limited Edge Function calls it _before_ doing work (before sending an OTP, creating a payment order, accepting an admission, etc.).
 
-**Do not add Redis/Upstash in v1.** The limiter is deliberately built behind one function so the storage can be swapped later. When OTP/SMS volume genuinely outgrows Postgres, the *body* of `checkRateLimit` is changed to call Upstash Redis over HTTP — the designated Stage-3 upgrade — and no call site changes. This swap point is documented in `Architecture.md` (Scale Seams). Until then, Redis is forbidden (Sec. 3.4).
+**Do not add Redis/Upstash in v1.** The limiter is deliberately built behind one function so the storage can be swapped later. When OTP/SMS volume genuinely outgrows Postgres, the _body_ of `checkRateLimit` is changed to call Upstash Redis over HTTP — the designated Stage-3 upgrade — and no call site changes. This swap point is documented in `Architecture.md` (Scale Seams). Until then, Redis is forbidden (Sec. 3.4).
 
 ### 29.6 CORS
 
@@ -2218,4 +2218,4 @@ Hostylia must remain:
 
 ---
 
-*End of Rules.md*
+_End of Rules.md_

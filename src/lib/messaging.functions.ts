@@ -70,17 +70,15 @@ export const openParentWardenConversation = createServerFn({ method: "POST" })
     }
 
     // 3. Ensure caller (parent) is a participant
-    await supabaseAdmin
-      .from("conversation_participants")
-      .upsert(
-        {
-          tenant_id: student.tenant_id,
-          conversation_id: conversationId,
-          user_id: userId,
-          participant_role: "PARENT",
-        },
-        { onConflict: "conversation_id,user_id", ignoreDuplicates: true },
-      );
+    await supabaseAdmin.from("conversation_participants").upsert(
+      {
+        tenant_id: student.tenant_id,
+        conversation_id: conversationId,
+        user_id: userId,
+        participant_role: "PARENT",
+      },
+      { onConflict: "conversation_id,user_id", ignoreDuplicates: true },
+    );
 
     // 4. Ensure at least one warden is a participant
     const { data: wardens } = await supabaseAdmin

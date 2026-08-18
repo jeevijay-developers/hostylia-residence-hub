@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { submitPublicAdmission } from "@/lib/student.functions";
 import { publicAdmissionSchema, type PublicAdmissionInput } from "@/schemas/student";
@@ -64,24 +68,51 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="fn">Full name *</Label>
-            <Input id="fn" value={form.full_name} onChange={(e) => set("full_name", e.target.value)} required />
+            <Input
+              id="fn"
+              value={form.full_name}
+              onChange={(e) => set("full_name", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="ph">Phone (with +91) *</Label>
-            <Input id="ph" inputMode="tel" placeholder="+919999999999" value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
+            <Input
+              id="ph"
+              inputMode="tel"
+              placeholder="+919999999999"
+              value={form.phone}
+              onChange={(e) => set("phone", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="em">Email</Label>
-            <Input id="em" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            <Input
+              id="em"
+              type="email"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="dob">Date of birth</Label>
-            <Input id="dob" type="date" value={form.date_of_birth} onChange={(e) => set("date_of_birth", e.target.value)} />
+            <Input
+              id="dob"
+              type="date"
+              value={form.date_of_birth}
+              onChange={(e) => set("date_of_birth", e.target.value)}
+            />
           </div>
           <div>
             <Label>Gender</Label>
-            <Select value={form.gender ?? ""} onValueChange={(v) => set("gender", v as PublicAdmissionInput["gender"])}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+            <Select
+              value={form.gender ?? ""}
+              onValueChange={(v) => set("gender", v as PublicAdmissionInput["gender"])}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MALE">Male</SelectItem>
                 <SelectItem value="FEMALE">Female</SelectItem>
@@ -97,15 +128,28 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="ai">Institute</Label>
-            <Input id="ai" value={form.academic_institute} onChange={(e) => set("academic_institute", e.target.value)} />
+            <Input
+              id="ai"
+              value={form.academic_institute}
+              onChange={(e) => set("academic_institute", e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="cn">Course</Label>
-            <Input id="cn" value={form.course_name} onChange={(e) => set("course_name", e.target.value)} />
+            <Input
+              id="cn"
+              value={form.course_name}
+              onChange={(e) => set("course_name", e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="ay">Academic year</Label>
-            <Input id="ay" placeholder="2026-27" value={form.academic_year} onChange={(e) => set("academic_year", e.target.value)} />
+            <Input
+              id="ay"
+              placeholder="2026-27"
+              value={form.academic_year}
+              onChange={(e) => set("academic_year", e.target.value)}
+            />
           </div>
         </div>
       </section>
@@ -115,15 +159,33 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="gn">Guardian name *</Label>
-            <Input id="gn" value={form.guardian_name} onChange={(e) => set("guardian_name", e.target.value)} required />
+            <Input
+              id="gn"
+              value={form.guardian_name}
+              onChange={(e) => set("guardian_name", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="gp">Guardian phone *</Label>
-            <Input id="gp" inputMode="tel" placeholder="+919999999999" value={form.guardian_phone} onChange={(e) => set("guardian_phone", e.target.value)} required />
+            <Input
+              id="gp"
+              inputMode="tel"
+              placeholder="+919999999999"
+              value={form.guardian_phone}
+              onChange={(e) => set("guardian_phone", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="gr">Relationship *</Label>
-            <Input id="gr" placeholder="Parent / Guardian / Sibling" value={form.guardian_relationship} onChange={(e) => set("guardian_relationship", e.target.value)} required />
+            <Input
+              id="gr"
+              placeholder="Parent / Guardian / Sibling"
+              value={form.guardian_relationship}
+              onChange={(e) => set("guardian_relationship", e.target.value)}
+              required
+            />
           </div>
         </div>
       </section>

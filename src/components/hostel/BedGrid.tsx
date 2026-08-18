@@ -12,10 +12,7 @@ export interface BedTile {
   occupantName?: string | null;
 }
 
-const STATUS_META: Record<
-  BedStatus,
-  { className: string; label: string; Icon: typeof Bed }
-> = {
+const STATUS_META: Record<BedStatus, { className: string; label: string; Icon: typeof Bed }> = {
   VACANT: {
     className: "bg-bed-vacant/15 border-bed-vacant text-bed-vacant",
     label: "Vacant",
@@ -73,7 +70,13 @@ export function BedGrid({ beds, onSelect }: BedGridProps) {
         {(Object.keys(STATUS_META) as BedStatus[]).map((s) => {
           const { className, label, Icon } = STATUS_META[s];
           return (
-            <span key={s} className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-1", className)}>
+            <span
+              key={s}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-1",
+                className,
+              )}
+            >
               <Icon className="h-3.5 w-3.5" />
               {label}: {counts[s]}
             </span>
@@ -83,7 +86,9 @@ export function BedGrid({ beds, onSelect }: BedGridProps) {
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
         {beds.map((b) => {
           const { className, Icon, label } = STATUS_META[b.status];
-          const title = b.occupantName ? `${b.code} — ${label} — ${b.occupantName}` : `${b.code} — ${label}`;
+          const title = b.occupantName
+            ? `${b.code} — ${label} — ${b.occupantName}`
+            : `${b.code} — ${label}`;
           return (
             <button
               key={b.id}

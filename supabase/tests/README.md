@@ -6,11 +6,11 @@ per-phase manual verification the Lovable preview supports.
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `../seed.sql` | Deterministic fixtures — 1 tenant with 2 properties (one with blocks, one without), 15+ students in mixed states, guardians with varied permission flags, complaints in every SLA state (open / in-progress / breached / resolved), invoices in every payment state, a PENDING_APPROVAL refund, notices/notifications, gate passes in every status, plus a second tenant used purely for cross-tenant isolation tests. |
-| `rls_tests.sql` | Row-Level-Security + RBAC assertions. Uses `SET LOCAL role authenticated` + `request.jwt.claims.sub` to simulate every role/tenant, then makes SELECT/INSERT/UPDATE attempts and asserts either row counts or expected errors. Each assertion is inside its own `BEGIN; … ROLLBACK;` so the fixtures stay intact between checks. |
-| `index_sanity.sql` | `EXPLAIN (ANALYZE, BUFFERS)` on the four heaviest read paths — occupancy grid, aging report, complaint SLA scan, invoice list — plus a student attendance history query. Read the plan text for `Index Scan using <expected-index>`. |
+| File               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `../seed.sql`      | Deterministic fixtures — 1 tenant with 2 properties (one with blocks, one without), 15+ students in mixed states, guardians with varied permission flags, complaints in every SLA state (open / in-progress / breached / resolved), invoices in every payment state, a PENDING_APPROVAL refund, notices/notifications, gate passes in every status, plus a second tenant used purely for cross-tenant isolation tests. |
+| `rls_tests.sql`    | Row-Level-Security + RBAC assertions. Uses `SET LOCAL role authenticated` + `request.jwt.claims.sub` to simulate every role/tenant, then makes SELECT/INSERT/UPDATE attempts and asserts either row counts or expected errors. Each assertion is inside its own `BEGIN; … ROLLBACK;` so the fixtures stay intact between checks.                                                                                       |
+| `index_sanity.sql` | `EXPLAIN (ANALYZE, BUFFERS)` on the four heaviest read paths — occupancy grid, aging report, complaint SLA scan, invoice list — plus a student attendance history query. Read the plan text for `Index Scan using <expected-index>`.                                                                                                                                                                                   |
 
 ## Running
 
@@ -48,18 +48,18 @@ SELECT public.fn_scan_complaint_sla_breaches(); -- flips sla_breached_at on the 
 `rls_tests.sql` is organized into 10 numbered sections that map onto the
 matrix:
 
-| Section | Matrix cells covered |
-|---|---|
-| 1 | Tenant isolation across all scoped tables (every non-platform role × every tenant-scoped table) |
-| 2 | Warden scope narrows to assigned block (WARDEN × attendance/students/complaints) |
-| 3 | Parent scope + `can_pay_fees` / `can_view_*` flags |
-| 4 | Student sees only their own rows |
-| 5 | ACCOUNTANT vs. HOSTEL_ADMIN split on refund maker/checker |
-| 6 | SUPER_ADMIN escalation on `tenants` |
-| 7 | Anon role blocked on authenticated tables |
-| 8 | Notification recipient scoping |
-| 9 | Gate-pass parent-approval trigger (Phase 11 guard) |
-| 10 | Complaint reopen 48h window |
+| Section | Matrix cells covered                                                                            |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| 1       | Tenant isolation across all scoped tables (every non-platform role × every tenant-scoped table) |
+| 2       | Warden scope narrows to assigned block (WARDEN × attendance/students/complaints)                |
+| 3       | Parent scope + `can_pay_fees` / `can_view_*` flags                                              |
+| 4       | Student sees only their own rows                                                                |
+| 5       | ACCOUNTANT vs. HOSTEL_ADMIN split on refund maker/checker                                       |
+| 6       | SUPER_ADMIN escalation on `tenants`                                                             |
+| 7       | Anon role blocked on authenticated tables                                                       |
+| 8       | Notification recipient scoping                                                                  |
+| 9       | Gate-pass parent-approval trigger (Phase 11 guard)                                              |
+| 10      | Complaint reopen 48h window                                                                     |
 
 ## Known gaps flagged (not silently patched)
 

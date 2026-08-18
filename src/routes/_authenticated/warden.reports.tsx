@@ -40,7 +40,10 @@ function WardenReportsPage() {
   const propertyId = q.data;
   return (
     <div className="space-y-8 p-4">
-      <PageHeader title="Reports" description="Your scope only. Export is not available for Wardens." />
+      <PageHeader
+        title="Reports"
+        description="Your scope only. Export is not available for Wardens."
+      />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           No assigned property scope yet. Ask your admin to assign a block or property.

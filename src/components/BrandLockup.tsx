@@ -133,11 +133,7 @@ export function BrandLockup({
     return (
       <span className={cn("flex items-center gap-2", className)} {...a11y}>
         <CroppedAsset asset={asset} crop={asset.mark} className="h-full" />
-        <CroppedAsset
-          asset={asset}
-          crop={asset.wordmark}
-          style={{ height: asset.wordmarkScale }}
-        />
+        <CroppedAsset asset={asset} crop={asset.wordmark} style={{ height: asset.wordmarkScale }} />
       </span>
     );
   }

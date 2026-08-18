@@ -2,13 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
-  | "SUPER_ADMIN"
-  | "HOSTEL_ADMIN"
-  | "ACCOUNTANT"
-  | "WARDEN"
-  | "STUDENT"
-  | "PARENT"
-  | null;
+  "SUPER_ADMIN" | "HOSTEL_ADMIN" | "ACCOUNTANT" | "WARDEN" | "STUDENT" | "PARENT" | null;
 
 export interface ResolvedRole {
   role: AppRole;

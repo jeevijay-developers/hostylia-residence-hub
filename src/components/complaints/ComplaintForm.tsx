@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDocument } from "@/lib/student.functions";
@@ -87,7 +91,11 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
     },
     onSuccess: () => {
       toast.success("Complaint submitted");
-      setCategoryId(""); setTitle(""); setDescription(""); setPhoto(null); setPriority("");
+      setCategoryId("");
+      setTitle("");
+      setDescription("");
+      setPhoto(null);
+      setPriority("");
       qc.invalidateQueries({ queryKey: ["complaints"] });
       onDone?.();
     },
@@ -97,15 +105,22 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   return (
     <form
       className="space-y-4"
-      onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit.mutate();
+      }}
     >
       <div className="space-y-1">
         <Label>Category</Label>
         <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger><SelectValue placeholder="Pick a category" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Pick a category" />
+          </SelectTrigger>
           <SelectContent>
             {(cats.data ?? []).map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -127,10 +142,14 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
       <div className="space-y-1">
         <Label>Priority (optional)</Label>
         <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger><SelectValue placeholder="Use category default" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Use category default" />
+          </SelectTrigger>
           <SelectContent>
-            {["LOW","MEDIUM","HIGH","URGENT"].map((p) => (
-              <SelectItem key={p} value={p}>{p}</SelectItem>
+            {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
+              <SelectItem key={p} value={p}>
+                {p}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -157,7 +176,9 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
               onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             />
           </label>
-          {photo && <span className="self-center truncate text-xs text-muted-foreground">{photo.name}</span>}
+          {photo && (
+            <span className="self-center truncate text-xs text-muted-foreground">{photo.name}</span>
+          )}
         </div>
       </div>
       {student.data?.allocation ? (

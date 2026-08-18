@@ -96,7 +96,8 @@ export function GatePassPanel({
                   {p.reason}
                   {p.destination ? ` · ${p.destination}` : ""}
                   {" · "}
-                  {new Date(p.out_at).toLocaleString()} → {new Date(p.expected_in_at).toLocaleString()}
+                  {new Date(p.out_at).toLocaleString()} →{" "}
+                  {new Date(p.expected_in_at).toLocaleString()}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -136,7 +137,10 @@ export function GatePassPanel({
           />
         )}
         {others.map((p) => (
-          <div key={p.id} className="rounded border p-3 flex items-start justify-between gap-3 text-sm">
+          <div
+            key={p.id}
+            className="rounded border p-3 flex items-start justify-between gap-3 text-sm"
+          >
             <div className="min-w-0">
               <div className="font-medium">{p.pass_number}</div>
               <div className="text-xs text-muted-foreground">
@@ -144,7 +148,8 @@ export function GatePassPanel({
                 {p.destination ? ` · ${p.destination}` : ""}
               </div>
               <div className="text-xs text-muted-foreground">
-                {new Date(p.out_at).toLocaleString()} → {new Date(p.expected_in_at).toLocaleString()}
+                {new Date(p.out_at).toLocaleString()} →{" "}
+                {new Date(p.expected_in_at).toLocaleString()}
               </div>
             </div>
             <Badge

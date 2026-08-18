@@ -41,7 +41,11 @@ function StudentGatePassPage() {
     queryKey: ["me-student", uid],
     enabled: !!uid,
     queryFn: async () => {
-      const { data } = await supabase.from("students").select("id").eq("profile_id", uid!).maybeSingle();
+      const { data } = await supabase
+        .from("students")
+        .select("id")
+        .eq("profile_id", uid!)
+        .maybeSingle();
       return data;
     },
   });
@@ -50,9 +54,13 @@ function StudentGatePassPage() {
     queryKey: ["my-passes", studentQ.data?.id],
     enabled: !!studentQ.data?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("gate_passes").select("*")
-        .eq("student_id", studentQ.data!.id).is("deleted_at", null)
-        .order("created_at", { ascending: false }).limit(20);
+      const { data } = await supabase
+        .from("gate_passes")
+        .select("*")
+        .eq("student_id", studentQ.data!.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(20);
       return data ?? [];
     },
   });
@@ -75,17 +83,26 @@ function StudentGatePassPage() {
       // real, retrievable-from-any-device token once the pass is approved.
       const token = randomHex(24);
       const hash = await sha256Hex(token);
-      const res = await create({ data: {
-        student_id: studentQ.data.id, reason, destination,
-        out_at: new Date(outAt).toISOString(), expected_in_at: new Date(inAt).toISOString(),
-        qr_token_hash: hash,
-      } });
+      const res = await create({
+        data: {
+          student_id: studentQ.data.id,
+          reason,
+          destination,
+          out_at: new Date(outAt).toISOString(),
+          expected_in_at: new Date(inAt).toISOString(),
+          qr_token_hash: hash,
+        },
+      });
       return res as unknown as { id: string };
     },
     onSuccess: () => {
       toast.success("Requested");
-      setReason(""); setDestination("");
-      setOutDate(""); setOutTime(""); setInDate(""); setInTime("");
+      setReason("");
+      setDestination("");
+      setOutDate("");
+      setOutTime("");
+      setInDate("");
+      setInTime("");
       qc.invalidateQueries({ queryKey: ["my-passes"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -95,10 +112,16 @@ function StudentGatePassPage() {
     <div className="space-y-4">
       <PageHeader title="Gate Pass" description="Request a pass and show your QR at the gate." />
       <Card>
-        <CardHeader><CardTitle className="text-base">New Request</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">New Request</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2">
           <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
+          <Input
+            placeholder="Destination"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+          />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Going out — date</label>
@@ -121,12 +144,19 @@ function StudentGatePassPage() {
             <p className="text-xs text-muted-foreground">
               {!reason
                 ? "Enter a reason to continue."
-                : "Fill in both the date and time for \"Going out\" and \"Expected back\" — the Request button unlocks once all four are set."}
+                : 'Fill in both the date and time for "Going out" and "Expected back" — the Request button unlocks once all four are set.'}
             </p>
           )}
           {!kycComplete && <KycGateNotice message="Complete your KYC to request a gate pass." />}
-          <Button onClick={() => createMut.mutate()} disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}>
-            {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <Button
+            onClick={() => createMut.mutate()}
+            disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}
+          >
+            {createMut.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             Request
           </Button>
         </CardContent>
@@ -134,8 +164,12 @@ function StudentGatePassPage() {
 
       <div className="space-y-2">
         <div className="text-sm font-medium">My Passes</div>
-        {(passesQ.data ?? []).map((p) => <PassCard key={p.id} pass={p} />)}
-        {passesQ.data?.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>}
+        {(passesQ.data ?? []).map((p) => (
+          <PassCard key={p.id} pass={p} />
+        ))}
+        {passesQ.data?.length === 0 && (
+          <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>
+        )}
       </div>
     </div>
   );
@@ -143,7 +177,18 @@ function StudentGatePassPage() {
 
 const PENDING_STATUSES = ["PENDING_WARDEN", "PENDING_PARENT"];
 
-function PassCard({ pass }: { pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string } }) {
+function PassCard({
+  pass,
+}: {
+  pass: {
+    id: string;
+    pass_number: string;
+    status: string;
+    reason: string;
+    out_at: string;
+    expected_in_at: string;
+  };
+}) {
   const reissue = useServerFn(reissueGatePassQrToken);
   const scannable = pass.status === "APPROVED" || pass.status === "ACTIVE";
 
@@ -166,34 +211,41 @@ function PassCard({ pass }: { pass: { id: string; pass_number: string; status: s
   });
 
   return (
-    <Card><CardContent className="p-3 space-y-2">
-      <div className="flex justify-between">
-        <div>
-          <div className="font-medium">{pass.pass_number}</div>
-          <div className="text-xs text-muted-foreground">{pass.reason} · {new Date(pass.out_at).toLocaleString()} → {new Date(pass.expected_in_at).toLocaleString()}</div>
-        </div>
-        <Badge variant="secondary">
-          {PENDING_STATUSES.includes(pass.status) ? "Pending" : pass.status}
-        </Badge>
-      </div>
-      {scannable && qrQ.isLoading && (
-        <p className="text-xs text-muted-foreground">Preparing QR…</p>
-      )}
-      {scannable && qrQ.isError && (
-        <div className="space-y-1">
-          <p className="text-xs text-destructive">Could not load QR.</p>
-          <Button size="sm" variant="outline" onClick={() => qrQ.refetch()}>Retry</Button>
-        </div>
-      )}
-      {qrQ.data && (
-        <div className="flex items-center gap-3">
-          <img src={qrQ.data.dataUrl} alt="Gate pass QR" className="h-32 w-32" />
-          <div className="text-xs break-all font-mono">
-            <div>Pass: {pass.id}</div>
-            <div>Token: {qrQ.data.token}</div>
+    <Card>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex justify-between">
+          <div>
+            <div className="font-medium">{pass.pass_number}</div>
+            <div className="text-xs text-muted-foreground">
+              {pass.reason} · {new Date(pass.out_at).toLocaleString()} →{" "}
+              {new Date(pass.expected_in_at).toLocaleString()}
+            </div>
           </div>
+          <Badge variant="secondary">
+            {PENDING_STATUSES.includes(pass.status) ? "Pending" : pass.status}
+          </Badge>
         </div>
-      )}
-    </CardContent></Card>
+        {scannable && qrQ.isLoading && (
+          <p className="text-xs text-muted-foreground">Preparing QR…</p>
+        )}
+        {scannable && qrQ.isError && (
+          <div className="space-y-1">
+            <p className="text-xs text-destructive">Could not load QR.</p>
+            <Button size="sm" variant="outline" onClick={() => qrQ.refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {qrQ.data && (
+          <div className="flex items-center gap-3">
+            <img src={qrQ.data.dataUrl} alt="Gate pass QR" className="h-32 w-32" />
+            <div className="text-xs break-all font-mono">
+              <div>Pass: {pass.id}</div>
+              <div>Token: {qrQ.data.token}</div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

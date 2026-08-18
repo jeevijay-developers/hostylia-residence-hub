@@ -36,9 +36,7 @@ export function ImpersonationBanner() {
         .limit(5);
       if (cancelled || !data) return;
       const now = Date.now();
-      const live = data.find(
-        (s: Session) => !s.ended_at && new Date(s.expires_at).getTime() > now,
-      );
+      const live = data.find((s: Session) => !s.ended_at && new Date(s.expires_at).getTime() > now);
       if (live) {
         setActive(live);
       } else {
@@ -62,8 +60,9 @@ export function ImpersonationBanner() {
       <div className="sticky top-0 z-50 flex items-center gap-2 border-b-2 border-destructive bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive">
         <ShieldAlert className="h-4 w-4" />
         <span>
-          A Hostylia support agent is currently accessing your account ({active.access_mode.replace("_", " ").toLowerCase()}) until {expires}.
-          Reason: {active.reason}
+          A Hostylia support agent is currently accessing your account (
+          {active.access_mode.replace("_", " ").toLowerCase()}) until {expires}. Reason:{" "}
+          {active.reason}
         </span>
       </div>
     );
@@ -73,7 +72,9 @@ export function ImpersonationBanner() {
       <div className="sticky top-0 z-50 flex items-center gap-2 border-b border-warning bg-warning/10 px-4 py-2 text-sm text-warning-foreground">
         <AlertTriangle className="h-4 w-4" />
         <span>
-          A Hostylia support session on your account ended at {new Date(recentlyEnded.ended_at!).toLocaleTimeString()}. Review activity in your audit log if needed.
+          A Hostylia support session on your account ended at{" "}
+          {new Date(recentlyEnded.ended_at!).toLocaleTimeString()}. Review activity in your audit
+          log if needed.
         </span>
       </div>
     );

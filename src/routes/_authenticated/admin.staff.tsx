@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ChevronDown, Loader2, Mail, Pencil, Send, Trash2, UserPlus, UserX } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { TableSkeleton } from "@/components/dashboard/TableSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -203,7 +204,13 @@ function AdminStaffPage() {
   const resend = useMutation({
     mutationFn: (id: string) =>
       resendFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
-    onSuccess: () => toast.success("Invitation resent"),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not resend invitation");
+        return;
+      }
+      toast.success("Invitation resent");
+    },
     onError: (e) => toast.error(errorMessage(e, "Could not resend invitation")),
   });
 
@@ -380,16 +387,10 @@ function AdminStaffPage() {
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {staffQ.isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={5}>
-                    <Skeleton className="h-5 w-full" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : staffQ.isError ? (
+          {staffQ.isLoading ? (
+            <TableSkeleton columns={5} rows={5} widths={["w-24", "w-32", "w-20", "w-16", "w-12"]} />
+          ) : staffQ.isError ? (
+            <TableBody>
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center">
                   <p className="text-sm text-muted-foreground">
@@ -405,112 +406,82 @@ function AdminStaffPage() {
                   </Button>
                 </TableCell>
               </TableRow>
-            ) : staff.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                  No staff yet — invite your first Warden or Accountant above.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staff.map((s) => {
-                const isOwner = s.role === "HOSTEL_ADMIN";
-                const isRevoked = !!s.revoked_at;
-                const isPending = !s.is_active && !isRevoked;
-                return (
+            </TableBody>
+          ) : (
+            <TableBody>
+              {staff.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center">
+                    <p className="text-sm text-muted-foreground">No staff members yet.</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                staff.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.profile?.full_name ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {s.profile?.email ??
-                        (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
-                        "—"}
+                    <TableCell className="font-medium">{s.profile?.full_name || "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {s.profile?.phone && displayIndianPhone(s.profile.phone)}
+                      {s.profile?.phone && s.profile?.email && " / "}
+                      {s.profile?.email}
                     </TableCell>
-                    <TableCell>{ROLE_LABEL[s.role] ?? s.role}</TableCell>
+                    <TableCell>{ROLE_LABEL[s.role] || s.role}</TableCell>
                     <TableCell>
                       <StaffStatusBadge row={s} />
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* Icon-only actions; title= carries the label for a11y/hover. */}
-                      {isOwner ? (
-                        <span className="text-xs text-muted-foreground">
-                          Account owner — cannot be revoked
-                        </span>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1">
-                          {isPending && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Resend invitation"
-                                aria-label="Resend invitation"
-                                disabled={resend.isPending}
-                                onClick={() => resend.mutate(s.id)}
-                              >
-                                {resend.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Mail className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Cancel invitation"
-                                aria-label="Cancel invitation"
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setPendingRevoke(s)}
-                              >
-                                <UserX className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          {!isPending && !isRevoked && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Edit"
-                                aria-label="Edit"
-                                onClick={() => {
-                                  setEditRow(s);
-                                  setEditName(s.profile?.full_name ?? "");
-                                  setEditPhone(
-                                    s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
-                                  );
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Revoke access"
-                                aria-label="Revoke access"
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setPendingRevoke(s)}
-                              >
-                                <UserX className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title="Delete"
-                            aria-label="Delete"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setPendingDelete(s)}
-                          >
-                            <Trash2 className="h-4 w-4" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost">
+                            <ChevronDown className="h-4 w-4" />
                           </Button>
-                        </div>
-                      )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {s.revoked_at ? (
+                            <DropdownMenuItem disabled>Revoked account</DropdownMenuItem>
+                          ) : (
+                            <>
+                              {s.is_active && (
+                                <>
+                                  <DropdownMenuItem onClick={() => setEditRow(s)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setPendingRevoke(s)}>
+                                    <UserX className="mr-2 h-4 w-4" /> Revoke access
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {!s.is_active && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    resendFn({ data: { staff_id: s.id } })
+                                      .then(() => {
+                                        toast.success("Invite resent");
+                                        staffQ.refetch();
+                                      })
+                                      .catch((e) =>
+                                        toast.error(errorMessage(e, "Could not resend invite")),
+                                      )
+                                  }
+                                >
+                                  <Send className="mr-2 h-4 w-4" /> Resend invite
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => setPendingDelete(s)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
+                ))
+              )}
+            </TableBody>
+          )}
         </Table>
       </section>
 

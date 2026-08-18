@@ -1,5 +1,12 @@
 import {
-  Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { formatInr } from "@/lib/finance";
 
@@ -15,7 +22,11 @@ const TOKEN = {
   muted: "var(--muted-foreground)",
 };
 
-export function OccupancyChart({ data }: { data: Array<{ block_name: string; occupancy_pct: number }> }) {
+export function OccupancyChart({
+  data,
+}: {
+  data: Array<{ block_name: string; occupancy_pct: number }>;
+}) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer>
@@ -26,11 +37,18 @@ export function OccupancyChart({ data }: { data: Array<{ block_name: string; occ
           <Tooltip formatter={(v: number) => `${v}%`} />
           <Bar dataKey="occupancy_pct" radius={[4, 4, 0, 0]}>
             {data.map((d, i) => (
-              <Cell key={i} fill={
-                d.occupancy_pct >= 85 ? TOKEN.success :
-                d.occupancy_pct >= 60 ? TOKEN.info :
-                d.occupancy_pct >= 40 ? TOKEN.warning : TOKEN.destructive
-              } />
+              <Cell
+                key={i}
+                fill={
+                  d.occupancy_pct >= 85
+                    ? TOKEN.success
+                    : d.occupancy_pct >= 60
+                      ? TOKEN.info
+                      : d.occupancy_pct >= 40
+                        ? TOKEN.warning
+                        : TOKEN.destructive
+                }
+              />
             ))}
           </Bar>
         </BarChart>
@@ -55,7 +73,9 @@ export function DsoChart({ aging }: { aging: Record<string, number> }) {
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatInr(v)} width={80} />
           <Tooltip formatter={(v: number) => formatInr(v)} />
           <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-            {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.color} />
+            ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -63,8 +83,15 @@ export function DsoChart({ aging }: { aging: Record<string, number> }) {
   );
 }
 
-export function AttendanceChart({ data }: { data: Array<{ full_name: string; attendance_pct: number | null }> }) {
-  const clean = data.filter((d) => d.attendance_pct !== null) as Array<{ full_name: string; attendance_pct: number }>;
+export function AttendanceChart({
+  data,
+}: {
+  data: Array<{ full_name: string; attendance_pct: number | null }>;
+}) {
+  const clean = data.filter((d) => d.attendance_pct !== null) as Array<{
+    full_name: string;
+    attendance_pct: number;
+  }>;
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer>
@@ -75,11 +102,18 @@ export function AttendanceChart({ data }: { data: Array<{ full_name: string; att
           <Tooltip formatter={(v: number) => `${v}%`} />
           <Bar dataKey="attendance_pct" radius={[4, 4, 0, 0]}>
             {clean.map((d, i) => (
-              <Cell key={i} fill={
-                d.attendance_pct >= 90 ? TOKEN.success :
-                d.attendance_pct >= 75 ? TOKEN.info :
-                d.attendance_pct >= 50 ? TOKEN.warning : TOKEN.destructive
-              } />
+              <Cell
+                key={i}
+                fill={
+                  d.attendance_pct >= 90
+                    ? TOKEN.success
+                    : d.attendance_pct >= 75
+                      ? TOKEN.info
+                      : d.attendance_pct >= 50
+                        ? TOKEN.warning
+                        : TOKEN.destructive
+                }
+              />
             ))}
           </Bar>
         </BarChart>
@@ -88,8 +122,15 @@ export function AttendanceChart({ data }: { data: Array<{ full_name: string; att
   );
 }
 
-export function SlaComplianceChart({ data }: { data: Array<{ category_name: string; sla_compliance_pct: number | null }> }) {
-  const clean = data.filter((d) => d.sla_compliance_pct !== null) as Array<{ category_name: string; sla_compliance_pct: number }>;
+export function SlaComplianceChart({
+  data,
+}: {
+  data: Array<{ category_name: string; sla_compliance_pct: number | null }>;
+}) {
+  const clean = data.filter((d) => d.sla_compliance_pct !== null) as Array<{
+    category_name: string;
+    sla_compliance_pct: number;
+  }>;
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer>
@@ -100,11 +141,18 @@ export function SlaComplianceChart({ data }: { data: Array<{ category_name: stri
           <Tooltip formatter={(v: number) => `${v}%`} />
           <Bar dataKey="sla_compliance_pct" radius={[4, 4, 0, 0]}>
             {clean.map((d, i) => (
-              <Cell key={i} fill={
-                d.sla_compliance_pct >= 90 ? TOKEN.success :
-                d.sla_compliance_pct >= 75 ? TOKEN.info :
-                d.sla_compliance_pct >= 50 ? TOKEN.warning : TOKEN.destructive
-              } />
+              <Cell
+                key={i}
+                fill={
+                  d.sla_compliance_pct >= 90
+                    ? TOKEN.success
+                    : d.sla_compliance_pct >= 75
+                      ? TOKEN.info
+                      : d.sla_compliance_pct >= 50
+                        ? TOKEN.warning
+                        : TOKEN.destructive
+                }
+              />
             ))}
           </Bar>
         </BarChart>

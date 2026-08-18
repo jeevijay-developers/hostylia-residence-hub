@@ -366,24 +366,54 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
       .object({
         property_id: z.string().uuid(),
         status: z.string().optional(),
+        search: z.string().optional(),
+        page: z.number().int().min(0).default(0),
+        // Capped well above the UI's own page size (20) so a bulk CSV export
+        // can request everything in one call without needing a separate
+        // "export" endpoint, while still bounding the worst case.
+        pageSize: z.number().int().min(1).max(5000).default(20),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+
+    // Search matches invoice_number OR student name. The student name lives
+    // on a joined table, which the JS client can't .ilike() directly — so a
+    // matching student_id list is resolved first (scoped to this property,
+    // same RLS-bound client) and combined into a single .or() filter, rather
+    // than filtering client-side after the fact (which would only search
+    // whatever happened to be on the current page).
+    let studentIds: string[] = [];
+    if (data.search) {
+      const { data: matches } = await supabase
+        .from("students")
+        .select("id")
+        .eq("property_id", data.property_id)
+        .ilike("full_name", `%${data.search}%`);
+      studentIds = (matches ?? []).map((m) => m.id);
+    }
+
     let q = supabase
       .from("invoices")
       .select(
         "id, invoice_number, student_id, allocation_id, billing_period_start, billing_period_end, issue_date, due_date, status, subtotal_paise, tax_paise, total_paise, paid_paise, balance_paise, notes, void_reason, students(full_name)",
+        { count: "exact" },
       )
       .eq("property_id", data.property_id)
       .is("deleted_at", null)
       .order("issue_date", { ascending: false })
-      .limit(200);
+      .range(data.page * data.pageSize, data.page * data.pageSize + data.pageSize - 1);
     if (data.status) q = q.eq("status", data.status);
-    const { data: rows, error } = await q;
+    if (data.search) {
+      const idList = studentIds.length
+        ? studentIds.join(",")
+        : "00000000-0000-0000-0000-000000000000";
+      q = q.or(`invoice_number.ilike.%${data.search}%,student_id.in.(${idList})`);
+    }
+    const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return { rows: rows ?? [], total: count ?? 0 };
   });
 
 /**

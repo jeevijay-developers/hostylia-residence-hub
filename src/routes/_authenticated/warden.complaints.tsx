@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
 import {
   useComplaints,
   useComplaintCategories,
@@ -141,18 +142,19 @@ function WardenComplaintsPage() {
       </div>
 
       <div className="space-y-3">
-        {all.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {list.map((c) => (
-          <ComplaintCard
-            key={c.id}
-            complaint={c}
-            actions={
-              <Button size="sm" variant="outline" onClick={() => setActiveComplaint(c)}>
-                <Eye className="h-4 w-4" /> View Details
-              </Button>
-            }
-          />
-        ))}
+        {all.isLoading && <ListSkeleton rows={5} />}
+        {!all.isLoading &&
+          list.map((c) => (
+            <ComplaintCard
+              key={c.id}
+              complaint={c}
+              actions={
+                <Button size="sm" variant="outline" onClick={() => setActiveComplaint(c)}>
+                  <Eye className="h-4 w-4" /> View Details
+                </Button>
+              }
+            />
+          ))}
         {!all.isLoading && list.length === 0 && (
           <p className="text-sm text-muted-foreground">Nothing matches your filters.</p>
         )}

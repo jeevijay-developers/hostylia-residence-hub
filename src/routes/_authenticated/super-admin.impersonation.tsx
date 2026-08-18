@@ -11,7 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   endSupportSession,
   listSupportSessions,
@@ -32,8 +38,14 @@ function ImpersonationPage() {
   const endFn = useServerFn(endSupportSession);
   const listTenantsFn = useServerFn(listAllTenants);
 
-  const { data: sessions = [] } = useQuery({ queryKey: ["support-sessions"], queryFn: () => listFn({}) });
-  const { data: tenants = [] } = useQuery({ queryKey: ["all-tenants"], queryFn: () => listTenantsFn({}) });
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["support-sessions"],
+    queryFn: () => listFn({}),
+  });
+  const { data: tenants = [] } = useQuery({
+    queryKey: ["all-tenants"],
+    queryFn: () => listTenantsFn({}),
+  });
 
   const [tenantId, setTenantId] = useState("");
   const [q, setQ] = useState("");
@@ -86,7 +98,10 @@ function ImpersonationPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Impersonation" description="Start a time-limited, audited support session on a tenant's account." />
+      <PageHeader
+        title="Impersonation"
+        description="Start a time-limited, audited support session on a tenant's account."
+      />
 
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <h2 className="text-sm font-semibold">Start session</h2>
@@ -94,9 +109,15 @@ function ImpersonationPage() {
           <div className="space-y-1">
             <Label>Tenant</Label>
             <Select value={tenantId} onValueChange={setTenantId}>
-              <SelectTrigger><SelectValue placeholder="Choose tenant" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose tenant" />
+              </SelectTrigger>
               <SelectContent>
-                {tenants.map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>))}
+                {tenants.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.display_name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -110,7 +131,10 @@ function ImpersonationPage() {
                     key={r.id}
                     type="button"
                     className="w-full px-3 py-2 text-left hover:bg-muted"
-                    onClick={() => { setTarget(r); setQ(r.full_name ?? r.email ?? r.phone); }}
+                    onClick={() => {
+                      setTarget(r);
+                      setQ(r.full_name ?? r.email ?? r.phone);
+                    }}
                   >
                     <div className="font-medium">{r.full_name ?? "(no name)"}</div>
                     <div className="text-xs text-muted-foreground">{r.email ?? r.phone}</div>
@@ -118,7 +142,11 @@ function ImpersonationPage() {
                 ))}
               </div>
             )}
-            {target && <p className="text-xs">Selected: <span className="font-medium">{target.full_name ?? target.email}</span></p>}
+            {target && (
+              <p className="text-xs">
+                Selected: <span className="font-medium">{target.full_name ?? target.email}</span>
+              </p>
+            )}
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label>Reason (min 10 chars, will appear in the tenant's audit log)</Label>
@@ -131,7 +159,9 @@ function ImpersonationPage() {
           <div className="space-y-1">
             <Label>Access mode</Label>
             <Select value={mode} onValueChange={(v) => setMode(v as any)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="READ_ONLY">Read only</SelectItem>
                 <SelectItem value="STANDARD">Standard</SelectItem>
@@ -141,17 +171,28 @@ function ImpersonationPage() {
           </div>
           <div className="space-y-1">
             <Label>Duration (minutes, max 60)</Label>
-            <Input type="number" min={5} max={60} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "30"))} />
+            <Input
+              type="number"
+              min={5}
+              max={60}
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value || "30"))}
+            />
           </div>
           <div className="sm:col-span-2 flex items-start gap-2 rounded border border-warning/50 bg-warning/5 p-3">
             <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} id="consent" />
             <Label htmlFor="consent" className="text-sm font-normal">
-              I confirm the tenant has given explicit consent for this support session and understand this action is fully audited.
+              I confirm the tenant has given explicit consent for this support session and
+              understand this action is fully audited.
             </Label>
           </div>
         </div>
         <Button disabled={!canStart || start.isPending} onClick={() => start.mutate()}>
-          {start.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+          {start.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <LogIn className="h-4 w-4" />
+          )}
           {start.isPending ? "Starting…" : "Start session"}
         </Button>
       </div>
@@ -174,12 +215,20 @@ function ImpersonationPage() {
               const active = !s.ended_at && new Date(s.expires_at).getTime() > Date.now();
               return (
                 <tr key={s.id} className="border-t border-border">
-                  <td className="px-4 py-2 text-muted-foreground">{new Date(s.started_at).toLocaleString()}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {new Date(s.started_at).toLocaleString()}
+                  </td>
                   <td className="px-4 py-2 font-mono text-xs">{s.target_user_id.slice(0, 8)}</td>
                   <td className="px-4 py-2">{s.access_mode}</td>
                   <td className="px-4 py-2 max-w-md truncate">{s.reason}</td>
                   <td className="px-4 py-2">
-                    {active ? <Badge>Active</Badge> : s.ended_at ? <Badge variant="secondary">Ended</Badge> : <Badge variant="outline">Expired</Badge>}
+                    {active ? (
+                      <Badge>Active</Badge>
+                    ) : s.ended_at ? (
+                      <Badge variant="secondary">Ended</Badge>
+                    ) : (
+                      <Badge variant="outline">Expired</Badge>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-right">
                     {active && (
@@ -191,7 +240,13 @@ function ImpersonationPage() {
                 </tr>
               );
             })}
-            {!sessions.length && (<tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">No sessions yet.</td></tr>)}
+            {!sessions.length && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+                  No sessions yet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -31,8 +31,12 @@ export function LoginForm({ defaultMode = "phone" as Mode }: { defaultMode?: Mod
     <div className="space-y-6">
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
         <TabsList className="grid h-auto w-full grid-cols-2">
-          <TabsTrigger value="phone" className="min-h-11">{t("auth.tabPhone")}</TabsTrigger>
-          <TabsTrigger value="email" className="min-h-11">{t("auth.tabEmail")}</TabsTrigger>
+          <TabsTrigger value="phone" className="min-h-11">
+            {t("auth.tabPhone")}
+          </TabsTrigger>
+          <TabsTrigger value="email" className="min-h-11">
+            {t("auth.tabEmail")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="phone" className="mt-6">
           <PhoneForm />
@@ -81,9 +85,7 @@ function PhoneForm() {
       // value too instead of just showing a blank/"{}" toast.
       console.error("sendPhoneOtp failed:", err);
       const message =
-        err instanceof Error && err.message
-          ? err.message
-          : "Could not send OTP. Please try again.";
+        err instanceof Error && err.message ? err.message : "Could not send OTP. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -105,7 +107,9 @@ function PhoneForm() {
           {...register("phone")}
         />
         {errors.phone ? (
-          <p className="text-sm text-destructive" role="alert">{errors.phone.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.phone.message}
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
@@ -173,7 +177,9 @@ function EmailForm() {
           {...register("email")}
         />
         {errors.email ? (
-          <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.email.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
@@ -188,7 +194,9 @@ function EmailForm() {
           {...register("password")}
         />
         {errors.password ? (
-          <p className="text-sm text-destructive" role="alert">{errors.password.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.password.message}
+          </p>
         ) : null}
       </div>
       <Button type="submit" disabled={submitting} className="min-h-11 w-full">
