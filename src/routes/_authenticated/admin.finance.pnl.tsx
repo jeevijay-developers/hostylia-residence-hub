@@ -16,10 +16,7 @@ function RevenueCollectionsPage() {
     return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Revenue & Collections Summary"
-        description="Collections, dues and aging. Not a full profit-and-loss report."
-      />
+      <PageHeader title="Revenue & Collections Summary" />
       <RevenueCollectionsSummary propertyId={propertyId} />
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Refund approvals</h2>

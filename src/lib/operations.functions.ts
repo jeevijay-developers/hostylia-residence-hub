@@ -9,6 +9,19 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Guards visitor/gate-pass "expected" date inputs against typo'd years
+ * (e.g. "202-08-20" or "20255-08-20") — a malformed year still parses as a
+ * valid Date, so a plain Number.isNaN check on `new Date(...)` misses it.
+ */
+export function isExpectedYearValid(dateStr: string): boolean {
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const year = parsed.getFullYear();
+  const currentYear = new Date().getFullYear();
+  return year >= currentYear && year <= currentYear + 1;
+}
+
 const createPassSchema = z.object({
   student_id: z.string().uuid(),
   reason: z.string().min(3).max(200),

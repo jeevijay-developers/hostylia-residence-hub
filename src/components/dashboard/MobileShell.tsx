@@ -13,10 +13,11 @@ import type { NavItem } from "@/lib/dashboard-nav";
 interface MobileShellProps {
   allow: NonNullable<AppRole>[];
   navItems: NavItem[];
+  centerElevated?: boolean;
   children?: ReactNode;
 }
 
-export function MobileShell({ allow, navItems, children }: MobileShellProps) {
+export function MobileShell({ allow, navItems, centerElevated, children }: MobileShellProps) {
   const { i18n } = useTranslation();
   const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
   return (
@@ -27,7 +28,7 @@ export function MobileShell({ allow, navItems, children }: MobileShellProps) {
         <main className={cn("flex-1 px-4 py-5 sm:px-6", navItems.length > 0 && "pb-24")}>
           <div className="mx-auto w-full max-w-2xl">{children ?? <Outlet />}</div>
         </main>
-        <BottomNav items={navItems} />
+        <BottomNav items={navItems} centerElevated={centerElevated} />
       </div>
     </RoleGuard>
   );

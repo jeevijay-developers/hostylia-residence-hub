@@ -71,10 +71,7 @@ function MoveOutWizard() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
       </Button>
-      <PageHeader
-        title="Move out"
-        description="Close the active allocation and archive the student."
-      />
+      <PageHeader title="Move out" />
 
       {allocQ.isLoading ? (
         <Skeleton className="h-40 w-full" />

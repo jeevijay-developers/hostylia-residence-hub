@@ -13,6 +13,12 @@ export const phoneSchema = z
     "Enter a valid phone number in international format (e.g. +919876543210)",
   );
 
+export const indianPhoneSchema = phoneSchema;
+
+export function sanitizeIndianPhoneInput(input: string): string {
+  return input.replace(/\D/g, "").slice(0, 10);
+}
+
 /**
  * Normalizes to E.164 with the +91 (India) country code — this app targets
  * Indian hostels, and Supabase Auth's phone-based auth matches on the exact

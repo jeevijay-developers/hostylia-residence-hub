@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { usePropertyStore } from "@/stores/property-store";
 import {
   OccupancyReportPanel,
@@ -18,10 +17,6 @@ function AdminReportsPage() {
     return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Reports"
-        description="Cross-cutting analytics across occupancy, finance and complaints."
-      />
       <OccupancyReportPanel propertyId={propertyId} />
       <AgingReportPanel propertyId={propertyId} />
       <SlaComplianceReportPanel propertyId={propertyId} />

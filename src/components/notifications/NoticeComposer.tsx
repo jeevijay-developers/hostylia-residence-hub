@@ -1,5 +1,19 @@
 import { useMemo, useState } from "react";
-import { Eye, Pencil } from "lucide-react";
+import {
+  CalendarDays,
+  Eye,
+  Files,
+  Flag,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Send,
+  Smartphone,
+  SquarePen,
+  Users,
+} from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -28,15 +42,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn, toneClasses } from "@/lib/utils";
 
 const CHANNELS = [
-  { key: "IN_APP", label: "In-app" },
-  { key: "SMS", label: "SMS" },
-  { key: "WHATSAPP", label: "WhatsApp" },
-  { key: "EMAIL", label: "Email" },
+  { key: "IN_APP", label: "In-app", icon: Smartphone },
+  { key: "SMS", label: "SMS", icon: MessageSquare },
+  { key: "WHATSAPP", label: "WhatsApp", icon: MessageCircle },
+  { key: "EMAIL", label: "Email", icon: Mail },
 ] as const;
 
 const AUDIENCES = ["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS"] as const;
+
+const STATUS_TONE: Record<string, keyof typeof toneClasses> = {
+  PUBLISHED: "warning",
+  SCHEDULED: "info",
+  DRAFT: "muted",
+  CANCELLED: "info",
+  EXPIRED: "muted",
+};
 
 interface Props {
   propertyId: string;
@@ -57,6 +86,7 @@ export function NoticeComposer({ propertyId }: Props) {
   const [audience, setAudience] = useState<(typeof AUDIENCES)[number]>("ALL");
   const [channels, setChannels] = useState<string[]>(["IN_APP"]);
   const [publishAt, setPublishAt] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const tenantId = usePropertyTenantId(propertyId);
   const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
@@ -67,6 +97,7 @@ export function NoticeComposer({ propertyId }: Props) {
       ),
     [notices],
   );
+  const visibleNotices = showAll ? sortedNotices : sortedNotices.slice(0, 5);
 
   const [viewingNotice, setViewingNotice] = useState<NoticeRow | null>(null);
   const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
@@ -135,13 +166,18 @@ export function NoticeComposer({ propertyId }: Props) {
 
   return (
     <div className="grid gap-6">
-      <Card className="p-4">
-        <h2 className="mb-4 font-semibold">Compose notice</h2>
-        <div className="space-y-3">
+      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <SquarePen className="h-4 w-4 text-primary" />
+          <h2 className="font-display font-semibold text-foreground">Compose notice</h2>
+        </div>
+        <div className="space-y-4">
           <div>
             <Label htmlFor="notice-title">Title</Label>
             <Input
               id="notice-title"
+              className="mt-1.5"
+              placeholder="Enter title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
@@ -151,6 +187,8 @@ export function NoticeComposer({ propertyId }: Props) {
             <Label htmlFor="notice-body">Body</Label>
             <Textarea
               id="notice-body"
+              className="mt-1.5"
+              placeholder="Write your notice here…"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={5}
@@ -160,8 +198,11 @@ export function NoticeComposer({ propertyId }: Props) {
             <div>
               <Label>Priority</Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="mt-1.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Flag className="h-4 w-4 shrink-0 text-warning" />
+                    <SelectValue />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NORMAL">Normal</SelectItem>
@@ -173,8 +214,11 @@ export function NoticeComposer({ propertyId }: Props) {
             <div>
               <Label>Audience</Label>
               <Select value={audience} onValueChange={(v) => setAudience(v as typeof audience)}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="mt-1.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <SelectValue />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   {AUDIENCES.map((a) => (
@@ -189,25 +233,31 @@ export function NoticeComposer({ propertyId }: Props) {
           <div>
             <Label>Channels</Label>
             <TooltipProvider>
-              <div className="mt-1 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-2">
                 {CHANNELS.map((c) => {
                   const enabled = providerConfigured[c.key as keyof typeof providerConfigured];
                   const selected = channels.includes(c.key);
+                  const Icon = c.icon;
                   const button = (
-                    <Button
+                    <button
                       key={c.key}
                       type="button"
-                      variant={selected ? "default" : "outline"}
-                      size="sm"
                       disabled={!enabled && c.key !== "IN_APP"}
                       onClick={() =>
                         setChannels((prev) =>
                           prev.includes(c.key) ? prev.filter((x) => x !== c.key) : [...prev, c.key],
                         )
                       }
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+                        selected
+                          ? "border-warning bg-warning/10 text-warning"
+                          : "border-border bg-transparent text-muted-foreground hover:border-primary/40",
+                      )}
                     >
+                      <Icon className="h-4 w-4" />
                       {c.label}
-                    </Button>
+                    </button>
                   );
                   return !enabled ? (
                     <Tooltip key={c.key}>
@@ -229,6 +279,7 @@ export function NoticeComposer({ propertyId }: Props) {
             <Label htmlFor="notice-schedule">Schedule (optional)</Label>
             <Input
               id="notice-schedule"
+              className="mt-1.5"
               type="datetime-local"
               value={publishAt}
               onChange={(e) =>
@@ -239,81 +290,97 @@ export function NoticeComposer({ propertyId }: Props) {
           <Button
             onClick={() => publish.mutate()}
             disabled={!canSubmit || publish.isPending}
-            className="w-full"
+            className="w-full shadow-lg shadow-primary/20"
+            size="lg"
           >
+            <Send className="h-4 w-4" />
             {publishAt ? "Schedule notice" : "Publish now"}
           </Button>
         </div>
       </Card>
 
-      <Card className="p-4">
-        <h2 className="mb-4 font-semibold">Recent notices</h2>
+      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Files className="h-4 w-4 text-primary" />
+            <h2 className="font-display font-semibold text-foreground">Recent notices</h2>
+          </div>
+          {sortedNotices.length > 5 && (
+            <Button variant="outline" size="sm" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? "Show less" : "View all"}
+            </Button>
+          )}
+        </div>
         {sortedNotices.length === 0 ? (
           <p className="text-sm text-muted-foreground">No notices yet.</p>
         ) : (
           <ul className="space-y-3">
-            {sortedNotices.slice(0, 10).map((n: NoticeRow) => (
-              <li key={n.id} className="rounded-md border border-border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{n.title}</p>
-                    <p className="text-xs text-muted-foreground">
+            {visibleNotices.map((n: NoticeRow) => (
+              <li
+                key={n.id}
+                className="rounded-2xl border border-border p-4 transition hover:border-primary/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{n.title}</p>
+                    <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {n.audience_type} · {n.channels.join(", ")}
                     </p>
-                    {n.status === "SCHEDULED" && n.publish_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Scheduled for {new Date(n.publish_at).toLocaleString()}
-                      </p>
-                    )}
+                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {new Date(n.created_at).toLocaleDateString(undefined, {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {n.status === "SCHEDULED" && n.publish_at && (
+                        <span>Scheduled for {new Date(n.publish_at).toLocaleString()}</span>
+                      )}
+                    </div>
                   </div>
-                  <Badge variant={n.status === "PUBLISHED" ? "default" : "secondary"}>
-                    {n.status}
-                  </Badge>
-                </div>
-                <div className="mt-2 flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setViewingNotice(n)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">View</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>View</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => openEdit(n)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={async () => {
-                        await cancelFn({ data: { notice_id: n.id } });
-                        qc.invalidateQueries({ queryKey: ["notices"] });
-                      }}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-full border-transparent px-2.5 py-1 text-[11px]",
+                        toneClasses[STATUS_TONE[n.status] ?? "muted"],
+                      )}
                     >
-                      Cancel
-                    </Button>
-                  )}
+                      {n.status}
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Notice actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setViewingNotice(n)}>
+                          <Eye className="h-4 w-4" /> View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEdit(n)}>
+                          <Pencil className="h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              await cancelFn({ data: { notice_id: n.id } });
+                              qc.invalidateQueries({ queryKey: ["notices"] });
+                            }}
+                          >
+                            Cancel
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </li>
             ))}
@@ -330,7 +397,13 @@ export function NoticeComposer({ propertyId }: Props) {
             <div className="space-y-3 text-sm">
               <p className="whitespace-pre-wrap">{viewingNotice.body}</p>
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant={viewingNotice.status === "PUBLISHED" ? "default" : "secondary"}>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full border-transparent",
+                    toneClasses[STATUS_TONE[viewingNotice.status] ?? "muted"],
+                  )}
+                >
                   {viewingNotice.status}
                 </Badge>
                 <span>{viewingNotice.priority}</span>

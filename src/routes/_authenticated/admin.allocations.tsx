@@ -3,9 +3,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { BedSingle, Check, ChevronsUpDown, DoorOpen, LayoutGrid, User } from "lucide-react";
+import {
+  BedSingle,
+  Check,
+  ChevronRight,
+  ChevronsUpDown,
+  DoorOpen,
+  HelpCircle,
+  LayoutGrid,
+  Lightbulb,
+  User,
+} from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,35 +182,70 @@ function AllocationBoard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Allocations"
-        description="Tap a vacant bed to assign an applicant. Bed status flips automatically."
-        actions={
-          effectiveProp ? (
-            <Button asChild variant="outline">
-              <Link to="/admin/properties/$id/structure" params={{ id: effectiveProp }}>
-                <LayoutGrid className="h-4 w-4" /> Manage rooms & beds
-              </Link>
-            </Button>
-          ) : undefined
-        }
-      />
+      {effectiveProp && (
+        <Link
+          to="/admin/properties/$id/structure"
+          params={{ id: effectiveProp }}
+          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+            <LayoutGrid className="h-6 w-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+              Manage rooms & beds
+            </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              View and manage all rooms and beds in your property
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+          <BedSingle
+            className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+            aria-hidden="true"
+          />
+        </Link>
+      )}
 
       {!effectiveProp ? (
         <p className="text-sm text-muted-foreground">Choose a property from the sidebar first.</p>
       ) : bedsQ.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
-        <BedGrid
-          beds={bedsQ.data ?? []}
-          onSelect={(b) => {
-            if (b.status === "VACANT") {
-              setSelectedBed(b);
-              return;
-            }
-            setViewBed(b);
-          }}
-        />
+        <>
+          <BedGrid
+            variant="expanded"
+            beds={bedsQ.data ?? []}
+            onSelect={(b) => {
+              if (b.status === "VACANT") {
+                setSelectedBed(b);
+                return;
+              }
+              setViewBed(b);
+            }}
+          />
+
+          <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
+                <Lightbulb className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Tip: Click on any room to view detailed information
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Occupancy status is updated in real-time
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="ghost" size="sm" className="shrink-0">
+              <Link to="/admin/support">
+                <HelpCircle className="h-4 w-4" /> Need help?
+              </Link>
+            </Button>
+          </div>
+        </>
       )}
 
       <Dialog open={!!selectedBed} onOpenChange={(v) => !v && setSelectedBed(null)}>

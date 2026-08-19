@@ -109,30 +109,23 @@ function StudentHomePage() {
     { code: string; room: { room_number: string } | null } | null | undefined;
   const firstName = profileQ.data?.full_name?.trim().split(" ")[0];
   const greeting = getGreeting(new Date().getHours());
-  const initial = firstName?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="font-display text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
-              {greeting}
-              {firstName ? (
-                <>
-                  ,<br />
-                  <span className="text-primary">{firstName}</span> 👋
-                </>
-              ) : (
-                " 👋"
-              )}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Stay updated. Stay ahead.</p>
-          </div>
-          <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-2 ring-primary/40">
-            {initial}
-            <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-success" />
-          </span>
+        <div>
+          <h1 className="font-display text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+            {greeting}
+            {firstName ? (
+              <>
+                ,<br />
+                <span className="text-primary">{firstName}</span> 👋
+              </>
+            ) : (
+              " 👋"
+            )}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Stay updated. Stay ahead.</p>
         </div>
 
         {(bed || propertyQ.data) && (

@@ -112,7 +112,7 @@ function StructurePage() {
     const err = propertyQ.error ?? treeQ.error;
     return (
       <div className="space-y-4">
-        <PageHeader title="Structure" description="Manage blocks, floors, rooms and beds." />
+        <PageHeader title="Structure" />
         <Card>
           <CardContent className="space-y-3 py-6 text-center">
             <p className="text-sm text-destructive">
@@ -144,7 +144,6 @@ function StructurePage() {
     <div className="space-y-6">
       <PageHeader
         title={`Structure — ${propertyQ.data?.name ?? ""}`}
-        description="Manage blocks, floors, rooms and beds. Add rows manually or import a CSV."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setCsvOpen(true)}>

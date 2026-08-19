@@ -13,6 +13,7 @@ import {
   FileText,
   GraduationCap,
   Loader2,
+  LogOut,
   Mail,
   Phone,
   Save,
@@ -39,6 +40,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
+import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { updateMyProfile } from "@/lib/student.functions";
@@ -124,6 +126,7 @@ function StudentProfilePage() {
   const [course, setCourse] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -338,6 +341,30 @@ function StudentProfilePage() {
               <span className="text-base text-foreground">{stayText}</span>
             </IconField>
           </div>
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <Button
+              variant="outline"
+              className="min-h-10 border-primary/40 text-primary hover:text-primary"
+              disabled={save.isPending || !fullName.trim()}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save changes
+            </Button>
+            <Button
+              variant="ghost"
+              className="min-h-10 text-muted-foreground hover:text-foreground"
+              onClick={() => setSignOutOpen(true)}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -361,18 +388,12 @@ function StudentProfilePage() {
         </DialogContent>
       </Dialog>
 
-      <Button
-        className="min-h-10 w-full sm:w-auto"
-        disabled={save.isPending || !fullName.trim()}
-        onClick={() => save.mutate()}
-      >
-        {save.isPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Save className="h-4 w-4" />
-        )}
-        Save changes
-      </Button>
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        title="Logout?"
+        confirmLabel="Logout"
+      />
     </div>
   );
 }

@@ -85,7 +85,9 @@ interface KpiSummaryCardProps {
   icon: LucideIcon;
   label: string;
   value?: string | number | null;
-  caption: string;
+  caption?: string;
+  /** 0-100 — renders a slim progress track under the value instead of/alongside the caption. */
+  progressPercent?: number;
   loading?: boolean;
   tone?: SemanticTone;
   /** Navigates to the relevant detail view — never rendered without one, so the chevron is never a dead affordance. */
@@ -101,12 +103,23 @@ const toneBorderClasses: Record<SemanticTone, string> = {
   muted: "border-l-border",
 };
 
-/** Actionable KPI tile: boxed icon, tinted left accent, and a chevron that jumps to the detail view it summarises. */
+const toneFillClasses: Record<SemanticTone, string> = {
+  primary: "bg-primary",
+  success: "bg-success",
+  destructive: "bg-destructive",
+  warning: "bg-warning",
+  info: "bg-info",
+  muted: "bg-muted-foreground",
+};
+
+/** Actionable KPI tile: boxed icon, tinted left accent, a chevron that jumps to the detail view it
+ * summarises, and a faint watermark of the same icon for visual depth. */
 export function KpiSummaryCard({
   icon: Icon,
   label,
   value,
   caption,
+  progressPercent,
   loading,
   tone = "primary",
   onNavigate,
@@ -117,11 +130,15 @@ export function KpiSummaryCard({
       type="button"
       onClick={onNavigate}
       className={cn(
-        "flex w-full flex-col items-stretch rounded-2xl border border-l-4 border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent/40",
+        "relative flex w-full flex-col items-stretch overflow-hidden rounded-2xl border border-l-4 border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent/40",
         toneBorderClasses[tone],
       )}
     >
-      <div className="flex items-start gap-3">
+      <Icon
+        className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 text-foreground/5"
+        aria-hidden="true"
+      />
+      <div className="relative flex items-start gap-3">
         <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", toneClasses[tone])}>
           <Icon className="h-5 w-5" />
         </div>
@@ -132,7 +149,7 @@ export function KpiSummaryCard({
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
-      <div className="mt-3">
+      <div className="relative mt-3">
         {loading ? (
           <Skeleton className="h-8 w-16" />
         ) : (
@@ -141,7 +158,18 @@ export function KpiSummaryCard({
           </p>
         )}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+      {!loading && progressPercent != null && (
+        <div className="relative mt-3 flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn("h-full rounded-full", toneFillClasses[tone])}
+              style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+            />
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">{progressPercent}%</span>
+        </div>
+      )}
+      {caption && <p className="relative mt-1 text-xs text-muted-foreground">{caption}</p>}
     </button>
   );
 }
