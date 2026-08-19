@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StudentFinancePanel } from "@/components/finance/StudentFinancePanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
@@ -18,10 +17,6 @@ function AccStudentsPage() {
     );
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Students"
-        description="Look up a student's invoices, payments and balance."
-      />
       <StudentFinancePanel propertyId={propertyId} />
     </div>
   );

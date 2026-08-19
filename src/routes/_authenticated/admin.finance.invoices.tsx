@@ -5,9 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown, Download, Plus } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { InvoiceTable, type InvoiceRow } from "@/components/finance/InvoiceTable";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -187,9 +187,10 @@ function AdminInvoicesPage() {
         }}
       >
         <SelectTrigger className="w-52">
+
           <SelectValue placeholder="Status" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-xl border-border bg-card text-foreground">
           {STATUSES.map((s) => (
             <SelectItem key={s} value={s}>
               {s}

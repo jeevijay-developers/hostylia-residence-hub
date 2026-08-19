@@ -76,7 +76,6 @@ function AccountantProfilePage() {
   if (!profileQ.data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="My Profile" />
         <p className="text-sm text-muted-foreground">Could not load your profile.</p>
       </div>
     );
@@ -92,8 +91,6 @@ function AccountantProfilePage() {
   return (
     <div className="flex h-full flex-col gap-3">
       <PageHeader
-        title="My Profile"
-        description="Your account details"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>

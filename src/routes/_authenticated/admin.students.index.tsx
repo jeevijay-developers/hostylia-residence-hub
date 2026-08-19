@@ -49,12 +49,12 @@ export const Route = createFileRoute("/_authenticated/admin/students/")({
 });
 
 const AVATAR_COLOR_PAIRS = [
-  { bg: "bg-indigo-950/90", text: "text-indigo-400", border: "border-indigo-800/60" },
-  { bg: "bg-emerald-950/90", text: "text-emerald-400", border: "border-emerald-800/60" },
-  { bg: "bg-purple-950/90", text: "text-purple-400", border: "border-purple-800/60" },
-  { bg: "bg-teal-950/90", text: "text-teal-400", border: "border-teal-800/60" },
-  { bg: "bg-amber-950/90", text: "text-amber-400", border: "border-amber-800/60" },
-  { bg: "bg-blue-950/90", text: "text-blue-400", border: "border-blue-800/60" },
+  { bg: "bg-indigo-100 dark:bg-indigo-950/90", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-300 dark:border-indigo-800/60" },
+  { bg: "bg-emerald-100 dark:bg-emerald-950/90", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800/60" },
+  { bg: "bg-purple-100 dark:bg-purple-950/90", text: "text-purple-600 dark:text-purple-400", border: "border-purple-300 dark:border-purple-800/60" },
+  { bg: "bg-teal-100 dark:bg-teal-950/90", text: "text-teal-600 dark:text-teal-400", border: "border-teal-300 dark:border-teal-800/60" },
+  { bg: "bg-amber-100 dark:bg-amber-950/90", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-800/60" },
+  { bg: "bg-blue-100 dark:bg-blue-950/90", text: "text-blue-600 dark:text-blue-400", border: "border-blue-300 dark:border-blue-800/60" },
 ];
 
 function initials(name: string): string {
@@ -174,41 +174,42 @@ function StudentsListPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl pb-10">
+    <div className="space-y-4 sm:space-y-6 max-w-6xl pb-10 overflow-x-hidden">
       {/* Top Action Buttons Section */}
-      <div className="flex flex-wrap gap-3 items-center justify-between sm:justify-start">
-        <div className="flex flex-wrap gap-3 items-center">
-          <Button
-            variant="outline"
-            onClick={shareAdmissionLink}
-            className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
-          >
-            <Link2 className="h-4 w-4 text-amber-400" />
-            <span>Share public form</span>
-          </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3 sm:items-center sm:justify-start">
+        <Button
+          variant="outline"
+          onClick={shareAdmissionLink}
+          className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
+        >
+          <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
+          <span>Share public form</span>
+        </Button>
+
+        <div className="flex gap-2 sm:contents">
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
-            className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
+            className="flex-1 sm:flex-initial border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
           >
-            <Upload className="h-4 w-4 text-amber-400" />
+            <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
             <span>Bulk import</span>
           </Button>
-        </div>
 
-        <Button
-          disabled={!effectiveProperty}
-          onClick={() => setAddOpen(true)}
-          className="bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl h-11 px-6 shadow-lg shadow-amber-500/20 border border-amber-300/40 flex items-center gap-2 cursor-pointer transition-all ml-auto sm:ml-0"
-        >
-          <UserPlus className="h-4 w-4 text-slate-950 stroke-[2.5]" />
-          <span>Add student</span>
-        </Button>
+          <Button
+            disabled={!effectiveProperty}
+            onClick={() => setAddOpen(true)}
+            className="flex-1 sm:flex-initial bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
+          >
+            <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
+            <span>Add student</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filters & Search Section */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="space-y-2 sm:space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {propertiesQ.data && propertiesQ.data.length > 1 && (
             <Select
               value={effectiveProperty ?? ""}
@@ -217,9 +218,9 @@ function StudentsListPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-11 text-sm font-medium">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium">
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
                   <SelectValue placeholder="Property" />
                 </div>
               </SelectTrigger>
@@ -238,9 +239,9 @@ function StudentsListPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-11 text-sm font-medium">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
                 <SelectValue placeholder="Status" />
               </div>
             </SelectTrigger>
@@ -257,9 +258,9 @@ function StudentsListPage() {
         </div>
 
         <div className="relative w-full">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="bg-card border-border text-foreground rounded-xl h-11 pl-10 text-sm font-medium placeholder:text-muted-foreground"
+            className="bg-card border-border text-foreground rounded-xl h-9 pl-9 text-xs sm:h-11 sm:pl-10 sm:text-sm font-medium placeholder:text-muted-foreground"
             placeholder="Search by name..."
             value={q}
             onChange={(e) => {
@@ -271,37 +272,37 @@ function StudentsListPage() {
       </div>
 
       {/* Dashboard Stats KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {/* Total Card */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-purple-500/10">
-            <Users className="w-6 h-6" />
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 flex items-center gap-2 sm:gap-4 shadow-xl min-w-0">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/10">
+            <Users className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-3xl font-bold text-foreground">{stats.total}</div>
-            <div className="text-sm font-medium text-muted-foreground">Total</div>
+          <div className="min-w-0">
+            <div className="text-lg sm:text-3xl font-bold text-foreground truncate">{stats.total}</div>
+            <div className="text-[10px] sm:text-sm font-medium text-muted-foreground truncate">Total</div>
           </div>
         </div>
 
         {/* Active Card */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-emerald-500/10">
-            <UserCheck className="w-6 h-6" />
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 flex items-center gap-2 sm:gap-4 shadow-xl min-w-0">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
+            <UserCheck className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-3xl font-bold text-foreground">{stats.active}</div>
-            <div className="text-sm font-medium text-muted-foreground">Active</div>
+          <div className="min-w-0">
+            <div className="text-lg sm:text-3xl font-bold text-foreground truncate">{stats.active}</div>
+            <div className="text-[10px] sm:text-sm font-medium text-muted-foreground truncate">Active</div>
           </div>
         </div>
 
         {/* Applicants Card */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-blue-500/10">
-            <ClipboardList className="w-6 h-6" />
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 flex items-center gap-2 sm:gap-4 shadow-xl min-w-0">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/10">
+            <ClipboardList className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="text-3xl font-bold text-foreground">{stats.applicants}</div>
-            <div className="text-sm font-medium text-muted-foreground">Applicants</div>
+          <div className="min-w-0">
+            <div className="text-lg sm:text-3xl font-bold text-foreground truncate">{stats.applicants}</div>
+            <div className="text-[10px] sm:text-sm font-medium text-muted-foreground truncate">Applicants</div>
           </div>
         </div>
       </div>
@@ -315,16 +316,16 @@ function StudentsListPage() {
           description="Share your public admission link or bulk import to start onboarding."
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-2xl">
+        <div className="overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-2xl">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border/80 bg-card">
-                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">NAME</TableHead>
-                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">ADMISSION #</TableHead>
-                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">PHONE</TableHead>
-                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">STATUS</TableHead>
-                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">ACTIONS</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">NAME</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">ADMISSION #</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">PHONE</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">STATUS</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">ACTIONS</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border/60">
@@ -336,49 +337,49 @@ function StudentsListPage() {
                   const initialStr = (firstName[0] || "") + (lastName[0] || "");
                   return (
                     <TableRow key={s.id} className="hover:bg-accent/30 transition-colors">
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full border ${avatarStyle.border} ${avatarStyle.bg} ${avatarStyle.text} flex items-center justify-center font-bold text-xs shrink-0 shadow-sm`}>
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border ${avatarStyle.border} ${avatarStyle.bg} ${avatarStyle.text} flex items-center justify-center font-bold text-[10px] sm:text-xs shrink-0 shadow-sm`}>
                             {initialStr.toUpperCase() || initials(s.full_name)}
                           </div>
                           <div>
-                            <div className="text-foreground font-semibold text-sm">{firstName}</div>
-                            {lastName && <div className="text-muted-foreground text-xs">{lastName}</div>}
+                            <div className="text-foreground font-semibold text-xs sm:text-sm">{firstName}</div>
+                            {lastName && <div className="text-muted-foreground text-[10px] sm:text-xs">{lastName}</div>}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap font-mono text-xs text-muted-foreground">
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap font-mono text-[10px] sm:text-xs text-muted-foreground">
                         {s.admission_number}
                       </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-foreground">
                         {s.phone ?? "—"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                         <StudentStatusBadge status={s.status} />
                       </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button asChild size="icon" variant="ghost" className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all">
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                          <Button asChild size="icon" variant="ghost" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-border/80 bg-background/80 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all">
                             <Link to="/admin/students/$id" params={{ id: s.id }} aria-label={`Open ${s.full_name}`}>
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Link>
                           </Button>
                           {s.status === "ACTIVE" || s.status === "NOTICE_GIVEN" ? (
                             <span
-                              className="inline-flex h-9 w-9 rounded-xl border border-border/40 bg-background/40 items-center justify-center text-muted-foreground opacity-40 cursor-not-allowed"
+                              className="inline-flex h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/40 bg-background/40 items-center justify-center text-muted-foreground opacity-40 cursor-not-allowed"
                               title="Move this student out before deleting their record"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </span>
                           ) : (
                             <Button
                               size="icon"
                               variant="ghost"
                               aria-label={`Delete ${s.full_name}`}
-                              className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-border/80 bg-background/80 text-rose-600 dark:text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"
                               onClick={() => setPendingDelete({ id: s.id, full_name: s.full_name })}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Button>
                           )}
                         </div>
@@ -392,7 +393,7 @@ function StudentsListPage() {
 
           {/* Pagination Footer */}
           {!studentsQ.isLoading && totalRows > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-card border-t border-border/80">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 py-3 sm:px-6 sm:py-4 bg-card border-t border-border/80">
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
@@ -400,7 +401,7 @@ function StudentsListPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-36 bg-card border-border text-foreground rounded-xl h-10 text-xs font-semibold">
+                <SelectTrigger className="w-32 sm:w-36 bg-card border-border text-foreground rounded-xl h-9 sm:h-10 text-[11px] sm:text-xs font-semibold">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border text-foreground">
@@ -410,20 +411,20 @@ function StudentsListPage() {
                 </SelectContent>
               </Select>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
                   disabled={currentPage <= 1}
                   onClick={() => setPage(currentPage - 1)}
                   aria-label="Previous page"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
                 {pageNumbers(currentPage, totalPages).map((p, i) =>
                   p === "ellipsis" ? (
-                    <span key={`e-${i}`} className="px-2 text-sm text-muted-foreground">
+                    <span key={`e-${i}`} className="px-1.5 sm:px-2 text-xs sm:text-sm text-muted-foreground">
                       …
                     </span>
                   ) : (
@@ -432,9 +433,9 @@ function StudentsListPage() {
                       variant="outline"
                       size="icon"
                       className={cn(
-                        "h-9 w-9 rounded-xl text-sm font-semibold transition-all",
+                        "h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-xs sm:text-sm font-semibold transition-all",
                         p === currentPage
-                          ? "border-amber-500 bg-amber-500/10 text-amber-400 shadow-sm shadow-amber-500/10"
+                          ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400 shadow-sm shadow-amber-500/10"
                           : "border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent",
                       )}
                       onClick={() => setPage(p)}
@@ -447,12 +448,12 @@ function StudentsListPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
                   disabled={currentPage >= totalPages}
                   onClick={() => setPage(currentPage + 1)}
                   aria-label="Next page"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </div>
             </div>

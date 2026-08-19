@@ -1,3 +1,12 @@
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  RotateCcw,
+  UserCheck,
+  XCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { slaMeta, type ComplaintRow } from "@/lib/complaint";
 import type { ComplaintPriority } from "@/schemas/complaint";
@@ -29,15 +38,24 @@ export function slaAccentBorderClass(tone: SlaTone, status: string) {
  * Semantic status colours only — never brand teal.
  * Uses Design.md semantic tokens (success / warning / destructive / info / muted).
  */
+const SLA_ICON: Record<SlaTone, typeof Clock> = {
+  ok: Clock,
+  warn: AlertTriangle,
+  breach: AlertTriangle,
+  done: CheckCircle2,
+};
+
 export function SlaBadge({ complaint }: { complaint: ComplaintRow }) {
   const m = slaMeta(complaint);
+  const Icon = SLA_ICON[m.tone];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm",
         slaToneClasses(m.tone, complaint.status),
       )}
     >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
       {m.label}
     </span>
   );
@@ -54,7 +72,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
   return (
     <span
       className={cn(
-        "text-xs font-semibold",
+        "text-xs font-bold tracking-wide",
         PRIORITY_TEXT_TONE[priority as ComplaintPriority] ?? "text-muted-foreground",
       )}
     >
@@ -62,6 +80,17 @@ export function PriorityBadge({ priority }: { priority: string }) {
     </span>
   );
 }
+
+const STATUS_ICON: Record<string, typeof Clock> = {
+  OPEN: Clock,
+  ASSIGNED: UserCheck,
+  IN_PROGRESS: Loader2,
+  WAITING_FOR_STUDENT: AlertTriangle,
+  RESOLVED: CheckCircle2,
+  CLOSED: XCircle,
+  REOPENED: RotateCcw,
+  CANCELLED: XCircle,
+};
 
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -74,13 +103,15 @@ export function StatusBadge({ status }: { status: string }) {
     REOPENED: "bg-warning/15 text-warning border-warning/30",
     CANCELLED: "bg-muted text-muted-foreground border-border line-through",
   };
+  const Icon = STATUS_ICON[status] ?? Clock;
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm",
         map[status] ?? "bg-muted",
       )}
     >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
       {status.replaceAll("_", " ")}
     </span>
   );

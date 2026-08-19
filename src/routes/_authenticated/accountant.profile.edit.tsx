@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Camera, Loader2, Save } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,8 +121,6 @@ function AccountantProfileEditPage() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <PageHeader title="Edit Profile" description="Update your account details" />
-
       <Card className="gap-3 py-4">
         <CardContent className="flex items-center gap-4 px-4">
           <Avatar className="h-16 w-16">

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Search } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { InvoiceTable } from "@/components/finance/InvoiceTable";
 import { InvoiceDetailDialog } from "@/components/finance/InvoiceDetailDialog";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
@@ -67,7 +66,6 @@ function AccInvoicesPage() {
   if (propertyLoading) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Invoices" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -82,7 +80,6 @@ function AccInvoicesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Invoices" />
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[12rem] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

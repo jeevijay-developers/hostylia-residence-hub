@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Info, Search, Users } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,8 +32,6 @@ function WardenStudentsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Students" description="Students in your assigned property." />
-
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -110,7 +107,7 @@ function WardenStudentsPage() {
 const AVATAR_TONES = [
   "bg-success/15 text-success",
   "bg-warning/15 text-warning",
-  "bg-accent/15 text-accent",
+  "bg-info/15 text-info",
   "bg-primary/15 text-primary",
 ];
 

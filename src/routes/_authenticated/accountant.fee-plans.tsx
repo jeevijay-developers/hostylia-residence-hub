@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { FeePlansPanel } from "@/components/finance/FeePlansPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
@@ -19,10 +18,6 @@ function AccFeePlansPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Fee plans"
-        description="Rent, mess, deposit and other charges by property."
-      />
       <FeePlansPanel propertyId={propertyId} />
     </div>
   );

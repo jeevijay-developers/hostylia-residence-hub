@@ -239,12 +239,12 @@ interface AttendanceSummaryRow extends Record<string, unknown> {
 }
 
 const AVATAR_COLOR_PAIRS = [
-  { bg: "bg-emerald-950/80", text: "text-emerald-400", border: "border-emerald-800/50" },
-  { bg: "bg-purple-950/80", text: "text-purple-400", border: "border-purple-800/50" },
-  { bg: "bg-teal-950/80", text: "text-teal-400", border: "border-teal-800/50" },
-  { bg: "bg-amber-950/80", text: "text-amber-400", border: "border-amber-800/50" },
-  { bg: "bg-blue-950/80", text: "text-blue-400", border: "border-blue-800/50" },
-  { bg: "bg-indigo-950/80", text: "text-indigo-400", border: "border-indigo-800/50" },
+  { bg: "bg-emerald-100 dark:bg-emerald-950/80", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800/50" },
+  { bg: "bg-purple-100 dark:bg-purple-950/80", text: "text-purple-600 dark:text-purple-400", border: "border-purple-300 dark:border-purple-800/50" },
+  { bg: "bg-teal-100 dark:bg-teal-950/80", text: "text-teal-600 dark:text-teal-400", border: "border-teal-300 dark:border-teal-800/50" },
+  { bg: "bg-amber-100 dark:bg-amber-950/80", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-800/50" },
+  { bg: "bg-blue-100 dark:bg-blue-950/80", text: "text-blue-600 dark:text-blue-400", border: "border-blue-300 dark:border-blue-800/50" },
+  { bg: "bg-indigo-100 dark:bg-indigo-950/80", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-300 dark:border-indigo-800/50" },
 ];
 
 function getAvatarStyle(name: string) {
@@ -289,12 +289,12 @@ const attendanceCols: Column<AttendanceSummaryRow>[] = [
       const pct = r.attendance_pct;
       const colorClass =
         pct >= 85
-          ? "text-emerald-400 font-bold"
+          ? "text-emerald-600 dark:text-emerald-400 font-bold"
           : pct >= 70
-            ? "text-teal-400 font-bold"
+            ? "text-teal-600 dark:text-teal-400 font-bold"
             : pct >= 50
-              ? "text-amber-400 font-bold"
-              : "text-rose-400 font-bold";
+              ? "text-amber-700 dark:text-amber-400 font-bold"
+              : "text-rose-600 dark:text-rose-400 font-bold";
       return <span className={colorClass}>{pct}%</span>;
     },
   },
@@ -341,14 +341,14 @@ export function AttendanceReportPanel({
   }, [rows]);
 
   return (
-    <section className="space-y-6 max-w-6xl pb-4">
+    <section className="space-y-4 sm:space-y-6 max-w-6xl pb-4 overflow-x-hidden">
       {/* Top Controls Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
-          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
+          <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400 animate-pulse shrink-0" />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground font-semibold">
               Month
@@ -356,7 +356,7 @@ export function AttendanceReportPanel({
             <Input
               id="attendance-report-month"
               type="month"
-              className="h-10 w-44 bg-background/90 border-border text-foreground rounded-xl"
+              className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl text-xs sm:text-sm"
               value={monthInput}
               max={currentMonthValue()}
               onChange={(e) => setMonthInput(e.target.value)}
@@ -374,44 +374,44 @@ export function AttendanceReportPanel({
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-sm shadow-purple-500/10">
-            <Users className="w-5 h-5" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 space-y-2 sm:space-y-3 shadow-xl min-w-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm shadow-purple-500/10">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Students marked</p>
-            <p className="text-3xl font-bold text-purple-400 mt-1">{summary.studentsMarked}</p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/10">
-            <UserCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Present (days)</p>
-            <p className="text-3xl font-bold text-emerald-400 mt-1">{summary.present}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-sm font-medium text-muted-foreground truncate">Students marked</p>
+            <p className="text-xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">{summary.studentsMarked}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shadow-amber-500/10">
-            <UserX className="w-5 h-5" />
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 space-y-2 sm:space-y-3 shadow-xl min-w-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm shadow-emerald-500/10">
+            <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Absent (days)</p>
-            <p className="text-3xl font-bold text-amber-400 mt-1">{summary.absent}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-sm font-medium text-muted-foreground truncate">Present (days)</p>
+            <p className="text-xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{summary.present}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm shadow-blue-500/10">
-            <TrendingUp className="w-5 h-5" />
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 space-y-2 sm:space-y-3 shadow-xl min-w-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shadow-sm shadow-amber-500/10">
+            <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Avg attendance %</p>
-            <p className="text-3xl font-bold text-blue-400 mt-1">
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-sm font-medium text-muted-foreground truncate">Absent (days)</p>
+            <p className="text-xl sm:text-3xl font-bold text-amber-700 dark:text-amber-400 mt-1">{summary.absent}</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 space-y-2 sm:space-y-3 shadow-xl min-w-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/10">
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-sm font-medium text-muted-foreground truncate">Avg attendance %</p>
+            <p className="text-xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
               {summary.avgPct === null ? "—" : `${summary.avgPct}%`}
             </p>
           </div>
@@ -419,7 +419,7 @@ export function AttendanceReportPanel({
       </div>
 
       {/* Summary Table */}
-      <div className="rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden p-1">
+      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden p-1">
         <ReportTable
           rows={rows}
           columns={attendanceCols}

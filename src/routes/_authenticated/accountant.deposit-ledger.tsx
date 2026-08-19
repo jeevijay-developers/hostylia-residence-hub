@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { DepositLedgerPanel } from "@/components/finance/DepositLedgerPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
@@ -18,10 +17,6 @@ function AccDepositLedgerPage() {
     );
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Deposit ledger"
-        description="Per-student deposit balance and move-out refund preview."
-      />
       <DepositLedgerPanel propertyId={propertyId} />
     </div>
   );

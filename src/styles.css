@@ -145,25 +145,29 @@
   --radius: 0.75rem;
 
   /* Hostylia brand — Design.md */
-  --background: #f6f8f8;
-  --foreground: #0a141e;
-  --card: #ffffff;
-  --card-foreground: #0a141e;
-  --popover: #ffffff;
-  --popover-foreground: #0a141e;
-  --primary: #00696f;
-  --primary-foreground: #ffffff;
-  --secondary: #00609c;
-  --secondary-foreground: #ffffff;
-  --muted: #f0f3f3;
-  --muted-foreground: #51606b;
-  --accent: #00609c;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #dce4e7;
-  --input: #cbd6da;
-  --ring: #00d8cc;
+  --background: #F6F8F8;
+  --foreground: #0A141E;
+  --card: #FFFFFF;
+  --card-foreground: #0A141E;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A141E;
+  --primary: #00696F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #00609C;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F0F3F3;
+  --muted-foreground: #51606B;
+  /* `accent` is shadcn's quiet hover/focus surface (hover:bg-accent on ghost
+     buttons, dropdown/select items, etc.) — it must stay a soft neutral tint,
+     not a saturated brand colour, or every hover state in the app reads as a
+     loud blue flash. Mirrors dark mode's "raised, quiet" accent surface. */
+  --accent: #E7F1F1;
+  --accent-foreground: #0A141E;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #DCE4E7;
+  --input: #CBD6DA;
+  --ring: #00D8CC;
 
   --success: #15803d;
   --success-foreground: #ffffff;

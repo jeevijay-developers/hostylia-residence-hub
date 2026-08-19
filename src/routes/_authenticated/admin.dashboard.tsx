@@ -4,6 +4,7 @@ import { Building2, Users, Wallet, MessageSquareWarning } from "lucide-react";
 
 import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
@@ -111,7 +112,8 @@ function AdminDashboardPage() {
   const hasNoProperties = propertiesQ.data === 0;
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-6xl space-y-6 sm:space-y-8">
+      <PageHeader title="Dashboard" description="Live snapshot of this property" />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties

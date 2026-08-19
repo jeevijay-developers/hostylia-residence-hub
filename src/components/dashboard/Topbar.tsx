@@ -37,6 +37,8 @@ interface TopbarProps {
   tenantId?: string | null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
@@ -118,18 +120,31 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {crumbs.slice(0, -1).map((c, i) => {
+          {crumbs.map((c, i) => {
             const path = "/" + crumbs.slice(0, i + 1).join("/");
+            const isLast = i === crumbs.length - 1;
+            const isId = UUID_RE.test(c) || /^\d+$/.test(c);
+            const label = isId ? c : c.replace(/-/g, " ");
+            const crumbClasses = cn(
+              isId ? "max-w-[64px] sm:max-w-[110px]" : "shrink-0",
+              "truncate",
+              isId ? "" : "capitalize",
+            );
             return (
               <li key={path} className="flex min-w-0 items-center gap-1.5">
-                {i > 0 && <span className="text-muted-foreground/50">/</span>}
-                <Link to={path} className="truncate capitalize hover:text-foreground">
-                  {c.replace(/-/g, " ")}
-                </Link>
+                {i > 0 && <span className="shrink-0 text-muted-foreground/50">/</span>}
+                {isLast ? (
+                  <span className={cn(crumbClasses, "font-semibold text-foreground")} title={label}>
+                    {label}
+                  </span>
+                ) : (
+                  <Link to={path} className={cn(crumbClasses, "hover:text-foreground")} title={label}>
+                    {label}
+                  </Link>
+                )}
               </li>
             );
           })}
-          {crumbs.length > 1 && <li className="text-muted-foreground/50">/</li>}
         </ol>
       </nav>
 

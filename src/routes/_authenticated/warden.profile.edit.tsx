@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Camera, Loader2, Save } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { FormSkeleton } from "@/components/dashboard/FormSkeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -170,7 +169,6 @@ function WardenProfileEditPage() {
   if (profileQ.isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Edit Profile" description="Update your personal details" />
         <FormSkeleton fields={5} />
       </div>
     );
@@ -183,8 +181,6 @@ function WardenProfileEditPage() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <PageHeader title="Edit Profile" description="Update your personal details" />
-
       <Card className="gap-3 py-4">
         <CardContent className="flex items-center gap-4 px-4">
           <Avatar className="h-16 w-16">

@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ActivityIcon } from "@/components/warden/ActivityIcon";
 import { Button } from "@/components/ui/button";
@@ -28,8 +27,6 @@ function WardenActivityPage() {
           <ArrowLeft className="h-4 w-4" /> Back to brief
         </Link>
       </Button>
-
-      <PageHeader title="Recent Activity" description="Everything that happened today." />
 
       {isLoading && (
         <div className="space-y-3">

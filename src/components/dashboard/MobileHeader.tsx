@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { BrandLockup } from "@/components/BrandLockup";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
@@ -57,6 +58,7 @@ export function MobileHeader() {
       </Link>
       <div className="flex items-center gap-1">
         {isWarden && <MessagesPanel />}
+        {isWarden && <ThemeToggle />}
         <NotificationBell />
         {!isStudent && <LanguageSwitcher />}
         {isWarden ? (

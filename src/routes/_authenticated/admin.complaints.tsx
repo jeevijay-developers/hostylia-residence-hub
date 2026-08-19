@@ -3,13 +3,28 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, RotateCcw, UserPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  LayoutGrid,
+  Layers,
+  Package,
+  RotateCcw,
+  UserPlus,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
 import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +46,7 @@ import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaff } from "@/lib/admin-staff.functions";
 import { resolutionSchema } from "@/schemas/complaint";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/complaints")({
   component: AdminComplaintsPage,
@@ -98,13 +114,16 @@ function AdminComplaintsPage() {
   }, [all.data]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div className="max-w-6xl space-y-5 sm:space-y-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
+          <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+              <Layers className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 sm:h-4 sm:w-4" />
+              <SelectValue placeholder="Status" />
+            </div>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl border-border bg-card text-foreground">
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {s}
@@ -113,10 +132,13 @@ function AdminComplaintsPage() {
           </SelectContent>
         </Select>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger>
-            <SelectValue placeholder="Category" />
+          <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+              <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 sm:h-4 sm:w-4" />
+              <SelectValue placeholder="Category" />
+            </div>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl border-border bg-card text-foreground">
             <SelectItem value="ALL">All categories</SelectItem>
             {(cats.data ?? []).map((c) => (
               <SelectItem key={c.id} value={c.id}>
@@ -126,10 +148,13 @@ function AdminComplaintsPage() {
           </SelectContent>
         </Select>
         <Select value={block} onValueChange={setBlock}>
-          <SelectTrigger>
-            <SelectValue placeholder="Block" />
+          <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+              <Package className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-400 sm:h-4 sm:w-4" />
+              <SelectValue placeholder="Block" />
+            </div>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl border-border bg-card text-foreground">
             <SelectItem value="ALL">All blocks</SelectItem>
             {blockIds.map((b) => (
               <SelectItem key={b} value={b}>
@@ -142,7 +167,7 @@ function AdminComplaintsPage() {
       {!propId && (
         <p className="text-sm text-muted-foreground">Select a property to view complaints.</p>
       )}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {list.map((c) => (
           <AdminComplaintRow key={c.id} complaint={c} />
         ))}
@@ -164,6 +189,7 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
   const [assignee, setAssignee] = useState<string>("");
   const [resolveOpen, setResolveOpen] = useState(false);
   const [summary, setSummary] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const staffQ = useQuery({
     queryKey: ["staff-wardens", tenantId],
@@ -254,8 +280,8 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
   return (
     <div className="space-y-3">
       {complaint.sla_breached_at && (
-        <div className="flex items-center gap-1 text-xs font-semibold text-destructive">
-          <AlertTriangle size={14} /> SLA breached
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> SLA breached
         </div>
       )}
       <ComplaintCard
@@ -265,7 +291,7 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
             {canAssign && (
               <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="rounded-xl font-semibold">
                     <UserPlus className="h-4 w-4" /> Assign
                   </Button>
                 </DialogTrigger>
@@ -307,7 +333,7 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
             {canResolve && (
               <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm">
+                  <Button size="sm" className="rounded-xl font-semibold">
                     <CheckCircle2 className="h-4 w-4" /> Resolve
                   </Button>
                 </DialogTrigger>
@@ -333,6 +359,7 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-xl font-semibold"
                 onClick={() => reopen.mutate()}
                 disabled={reopen.isPending}
               >
@@ -342,9 +369,25 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
           </>
         }
       />
-      <div className="rounded-md border border-border bg-card p-3">
-        <ComplaintTimeline complaint={complaint} />
-      </div>
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <div className="rounded-xl border border-border/80 bg-card shadow-sm">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground"
+            >
+              <Clock className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+              <span className="flex-1 text-left">Timeline details</span>
+              <ChevronDown
+                className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", detailsOpen && "rotate-180")}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t border-border px-4 py-3">
+            <ComplaintTimeline complaint={complaint} />
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { TableSkeleton } from "@/components/dashboard/TableSkeleton";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -172,15 +173,19 @@ function PropertiesListPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setOpen(true)}
-          className="shadow-lg shadow-primary/30 hover:shadow-primary/40"
-        >
-          <Plus className="h-4 w-4" /> Add new property
-        </Button>
-      </div>
+    <div className="max-w-6xl space-y-6 sm:space-y-8">
+      <PageHeader
+        title="Properties"
+        description="Manage your hostel/PG properties and their setup"
+        actions={
+          <Button
+            onClick={() => setOpen(true)}
+            className="rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30"
+          >
+            <Plus className="h-4 w-4" /> Add new property
+          </Button>
+        }
+      />
 
       {properties.isLoading ? (
         <div className="rounded-lg border border-border bg-card">
@@ -209,75 +214,81 @@ function PropertiesListPage() {
           action={{ label: "Add property", onClick: () => setOpen(true) }}
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Beds</TableHead>
-                <TableHead className="text-right">Occupancy</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(properties.data ?? []).map((p) => {
-                const pct =
-                  p.bed_count > 0 ? Math.round((p.occupied_count / p.bed_count) * 100) : 0;
-                return (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/30">
-                          <Building2 className="h-4 w-4 text-primary" />
-                        </span>
-                        {p.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>{p.city}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={p.status === "ACTIVE" ? "default" : "info"}
-                        className="gap-1.5"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {p.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{p.bed_count}</TableCell>
-                    <TableCell className="text-right tabular-nums">{pct}%</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            aria-label={`Actions for ${p.name}`}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link to="/admin/properties/$id/setup" params={{ id: p.id }}>
-                              <Settings2 className="mr-2 h-4 w-4" /> Setup
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link to="/admin/properties/$id/structure" params={{ id: p.id }}>
-                              <LayoutGrid className="mr-2 h-4 w-4" /> Structure
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xl">
+          <div className="overflow-x-auto">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4">Name</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4">City</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4">Status</TableHead>
+                  <TableHead className="px-3 py-3 text-right sm:px-6 sm:py-4">Beds</TableHead>
+                  <TableHead className="px-3 py-3 text-right sm:px-6 sm:py-4">Occupancy</TableHead>
+                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(properties.data ?? []).map((p) => {
+                  const pct =
+                    p.bed_count > 0 ? Math.round((p.occupied_count / p.bed_count) * 100) : 0;
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="px-3 py-3 font-medium sm:px-6 sm:py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/30">
+                            <Building2 className="h-4 w-4 text-primary" />
+                          </span>
+                          {p.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4">{p.city}</TableCell>
+                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4">
+                        <Badge
+                          variant={p.status === "ACTIVE" ? "default" : "info"}
+                          className="gap-1.5"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {p.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-right tabular-nums sm:px-6 sm:py-4">
+                        {p.bed_count}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-right tabular-nums sm:px-6 sm:py-4">
+                        {pct}%
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-right sm:px-6 sm:py-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              aria-label={`Actions for ${p.name}`}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to="/admin/properties/$id/setup" params={{ id: p.id }}>
+                                <Settings2 className="mr-2 h-4 w-4" /> Setup
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link to="/admin/properties/$id/structure" params={{ id: p.id }}>
+                                <LayoutGrid className="mr-2 h-4 w-4" /> Structure
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

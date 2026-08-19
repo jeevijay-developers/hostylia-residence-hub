@@ -2,7 +2,22 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Save, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Check,
+  CheckCircle2,
+  Home,
+  type LucideIcon,
+  Link2,
+  Mail,
+  MapPin,
+  Phone,
+  Save,
+  Upload,
+  Users,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -182,44 +197,52 @@ function PropertySetupPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-3xl space-y-6 sm:space-y-8">
       <PageHeader title={`Setup — ${propertyQ.data?.name ?? ""}`} />
 
       {/* Stepper */}
-      <ol className="flex items-center gap-2">
+      <ol className="flex items-center gap-1 sm:gap-2">
         {STEPS.map((label, i) => (
-          <li key={label} className="flex flex-1 items-center gap-2">
+          <li key={label} className="flex flex-1 items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => setStep(i)}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border text-sm font-medium",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-sm transition-colors sm:h-11 sm:w-11 sm:text-base",
                 i === step
-                  ? "border-primary bg-primary text-primary-foreground"
+                  ? "border-primary bg-primary text-primary-foreground shadow-primary/20"
                   : i < step
                     ? "border-success bg-success text-success-foreground"
-                    : "border-border bg-muted text-muted-foreground",
+                    : "border-border bg-card text-muted-foreground",
               )}
               aria-current={i === step}
             >
               {i < step ? <Check className="h-4 w-4" /> : i + 1}
             </button>
-            <span className={cn("text-sm", i === step ? "font-medium" : "text-muted-foreground")}>
+            <span
+              className={cn(
+                "truncate text-xs font-medium sm:text-sm",
+                i === step
+                  ? "font-semibold text-primary underline decoration-primary/60 underline-offset-4"
+                  : "text-muted-foreground",
+              )}
+            >
               {label}
             </span>
-            {i < STEPS.length - 1 ? <div className="mx-2 h-px flex-1 bg-border" /> : null}
+            {i < STEPS.length - 1 ? <div className="mx-1 h-px flex-1 bg-border sm:mx-2" /> : null}
           </li>
         ))}
       </ol>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{STEPS[step]}</CardTitle>
+      <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
+        <CardHeader className="border-b border-border/60 pb-4">
+          <CardTitle className="text-lg font-semibold sm:text-xl">{STEPS[step]}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 pt-6">
           {step === 0 && (
             <>
               <Field id="prop-name" label="Property name">
-                <Input
+                <IconInput
+                  icon={Building2}
                   id="prop-name"
                   value={form.name}
                   onChange={(e) => {
@@ -241,7 +264,8 @@ function PropertySetupPage() {
                     : "Used in the public application link. Lowercase letters, digits and dashes."
                 }
               >
-                <Input
+                <IconInput
+                  icon={Link2}
                   id="prop-slug"
                   value={form.slug}
                   spellCheck={false}
@@ -259,8 +283,11 @@ function PropertySetupPage() {
                     set("property_type", v as PropertyFormInput["property_type"])
                   }
                 >
-                  <SelectTrigger id="prop-type">
-                    <SelectValue />
+                  <SelectTrigger id="prop-type" className={ICON_SELECT_TRIGGER}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Home className="h-4 w-4 shrink-0 text-primary" />
+                      <SelectValue />
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HOSTEL">Hostel</SelectItem>
@@ -277,8 +304,11 @@ function PropertySetupPage() {
                     set("gender_policy", v as PropertyFormInput["gender_policy"])
                   }
                 >
-                  <SelectTrigger id="prop-gender">
-                    <SelectValue />
+                  <SelectTrigger id="prop-gender" className={ICON_SELECT_TRIGGER}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Users className="h-4 w-4 shrink-0 text-primary" />
+                      <SelectValue />
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">Male only</SelectItem>
@@ -290,7 +320,8 @@ function PropertySetupPage() {
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="prop-phone" label="Phone">
-                  <Input
+                  <IconInput
+                    icon={Phone}
                     id="prop-phone"
                     type="tel"
                     inputMode="tel"
@@ -299,7 +330,8 @@ function PropertySetupPage() {
                   />
                 </Field>
                 <Field id="prop-email" label="Email">
-                  <Input
+                  <IconInput
+                    icon={Mail}
                     id="prop-email"
                     type="email"
                     value={form.email ?? ""}
@@ -313,64 +345,31 @@ function PropertySetupPage() {
           {step === 1 && (
             <>
               <Field id="prop-addr1" label="Address line 1">
-                <Input
-                  id="prop-addr1"
-                  value={form.address_line_1}
-                  onChange={(e) => set("address_line_1", e.target.value)}
-                />
+                <IconInput icon={MapPin} id="prop-addr1" value={form.address_line_1} onChange={(e) => set("address_line_1", e.target.value)} />
               </Field>
               <Field id="prop-addr2" label="Address line 2">
-                <Input
-                  id="prop-addr2"
-                  value={form.address_line_2 ?? ""}
-                  onChange={(e) => set("address_line_2", e.target.value)}
-                />
+                <Input className={PLAIN_INPUT} id="prop-addr2" value={form.address_line_2 ?? ""} onChange={(e) => set("address_line_2", e.target.value)} />
               </Field>
               <Field id="prop-landmark" label="Landmark">
-                <Input
-                  id="prop-landmark"
-                  value={form.landmark ?? ""}
-                  onChange={(e) => set("landmark", e.target.value)}
-                />
+                <Input className={PLAIN_INPUT} id="prop-landmark" value={form.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} />
               </Field>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field id="prop-city" label="City">
-                  <Input
-                    id="prop-city"
-                    value={form.city}
-                    onChange={(e) => set("city", e.target.value)}
-                  />
+                  <Input className={PLAIN_INPUT} id="prop-city" value={form.city} onChange={(e) => set("city", e.target.value)} />
                 </Field>
                 <Field id="prop-state" label="State">
-                  <Input
-                    id="prop-state"
-                    value={form.state}
-                    onChange={(e) => set("state", e.target.value)}
-                  />
+                  <Input className={PLAIN_INPUT} id="prop-state" value={form.state} onChange={(e) => set("state", e.target.value)} />
                 </Field>
                 <Field id="prop-pin" label="Postal code" hint="6-digit PIN code.">
-                  <Input
-                    id="prop-pin"
-                    inputMode="numeric"
-                    value={form.postal_code}
-                    onChange={(e) => set("postal_code", e.target.value)}
-                  />
+                  <Input className={PLAIN_INPUT} id="prop-pin" inputMode="numeric" value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} />
                 </Field>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="prop-country" label="Country code" hint="Two-letter ISO code, e.g. IN.">
-                  <Input
-                    id="prop-country"
-                    value={form.country_code}
-                    onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))}
-                  />
+                  <Input className={PLAIN_INPUT} id="prop-country" value={form.country_code} onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))} />
                 </Field>
                 <Field id="prop-tz" label="Timezone" hint="IANA name, e.g. Asia/Kolkata.">
-                  <Input
-                    id="prop-tz"
-                    value={form.timezone}
-                    onChange={(e) => set("timezone", e.target.value)}
-                  />
+                  <Input className={PLAIN_INPUT} id="prop-tz" value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
                 </Field>
               </div>
             </>
@@ -383,10 +382,12 @@ function PropertySetupPage() {
                 served through signed URLs.
               </p>
               <div>
-                <Label htmlFor="prop-logo">Logo</Label>
+                <Label htmlFor="prop-logo" className="text-sm font-normal text-foreground/90">
+                  Logo
+                </Label>
                 <div className="mt-2 flex items-center gap-3">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm hover:bg-muted">
-                    <Upload className="h-4 w-4" />
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border bg-background/60 px-4 py-3 text-sm shadow-sm transition-colors hover:bg-muted">
+                    <Upload className="h-4 w-4 text-primary" />
                     Choose file
                     <input
                       id="prop-logo"
@@ -411,29 +412,36 @@ function PropertySetupPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           variant="ghost"
+          className="font-medium text-muted-foreground hover:text-foreground"
           onClick={() =>
             step === 0 ? nav({ to: "/admin/properties" }) : setStep((s) => Math.max(0, s - 1))
           }
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
+            className="rounded-xl border-border bg-card font-semibold shadow-sm"
             onClick={() => saveMut.mutate(form)}
             disabled={saveMut.isPending}
           >
             <Save className="h-4 w-4" /> Save
           </Button>
           {step === STEPS.length - 1 ? (
-            <Button onClick={() => finishMut.mutate(form)} disabled={finishMut.isPending}>
+            <Button
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
+              onClick={() => finishMut.mutate(form)}
+              disabled={finishMut.isPending}
+            >
               <CheckCircle2 className="h-4 w-4" /> Finish setup
             </Button>
           ) : (
             <Button
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
               onClick={async () => {
                 await saveMut.mutateAsync(form);
                 setStep((s) => Math.min(STEPS.length - 1, s + 1));
@@ -466,9 +474,48 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-sm font-normal text-foreground/90">
+        {label}
+      </Label>
       {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? (
+        <p className="text-xs text-muted-foreground">
+          {hint.startsWith("Public application link:") ? (
+            <>
+              Public application link:{" "}
+              <span className="font-medium text-primary">{hint.split(": ")[1]}</span>
+            </>
+          ) : (
+            hint
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }
+
+/** Icon-prefixed input to match the Setup wizard's visual style — purely cosmetic. */
+function IconInput({
+  icon: Icon,
+  className,
+  ...props
+}: { icon: LucideIcon } & React.ComponentProps<typeof Input>) {
+  return (
+    <div className="relative">
+      <Icon
+        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
+        aria-hidden="true"
+      />
+      <Input
+        className={cn(
+          "h-12 rounded-xl border-border bg-background/60 pl-10 text-sm shadow-sm",
+          className,
+        )}
+        {...props}
+      />
+    </div>
+  );
+}
+
+const ICON_SELECT_TRIGGER = "h-12 rounded-xl border-border bg-background/60 text-sm shadow-sm";
+const PLAIN_INPUT = "h-12 rounded-xl border-border bg-background/60 text-sm shadow-sm";
