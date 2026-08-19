@@ -19,7 +19,9 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
               {title}
             </h1>
           ) : null}
-          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+          {description ? (
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
+          ) : null}
         </div>
       ) : null}
       {actions ? <div className="shrink-0">{actions}</div> : null}

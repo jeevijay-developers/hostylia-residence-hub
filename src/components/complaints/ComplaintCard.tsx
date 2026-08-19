@@ -26,7 +26,7 @@ export function ComplaintCard({
   return (
     <Card
       className={cn(
-        "rounded-2xl border-border/80 border-l-4 bg-card shadow-xl transition-shadow hover:shadow-2xl",
+        "rounded-2xl border-border/80 border-l-4 bg-card shadow-card-ambient panel-lift",
         accent,
       )}
     >

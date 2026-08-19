@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Search } from "lucide-react";
+import { ReceiptText, Search } from "lucide-react";
 
 import { InvoiceTable } from "@/components/finance/InvoiceTable";
 import { InvoiceDetailDialog } from "@/components/finance/InvoiceDetailDialog";
@@ -66,13 +66,13 @@ function AccInvoicesPage() {
   if (propertyLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
   if (!propertyId) {
     return (
-      <p className="p-6 text-sm text-muted-foreground">
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
         No property assigned to your account yet — contact your Hostel Admin.
       </p>
     );
@@ -80,12 +80,21 @@ function AccInvoicesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:flex-row sm:items-center sm:p-5">
+        <div className="flex items-center gap-2.5 sm:hidden">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
+            <ReceiptText className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-base font-semibold text-foreground">Invoices</h2>
+        </div>
+        <span className="hidden h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow sm:grid">
+          <ReceiptText className="h-5 w-5" />
+        </span>
         <div className="relative min-w-[12rem] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by invoice # or student"
-            className="pl-8"
+            className="pl-10"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -100,7 +109,7 @@ function AccInvoicesPage() {
             setPage(0);
           }}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -113,9 +122,9 @@ function AccInvoicesPage() {
         </Select>
       </div>
       {q.isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       ) : q.isError ? (
-        <p className="text-sm text-destructive">
+        <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
           {q.error instanceof Error ? q.error.message : "Could not load invoices."}
         </p>
       ) : (

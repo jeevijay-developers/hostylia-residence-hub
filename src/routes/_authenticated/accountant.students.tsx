@@ -11,7 +11,7 @@ function AccStudentsPage() {
   if (propertyLoading) return null;
   if (!propertyId)
     return (
-      <p className="p-6 text-sm text-muted-foreground">
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
         No property assigned to your account yet — contact your Hostel Admin.
       </p>
     );

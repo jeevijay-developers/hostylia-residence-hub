@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, ReceiptText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 interface InvoiceRow {
   id: string;
@@ -31,14 +32,10 @@ export function InvoiceTable({
   onSelect?: (row: InvoiceRow) => void;
 }) {
   if (!rows.length) {
-    return (
-      <p className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        No invoices yet.
-      </p>
-    );
+    return <EmptyState title="No invoices yet" description="Invoices will show up here once generated." />;
   }
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xl">
+    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-card-ambient">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-border/80 bg-card text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">

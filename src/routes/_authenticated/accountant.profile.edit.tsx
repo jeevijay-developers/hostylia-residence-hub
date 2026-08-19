@@ -112,7 +112,7 @@ function AccountantProfileEditPage() {
     },
   });
 
-  if (profileQ.isLoading) return <Skeleton className="h-96 w-full" />;
+  if (profileQ.isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const initial = fullName.trim()[0]?.toUpperCase() ?? "A";
   const avatarUrl = avatarPath
@@ -123,9 +123,11 @@ function AccountantProfileEditPage() {
     <div className="flex h-full flex-col gap-3">
       <Card className="gap-3 py-4">
         <CardContent className="flex items-center gap-4 px-4">
-          <Avatar className="h-16 w-16">
+          <Avatar className="h-16 w-16 ring-2 ring-neutral-accent/20 ring-offset-2 ring-offset-card">
             <AvatarImage src={avatarUrl} alt={fullName} />
-            <AvatarFallback className="text-lg">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-neutral-accent/15 text-lg text-neutral-accent">
+              {initial}
+            </AvatarFallback>
           </Avatar>
           <div className="flex gap-2">
             <input
@@ -173,7 +175,6 @@ function AccountantProfileEditPage() {
             </Label>
             <Input
               id="a-name"
-              className="h-9"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
@@ -185,7 +186,6 @@ function AccountantProfileEditPage() {
             </Label>
             <Input
               id="a-phone"
-              className="h-9"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
@@ -195,7 +195,7 @@ function AccountantProfileEditPage() {
             <Label htmlFor="a-email" className="text-xs">
               Email
             </Label>
-            <Input id="a-email" className="h-9" value={profileQ.data?.email ?? ""} disabled />
+            <Input id="a-email" value={profileQ.data?.email ?? ""} disabled />
           </div>
         </CardContent>
       </Card>

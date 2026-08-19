@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Info } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -66,15 +66,18 @@ export function ReportTable<Row extends Record<string, unknown>>({
 
   if (!isLoading && rows.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        {empty ?? "No data for the selected filters."}
+      <div className="flex items-center justify-center gap-3 rounded-2xl border border-info/25 bg-info/5 p-6 text-center">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-info/40 text-info">
+          <Info className="h-4 w-4" />
+        </span>
+        <p className="text-sm text-muted-foreground">{empty ?? "No data for the selected filters."}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="rounded-md border border-border overflow-x-auto">
+      <div className="rounded-2xl border border-border/80 shadow-card-ambient overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

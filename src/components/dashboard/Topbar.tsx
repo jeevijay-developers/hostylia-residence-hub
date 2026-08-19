@@ -71,7 +71,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
       {navItems.length > 0 && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
@@ -151,7 +151,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground md:flex md:w-72"
+        className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left">Search…</span>
@@ -186,7 +186,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <NotificationBell />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary ring-2 ring-primary/40">
+        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
           {avatarInitial}
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
         </DropdownMenuTrigger>

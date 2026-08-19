@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { CreditCard, FileText, IndianRupee, Save, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IconFormField as FormField } from "@/components/ui/icon-field";
 import { supabase } from "@/integrations/supabase/client";
 import { recordManualPayment } from "@/lib/finance.functions";
 import { formatInr } from "@/lib/finance";
@@ -106,25 +107,35 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
   });
 
   return (
-    <div className="space-y-3 rounded-md border border-border bg-card p-4">
-      <div>
-        <Label>Invoice</Label>
-        <Select value={invoiceId} onValueChange={setInvoiceId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose invoice" />
-          </SelectTrigger>
-          <SelectContent>
-            {(openInvoices.data ?? []).map((i) => (
-              <SelectItem key={i.id} value={i.id}>
-                {i.invoice_number} — {i.students?.full_name ?? "—"} — {formatInr(i.balance_paise)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="space-y-5 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
+      <div className="flex items-center gap-3 border-b border-border/80 pb-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-display text-lg font-semibold text-foreground sm:text-xl">
+            Record Payment
+          </h2>
+          <p className="text-sm text-muted-foreground">Enter payment details below</p>
+        </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label>Mode</Label>
+
+      <div className="space-y-4">
+        <FormField icon={FileText} label="Invoice">
+          <Select value={invoiceId} onValueChange={setInvoiceId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose invoice" />
+            </SelectTrigger>
+            <SelectContent>
+              {(openInvoices.data ?? []).map((i) => (
+                <SelectItem key={i.id} value={i.id}>
+                  {i.invoice_number} — {i.students?.full_name ?? "—"} — {formatInr(i.balance_paise)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+        <FormField icon={CreditCard} label="Mode">
           <Select value={mode} onValueChange={(v) => setMode(v as never)}>
             <SelectTrigger>
               <SelectValue />
@@ -137,36 +148,53 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div>
-          <Label>Amount (INR)</Label>
+        </FormField>
+        <FormField icon={IndianRupee} label="Amount (INR)" htmlFor="payment-amount">
           <Input
+            id="payment-amount"
             type="number"
             step="0.01"
+            placeholder="Enter amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-        </div>
-        <div>
-          <Label>Reference</Label>
+        </FormField>
+        <FormField icon={FileText} label="Reference" htmlFor="payment-reference">
           <Input
+            id="payment-reference"
             value={ref}
             onChange={(e) => setRef(e.target.value)}
             placeholder="Cheque no. / UPI ref"
           />
-        </div>
+        </FormField>
         {mode === "CHEQUE" && (
-          <div>
-            <Label>Cheque date</Label>
-            <Input type="date" value={chequeDate} onChange={(e) => setChequeDate(e.target.value)} />
-          </div>
+          <FormField icon={FileText} label="Cheque date" htmlFor="payment-cheque-date">
+            <Input
+              id="payment-cheque-date"
+              type="date"
+              value={chequeDate}
+              onChange={(e) => setChequeDate(e.target.value)}
+            />
+          </FormField>
         )}
+        <FormField icon={StickyNote} label="Notes" htmlFor="payment-notes">
+          <Textarea
+            id="payment-notes"
+            rows={3}
+            placeholder="Add notes (optional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </FormField>
       </div>
-      <div>
-        <Label>Notes</Label>
-        <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-      </div>
-      <Button onClick={() => m.mutate()} disabled={!invoiceId || !amount || m.isPending}>
+
+      <Button
+        size="lg"
+        className="w-full shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent),0_10px_28px_-8px_color-mix(in_oklab,var(--primary)_55%,transparent)] transition-shadow hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_40%,transparent),0_14px_36px_-8px_color-mix(in_oklab,var(--primary)_65%,transparent)] active:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_45%,transparent),0_6px_16px_-6px_color-mix(in_oklab,var(--primary)_60%,transparent)] disabled:shadow-none"
+        onClick={() => m.mutate()}
+        disabled={!invoiceId || !amount || m.isPending}
+      >
+        <Save className="h-4 w-4" />
         {m.isPending ? "Recording…" : "Record payment"}
       </Button>
     </div>

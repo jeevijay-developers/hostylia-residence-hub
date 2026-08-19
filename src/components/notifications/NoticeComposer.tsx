@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, toneClasses } from "@/lib/utils";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 const CHANNELS = [
   { key: "IN_APP", label: "In-app", icon: Smartphone },
@@ -166,7 +167,7 @@ export function NoticeComposer({ propertyId }: Props) {
 
   return (
     <div className="grid w-full max-w-full gap-6 overflow-x-hidden">
-      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
+      <Card className="rounded-2xl p-4 shadow-card-ambient sm:p-6">
         <div className="mb-4 flex min-w-0 items-center gap-2">
           <SquarePen className="h-4 w-4 shrink-0 text-primary" />
           <h2 className="truncate font-display font-semibold text-foreground">Compose notice</h2>
@@ -290,7 +291,7 @@ export function NoticeComposer({ propertyId }: Props) {
           <Button
             onClick={() => publish.mutate()}
             disabled={!canSubmit || publish.isPending}
-            className="w-full shadow-lg shadow-primary/20"
+            className="w-full shadow-tone-glow"
             size="lg"
           >
             <Send className="h-4 w-4" />
@@ -299,7 +300,7 @@ export function NoticeComposer({ propertyId }: Props) {
         </div>
       </Card>
 
-      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
+      <Card className="rounded-2xl p-4 shadow-card-ambient sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Files className="h-4 w-4 shrink-0 text-primary" />
@@ -312,7 +313,7 @@ export function NoticeComposer({ propertyId }: Props) {
           )}
         </div>
         {sortedNotices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No notices yet.</p>
+          <EmptyState title="No notices yet" description="Published notices will appear here." />
         ) : (
           <ul className="space-y-3">
             {visibleNotices.map((n: NoticeRow) => (

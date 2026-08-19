@@ -38,7 +38,15 @@ const STATUS_META: Record<BedStatus, { className: string; label: string; Icon: t
 
 const STATUS_CARD_META: Record<
   BedStatus,
-  { border: string; badge: string; text: string; label: string; caption: string; Icon: typeof Bed }
+  {
+    border: string;
+    badge: string;
+    text: string;
+    label: string;
+    caption: string;
+    Icon: typeof Bed;
+    glow: string;
+  }
 > = {
   VACANT: {
     border: "border-bed-vacant/40",
@@ -47,6 +55,7 @@ const STATUS_CARD_META: Record<
     label: "Vacant",
     caption: "Available beds",
     Icon: Bed,
+    glow: "var(--bed-vacant)",
   },
   OCCUPIED: {
     border: "border-bed-occupied/40",
@@ -55,6 +64,7 @@ const STATUS_CARD_META: Record<
     label: "Occupied",
     caption: "Occupied beds",
     Icon: CheckCircle2,
+    glow: "var(--bed-occupied)",
   },
   MAINTENANCE: {
     border: "border-bed-maintenance/40",
@@ -63,6 +73,7 @@ const STATUS_CARD_META: Record<
     label: "Maintenance",
     caption: "Under maintenance",
     Icon: Wrench,
+    glow: "var(--bed-maintenance)",
   },
   BLOCKED: {
     border: "border-bed-blocked/40",
@@ -71,6 +82,7 @@ const STATUS_CARD_META: Record<
     label: "Blocked",
     caption: "Currently blocked",
     Icon: XCircle,
+    glow: "var(--bed-blocked)",
   },
 };
 
@@ -152,13 +164,20 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
           const meta = STATUS_CARD_META[s];
           const Icon = meta.Icon;
           return (
-            <div key={s} className={cn("rounded-2xl border bg-card p-4 shadow-sm", meta.border)}>
+            <div
+              key={s}
+              className={cn(
+                "rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift",
+                meta.border,
+              )}
+            >
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-full",
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-full shadow-tone-glow",
                     meta.badge,
                   )}
+                  style={{ ["--glow-tone" as string]: meta.glow }}
                 >
                   <Icon className="h-4 w-4" />
                 </span>

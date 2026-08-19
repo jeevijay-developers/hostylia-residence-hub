@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInr } from "@/lib/finance";
 import { cn } from "@/lib/utils";
@@ -37,39 +39,48 @@ export function RefundHistoryPanel({ propertyId }: { propertyId: string }) {
     },
   });
 
-  if (q.isLoading) return <Skeleton className="h-24 w-full" />;
-  if (!q.data?.length) {
-    return (
-      <p className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        No refund requests yet.
-      </p>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      {q.data.map((r) => (
-        <div key={r.id} className="rounded-md border border-border bg-card p-3 text-sm">
-          <div className="flex items-center justify-between">
-            <p className="font-medium">
-              {r.refund_number} · {r.students?.full_name ?? "—"}
-            </p>
-            <Badge className={cn(REFUND_STATUS_TONE[r.status] ?? "")}>
-              {r.status.replaceAll("_", " ")}
-            </Badge>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatInr(r.amount_paise)} · {r.reason}
-          </p>
-          {r.decision_reason && (
-            <p className="mt-1 text-xs text-muted-foreground">Decision: {r.decision_reason}</p>
-          )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            Requested {new Date(r.initiated_at).toLocaleDateString()}
-            {r.approved_at && ` · Decided ${new Date(r.approved_at).toLocaleDateString()}`}
-          </p>
+    <div className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
+          <History className="h-4 w-4" />
+        </span>
+        <h2 className="font-display text-base font-semibold text-foreground">Refund history</h2>
+      </div>
+
+      {q.isLoading ? (
+        <Skeleton className="h-24 w-full rounded-xl" />
+      ) : !q.data?.length ? (
+        <EmptyState
+          title="No refund requests yet"
+          description="Your refund requests will appear here."
+        />
+      ) : (
+        <div className="space-y-2">
+          {q.data.map((r) => (
+            <div key={r.id} className="rounded-xl border border-border/80 bg-muted/20 p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate font-medium text-foreground">
+                  {r.refund_number} · {r.students?.full_name ?? "—"}
+                </p>
+                <Badge className={cn("shrink-0", REFUND_STATUS_TONE[r.status] ?? "")}>
+                  {r.status.replaceAll("_", " ")}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatInr(r.amount_paise)} · {r.reason}
+              </p>
+              {r.decision_reason && (
+                <p className="mt-1 text-xs text-muted-foreground">Decision: {r.decision_reason}</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Requested {new Date(r.initiated_at).toLocaleDateString()}
+                {r.approved_at && ` · Decided ${new Date(r.approved_at).toLocaleDateString()}`}
+              </p>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

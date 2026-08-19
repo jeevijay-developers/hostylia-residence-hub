@@ -75,18 +75,22 @@ const FINANCE_TONE = {
   success: {
     border: "border-success/20",
     iconBg: "bg-success/15 text-success",
+    glow: "var(--success)",
   },
   info: {
     border: "border-info/20",
     iconBg: "bg-info/15 text-info",
+    glow: "var(--info)",
   },
   destructive: {
     border: "border-destructive/20",
     iconBg: "bg-destructive/15 text-destructive",
+    glow: "var(--destructive)",
   },
   muted: {
     border: "border-border/80",
     iconBg: "bg-muted text-muted-foreground",
+    glow: "var(--muted-foreground)",
   },
 } as const;
 
@@ -112,11 +116,17 @@ function FinanceKpiCard({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:gap-4 sm:p-5",
+        "flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift sm:gap-4 sm:p-5",
         t.border,
       )}
     >
-      <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl sm:h-12 sm:w-12", t.iconBg)}>
+      <span
+        className={cn(
+          "grid h-11 w-11 shrink-0 place-items-center rounded-xl shadow-tone-glow sm:h-12 sm:w-12",
+          t.iconBg,
+        )}
+        style={{ ["--glow-tone" as string]: t.glow }}
+      >
         <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
       </span>
       <div className="min-w-0">

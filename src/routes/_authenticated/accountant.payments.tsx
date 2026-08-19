@@ -17,12 +17,9 @@ function AccPaymentsPage() {
       </p>
     );
   return (
-    <div className="space-y-6">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
       <PaymentEntryForm propertyId={propertyId} />
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Payment history</h2>
-        <PaymentHistoryPanel propertyId={propertyId} />
-      </div>
+      <PaymentHistoryPanel propertyId={propertyId} />
     </div>
   );
 }

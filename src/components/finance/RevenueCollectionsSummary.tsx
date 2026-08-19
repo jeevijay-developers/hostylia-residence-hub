@@ -28,7 +28,7 @@ export function RevenueCollectionsSummary({ propertyId }: { propertyId: string }
         <Kpi icon={Wallet} label="Collected" value={formatInr(d.total_collected_paise)} tone="success" />
         <Kpi icon={Coins} label="Outstanding" value={formatInr(d.total_outstanding_paise)} tone="warning" />
       </div>
-      <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
+      <Card className="rounded-2xl border-border/80 bg-card shadow-card-ambient">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold sm:text-lg">Aging (outstanding balance)</CardTitle>
         </CardHeader>
@@ -84,13 +84,19 @@ function Kpi({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border bg-card p-4 shadow-xl sm:p-5",
+        "relative overflow-hidden rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift sm:p-5",
         t.border,
       )}
     >
       <Icon className="pointer-events-none absolute -right-2 -top-2 h-16 w-16 opacity-[0.06]" aria-hidden="true" />
       <div className="relative flex items-center gap-3">
-        <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl border", t.iconBg)}>
+        <span
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl border shadow-tone-glow",
+            t.iconBg,
+          )}
+          style={{ ["--glow-tone" as string]: `var(--${tone})` }}
+        >
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0">
@@ -103,7 +109,7 @@ function Kpi({
 }
 
 const AGING_TONE: Record<string, string> = {
-  current: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30",
+  current: "bg-neutral-accent/15 text-neutral-accent border-neutral-accent/30",
   "0-30": "bg-info/15 text-info border-info/30",
   "31-60": "bg-warning/15 text-warning border-warning/30",
   "60+": "bg-destructive/15 text-destructive border-destructive/30",

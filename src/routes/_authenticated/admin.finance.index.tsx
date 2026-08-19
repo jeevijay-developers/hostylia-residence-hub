@@ -46,7 +46,7 @@ function FinanceIndex() {
           <Link
             key={l.to}
             to={l.to}
-            className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:p-5"
+            className="panel-lift group flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient hover:border-primary/40 sm:p-5"
           >
             <span
               className={cn(
