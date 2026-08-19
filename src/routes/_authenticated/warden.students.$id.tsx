@@ -6,6 +6,8 @@ import {
   BedDouble,
   Cake,
   GraduationCap,
+  Link2,
+  Loader2,
   Mail,
   Pencil,
   Phone,
@@ -14,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -41,6 +44,7 @@ import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { StudentProfileEditDialog } from "@/components/students/StudentProfileEditDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
+import { confirmStudentAdmission } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/_authenticated/warden/students/$id")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }] }),
@@ -72,7 +76,7 @@ function WardenStudentDetailPage() {
       const { data, error } = await supabase
         .from("students")
         .select(
-          "id, property_id, full_name, admission_number, phone, email, date_of_birth, gender, is_minor, academic_institute, course_name, academic_year, status",
+          "id, property_id, profile_id, full_name, admission_number, phone, email, date_of_birth, gender, is_minor, academic_institute, course_name, academic_year, status",
         )
         .eq("id", id)
         .single();
@@ -99,8 +103,20 @@ function WardenStudentDetailPage() {
   // Warden scope = VE on Student profiles (PRD 7, assigned block); the
   // /warden/students list is already restricted to the warden's assigned
   // property, so any student reachable here is read-in-scope. The edit
-  // server function re-verifies the student's current block before writing,
-  // per PRD 7.1.
+  // warden_can_write_scope against it,
+  // the same pattern updateGuardianPhone uses for property scope.
+  const confirmAdmissionFn = useServerFn(confirmStudentAdmission);
+  const qc = useQueryClient();
+
+  const confirmAdmission = useMutation({
+    mutationFn: () => confirmAdmissionFn({ data: { student_id: id } }),
+    onSuccess: () => {
+      toast.success("Account linked — the student can now sign in to their portal");
+      qc.invalidateQueries({ queryKey: ["student", id] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not link the account"),
+  });
+
   if (studentQ.isLoading || !studentQ.data) return <Skeleton className="h-80 w-full rounded-xl" />;
   const s = studentQ.data;
   const currentAllocation =
@@ -127,7 +143,25 @@ function WardenStudentDetailPage() {
       <PageHeader
         title={s.full_name}
         description={[`Admission #${s.admission_number}`, s.phone].filter(Boolean).join(" · ")}
-        actions={<StudentStatusBadge status={s.status} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <StudentStatusBadge status={s.status} />
+            {!s.profile_id && (
+              <Button
+                variant="outline"
+                disabled={confirmAdmission.isPending}
+                onClick={() => confirmAdmission.mutate()}
+              >
+                {confirmAdmission.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
+                Confirm & link account
+              </Button>
+            )}
+          </div>
+        }
       />
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">

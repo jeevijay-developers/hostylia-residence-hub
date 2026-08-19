@@ -14,7 +14,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   emailLoginSchema,
   phoneLoginSchema,
+  indianMobileSchema,
   normalizeIndianPhone,
+  sanitizePhoneKeystroke,
   type EmailLoginInput,
   type PhoneLoginInput,
 } from "@/schemas/auth";
@@ -62,11 +64,16 @@ function PhoneForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<PhoneLoginInput>({
     resolver: zodResolver(phoneLoginSchema),
     defaultValues: { phone: "" },
+    mode: "onChange",
   });
+  const phoneValue = watch("phone");
+  const phoneValid = indianMobileSchema.safeParse(phoneValue).success;
+  const phoneField = register("phone");
 
   const onSubmit = async (values: PhoneLoginInput) => {
     setSubmitting(true);
@@ -104,7 +111,11 @@ function PhoneForm() {
           placeholder="+91 98765 43210"
           className="min-h-11"
           aria-invalid={errors.phone ? "true" : undefined}
-          {...register("phone")}
+          {...phoneField}
+          onChange={(e) => {
+            e.target.value = sanitizePhoneKeystroke(e.target.value);
+            phoneField.onChange(e);
+          }}
         />
         {errors.phone ? (
           <p className="text-sm text-destructive" role="alert">
@@ -114,7 +125,7 @@ function PhoneForm() {
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
       </div>
-      <Button type="submit" disabled={submitting} className="min-h-11 w-full">
+      <Button type="submit" disabled={submitting || !phoneValid} className="min-h-11 w-full">
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         {t("auth.sendCode")}
       </Button>
@@ -134,6 +145,7 @@ function EmailForm() {
   } = useForm<EmailLoginInput>({
     resolver: zodResolver(emailLoginSchema),
     defaultValues: { email: "", password: "" },
+    mode: "onChange",
   });
   const email = watch("email");
 

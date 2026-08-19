@@ -148,7 +148,7 @@ function StudentDetailPage() {
                 </p>
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {(allocQ.data ?? []).map((a) => {
+                  {((allocQ.data as any[]) ?? []).map((a: any) => {
                     const bed = a.bed as {
                       code: string;
                       room: { room_number: string } | null;

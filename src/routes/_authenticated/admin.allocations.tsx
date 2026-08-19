@@ -63,7 +63,7 @@ function AllocationBoard() {
     queryFn: async (): Promise<BedTile[]> => {
       const { data: beds } = await supabase
         .from("beds")
-        .select("id, code, status")
+        .select("id, code, status, rooms(room_number)")
         .eq("property_id", effectiveProp!)
         .is("deleted_at", null)
         .order("code");
@@ -80,9 +80,11 @@ function AllocationBoard() {
       });
 
       return (beds ?? []).map((b) => ({
-        ...b,
+        id: b.id,
+        code: b.code,
         status: b.status as BedTile["status"],
         occupantName: occupantByBed.get(b.id) ?? null,
+        roomNumber: (b.rooms as { room_number: string } | null)?.room_number ?? null,
       }));
     },
   });

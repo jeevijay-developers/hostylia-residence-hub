@@ -287,7 +287,21 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
       _role: "HOSTEL_ADMIN",
     });
     if (roleErr) throw roleErr;
-    if (!isAdmin) throw new Error("Only a Hostel Admin can confirm admissions");
+
+    if (!isAdmin) {
+      // Write-scope (not just read) since this ultimately updates the
+      // student row itself — matches the "students warden update" RLS
+      // policy, which also checks warden_can_write_scope with a null
+      // block_id (admission confirmation happens before any allocation).
+      const { data: wardenOk, error: wardenErr } = await supabase.rpc("warden_can_write_scope", {
+        _user_id: userId,
+        _tenant_id: student.tenant_id,
+        _property_id: student.property_id,
+        _block_id: null as unknown as string,
+      });
+      if (wardenErr) throw new Error(wardenErr.message);
+      if (!wardenOk) throw new Error("Only a Hostel Admin or Warden can confirm admissions");
+    }
 
     // Match the account they already signed up with — same lookup pattern as
     // staff invites: email first, then phone. `profiles` RLS only allows
@@ -348,7 +362,13 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
       .eq("id", student.id);
     if (linkErr) throw new Error(linkErr.message);
 
-    const { error: mErr } = await supabase.from("tenant_memberships").upsert(
+    // tenant_memberships/role_assignments RLS only grants writes to
+    // HOSTEL_ADMIN (see 20260729103833_add_tenant_membership_role_assignment_write_policies.sql),
+    // so a Warden's request-scoped client would be denied here even though
+    // they were just authorized above — use the service-role client for
+    // just these two writes now that the caller (Admin or in-scope Warden)
+    // has already been validated.
+    const { error: mErr } = await supabaseAdmin.from("tenant_memberships").upsert(
       {
         tenant_id: student.tenant_id,
         user_id: matchedId,
@@ -359,7 +379,7 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
     );
     if (mErr) throw new Error(mErr.message);
 
-    const { error: rErr } = await supabase.from("role_assignments").insert({
+    const { error: rErr } = await supabaseAdmin.from("role_assignments").insert({
       tenant_id: student.tenant_id,
       user_id: matchedId,
       role: "STUDENT",
@@ -592,6 +612,7 @@ async function generateFirstInvoiceForAllocation(
   due.setDate(due.getDate() + graceDays);
 
   const { error } = await supabase.from("invoices").insert({
+    invoice_number: "",
     tenant_id: alloc.tenant_id,
     property_id: alloc.property_id,
     student_id: alloc.student_id,
@@ -852,7 +873,7 @@ export const updateStudentProfile = createServerFn({ method: "POST" })
         _user_id: userId,
         _tenant_id: student.tenant_id,
         _property_id: student.property_id,
-        _block_id: alloc?.block_id ?? null,
+        _block_id: (alloc?.block_id ?? null) as string,
       });
       if (wardenErr) throw new Error(wardenErr.message);
       if (!wardenOk) throw new Error("You don't have permission to edit this student's profile");

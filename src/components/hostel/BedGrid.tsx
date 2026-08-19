@@ -11,6 +11,8 @@ export interface BedTile {
   status: BedStatus;
   /** Full name of the student currently allocated to this bed, if any. */
   occupantName?: string | null;
+  /** Room number this bed belongs to, if known — searchable alongside the bed code. */
+  roomNumber?: string | null;
 }
 
 const STATUS_META: Record<BedStatus, { className: string; label: string; Icon: typeof Bed }> = {
@@ -105,12 +107,20 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
 
   const visibleBeds = useMemo(() => {
-    if (!query.trim()) return beds;
+    if (!query.trim()) {
+      // Room search (below) can surface any status so Occupied rooms stay
+      // findable, but the default board is the bed *selection* list for new
+      // allocations — only Available (VACANT) beds belong here.
+      return variant === "expanded" ? beds.filter((b) => b.status === "VACANT") : beds;
+    }
     const q = query.trim().toLowerCase();
     return beds.filter(
-      (b) => b.code.toLowerCase().includes(q) || (b.occupantName ?? "").toLowerCase().includes(q),
+      (b) =>
+        b.code.toLowerCase().includes(q) ||
+        (b.roomNumber ?? "").toLowerCase().includes(q) ||
+        (b.occupantName ?? "").toLowerCase().includes(q),
     );
-  }, [beds, query]);
+  }, [beds, query, variant]);
 
   if (beds.length === 0) {
     return (
@@ -217,7 +227,7 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
 
       {visibleBeds.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground">
-          No rooms match "{query}".
+          {query.trim() ? `No rooms match "${query}".` : "No available beds right now."}
         </p>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

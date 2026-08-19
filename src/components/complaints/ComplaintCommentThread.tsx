@@ -55,7 +55,9 @@ export function ComplaintCommentThread({
         {(commentsQ.data ?? []).map((m) => (
           <div key={m.id} className="rounded-md border border-border p-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">{m.profiles?.full_name ?? "User"}</span>
+              <span className="font-medium text-foreground">
+                {m.is_anonymous_author ? "Anonymous student" : (m.author_full_name ?? "User")}
+              </span>
               <span className="text-muted-foreground">
                 {new Date(m.created_at).toLocaleString()}
               </span>

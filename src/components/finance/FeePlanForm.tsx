@@ -201,9 +201,23 @@ export function FeePlanForm({
                 </Select>
                 <Input
                   type="number"
-                  placeholder="Amount (paise)"
-                  min={allowZero ? 0 : 1}
-                  {...form.register(`components.${i}.amount_paise`, { valueAsNumber: true })}
+                  step="0.01"
+                  placeholder="Amount (₹)"
+                  min={allowZero ? 0 : 0.01}
+                  // amount_paise is stored/submitted in paise (DB + upsertFeePlan
+                  // expect that), but admins think and type in rupees — convert
+                  // at this UI boundary only, same convention as
+                  // PaymentEntryForm/RefundRequestForm/allocation rent+deposit
+                  // fields elsewhere in this codebase. Never show raw paise.
+                  value={form.watch(`components.${i}.amount_paise`) / 100}
+                  onChange={(e) => {
+                    const rupees = parseFloat(e.target.value);
+                    form.setValue(
+                      `components.${i}.amount_paise`,
+                      Number.isFinite(rupees) ? Math.round(rupees * 100) : 0,
+                      { shouldValidate: true },
+                    );
+                  }}
                 />
                 <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
                   <Trash2 size={14} />

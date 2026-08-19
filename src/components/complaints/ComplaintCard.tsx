@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PriorityBadge, SlaBadge, StatusBadge, slaAccentBorderClass } from "./SlaBadge";
@@ -17,9 +17,8 @@ export function ComplaintCard({
   complaint: ComplaintWithRelations;
   actions?: ReactNode;
 }) {
-  const student = complaint.students;
-  const avatarUrl = student?.profiles?.avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(student.profiles.avatar_path).data.publicUrl
+  const avatarUrl = complaint.student_avatar_path
+    ? supabase.storage.from("avatars").getPublicUrl(complaint.student_avatar_path).data.publicUrl
     : undefined;
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
 
@@ -31,9 +30,9 @@ export function ComplaintCard({
             <span className="font-mono">{complaint.complaint_number}</span>
             <span>·</span>
             <PriorityBadge priority={complaint.priority} />
-            {complaint.complaint_categories?.name && (
+            {complaint.category_name && (
               <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {complaint.complaint_categories.name}
+                {complaint.category_name}
               </span>
             )}
           </div>
@@ -45,22 +44,38 @@ export function ComplaintCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {student && (
+        {complaint.is_anonymous ? (
           <div className="flex items-center gap-2">
             <Avatar className="h-7 w-7">
-              <AvatarImage src={avatarUrl} alt={student.full_name} />
-              <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                {student.full_name.trim()[0]?.toUpperCase() ?? "S"}
+              <AvatarFallback className="bg-muted text-xs text-muted-foreground">
+                <EyeOff className="h-3.5 w-3.5" />
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{student.full_name}</span>
-              {" · "}
-              {student.admission_number}
-              {complaint.rooms?.room_number ? ` · Room ${complaint.rooms.room_number}` : ""}
-              {complaint.blocks?.name ? ` · ${complaint.blocks.name}` : ""}
+              <span className="font-medium text-foreground">Anonymous student</span>
+              {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+              {complaint.block_name ? ` · ${complaint.block_name}` : ""}
             </div>
           </div>
+        ) : (
+          complaint.student_full_name && (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={avatarUrl} alt={complaint.student_full_name} />
+                <AvatarFallback className="bg-primary/10 text-xs text-primary">
+                  {complaint.student_full_name.trim()[0]?.toUpperCase() ?? "S"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{complaint.student_full_name}</span>
+                {complaint.student_admission_number
+                  ? ` · ${complaint.student_admission_number}`
+                  : ""}
+                {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+                {complaint.block_name ? ` · ${complaint.block_name}` : ""}
+              </div>
+            </div>
+          )
         )}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
