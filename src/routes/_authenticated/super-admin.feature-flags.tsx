@@ -29,7 +29,10 @@ function FeatureFlagsPage() {
   const deleteFn = useServerFn(deleteFeatureOverride);
   const qc = useQueryClient();
 
-  const { data: tenants = [] } = useQuery({ queryKey: ["all-tenants"], queryFn: () => listTenantsFn({}) });
+  const { data: tenants = [] } = useQuery({
+    queryKey: ["all-tenants"],
+    queryFn: () => listTenantsFn({}),
+  });
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [newKey, setNewKey] = useState("");
   const [newReason, setNewReason] = useState("");
@@ -59,13 +62,20 @@ function FeatureFlagsPage() {
   });
 
   // Build combined view: union of plan feature keys + override keys.
-  const planMap = new Map<string, any>((feats?.planFeatures ?? []).map((f: any) => [f.feature_key, f]));
-  const overrideMap = new Map<string, any>((feats?.overrides ?? []).map((f: any) => [f.feature_key, f]));
+  const planMap = new Map<string, any>(
+    (feats?.planFeatures ?? []).map((f: any) => [f.feature_key, f]),
+  );
+  const overrideMap = new Map<string, any>(
+    (feats?.overrides ?? []).map((f: any) => [f.feature_key, f]),
+  );
   const allKeys = Array.from(new Set([...planMap.keys(), ...overrideMap.keys()]));
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Feature flags" description="Per-tenant entitlement overrides on top of plan defaults." />
+      <PageHeader
+        title="Feature flags"
+        description="Per-tenant entitlement overrides on top of plan defaults."
+      />
 
       <div className="flex flex-wrap gap-2">
         {tenants.map((t: any) => (
@@ -85,19 +95,33 @@ function FeatureFlagsPage() {
           <div className="rounded-lg border border-border bg-card p-6 space-y-4">
             <h2 className="text-sm font-semibold">Add / change override</h2>
             <div className="grid gap-4 sm:grid-cols-4">
-              <div className="space-y-1"><Label>Feature key</Label><Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="e.g. gate_qr_scanner" /></div>
-              <div className="space-y-1 sm:col-span-2"><Label>Reason (required)</Label><Input value={newReason} onChange={(e) => setNewReason(e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label>Feature key</Label>
+                <Input
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="e.g. gate_qr_scanner"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>Reason (required)</Label>
+                <Input value={newReason} onChange={(e) => setNewReason(e.target.value)} />
+              </div>
               <div className="flex items-end gap-2">
                 <Button
                   disabled={!newKey || newReason.length < 3}
-                  onClick={() => toggle.mutate({ feature_key: newKey, enabled: true, reason: newReason })}
+                  onClick={() =>
+                    toggle.mutate({ feature_key: newKey, enabled: true, reason: newReason })
+                  }
                 >
                   <Check className="h-4 w-4" /> Enable
                 </Button>
                 <Button
                   variant="destructive"
                   disabled={!newKey || newReason.length < 3}
-                  onClick={() => toggle.mutate({ feature_key: newKey, enabled: false, reason: newReason })}
+                  onClick={() =>
+                    toggle.mutate({ feature_key: newKey, enabled: false, reason: newReason })
+                  }
                 >
                   <X className="h-4 w-4" /> Disable
                 </Button>
@@ -120,7 +144,7 @@ function FeatureFlagsPage() {
                 {allKeys.map((key) => {
                   const plan = planMap.get(key);
                   const ovr = overrideMap.get(key);
-                  const effective = ovr ? ovr.enabled : plan?.enabled ?? false;
+                  const effective = ovr ? ovr.enabled : (plan?.enabled ?? false);
                   return (
                     <tr key={key} className="border-t border-border">
                       <td className="px-4 py-2 font-mono text-xs">{key}</td>
@@ -141,7 +165,11 @@ function FeatureFlagsPage() {
                       <td className="px-4 py-2 text-muted-foreground">{ovr?.reason ?? "—"}</td>
                       <td className="px-4 py-2 text-right">
                         {ovr && (
-                          <Button size="sm" variant="ghost" onClick={() => removeOverride.mutate(ovr.id)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeOverride.mutate(ovr.id)}
+                          >
                             <Trash2 className="h-4 w-4" /> Remove override
                           </Button>
                         )}
@@ -150,7 +178,11 @@ function FeatureFlagsPage() {
                   );
                 })}
                 {!allKeys.length && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No features defined yet for this tenant's plan.</td></tr>
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                      No features defined yet for this tenant's plan.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

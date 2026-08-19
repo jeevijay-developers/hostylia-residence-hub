@@ -7,7 +7,11 @@ import { Camera, Upload, FileCheck2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDocument } from "@/lib/student.functions";
@@ -30,7 +34,13 @@ interface Props {
 
 const DOC_TYPES = ["AADHAAR", "COLLEGE_ID", "PHOTO", "OTHER"];
 
-export function KycUploadForm({ tenantId, propertyId, studentId, existingDocs = [], onUploaded }: Props) {
+export function KycUploadForm({
+  tenantId,
+  propertyId,
+  studentId,
+  existingDocs = [],
+  onUploaded,
+}: Props) {
   const [docType, setDocType] = useState("AADHAAR");
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -40,7 +50,10 @@ export function KycUploadForm({ tenantId, propertyId, studentId, existingDocs = 
   // KYC needs exactly one document submission — once anything is pending
   // review or already verified, the whole form locks regardless of type.
   const isSubmitted = useMemo(
-    () => existingDocs.some((d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED"),
+    () =>
+      existingDocs.some(
+        (d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED",
+      ),
     [existingDocs],
   );
 
@@ -90,16 +103,32 @@ export function KycUploadForm({ tenantId, propertyId, studentId, existingDocs = 
         <div className="min-w-40">
           <label className="text-xs font-medium text-muted-foreground">Document type</label>
           <Select value={docType} onValueChange={setDocType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {DOC_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              {DOC_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => cameraRef.current?.click()}>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => cameraRef.current?.click()}
+        >
           <Camera className="h-4 w-4" /> Camera
         </Button>
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => fileRef.current?.click()}>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => fileRef.current?.click()}
+        >
           <Upload className="h-4 w-4" /> Choose file
         </Button>
         <Button
@@ -112,11 +141,26 @@ export function KycUploadForm({ tenantId, propertyId, studentId, existingDocs = 
           {upload.isPending ? "Uploading…" : "Upload"}
         </Button>
       </div>
-      <Input ref={cameraRef} className="hidden" type="file" accept="image/*" capture="environment"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-      <Input ref={fileRef} className="hidden" type="file" accept="image/*,application/pdf"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-      {file && <p className="text-xs text-muted-foreground">Selected: {file.name} ({Math.round(file.size / 1024)} KB)</p>}
+      <Input
+        ref={cameraRef}
+        className="hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+      <Input
+        ref={fileRef}
+        className="hidden"
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+      {file && (
+        <p className="text-xs text-muted-foreground">
+          Selected: {file.name} ({Math.round(file.size / 1024)} KB)
+        </p>
+      )}
     </div>
   );
 }

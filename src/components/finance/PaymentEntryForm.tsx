@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { recordManualPayment } from "@/lib/finance.functions";
@@ -19,7 +23,7 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
   const qc = useQueryClient();
   const record = useServerFn(recordManualPayment);
   const [invoiceId, setInvoiceId] = useState("");
-  const [mode, setMode] = useState<"CASH"|"CHEQUE"|"BANK_TRANSFER"|"UPI"|"OTHER">("CASH");
+  const [mode, setMode] = useState<"CASH" | "CHEQUE" | "BANK_TRANSFER" | "UPI" | "OTHER">("CASH");
   const [amount, setAmount] = useState("");
   const [ref, setRef] = useState("");
   const [chequeDate, setChequeDate] = useState("");
@@ -93,7 +97,10 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
       toast.success(`Payment recorded: ${out.payment_number}`);
       qc.invalidateQueries({ queryKey: ["open-invoices"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
-      setAmount(""); setRef(""); setNotes(""); setInvoiceId("");
+      setAmount("");
+      setRef("");
+      setNotes("");
+      setInvoiceId("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -103,7 +110,9 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
       <div>
         <Label>Invoice</Label>
         <Select value={invoiceId} onValueChange={setInvoiceId}>
-          <SelectTrigger><SelectValue placeholder="Choose invoice" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose invoice" />
+          </SelectTrigger>
           <SelectContent>
             {(openInvoices.data ?? []).map((i) => (
               <SelectItem key={i.id} value={i.id}>
@@ -117,21 +126,34 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
         <div>
           <Label>Mode</Label>
           <Select value={mode} onValueChange={(v) => setMode(v as never)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {["CASH","CHEQUE","BANK_TRANSFER","UPI","OTHER"].map((x) => (
-                <SelectItem key={x} value={x}>{x}</SelectItem>
+              {["CASH", "CHEQUE", "BANK_TRANSFER", "UPI", "OTHER"].map((x) => (
+                <SelectItem key={x} value={x}>
+                  {x}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div>
           <Label>Amount (INR)</Label>
-          <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Input
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
         </div>
         <div>
           <Label>Reference</Label>
-          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Cheque no. / UPI ref" />
+          <Input
+            value={ref}
+            onChange={(e) => setRef(e.target.value)}
+            placeholder="Cheque no. / UPI ref"
+          />
         </div>
         {mode === "CHEQUE" && (
           <div>
@@ -144,10 +166,7 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
         <Label>Notes</Label>
         <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
-      <Button
-        onClick={() => m.mutate()}
-        disabled={!invoiceId || !amount || m.isPending}
-      >
+      <Button onClick={() => m.mutate()} disabled={!invoiceId || !amount || m.isPending}>
         {m.isPending ? "Recording…" : "Record payment"}
       </Button>
     </div>

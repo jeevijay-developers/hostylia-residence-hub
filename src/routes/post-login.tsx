@@ -5,10 +5,7 @@ import { RoleRedirect } from "@/components/auth/RoleRedirect";
 
 export const Route = createFileRoute("/post-login")({
   head: () => ({
-    meta: [
-      { title: "Signing you in — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Signing you in — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: PostLoginPage,
 });

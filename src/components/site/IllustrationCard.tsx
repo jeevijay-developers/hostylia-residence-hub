@@ -11,7 +11,13 @@ type Props = {
  * Premium rounded illustration frame used to present generated brand visuals
  * across the marketing site (CribApp-style cards in Hostylia palette).
  */
-export function IllustrationCard({ src, alt, eager = false, className = "", ratio = "aspect-square" }: Props) {
+export function IllustrationCard({
+  src,
+  alt,
+  eager = false,
+  className = "",
+  ratio = "aspect-square",
+}: Props) {
   return (
     <div
       className={`relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] via-[#0c1530] to-[color:var(--navy)] shadow-2xl ${className}`}

@@ -26,7 +26,10 @@ Deno.serve(async (req) => {
 
   const hookSecret = Deno.env.get("SEND_SMS_HOOK_SECRET");
   if (!hookSecret) {
-    return json({ error: { http_code: 500, message: "Send SMS hook secret not configured." } }, 500);
+    return json(
+      { error: { http_code: 500, message: "Send SMS hook secret not configured." } },
+      500,
+    );
   }
 
   const payload = await req.text();
@@ -43,7 +46,10 @@ Deno.serve(async (req) => {
   const phone = event.user?.phone;
   const otp = event.sms?.otp;
   if (!phone || !otp) {
-    return json({ error: { http_code: 400, message: "Missing user.phone or sms.otp in payload." } }, 400);
+    return json(
+      { error: { http_code: 400, message: "Missing user.phone or sms.otp in payload." } },
+      400,
+    );
   }
 
   const AUTH_KEY = Deno.env.get("MSG91_AUTH_KEY");
@@ -63,9 +69,15 @@ Deno.serve(async (req) => {
       console.log(`[send-sms-hook] DEV BYPASS (allowlisted test phone): phone=${phone} otp=${otp}`);
       return json({}, 200);
     }
-    return json({
-      error: { http_code: 503, message: "MSG91 is not configured — add MSG91_AUTH_KEY and MSG91_TEMPLATE_ID." },
-    }, 503);
+    return json(
+      {
+        error: {
+          http_code: 503,
+          message: "MSG91 is not configured — add MSG91_AUTH_KEY and MSG91_TEMPLATE_ID.",
+        },
+      },
+      503,
+    );
   }
 
   const mobile = phone.replace(/^\+/, "");
@@ -91,16 +103,25 @@ Deno.serve(async (req) => {
 
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body?.type === "error") {
-      return json({
-        error: { http_code: res.status, message: `MSG91 error: ${body?.message ?? "unknown"}` },
-      }, res.status || 502);
+      return json(
+        {
+          error: { http_code: res.status, message: `MSG91 error: ${body?.message ?? "unknown"}` },
+        },
+        res.status || 502,
+      );
     }
 
     return json({}, 200);
   } catch (e) {
-    return json({
-      error: { http_code: 500, message: e instanceof Error ? e.message : "Failed to reach MSG91." },
-    }, 500);
+    return json(
+      {
+        error: {
+          http_code: 500,
+          message: e instanceof Error ? e.message : "Failed to reach MSG91.",
+        },
+      },
+      500,
+    );
   }
 });
 

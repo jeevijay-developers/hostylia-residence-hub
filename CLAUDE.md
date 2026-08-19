@@ -68,6 +68,7 @@ schema per entity — never hand-write a parallel type/validator). `src/integrat
 **Data layer** — this is the load-bearing convention the docs don't fully capture, so read actual code
 over `ARCHITECTURE.md`'s prescribed folder tree. There is **no `src/features/` or `src/services/`
 folder** despite the docs prescribing one. Instead:
+
 - Simple RLS-protected reads: direct `supabase.from(...)` calls wrapped in TanStack Query, colocated
   with the route/component (no dedicated per-domain hooks folder — `src/hooks/` only has
   `use-mobile.tsx`).

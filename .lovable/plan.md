@@ -31,7 +31,9 @@ No changes to header/footer layout in this step beyond adding the two new legal 
 Both pages use the same design language as About / Platform — `PageHero`, dark sections, `bg-section-dark`, gold eyebrow, soft-grey body — so they feel native, not bolted on.
 
 ### `src/routes/terms.tsx` → `/terms`
+
 Sections:
+
 1. Acceptance of Terms
 2. Definitions ("Hostylia", "Customer", "User", "Services")
 3. Account Registration & Eligibility
@@ -49,7 +51,9 @@ Sections:
 15. Contact — company block (see §4)
 
 ### `src/routes/privacy.tsx` → `/privacy`
+
 Sections:
+
 1. Introduction & Scope
 2. Information We Collect (account, property, student/parent, payment, technical/cookies)
 3. How We Use Information (operate Hostylia, billing, support, AI features, security)

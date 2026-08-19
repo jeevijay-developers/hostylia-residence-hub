@@ -65,7 +65,9 @@ function StudentLayout() {
           </p>
           <AgreementViewer
             studentId={gateQ.data.studentId}
-            onAccepted={() => qc.invalidateQueries({ queryKey: ["student-agreement-gate", userId] })}
+            onAccepted={() =>
+              qc.invalidateQueries({ queryKey: ["student-agreement-gate", userId] })
+            }
           />
         </div>
       ) : (

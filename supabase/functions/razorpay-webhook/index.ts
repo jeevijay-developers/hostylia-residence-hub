@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
   );
 
   // Dedupe
-  const { data: existing } = await admin.from("webhook_events")
+  const { data: existing } = await admin
+    .from("webhook_events")
     .select("id, status")
     .eq("provider", "razorpay")
     .eq("event_id", eventId)
@@ -33,7 +34,10 @@ Deno.serve(async (req) => {
   if (existing?.status === "PROCESSED") return new Response("ok", { status: 200 });
   if (!existing) {
     await admin.from("webhook_events").insert({
-      provider: "razorpay", event_id: eventId, event_type: eventType, payload: evt,
+      provider: "razorpay",
+      event_id: eventId,
+      event_type: eventType,
+      payload: evt,
     });
   }
 
@@ -43,17 +47,23 @@ Deno.serve(async (req) => {
       const orderRef: string = payment.order_id;
       const paymentRef: string = payment.id;
 
-      const { data: po } = await admin.from("payment_orders")
+      const { data: po } = await admin
+        .from("payment_orders")
         .select("id, tenant_id, property_id, student_id, invoice_id")
-        .eq("provider", "razorpay").eq("provider_order_ref", orderRef).maybeSingle();
+        .eq("provider", "razorpay")
+        .eq("provider_order_ref", orderRef)
+        .maybeSingle();
 
       if (po) {
         await admin.from("payment_orders").update({ status: "PAID" }).eq("id", po.id);
 
         // Insert or update payments row (idempotent by provider_payment_ref)
-        const { data: existingPay } = await admin.from("payments")
-          .select("id").eq("provider", "razorpay")
-          .eq("provider_payment_ref", paymentRef).maybeSingle();
+        const { data: existingPay } = await admin
+          .from("payments")
+          .select("id")
+          .eq("provider", "razorpay")
+          .eq("provider_payment_ref", paymentRef)
+          .maybeSingle();
 
         if (!existingPay) {
           await admin.from("payments").insert({
@@ -63,9 +73,14 @@ Deno.serve(async (req) => {
             invoice_id: po.invoice_id,
             payment_order_id: po.id,
             payment_number: "",
-            mode: payment.method === "upi" ? "UPI"
-              : payment.method === "card" ? "CARD"
-              : payment.method === "netbanking" ? "NETBANKING" : "OTHER",
+            mode:
+              payment.method === "upi"
+                ? "UPI"
+                : payment.method === "card"
+                  ? "CARD"
+                  : payment.method === "netbanking"
+                    ? "NETBANKING"
+                    : "OTHER",
             provider: "razorpay",
             provider_payment_ref: paymentRef,
             provider_order_ref: orderRef,
@@ -81,7 +96,8 @@ Deno.serve(async (req) => {
         // 19.3/19.5. Guarded inside the DB function by status =
         // PENDING_PAYMENT, so later rent payments (allocation already
         // ACTIVE) are a no-op.
-        const { data: pendingAlloc } = await admin.from("allocations")
+        const { data: pendingAlloc } = await admin
+          .from("allocations")
           .select("id")
           .eq("student_id", po.student_id)
           .eq("status", "PENDING_PAYMENT")
@@ -94,25 +110,40 @@ Deno.serve(async (req) => {
         }
       }
     }
-    await admin.from("webhook_events").update({
-      status: "PROCESSED", processed_at: new Date().toISOString(),
-    }).eq("provider", "razorpay").eq("event_id", eventId);
+    await admin
+      .from("webhook_events")
+      .update({
+        status: "PROCESSED",
+        processed_at: new Date().toISOString(),
+      })
+      .eq("provider", "razorpay")
+      .eq("event_id", eventId);
     return new Response("ok", { status: 200 });
   } catch (e) {
-    await admin.from("webhook_events").update({
-      status: "FAILED", error: e instanceof Error ? e.message : "unknown",
-    }).eq("provider", "razorpay").eq("event_id", eventId);
+    await admin
+      .from("webhook_events")
+      .update({
+        status: "FAILED",
+        error: e instanceof Error ? e.message : "unknown",
+      })
+      .eq("provider", "razorpay")
+      .eq("event_id", eventId);
     return new Response("error", { status: 500 });
   }
 });
 
 async function verifyHmac(body: string, signature: string, secret: string) {
   const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
   );
   const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-  const hex = Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   // constant-time-ish compare
   if (hex.length !== signature.length) return false;
   let diff = 0;

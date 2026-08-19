@@ -13,10 +13,7 @@ const accessPendingSearchSchema = z.object({
 export const Route = createFileRoute("/access-pending")({
   validateSearch: accessPendingSearchSchema,
   head: () => ({
-    meta: [
-      { title: "Access pending — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Access pending — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: AccessPendingPage,
 });
@@ -35,9 +32,9 @@ function AccessPendingPage() {
           <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
           {isStudent ? (
             <p>
-              You're signed up, but your admission record isn't linked to this account yet.
-              Once your hostel admin or warden confirms your admission, you'll see your room,
-              fees, attendance and complaints here.
+              You're signed up, but your admission record isn't linked to this account yet. Once
+              your hostel admin or warden confirms your admission, you'll see your room, fees,
+              attendance and complaints here.
             </p>
           ) : (
             <p>
@@ -52,13 +49,17 @@ function AccessPendingPage() {
           <ul className="list-disc space-y-1 pl-5">
             {isStudent ? (
               <>
-                <li>Contact your hostel administration and share the phone/email you signed up with.</li>
+                <li>
+                  Contact your hostel administration and share the phone/email you signed up with.
+                </li>
                 <li>Ask them to confirm your admission and link this account to your record.</li>
                 <li>Once linked, sign in again — you'll land straight on your student home.</li>
               </>
             ) : (
               <>
-                <li>Contact your hostel administration and share the phone number you used to sign in.</li>
+                <li>
+                  Contact your hostel administration and share the phone number you used to sign in.
+                </li>
                 <li>Ask them to link it to your child's profile in Hostylia.</li>
                 <li>Once linked, sign in again with the same number.</li>
               </>
@@ -88,7 +89,9 @@ function AccessPendingPage() {
           Sign out
         </Button>
         <p className="text-center text-xs">
-          <Link to="/" className="underline hover:text-foreground">Back to Hostylia home</Link>
+          <Link to="/" className="underline hover:text-foreground">
+            Back to Hostylia home
+          </Link>
         </p>
       </div>
     </AuthLayout>

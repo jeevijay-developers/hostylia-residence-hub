@@ -107,7 +107,10 @@ export function RoleRedirect() {
       //    default parent-oriented one.
       const signupRole = user.user_metadata?.signup_role as string | undefined;
       if (!cancelled) {
-        navigate({ to: "/access-pending", search: signupRole === "STUDENT" ? { as: "student" } : undefined });
+        navigate({
+          to: "/access-pending",
+          search: signupRole === "STUDENT" ? { as: "student" } : undefined,
+        });
       }
     }
 
@@ -126,7 +129,11 @@ export function RoleRedirect() {
       <p className="text-sm text-muted-foreground">
         {provisioning ? "Setting up your hostel…" : "Signing you in…"}
       </p>
-      {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -55,7 +55,6 @@
   --color-bed-maintenance: var(--bed-maintenance);
   --color-bed-blocked: var(--bed-blocked);
 
-
   /* Legacy marketing-site brand tokens (kept so existing landing pages don't break) */
   --color-navy: var(--navy);
   --color-indigo-deep: var(--indigo-deep);
@@ -80,28 +79,62 @@
   --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   @keyframes fade-up {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
   @keyframes step-next {
-    from { opacity: 0; transform: translateX(22px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(22px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   @keyframes step-prev {
-    from { opacity: 0; transform: translateX(-22px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(-22px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
@@ -112,54 +145,52 @@
   --radius: 0.75rem;
 
   /* Hostylia brand — Design.md */
-  --background: #F6F8F8;
-  --foreground: #0A141E;
-  --card: #FFFFFF;
-  --card-foreground: #0A141E;
-  --popover: #FFFFFF;
-  --popover-foreground: #0A141E;
-  --primary: #00696F;
-  --primary-foreground: #FFFFFF;
-  --secondary: #00609C;
-  --secondary-foreground: #FFFFFF;
-  --muted: #F0F3F3;
-  --muted-foreground: #51606B;
-  --accent: #00609C;
-  --accent-foreground: #FFFFFF;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #DCE4E7;
-  --input: #CBD6DA;
-  --ring: #00D8CC;
+  --background: #f6f8f8;
+  --foreground: #0a141e;
+  --card: #ffffff;
+  --card-foreground: #0a141e;
+  --popover: #ffffff;
+  --popover-foreground: #0a141e;
+  --primary: #00696f;
+  --primary-foreground: #ffffff;
+  --secondary: #00609c;
+  --secondary-foreground: #ffffff;
+  --muted: #f0f3f3;
+  --muted-foreground: #51606b;
+  --accent: #00609c;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #dce4e7;
+  --input: #cbd6da;
+  --ring: #00d8cc;
 
-  --success: #15803D;
-  --success-foreground: #FFFFFF;
-  --warning: #B45309;
-  --warning-foreground: #FFFFFF;
-  --info: #00609C;
-  --info-foreground: #FFFFFF;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --info: #00609c;
+  --info-foreground: #ffffff;
 
-  --brand-teal: #00B4B4;
-  --brand-cyan: #00D8CC;
+  --brand-teal: #00b4b4;
+  --brand-cyan: #00d8cc;
 
   /* Bed-status palette — Design.md Sec 4.3 (light mode only for now) */
-  --bed-vacant: #8A98A0;
-  --bed-occupied: #15803D;
-  --bed-maintenance: #B45309;
-  --bed-blocked: #DC2626;
-
-
+  --bed-vacant: #8a98a0;
+  --bed-occupied: #15803d;
+  --bed-maintenance: #b45309;
+  --bed-blocked: #dc2626;
 
   /* Legacy marketing tokens — retained so existing landing pages
      (which run in a .dark scope, see __root.tsx) render unchanged. */
-  --navy: #070B18;
-  --indigo-deep: #111B3D;
-  --brand-blue: #0E6BA8;
-  --trust-green: #2F8F6B;
-  --soft-teal: #4FB7A8;
-  --gold: #D9A441;
-  --soft-grey: #B8C0CC;
-  --light-bg: #F7F8FB;
+  --navy: #070b18;
+  --indigo-deep: #111b3d;
+  --brand-blue: #0e6ba8;
+  --trust-green: #2f8f6b;
+  --soft-teal: #4fb7a8;
+  --gold: #d9a441;
+  --soft-grey: #b8c0cc;
+  --light-bg: #f7f8fb;
   --dark-border: #263247;
 }
 
@@ -172,41 +203,42 @@
    from the brand per Design.md Sec 4.2.
    ===================================================================== */
 .dark {
-  --background: #070B18;           /* navy — same ground as the landing page */
-  --foreground: #E9EEF7;
-  --card: #111B3D;                 /* indigo-deep — same panel as marketing cards */
-  --card-foreground: #E9EEF7;
-  --popover: #111B3D;
-  --popover-foreground: #E9EEF7;
-  --primary: #D9A441;              /* gold — matches the site's primary CTA */
-  --primary-foreground: #070B18;
-  --secondary: #0E6BA8;            /* brand blue */
-  --secondary-foreground: #FFFFFF;
-  --muted: #0F1730;
-  --muted-foreground: #B8C0CC;     /* soft-grey */
+  --background: #070b18; /* navy — same ground as the landing page */
+  --foreground: #e9eef7;
+  --card: #111b3d; /* indigo-deep — same panel as marketing cards */
+  --card-foreground: #e9eef7;
+  --popover: #111b3d;
+  --popover-foreground: #e9eef7;
+  --primary: #d9a441; /* gold — matches the site's primary CTA */
+  --primary-foreground: #070b18;
+  --secondary: #0e6ba8; /* brand blue */
+  --secondary-foreground: #ffffff;
+  --muted: #0f1730;
+  --muted-foreground: #b8c0cc; /* soft-grey */
   /* `accent` is shadcn's subtle hover surface (hover:bg-accent), not a
      vivid brand colour — keep it a raised navy so hovers stay quiet. */
-  --accent: #17223F;
-  --accent-foreground: #E9EEF7;
-  --destructive: #F87171;
-  --destructive-foreground: #070B18;
-  --border: #263247;               /* dark-border — same as marketing */
+  --accent: #17223f;
+  --accent-foreground: #e9eef7;
+  --destructive: #f87171;
+  --destructive-foreground: #070b18;
+  --border: #263247; /* dark-border — same as marketing */
   --input: #263247;
-  --ring: #4FB7A8;                 /* soft-teal focus ring */
+  --ring: #4fb7a8; /* soft-teal focus ring */
 
-  --success: #34D399;
-  --success-foreground: #070B18;
-  --warning: #FBBF24;
-  --warning-foreground: #070B18;
-  --info: #60A5FA;
-  --info-foreground: #070B18;
+  --success: #34d399;
+  --success-foreground: #070b18;
+  --warning: #fbbf24;
+  --warning-foreground: #070b18;
+  --info: #60a5fa;
+  --info-foreground: #070b18;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -254,7 +286,9 @@
      always respected — animated content appears instantly rather than
      sliding. */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -266,12 +300,20 @@
 @layer utilities {
   .bg-hero-gradient {
     background:
-      radial-gradient(ellipse 80% 60% at 20% 10%, color-mix(in oklab, var(--brand-blue) 25%, transparent), transparent 60%),
-      radial-gradient(ellipse 60% 50% at 90% 30%, color-mix(in oklab, var(--soft-teal) 18%, transparent), transparent 60%),
-      linear-gradient(180deg, #070B18 0%, #0B1024 50%, #070B18 100%);
+      radial-gradient(
+        ellipse 80% 60% at 20% 10%,
+        color-mix(in oklab, var(--brand-blue) 25%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 90% 30%,
+        color-mix(in oklab, var(--soft-teal) 18%, transparent),
+        transparent 60%
+      ),
+      linear-gradient(180deg, #070b18 0%, #0b1024 50%, #070b18 100%);
   }
   .bg-section-dark {
-    background: linear-gradient(180deg, #070B18 0%, #0A1226 100%);
+    background: linear-gradient(180deg, #070b18 0%, #0a1226 100%);
   }
   .glass-panel {
     background: linear-gradient(180deg, rgba(17, 27, 61, 0.92), rgba(11, 16, 36, 0.92));
@@ -280,7 +322,10 @@
     border: 1px solid var(--dark-border);
   }
   .card-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    transition:
+      transform 0.3s ease,
+      box-shadow 0.3s ease,
+      border-color 0.3s ease;
   }
   .card-lift:hover {
     transform: translateY(-4px);
@@ -288,13 +333,13 @@
     border-color: color-mix(in oklab, var(--soft-teal) 50%, var(--dark-border));
   }
   .text-gradient-teal {
-    background: linear-gradient(135deg, #4FB7A8 0%, #2F8F6B 100%);
+    background: linear-gradient(135deg, #4fb7a8 0%, #2f8f6b 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
   .text-gradient-brand {
-    background: linear-gradient(135deg, #FFFFFF 0%, #B8C0CC 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #b8c0cc 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

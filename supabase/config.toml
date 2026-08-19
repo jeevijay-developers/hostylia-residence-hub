@@ -15,8 +15,13 @@ secrets = "env(SEND_SMS_HOOK_SECRET)"
 # unscoped `supabase config push` would otherwise silently reset to the
 # CLI's local-dev template defaults.
 [auth]
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:8080"]
+# Production site — every Auth email's {{ .SiteURL }}/{{ .ConfirmationURL }}
+# is built from this (password reset, signup confirmation, phone-OTP-adjacent
+# emails). Was still the local-dev placeholder; fixed so no production auth
+# email ever embeds a localhost link. localhost:8080 kept in
+# additional_redirect_urls only so `bun run dev` still works for local testing.
+site_url = "https://hostylia-residence-hub.vercel.app"
+additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "http://localhost:8080"]
 
 [auth.mfa.totp]
 enroll_enabled = true
@@ -26,3 +31,10 @@ verify_enabled = true
 enable_confirmations = true
 max_frequency = "1m0s"
 otp_length = 8
+
+# Reset Password ("Forgot Password") email — branded to match the Staff
+# Invitation email's design system. GoTrue reuses this same slot for
+# resetPasswordForEmail regardless of email address, no code path change.
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./supabase/templates/recovery.html"

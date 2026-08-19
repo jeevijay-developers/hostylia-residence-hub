@@ -4,7 +4,11 @@ import { useResolvedRole } from "@/lib/user-role";
 import { useLinkedChildren, type ParentChild } from "@/lib/parent";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 interface Ctx {
@@ -29,8 +33,10 @@ export function ParentPageFrame({
   requirePermission,
   children,
 }: {
-  requirePermission?: keyof Pick<ParentChild,
-    "can_view_attendance" | "can_view_complaints" | "can_view_gate_events" | "can_pay_fees">;
+  requirePermission?: keyof Pick<
+    ParentChild,
+    "can_view_attendance" | "can_view_complaints" | "can_view_gate_events" | "can_pay_fees"
+  >;
   children: (child: ParentChild) => ReactNode;
 }) {
   const { t } = useTranslation();
@@ -41,16 +47,17 @@ export function ParentPageFrame({
 
   const list = childrenQ.data ?? [];
   const current =
-    list.find((c) => c.student_id === selected) ??
-    list.find((c) => c.is_primary) ??
-    list[0];
+    list.find((c) => c.student_id === selected) ?? list.find((c) => c.is_primary) ?? list[0];
 
   // Hooks must run unconditionally on every render (including the loading
   // and empty-list renders below) so the hook count/order never changes
   // between a cold render (fresh page load) and a warm one (cached query
   // data) — otherwise React throws on the loading -> loaded transition.
   const ctx = useMemo<Ctx | null>(
-    () => (current && userId ? { child: current, children: list, userId, setChildId: setSelected } : null),
+    () =>
+      current && userId
+        ? { child: current, children: list, userId, setChildId: setSelected }
+        : null,
     [current, list, userId],
   );
 
@@ -70,10 +77,7 @@ export function ParentPageFrame({
     <ParentChildContext.Provider value={ctx!}>
       <div className="space-y-4">
         {list.length > 1 && (
-          <Select
-            value={current.student_id}
-            onValueChange={(v) => setSelected(v)}
-          >
+          <Select value={current.student_id} onValueChange={(v) => setSelected(v)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={t("parent.childSwitcher")} />
             </SelectTrigger>

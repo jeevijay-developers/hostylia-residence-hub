@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, DoorOpen, Link2, Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { DetailPageSkeleton } from "@/components/dashboard/DetailPageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,14 +61,25 @@ function StudentDetailPage() {
   });
 
   if (studentQ.isLoading || !studentQ.data) {
-    return <Skeleton className="h-64 w-full" />;
+    return (
+      <div className="space-y-6">
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/admin/students">
+            <ArrowLeft className="h-4 w-4" /> Back to students
+          </Link>
+        </Button>
+        <DetailPageSkeleton />
+      </div>
+    );
   }
   const s = studentQ.data;
 
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm">
-        <Link to="/admin/students"><ArrowLeft className="h-4 w-4" /> Back to students</Link>
+        <Link to="/admin/students">
+          <ArrowLeft className="h-4 w-4" /> Back to students
+        </Link>
       </Button>
 
       <PageHeader
@@ -103,7 +115,9 @@ function StudentDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="lg:row-span-2">
-          <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 text-sm">
             <Info label="Email" value={s.email ?? "—"} />
             <Info label="Date of birth" value={s.date_of_birth ?? "—"} />
@@ -119,14 +133,19 @@ function StudentDetailPage() {
           <GuardianCard studentId={id} canEdit />
 
           <Card>
-            <CardHeader><CardTitle>Allocation history</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Allocation history</CardTitle>
+            </CardHeader>
             <CardContent>
               {allocQ.isError ? (
                 <p className="text-sm text-destructive">
-                  Couldn't load allocations: {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
+                  Couldn't load allocations:{" "}
+                  {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
                 </p>
               ) : (allocQ.data ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No allocations yet. Assign a bed from Allocations.</p>
+                <p className="text-sm text-muted-foreground">
+                  No allocations yet. Assign a bed from Allocations.
+                </p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {(allocQ.data ?? []).map((a) => {
@@ -147,7 +166,10 @@ function StudentDetailPage() {
                           {bed
                             ? [
                                 bed.block?.name && `Block ${bed.block.name}`,
-                                bed.floor?.name ?? (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
+                                bed.floor?.name ??
+                                  (bed.floor?.floor_number != null
+                                    ? `Floor ${bed.floor.floor_number}`
+                                    : null),
                                 bed.room?.room_number && `Room ${bed.room.room_number}`,
                                 `Bed ${bed.code}`,
                               ]

@@ -21,18 +21,16 @@ export function writeCookieLocale(locale: AppLocale) {
 }
 
 if (!i18n.isInitialized) {
-  void i18n
-    .use(initReactI18next)
-    .init({
-      resources: {
-        en: { translation: en },
-        hi: { translation: hi },
-      },
-      lng: readCookieLocale() ?? "en",
-      fallbackLng: "en",
-      interpolation: { escapeValue: false },
-      returnNull: false,
-    });
+  void i18n.use(initReactI18next).init({
+    resources: {
+      en: { translation: en },
+      hi: { translation: hi },
+    },
+    lng: readCookieLocale() ?? "en",
+    fallbackLng: "en",
+    interpolation: { escapeValue: false },
+    returnNull: false,
+  });
 }
 
 export default i18n;

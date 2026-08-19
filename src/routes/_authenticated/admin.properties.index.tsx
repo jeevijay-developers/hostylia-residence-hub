@@ -10,14 +10,24 @@ import {
 } from "lucide-react";
 
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { TableSkeleton } from "@/components/dashboard/TableSkeleton";
 import { Button } from "@/components/ui/button";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -28,7 +38,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -122,7 +136,11 @@ function PropertiesListPage() {
       if (!nameValid) throw new Error("Enter a valid property name");
       if (!cityValid) throw new Error("Select or enter a city");
       const slug =
-        name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+        name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
           .slice(0, 40) || `property-${Date.now()}`;
       const { data, error } = await supabase
         .from("properties")
@@ -165,9 +183,24 @@ function PropertiesListPage() {
       </div>
 
       {properties.isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+        <div className="rounded-lg border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>City</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Beds</TableHead>
+                <TableHead className="text-right">Occupancy</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableSkeleton
+              columns={6}
+              rows={6}
+              widths={["w-32", "w-24", "w-20", "w-16", "w-12", "w-8"]}
+            />
+          </Table>
         </div>
       ) : (properties.data ?? []).length === 0 ? (
         <EmptyState
@@ -266,10 +299,14 @@ function PropertiesListPage() {
             <div>
               <Label htmlFor="p-city">City</Label>
               <Select value={city} onValueChange={setCity}>
-                <SelectTrigger id="p-city"><SelectValue placeholder="Select a city" /></SelectTrigger>
+                <SelectTrigger id="p-city">
+                  <SelectValue placeholder="Select a city" />
+                </SelectTrigger>
                 <SelectContent>
                   {INDIAN_CITIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                   <SelectItem value={OTHER_CITY_OPTION}>Other…</SelectItem>
                 </SelectContent>
@@ -282,13 +319,15 @@ function PropertiesListPage() {
                   onChange={(e) => setCustomCity(e.target.value)}
                 />
               )}
-              {!cityValid && (city.length > 0) && (
+              {!cityValid && city.length > 0 && (
                 <p className="mt-1 text-xs text-destructive">City is required.</p>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={() => createMut.mutate()}
               disabled={!nameValid || !cityValid || createMut.isPending}

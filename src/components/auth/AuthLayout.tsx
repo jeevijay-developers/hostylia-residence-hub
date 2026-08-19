@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { BrandLockup } from "@/components/BrandLockup";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -12,20 +13,22 @@ interface AuthLayoutProps {
 
 /**
  * Shared shell for /login, /signup, /verify-otp, /access-pending, /403.
- * Mobile-first, centered card on larger screens. Always dark (matches the
- * marketing/landing page palette) — same `dark` class-forcing pattern as
- * the non-app route wrapper in __root.tsx, not tied to the theme store.
+ * Mobile-first, centered card on larger screens. Supports light and dark mode.
  */
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const { t, i18n } = useTranslation();
   const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
   return (
-    <div className="dark flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground" lang={langAttr}>
+    <div
+      className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground"
+      lang={langAttr}
+    >
       <header className="relative flex items-center justify-center px-4 pt-8 pb-4 sm:pt-12">
         <Link to="/" className="inline-flex items-center gap-2" aria-label="Hostylia home">
           <BrandLockup variant="lockup" className="h-7 sm:h-8" />
         </Link>
         <div className="absolute right-3 top-6 flex items-center gap-1 sm:top-10">
+          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </header>
@@ -37,21 +40,23 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
               <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 {title}
               </h1>
-              {subtitle ? (
-                <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
-              ) : null}
+              {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
             </div>
             {children}
           </div>
           <p className="mt-6 text-center text-xs text-muted-foreground">
             {t("auth.termsPrefix")}{" "}
-            <Link to="/terms" className="underline hover:text-foreground">{t("auth.terms")}</Link>{" "}
+            <Link to="/terms" className="underline hover:text-foreground">
+              {t("auth.terms")}
+            </Link>{" "}
             {t("auth.and")}{" "}
-            <Link to="/privacy" className="underline hover:text-foreground">{t("auth.privacy")}</Link>.
+            <Link to="/privacy" className="underline hover:text-foreground">
+              {t("auth.privacy")}
+            </Link>
+            .
           </p>
         </div>
       </main>
     </div>
   );
 }
-

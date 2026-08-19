@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, Loader2, Paperclip, Send } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { DetailPageSkeleton } from "@/components/dashboard/DetailPageSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -155,7 +156,18 @@ function AdminSupportTicketDetailPage() {
     window.open(data.signedUrl, "_blank", "noopener");
   }
 
-  if (ticketQ.isLoading) return <Skeleton className="h-96 w-full" />;
+  if (ticketQ.isLoading) {
+    return (
+      <div className="space-y-6">
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/admin/support">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
+        </Button>
+        <DetailPageSkeleton />
+      </div>
+    );
+  }
   const ticket = ticketQ.data;
   if (!ticket) return <p className="text-sm text-muted-foreground">Ticket not found.</p>;
 

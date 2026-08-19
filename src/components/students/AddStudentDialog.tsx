@@ -5,13 +5,21 @@ import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { createStudentManual } from "@/lib/student.functions";
 
@@ -57,8 +65,13 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
       toast.success(`Student added — admission #${r.admission_number}`);
       onDone();
       onOpenChange(false);
-      setFullName(""); setPhone(""); setEmail(""); setGender(""); setDob("");
-      setGuardianName(""); setGuardianPhone("");
+      setFullName("");
+      setPhone("");
+      setEmail("");
+      setGender("");
+      setDob("");
+      setGuardianName("");
+      setGuardianPhone("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to add student"),
   });
@@ -77,11 +90,21 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="s-phone">Phone</Label>
-              <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91…" />
+              <Input
+                id="s-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91…"
+              />
             </div>
             <div>
               <Label htmlFor="s-email">Email</Label>
-              <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="s-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -92,7 +115,9 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
             <div>
               <Label>Gender</Label>
               <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MALE">Male</SelectItem>
                   <SelectItem value="FEMALE">Female</SelectItem>
@@ -104,16 +129,27 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 border-t border-border pt-4">
             <div>
               <Label htmlFor="s-g-name">Guardian name *</Label>
-              <Input id="s-g-name" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
+              <Input
+                id="s-g-name"
+                value={guardianName}
+                onChange={(e) => setGuardianName(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="s-g-phone">Guardian phone *</Label>
-              <Input id="s-g-phone" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} placeholder="+91…" />
+              <Input
+                id="s-g-phone"
+                value={guardianPhone}
+                onChange={(e) => setGuardianPhone(e.target.value)}
+                placeholder="+91…"
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button disabled={!canSubmit || createMut.isPending} onClick={() => createMut.mutate()}>
             <UserPlus className="h-4 w-4" /> Add student
           </Button>

@@ -9,10 +9,7 @@ import { getPublicPropertyBySlug } from "@/lib/public-property.functions";
 export const Route = createFileRoute("/apply/$propertySlug")({
   ssr: false,
   head: () => ({
-    meta: [
-      { title: "Apply for admission — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Apply for admission — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: PublicApplyPage,
 });
@@ -52,7 +49,8 @@ function PublicApplyPage() {
         <CardContent>
           {notFound && (
             <p className="text-sm text-muted-foreground">
-              The property link you followed isn't active. Please contact the hostel for a valid application link.
+              The property link you followed isn't active. Please contact the hostel for a valid
+              application link.
             </p>
           )}
           {property && !submittedRef && (

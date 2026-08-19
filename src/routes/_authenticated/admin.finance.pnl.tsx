@@ -12,7 +12,8 @@ export const Route = createFileRoute("/_authenticated/admin/finance/pnl")({
 
 function RevenueCollectionsPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
-  if (!propertyId) return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
+  if (!propertyId)
+    return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
   return (
     <div className="space-y-6">
       <PageHeader title="Revenue & Collections Summary" />

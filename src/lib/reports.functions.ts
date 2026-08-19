@@ -32,15 +32,12 @@ export const getOccupancyReport = createServerFn({ method: "POST" })
     ) as string[];
     let blockNames: Record<string, string> = {};
     if (blockIds.length > 0) {
-      const { data: bl } = await supabase
-        .from("blocks")
-        .select("id, name")
-        .in("id", blockIds);
+      const { data: bl } = await supabase.from("blocks").select("id, name").in("id", blockIds);
       blockNames = Object.fromEntries((bl ?? []).map((b) => [b.id, b.name]));
     }
     return (rows ?? []).map((r: any) => ({
       ...r,
-      block_name: r.block_id ? blockNames[r.block_id] ?? "(unnamed block)" : "(no block)",
+      block_name: r.block_id ? (blockNames[r.block_id] ?? "(unnamed block)") : "(no block)",
     }));
   });
 
@@ -55,7 +52,9 @@ export const getAgingReport = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: rows, error } = await supabase
       .from("v_invoice_aging" as never)
-      .select("id, invoice_number, student_id, issue_date, due_date, status, total_paise, paid_paise, balance_paise, days_overdue, aging_bucket, students(full_name)" as never)
+      .select(
+        "id, invoice_number, student_id, issue_date, due_date, status, total_paise, paid_paise, balance_paise, days_overdue, aging_bucket, students(full_name)" as never,
+      )
       .eq("property_id", data.property_id)
       .order("days_overdue", { ascending: false })
       .limit(500);
@@ -104,8 +103,12 @@ export const getSlaComplianceReport = createServerFn({ method: "POST" })
       .eq("property_id", data.property_id);
     if (error) throw new Error(error.message);
 
-    const catIds = Array.from(new Set((rows ?? []).map((r: any) => r.category_id).filter(Boolean))) as string[];
-    const wardenIds = Array.from(new Set((rows ?? []).map((r: any) => r.assigned_to).filter(Boolean))) as string[];
+    const catIds = Array.from(
+      new Set((rows ?? []).map((r: any) => r.category_id).filter(Boolean)),
+    ) as string[];
+    const wardenIds = Array.from(
+      new Set((rows ?? []).map((r: any) => r.assigned_to).filter(Boolean)),
+    ) as string[];
     const [catRes, wardenRes] = await Promise.all([
       catIds.length
         ? supabase.from("complaint_categories").select("id, name").in("id", catIds)
@@ -115,12 +118,14 @@ export const getSlaComplianceReport = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as any[] }),
     ]);
     const catMap = Object.fromEntries(((catRes.data ?? []) as any[]).map((c) => [c.id, c.name]));
-    const wardenMap = Object.fromEntries(((wardenRes.data ?? []) as any[]).map((w) => [w.id, w.full_name]));
+    const wardenMap = Object.fromEntries(
+      ((wardenRes.data ?? []) as any[]).map((w) => [w.id, w.full_name]),
+    );
 
     return (rows ?? []).map((r: any) => ({
       ...r,
-      category_name: r.category_id ? catMap[r.category_id] ?? "(unknown)" : "(uncategorised)",
-      warden_name: r.assigned_to ? wardenMap[r.assigned_to] ?? "(unknown)" : "(unassigned)",
+      category_name: r.category_id ? (catMap[r.category_id] ?? "(unknown)") : "(uncategorised)",
+      warden_name: r.assigned_to ? (wardenMap[r.assigned_to] ?? "(unknown)") : "(unassigned)",
     }));
   });
 
@@ -154,7 +159,10 @@ export const getAttendanceReport = createServerFn({ method: "POST" })
         .select("id, full_name, admission_number")
         .in("id", studentIds);
       studentInfo = Object.fromEntries(
-        (st ?? []).map((s) => [s.id, { full_name: s.full_name, admission_number: s.admission_number }]),
+        (st ?? []).map((s) => [
+          s.id,
+          { full_name: s.full_name, admission_number: s.admission_number },
+        ]),
       );
     }
 

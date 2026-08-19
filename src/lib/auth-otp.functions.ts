@@ -81,7 +81,8 @@ export const sendPhoneOtp = createServerFn({ method: "POST" })
       return { ok: true as const, message: null };
     } catch (err) {
       console.error("sendPhoneOtp: unexpected failure reaching Supabase", err);
-      const cause = err instanceof Error ? (err.cause as { message?: string } | undefined) : undefined;
+      const cause =
+        err instanceof Error ? (err.cause as { message?: string } | undefined) : undefined;
       const detail = (err instanceof Error && err.message) || cause?.message || "unknown error";
       return {
         ok: false as const,

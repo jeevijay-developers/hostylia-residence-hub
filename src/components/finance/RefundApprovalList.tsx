@@ -15,7 +15,9 @@ export function RefundApprovalList({ propertyId }: { propertyId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("refunds")
-        .select("id, refund_number, amount_paise, reason, initiated_by, initiated_at, students(full_name)")
+        .select(
+          "id, refund_number, amount_paise, reason, initiated_by, initiated_at, students(full_name)",
+        )
         .eq("property_id", propertyId)
         .eq("status", "PENDING_APPROVAL")
         .order("initiated_at", { ascending: false });
@@ -36,7 +38,8 @@ export function RefundApprovalList({ propertyId }: { propertyId: string }) {
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   const rows = q.data ?? [];
-  if (!rows.length) return <p className="text-sm text-muted-foreground">No pending refund approvals.</p>;
+  if (!rows.length)
+    return <p className="text-sm text-muted-foreground">No pending refund approvals.</p>;
 
   return (
     <div className="space-y-2">
@@ -45,15 +48,20 @@ export function RefundApprovalList({ propertyId }: { propertyId: string }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-mono text-xs">{r.refund_number}</p>
-              <p className="font-medium">{r.students?.full_name ?? "—"} — {formatInr(r.amount_paise)}</p>
+              <p className="font-medium">
+                {r.students?.full_name ?? "—"} — {formatInr(r.amount_paise)}
+              </p>
               <p className="text-sm text-muted-foreground">{r.reason}</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => m.mutate({ id: r.id, decision: "APPROVED" })}>
                 Approve
               </Button>
-              <Button size="sm" variant="outline"
-                onClick={() => m.mutate({ id: r.id, decision: "REJECTED" })}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => m.mutate({ id: r.id, decision: "REJECTED" })}
+              >
                 Reject
               </Button>
             </div>

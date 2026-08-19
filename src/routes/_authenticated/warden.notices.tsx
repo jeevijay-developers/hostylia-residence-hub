@@ -34,7 +34,9 @@ function WardenNoticesPage() {
       {propertyId ? (
         <NoticeComposer propertyId={propertyId} />
       ) : (
-        <p className="text-sm text-muted-foreground">No property assignment found for your warden role.</p>
+        <p className="text-sm text-muted-foreground">
+          No property assignment found for your warden role.
+        </p>
       )}
     </div>
   );

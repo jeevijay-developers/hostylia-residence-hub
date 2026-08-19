@@ -33,9 +33,8 @@ export function RevenueCollectionsSummary({ propertyId }: { propertyId: string }
         <CardContent>
           <AgingBars aging={d.aging_paise} />
           <p className="mt-3 text-xs text-muted-foreground">
-            Collection rate: {(d.collection_rate * 100).toFixed(1)}%. This is a
-            revenue &amp; collections summary — not a full P&amp;L (v1 does not
-            capture expense data).
+            Collection rate: {(d.collection_rate * 100).toFixed(1)}%. This is a revenue &amp;
+            collections summary — not a full P&amp;L (v1 does not capture expense data).
           </p>
         </CardContent>
       </Card>
@@ -43,8 +42,17 @@ export function RevenueCollectionsSummary({ propertyId }: { propertyId: string }
   );
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) {
-  const t = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
+function Kpi({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "success" | "warning";
+}) {
+  const t =
+    tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
   return (
     <div className="rounded-md border border-border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -71,9 +79,15 @@ function AgingBars({ aging }: { aging: Record<string, number> }) {
           </div>
           <div className="h-2 w-full rounded bg-muted">
             <div
-              className={k === "60+" ? "h-full rounded bg-destructive" :
-                k === "31-60" ? "h-full rounded bg-warning" :
-                k === "0-30" ? "h-full rounded bg-info" : "h-full rounded bg-success"}
+              className={
+                k === "60+"
+                  ? "h-full rounded bg-destructive"
+                  : k === "31-60"
+                    ? "h-full rounded bg-warning"
+                    : k === "0-30"
+                      ? "h-full rounded bg-info"
+                      : "h-full rounded bg-success"
+              }
               style={{ width: `${((aging[k] ?? 0) / max) * 100}%` }}
             />
           </div>

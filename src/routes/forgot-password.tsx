@@ -56,7 +56,8 @@ function ForgotPasswordPage() {
       }
       setSentTo(values.email);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not send reset link. Please try again.";
+      const message =
+        err instanceof Error ? err.message : "Could not send reset link. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -71,7 +72,8 @@ function ForgotPasswordPage() {
             <Mail className="h-8 w-8" />
           </div>
           <p className="text-sm text-muted-foreground">
-            {t("auth.resetEmailSentBody")} <span className="font-medium text-foreground">{sentTo}</span>.{" "}
+            {t("auth.resetEmailSentBody")}{" "}
+            <span className="font-medium text-foreground">{sentTo}</span>.{" "}
             {t("auth.resetEmailSentHint")}
           </p>
           <Button asChild variant="outline" className="min-h-11 w-full">
@@ -97,7 +99,9 @@ function ForgotPasswordPage() {
             {...register("email")}
           />
           {errors.email ? (
-            <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {errors.email.message}
+            </p>
           ) : null}
         </div>
         <Button type="submit" disabled={submitting} className="min-h-11 w-full">

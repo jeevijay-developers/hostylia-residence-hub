@@ -33,4 +33,3 @@ export function MobileShell({ allow, navItems, centerElevated, children }: Mobil
     </RoleGuard>
   );
 }
-

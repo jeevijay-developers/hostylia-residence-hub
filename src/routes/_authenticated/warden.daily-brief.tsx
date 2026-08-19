@@ -231,7 +231,6 @@ function WardenBriefPage() {
         />
       </div>
 
-
       <Link
         to="/warden/mess"
         className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 transition hover:bg-accent"

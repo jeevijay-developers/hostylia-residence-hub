@@ -16,9 +16,11 @@ export const getPublicPropertyBySlug = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row || row.status !== "ACTIVE") return null;
-    const settings = (typeof row.settings === "object" && row.settings !== null
-      ? (row.settings as Record<string, unknown>)
-      : {}) as Record<string, unknown>;
+    const settings = (
+      typeof row.settings === "object" && row.settings !== null
+        ? (row.settings as Record<string, unknown>)
+        : {}
+    ) as Record<string, unknown>;
     return {
       id: row.id,
       name: row.name,

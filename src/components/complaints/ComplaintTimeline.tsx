@@ -1,6 +1,9 @@
 import type { ComplaintRow } from "@/lib/complaint";
 
-interface Event { label: string; at: string | null }
+interface Event {
+  label: string;
+  at: string | null;
+}
 
 export function ComplaintTimeline({ complaint }: { complaint: ComplaintRow }) {
   const events: Event[] = [

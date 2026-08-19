@@ -1,6 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, LogIn } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Logo } from "@/components/site/Logo";
 import { MegaMenuSolutions } from "./MegaMenuSolutions";
 import { MegaMenuFeatures } from "./MegaMenuFeatures";

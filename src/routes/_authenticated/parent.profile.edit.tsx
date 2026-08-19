@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { FormSkeleton } from "@/components/dashboard/FormSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -88,7 +89,12 @@ function ParentProfileEditPage() {
   });
 
   if (guardianQ.isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Edit Profile" description="Update your personal details" />
+        <FormSkeleton fields={4} />
+      </div>
+    );
   }
 
   return (

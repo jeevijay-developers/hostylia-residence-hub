@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
 
-
 const loginSearchSchema = z.object({
   mode: z.enum(["phone", "email"]).optional(),
 });
@@ -31,4 +30,3 @@ function LoginPage() {
     </AuthLayout>
   );
 }
-

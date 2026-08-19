@@ -1,0 +1,404 @@
+<!--
+  Hostylia — "Reset Your Password" email.
+  Bound to GoTrue's recovery slot (triggered by supabase.auth.resetPasswordForEmail,
+  i.e. the existing Forgot Password flow), via [auth.email.template.recovery] in
+  supabase/config.toml. Visual design mirrors the Staff Invitation email
+  (supabase/functions/send-notification/index.ts, "staff_invite" HTML template) —
+  same navy header, illustration style, blue CTA, info-card, and footer pattern —
+  so both emails read as the same Hostylia product.
+  Available GoTrue variables: {{ .Email }} {{ .SiteURL }} {{ .ConfirmationURL }}
+  {{ .Token }} {{ .TokenHash }}
+  No user "name" variable exists in GoTrue's recovery template — {{ .Email }} is
+  used for the greeting instead of inventing a name.
+-->
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Reset Your Password — Hostylia</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #eef2f7;
+      font-family: Arial, Helvetica, sans-serif;
+      -webkit-text-size-adjust: 100%;
+      mso-text-size-adjust: 100%;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="background-color: #eef2f7"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <!-- ===== Email Card ===== -->
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              max-width: 580px;
+              background: #ffffff;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 4px 32px rgba(15, 31, 61, 0.12);
+            "
+          >
+            <!-- HEADER -->
+            <tr>
+              <td style="background-color: #0f1f3d; padding: 20px 32px">
+                <table cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="vertical-align: middle; padding-right: 10px">
+                      <div
+                        style="
+                          width: 36px;
+                          height: 36px;
+                          background: #2563eb;
+                          border-radius: 8px;
+                          text-align: center;
+                          line-height: 36px;
+                          font-size: 20px;
+                          font-weight: 900;
+                          color: #ffffff;
+                          display: inline-block;
+                        "
+                      >
+                        H
+                      </div>
+                    </td>
+                    <td style="vertical-align: middle">
+                      <span
+                        style="
+                          font-size: 18px;
+                          font-weight: 700;
+                          color: #ffffff;
+                          letter-spacing: 1px;
+                          font-family: Arial, Helvetica, sans-serif;
+                        "
+                        >HOSTYLIA</span
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- LOCK ILLUSTRATION + HEADING -->
+            <tr>
+              <td style="padding: 40px 32px 20px; text-align: center; background: #ffffff">
+                <!-- Lock with checkmark SVG illustration -->
+                <svg
+                  width="130"
+                  height="130"
+                  viewBox="0 0 130 130"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style="display: block; margin: 0 auto 8px"
+                >
+                  <!-- Sparkles -->
+                  <circle cx="22" cy="26" r="4.5" fill="#fbbf24" opacity="0.8" />
+                  <circle cx="108" cy="18" r="3.5" fill="#fbbf24" opacity="0.55" />
+                  <circle cx="16" cy="65" r="3" fill="#93c5fd" opacity="0.65" />
+                  <circle cx="114" cy="60" r="3" fill="#93c5fd" opacity="0.65" />
+                  <!-- Outer glow -->
+                  <circle cx="65" cy="62" r="56" fill="#dbeafe" opacity="0.45" />
+                  <!-- Main circle -->
+                  <circle cx="65" cy="62" r="46" fill="#eff6ff" />
+                  <!-- Lock shackle (arc above body) -->
+                  <path
+                    d="M45 60 V46 A20 20 0 0 1 85 46 V60"
+                    stroke="#1d4ed8"
+                    stroke-width="7"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <!-- Lock body -->
+                  <rect x="35" y="60" width="60" height="42" rx="9" fill="#2563eb" />
+                  <!-- Keyhole circle -->
+                  <circle cx="65" cy="76" r="7" fill="white" opacity="0.88" />
+                  <!-- Keyhole stem -->
+                  <rect
+                    x="61.5"
+                    y="78"
+                    width="7"
+                    height="10"
+                    rx="2.5"
+                    fill="white"
+                    opacity="0.88"
+                  />
+                  <!-- Green check badge -->
+                  <circle cx="90" cy="90" r="16" fill="#10b981" />
+                  <polyline
+                    points="83,90 88,95 97,84"
+                    stroke="white"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    fill="none"
+                  />
+                </svg>
+                <h1
+                  style="
+                    margin: 12px 0 0;
+                    font-size: 30px;
+                    font-weight: 800;
+                    color: #0f1f3d;
+                    letter-spacing: -0.5px;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  Reset Your Password
+                </h1>
+              </td>
+            </tr>
+
+            <!-- BODY TEXT -->
+            <tr>
+              <td style="padding: 4px 36px 8px">
+                <p
+                  style="
+                    margin: 0 0 12px;
+                    font-size: 15px;
+                    color: #334155;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  Hello <strong style="color: #2563eb">{{ .Email }}</strong>,
+                </p>
+                <p
+                  style="
+                    margin: 0 0 10px;
+                    font-size: 15px;
+                    color: #334155;
+                    line-height: 1.65;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  We received a request to reset your password for your Hostylia account.
+                </p>
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 15px;
+                    color: #334155;
+                    line-height: 1.65;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  Click the button below to choose a new password.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA BUTTON -->
+            <tr>
+              <td style="padding: 0 36px 28px; text-align: center">
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="
+                    display: inline-block;
+                    background-color: #2563eb;
+                    color: #ffffff;
+                    text-decoration: none;
+                    font-size: 16px;
+                    font-weight: 700;
+                    padding: 15px 44px;
+                    border-radius: 8px;
+                    letter-spacing: 0.3px;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  Reset Your Password
+                </a>
+              </td>
+            </tr>
+
+            <!-- ACCOUNT DETAILS CARD -->
+            <tr>
+              <td style="padding: 0 36px 14px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden"
+                >
+                  <tr>
+                    <td style="padding: 14px 16px; background: #ffffff">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align: middle; padding-right: 12px; width: 36px">
+                            <div
+                              style="
+                                width: 36px;
+                                height: 36px;
+                                background: #eff6ff;
+                                border-radius: 7px;
+                                text-align: center;
+                                line-height: 36px;
+                              "
+                            >
+                              <svg
+                                width="17"
+                                height="17"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                style="vertical-align: middle; margin-top: 9px"
+                              >
+                                <path
+                                  d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+                                  stroke="#2563eb"
+                                  stroke-width="2"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                />
+                                <circle cx="12" cy="7" r="4" stroke="#2563eb" stroke-width="2" />
+                              </svg>
+                            </div>
+                          </td>
+                          <td style="vertical-align: middle">
+                            <p
+                              style="
+                                margin: 0 0 2px;
+                                font-size: 11px;
+                                font-weight: 700;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 0.8px;
+                                font-family: Arial, Helvetica, sans-serif;
+                              "
+                            >
+                              Email
+                            </p>
+                            <p
+                              style="
+                                margin: 0;
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: #0f1f3d;
+                                font-family: Arial, Helvetica, sans-serif;
+                              "
+                            >
+                              {{ .Email }}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- SECURE & CONFIDENTIAL NOTICE -->
+            <tr>
+              <td style="padding: 0 36px 32px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px"
+                >
+                  <tr>
+                    <td style="padding: 14px 16px">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align: top; padding-right: 10px; width: 22px">
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              style="margin-top: 1px"
+                            >
+                              <path
+                                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                stroke="#2563eb"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                          </td>
+                          <td style="vertical-align: top">
+                            <p
+                              style="
+                                margin: 0 0 3px;
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: #1d4ed8;
+                                font-family: Arial, Helvetica, sans-serif;
+                              "
+                            >
+                              Secure &amp; Confidential
+                            </p>
+                            <p
+                              style="
+                                margin: 0 0 4px;
+                                font-size: 12px;
+                                color: #3b82f6;
+                                line-height: 1.55;
+                                font-family: Arial, Helvetica, sans-serif;
+                              "
+                            >
+                              This password reset link is unique to you and can only be used once.
+                            </p>
+                            <p
+                              style="
+                                margin: 0;
+                                font-size: 12px;
+                                color: #3b82f6;
+                                line-height: 1.55;
+                                font-family: Arial, Helvetica, sans-serif;
+                              "
+                            >
+                              If you did not request a password reset, you can safely ignore this
+                              email.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="background-color: #0f1f3d; padding: 22px 32px; text-align: center">
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 12px;
+                    color: #94a3b8;
+                    font-family: Arial, Helvetica, sans-serif;
+                  "
+                >
+                  &copy; 2026 Hostylia. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <!-- ===== End Email Card ===== -->
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

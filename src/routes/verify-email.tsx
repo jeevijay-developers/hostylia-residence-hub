@@ -8,10 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/verify-email")({
   head: () => ({
-    meta: [
-      { title: "Email verified — Hostylia" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Email verified — Hostylia" }, { name: "robots", content: "noindex" }],
   }),
   component: VerifyEmailPage,
 });
@@ -84,8 +81,8 @@ function VerifyEmailPage() {
               <XCircle className="h-8 w-8" />
             </div>
             <p className="text-sm text-muted-foreground">
-              This confirmation link has expired or was already used. Sign in — if your email
-              still needs confirming, we'll send a fresh link.
+              This confirmation link has expired or was already used. Sign in — if your email still
+              needs confirming, we'll send a fresh link.
             </p>
             <Button asChild variant="outline" className="min-h-11 w-full">
               <Link to="/login">Go to sign in</Link>

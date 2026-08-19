@@ -289,7 +289,9 @@ function IdentityStep({
           {...register("fullName")}
         />
         {errors.fullName ? (
-          <p className="text-sm text-destructive" role="alert">{errors.fullName.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.fullName.message}
+          </p>
         ) : null}
       </div>
 
@@ -306,7 +308,9 @@ function IdentityStep({
             {...register("hostelName")}
           />
           {errors.hostelName ? (
-            <p className="text-sm text-destructive" role="alert">{errors.hostelName.message}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {errors.hostelName.message}
+            </p>
           ) : (
             <p className="text-xs text-muted-foreground">{t("auth.hostelNameHelp")}</p>
           )}
@@ -327,7 +331,9 @@ function IdentityStep({
               {...register("guardianName")}
             />
             {errors.guardianName ? (
-              <p className="text-sm text-destructive" role="alert">{errors.guardianName.message}</p>
+              <p className="text-sm text-destructive" role="alert">
+                {errors.guardianName.message}
+              </p>
             ) : null}
           </div>
           <div className="space-y-2">
@@ -343,7 +349,9 @@ function IdentityStep({
               {...register("guardianPhone")}
             />
             {errors.guardianPhone ? (
-              <p className="text-sm text-destructive" role="alert">{errors.guardianPhone.message}</p>
+              <p className="text-sm text-destructive" role="alert">
+                {errors.guardianPhone.message}
+              </p>
             ) : null}
           </div>
           <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
@@ -377,8 +385,12 @@ function CredentialsStep({
     <div className="space-y-4">
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="w-full">
         <TabsList className="grid h-auto w-full grid-cols-2">
-          <TabsTrigger value="email" className="min-h-11">{t("auth.tabEmail")}</TabsTrigger>
-          <TabsTrigger value="phone" className="min-h-11">{t("auth.tabPhone")}</TabsTrigger>
+          <TabsTrigger value="email" className="min-h-11">
+            {t("auth.tabEmail")}
+          </TabsTrigger>
+          <TabsTrigger value="phone" className="min-h-11">
+            {t("auth.tabPhone")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="email" className="mt-5">
           <EmailCredentialsForm
@@ -405,9 +417,7 @@ function signupMetadata(role: SignupRole, identity: IdentityValues) {
   return {
     full_name: identity.fullName,
     signup_role: role,
-    ...(role === "HOSTEL_ADMIN" && identity.hostelName
-      ? { hostel_name: identity.hostelName }
-      : {}),
+    ...(role === "HOSTEL_ADMIN" && identity.hostelName ? { hostel_name: identity.hostelName } : {}),
     ...(role === "STUDENT" && identity.guardianName && identity.guardianPhone
       ? { guardian_name: identity.guardianName, guardian_phone: identity.guardianPhone }
       : {}),
@@ -483,7 +493,9 @@ function EmailCredentialsForm({
           {...register("email")}
         />
         {errors.email ? (
-          <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.email.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
@@ -498,7 +510,9 @@ function EmailCredentialsForm({
           {...register("password")}
         />
         {errors.password ? (
-          <p className="text-sm text-destructive" role="alert">{errors.password.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.password.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
@@ -513,7 +527,9 @@ function EmailCredentialsForm({
           {...register("confirmPassword")}
         />
         {errors.confirmPassword ? (
-          <p className="text-sm text-destructive" role="alert">{errors.confirmPassword.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.confirmPassword.message}
+          </p>
         ) : null}
       </div>
       <StepButtons onBack={onBack} nextLabel={t("auth.createAccount")} submitting={submitting} />
@@ -578,7 +594,9 @@ function PhoneCredentialsForm({
           {...register("phone")}
         />
         {errors.phone ? (
-          <p className="text-sm text-destructive" role="alert">{errors.phone.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {errors.phone.message}
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
@@ -631,8 +649,7 @@ function CheckInboxStep({ email }: { email: string }) {
           {t("auth.checkInboxTitle")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {t("auth.checkInboxBody")}{" "}
-          <span className="font-medium text-foreground">{email}</span>
+          {t("auth.checkInboxBody")} <span className="font-medium text-foreground">{email}</span>
         </p>
       </div>
       <p className="text-xs text-muted-foreground">{t("auth.checkInboxHint")}</p>

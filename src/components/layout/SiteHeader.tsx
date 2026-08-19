@@ -43,16 +43,13 @@ export function SiteHeader() {
           {navItems.map((item) => {
             const active = pathname === item.to;
             return (
-              <div
-                key={item.to}
-                className="relative"
-              >
+              <div key={item.to} className="relative">
                 <Link
                   to={item.to}
                   onClick={(e) => {
                     if (item.mega) {
-                      e.preventDefault();      // navigation roko
-                      toggleMenu(item.mega);   // dropdown toggle
+                      e.preventDefault(); // navigation roko
+                      toggleMenu(item.mega); // dropdown toggle
                     }
                   }}
                   className={`group inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
@@ -67,7 +64,10 @@ export function SiteHeader() {
                     />
                   )}
                   {active && (
-                    <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gold" aria-hidden />
+                    <span
+                      className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gold"
+                      aria-hidden
+                    />
                   )}
                 </Link>
               </div>
@@ -99,7 +99,10 @@ export function SiteHeader() {
                 <Menu size={20} />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-sm overflow-y-auto border-l border-dark-border bg-navy p-0 text-white">
+            <SheetContent
+              side="right"
+              className="w-full max-w-sm overflow-y-auto border-l border-dark-border bg-navy p-0 text-white"
+            >
               <MobileNav onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>

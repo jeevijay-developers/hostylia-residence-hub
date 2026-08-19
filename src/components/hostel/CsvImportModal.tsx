@@ -4,7 +4,11 @@ import { toast } from "sonner";
 import { FileText, Upload } from "lucide-react";
 
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
@@ -31,7 +35,11 @@ function parseCsv(text: string): Record<string, string>[] {
 }
 
 export function CsvImportModal({
-  open, onOpenChange, tenantId, propertyId, onDone,
+  open,
+  onOpenChange,
+  tenantId,
+  propertyId,
+  onDone,
 }: CsvImportModalProps) {
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
   const [errors, setErrors] = useState<{ row: number; error: string }[]>([]);
@@ -41,8 +49,7 @@ export function CsvImportModal({
   const importFn = useServerFn(bulkImportStructure);
 
   const validate = useMutation({
-    mutationFn: async (rows: Record<string, string>[]) =>
-      validateFn({ data: { rows } }),
+    mutationFn: async (rows: Record<string, string>[]) => validateFn({ data: { rows } }),
     onSuccess: (res) => {
       setErrors(res.errors);
       setValidCount(res.valid.length);
@@ -87,17 +94,20 @@ export function CsvImportModal({
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Columns: <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            Columns:{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">
               block_name, floor_name, floor_number, room_number, room_type, capacity, base_rent
             </code>
             . Beds are generated automatically from capacity. Leave{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">block_name</code> empty
-            if you don't use blocks.
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">block_name</code> empty if you
+            don't use blocks.
           </p>
 
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border px-6 py-8 text-sm hover:bg-muted">
             <Upload className="h-4 w-4" />
-            {rawRows.length ? `${rawRows.length} rows loaded — choose another file` : "Choose CSV file"}
+            {rawRows.length
+              ? `${rawRows.length} rows loaded — choose another file`
+              : "Choose CSV file"}
             <input
               type="file"
               accept=".csv,text/csv"
@@ -120,7 +130,9 @@ export function CsvImportModal({
               {errors.length > 0 && (
                 <ul className="mt-2 max-h-40 overflow-auto text-xs text-destructive">
                   {errors.slice(0, 20).map((e) => (
-                    <li key={e.row}>Row {e.row}: {e.error}</li>
+                    <li key={e.row}>
+                      Row {e.row}: {e.error}
+                    </li>
                   ))}
                   {errors.length > 20 && <li>…and {errors.length - 20} more</li>}
                 </ul>
@@ -130,11 +142,11 @@ export function CsvImportModal({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
-            disabled={
-              rawRows.length === 0 || errors.length > 0 || doImport.isPending
-            }
+            disabled={rawRows.length === 0 || errors.length > 0 || doImport.isPending}
             onClick={() => doImport.mutate()}
           >
             Import {validCount || ""} rows

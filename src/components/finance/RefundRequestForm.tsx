@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { initiateRefund } from "@/lib/finance.functions";
@@ -19,7 +23,9 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
   const [paymentId, setPaymentId] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
-  const [mode, setMode] = useState<"ORIGINAL_METHOD"|"BANK_TRANSFER"|"CASH"|"OTHER">("ORIGINAL_METHOD");
+  const [mode, setMode] = useState<"ORIGINAL_METHOD" | "BANK_TRANSFER" | "CASH" | "OTHER">(
+    "ORIGINAL_METHOD",
+  );
 
   const payments = useQuery({
     queryKey: ["captured-payments", propertyId],
@@ -37,18 +43,21 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
   });
 
   const m = useMutation({
-    mutationFn: async () => submit({
-      data: {
-        payment_id: paymentId,
-        amount_paise: Math.round(parseFloat(amount) * 100),
-        reason,
-        mode,
-      },
-    }),
+    mutationFn: async () =>
+      submit({
+        data: {
+          payment_id: paymentId,
+          amount_paise: Math.round(parseFloat(amount) * 100),
+          reason,
+          mode,
+        },
+      }),
     onSuccess: (out) => {
       toast.success(`Refund submitted for approval: ${out.refund_number}`);
       qc.invalidateQueries({ queryKey: ["refunds"] });
-      setPaymentId(""); setAmount(""); setReason("");
+      setPaymentId("");
+      setAmount("");
+      setReason("");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -58,7 +67,9 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
       <div>
         <Label>Payment</Label>
         <Select value={paymentId} onValueChange={setPaymentId}>
-          <SelectTrigger><SelectValue placeholder="Choose payment" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose payment" />
+          </SelectTrigger>
           <SelectContent>
             {(payments.data ?? []).map((p) => (
               <SelectItem key={p.id} value={p.id}>
@@ -71,15 +82,24 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label>Amount (INR)</Label>
-          <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Input
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
         </div>
         <div>
           <Label>Mode</Label>
           <Select value={mode} onValueChange={(v) => setMode(v as never)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {["ORIGINAL_METHOD","BANK_TRANSFER","CASH","OTHER"].map((x) => (
-                <SelectItem key={x} value={x}>{x}</SelectItem>
+              {["ORIGINAL_METHOD", "BANK_TRANSFER", "CASH", "OTHER"].map((x) => (
+                <SelectItem key={x} value={x}>
+                  {x}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -92,10 +112,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
       <p className="text-xs text-muted-foreground">
         Refund goes to PENDING_APPROVAL — a Hostel Admin (different user) must approve.
       </p>
-      <Button
-        onClick={() => m.mutate()}
-        disabled={!paymentId || !amount || !reason || m.isPending}
-      >
+      <Button onClick={() => m.mutate()} disabled={!paymentId || !amount || !reason || m.isPending}>
         {m.isPending ? "Submitting…" : "Submit for approval"}
       </Button>
     </div>

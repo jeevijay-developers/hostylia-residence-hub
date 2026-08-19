@@ -154,7 +154,9 @@ function VideoCard({ t }: { t: Testimonial }) {
       {/* Quote card under the phone */}
       <figcaption className="mx-auto mt-5 max-w-[280px] rounded-2xl border border-dark-border bg-card p-4 text-center">
         <div className="mx-auto flex w-fit gap-0.5 text-gold">
-          {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={11} fill="currentColor" />)}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star key={i} size={11} fill="currentColor" />
+          ))}
         </div>
         <Quote className="mx-auto mt-2 text-soft-teal" size={14} />
         <blockquote className="mt-1 text-xs leading-relaxed text-white">"{t.quote}"</blockquote>
@@ -179,7 +181,9 @@ export function VideoTestimonials() {
           desc="Real voices from properties live on Hostylia — tap any card to play."
         />
         <div className="mt-14 grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          {testimonials.map((t) => <VideoCard key={t.name} t={t} />)}
+          {testimonials.map((t) => (
+            <VideoCard key={t.name} t={t} />
+          ))}
         </div>
       </div>
     </section>

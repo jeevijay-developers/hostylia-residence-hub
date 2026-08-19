@@ -7,6 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInr } from "@/lib/finance";
 import { getErrorMessage } from "@/lib/utils";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
+
+const PAYMENTS_PAGE_SIZE = 20;
 
 /**
  * Resolves the `documents` row the generate-receipt Edge Function writes
@@ -46,26 +49,35 @@ export function useReceiptDownload() {
  * (which only records new payments and had no way to see past ones).
  */
 export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
+  const [page, setPage] = useState(0);
   const q = useQuery({
-    queryKey: ["payments", propertyId],
+    queryKey: ["payments", propertyId, page],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("payments")
         .select(
           "id, payment_number, mode, amount_paise, status, paid_at, students(full_name), invoices(invoice_number)",
+          { count: "exact" },
         )
         .eq("property_id", propertyId)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .range(page * PAYMENTS_PAGE_SIZE, page * PAYMENTS_PAGE_SIZE + PAYMENTS_PAGE_SIZE - 1);
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return { rows: data ?? [], total: count ?? 0 };
     },
   });
 
   const { downloadingId, download } = useReceiptDownload();
 
   if (q.isLoading) return <Skeleton className="h-24 w-full" />;
-  if (!q.data?.length) {
+  if (q.isError) {
+    return (
+      <p className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        {q.error instanceof Error ? q.error.message : "Could not load payments."}
+      </p>
+    );
+  }
+  if (!q.data?.rows.length) {
     return (
       <p className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
         No payments recorded yet.
@@ -75,7 +87,7 @@ export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
 
   return (
     <div className="space-y-2">
-      {q.data.map((p) => (
+      {q.data.rows.map((p) => (
         <div
           key={p.id}
           className="flex items-center justify-between rounded-md border border-border bg-card p-3 text-sm"
@@ -102,6 +114,12 @@ export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
           </div>
         </div>
       ))}
+      <PaginationBar
+        page={page}
+        pageSize={PAYMENTS_PAGE_SIZE}
+        total={q.data.total}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

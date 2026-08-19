@@ -94,8 +94,7 @@ export function WardenChatThread({
   }, [messagesQ.data?.length]);
 
   const send = useMutation({
-    mutationFn: () =>
-      sendFn({ data: { conversation_id: conversationId!, body: body.trim() } }),
+    mutationFn: () => sendFn({ data: { conversation_id: conversationId!, body: body.trim() } }),
     onSuccess: () => {
       setBody("");
       qc.invalidateQueries({ queryKey: ["messages", conversationId] });
@@ -164,7 +163,11 @@ export function WardenChatThread({
           className="min-h-11"
           disabled={!body.trim() || send.isPending || !conversationId}
         >
-          {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {send.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </Button>
       </form>
     </div>

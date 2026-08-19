@@ -129,6 +129,68 @@ export function useComplaints(opts: ListOptions) {
   return query;
 }
 
+interface PagedListOptions extends ListOptions {
+  status?: string | null;
+  categoryId?: string | null;
+  blockId?: string | null;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Server-paginated variant for the Admin Complaints table specifically —
+ * that page can realistically grow into the hundreds/thousands per property
+ * over time, unlike `useComplaints`' other (bounded) consumers (a single
+ * student's own complaints, a dashboard's recent-complaints widget), which
+ * stay on the unpaginated hook above unchanged.
+ */
+export function useComplaintsPaged(opts: PagedListOptions) {
+  const qc = useQueryClient();
+  const key = ["complaints-paged", opts];
+  const query = useQuery({
+    queryKey: key,
+    enabled: !!opts.propertyId,
+    queryFn: async () => {
+      let q = supabase
+        .from("complaints")
+        .select(
+          "id, tenant_id, property_id, block_id, room_id, bed_id, student_id, category_id, complaint_number, title, description, priority, status, assigned_to, assigned_at, sla_due_at, sla_breached_at, resolved_at, resolved_by, closed_at, resolution_summary, rating, rating_comment, reopen_until, created_at, updated_at, students(full_name, admission_number, profile_id, profiles(avatar_path)), rooms(room_number), blocks(name), complaint_categories(name)",
+          { count: "exact" },
+        )
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .range(opts.page * opts.pageSize, opts.page * opts.pageSize + opts.pageSize - 1);
+      if (opts.studentId) q = q.eq("student_id", opts.studentId);
+      if (opts.propertyId) q = q.eq("property_id", opts.propertyId);
+      if (opts.assignedTo) q = q.eq("assigned_to", opts.assignedTo);
+      if (opts.status) q = q.eq("status", opts.status);
+      if (opts.categoryId) q = q.eq("category_id", opts.categoryId);
+      if (opts.blockId) {
+        if (opts.blockId === "none") q = q.is("block_id", null);
+        else q = q.eq("block_id", opts.blockId);
+      }
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return { rows: (data ?? []) as unknown as ComplaintWithRelations[], total: count ?? 0 };
+    },
+  });
+
+  useEffect(() => {
+    const filter = opts.propertyId ? `property_id=eq.${opts.propertyId}` : undefined;
+    const channel = supabase
+      .channel(`complaints-paged-${opts.propertyId ?? "all"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "complaints", filter }, () =>
+        qc.invalidateQueries({ queryKey: ["complaints-paged"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [opts.propertyId, qc]);
+
+  return query;
+}
+
 /** SLA countdown metadata for display. Never returns brand colors — status only. */
 export function slaMeta(c: ComplaintRow): {
   label: string;

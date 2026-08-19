@@ -10,7 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -52,11 +56,7 @@ function PropertySetupPage() {
   const propertyQ = useQuery({
     queryKey: ["property", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await supabase.from("properties").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
     },
@@ -109,10 +109,7 @@ function PropertySetupPage() {
   const saveMut = useMutation({
     mutationFn: async (patch: Partial<PropertyFormInput>) => {
       const parsed = propertyFormSchema.partial().parse(patch);
-      const { error } = await supabase
-        .from("properties")
-        .update(parsed)
-        .eq("id", id);
+      const { error } = await supabase.from("properties").update(parsed).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -262,7 +259,9 @@ function PropertySetupPage() {
                     set("property_type", v as PropertyFormInput["property_type"])
                   }
                 >
-                  <SelectTrigger id="prop-type"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="prop-type">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HOSTEL">Hostel</SelectItem>
                     <SelectItem value="PG">PG</SelectItem>
@@ -278,7 +277,9 @@ function PropertySetupPage() {
                     set("gender_policy", v as PropertyFormInput["gender_policy"])
                   }
                 >
-                  <SelectTrigger id="prop-gender"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="prop-gender">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">Male only</SelectItem>
                     <SelectItem value="FEMALE">Female only</SelectItem>
@@ -289,10 +290,21 @@ function PropertySetupPage() {
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="prop-phone" label="Phone">
-                  <Input id="prop-phone" type="tel" inputMode="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+                  <Input
+                    id="prop-phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={form.phone ?? ""}
+                    onChange={(e) => set("phone", e.target.value)}
+                  />
                 </Field>
                 <Field id="prop-email" label="Email">
-                  <Input id="prop-email" type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+                  <Input
+                    id="prop-email"
+                    type="email"
+                    value={form.email ?? ""}
+                    onChange={(e) => set("email", e.target.value)}
+                  />
                 </Field>
               </div>
             </>
@@ -301,31 +313,64 @@ function PropertySetupPage() {
           {step === 1 && (
             <>
               <Field id="prop-addr1" label="Address line 1">
-                <Input id="prop-addr1" value={form.address_line_1} onChange={(e) => set("address_line_1", e.target.value)} />
+                <Input
+                  id="prop-addr1"
+                  value={form.address_line_1}
+                  onChange={(e) => set("address_line_1", e.target.value)}
+                />
               </Field>
               <Field id="prop-addr2" label="Address line 2">
-                <Input id="prop-addr2" value={form.address_line_2 ?? ""} onChange={(e) => set("address_line_2", e.target.value)} />
+                <Input
+                  id="prop-addr2"
+                  value={form.address_line_2 ?? ""}
+                  onChange={(e) => set("address_line_2", e.target.value)}
+                />
               </Field>
               <Field id="prop-landmark" label="Landmark">
-                <Input id="prop-landmark" value={form.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} />
+                <Input
+                  id="prop-landmark"
+                  value={form.landmark ?? ""}
+                  onChange={(e) => set("landmark", e.target.value)}
+                />
               </Field>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field id="prop-city" label="City">
-                  <Input id="prop-city" value={form.city} onChange={(e) => set("city", e.target.value)} />
+                  <Input
+                    id="prop-city"
+                    value={form.city}
+                    onChange={(e) => set("city", e.target.value)}
+                  />
                 </Field>
                 <Field id="prop-state" label="State">
-                  <Input id="prop-state" value={form.state} onChange={(e) => set("state", e.target.value)} />
+                  <Input
+                    id="prop-state"
+                    value={form.state}
+                    onChange={(e) => set("state", e.target.value)}
+                  />
                 </Field>
                 <Field id="prop-pin" label="Postal code" hint="6-digit PIN code.">
-                  <Input id="prop-pin" inputMode="numeric" value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} />
+                  <Input
+                    id="prop-pin"
+                    inputMode="numeric"
+                    value={form.postal_code}
+                    onChange={(e) => set("postal_code", e.target.value)}
+                  />
                 </Field>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="prop-country" label="Country code" hint="Two-letter ISO code, e.g. IN.">
-                  <Input id="prop-country" value={form.country_code} onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))} />
+                  <Input
+                    id="prop-country"
+                    value={form.country_code}
+                    onChange={(e) => set("country_code", e.target.value.toUpperCase().slice(0, 2))}
+                  />
                 </Field>
                 <Field id="prop-tz" label="Timezone" hint="IANA name, e.g. Asia/Kolkata.">
-                  <Input id="prop-tz" value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
+                  <Input
+                    id="prop-tz"
+                    value={form.timezone}
+                    onChange={(e) => set("timezone", e.target.value)}
+                  />
                 </Field>
               </div>
             </>
@@ -334,8 +379,8 @@ function PropertySetupPage() {
           {step === 2 && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Upload a logo (used on invoices and the parent/student app).
-                Stored securely and served through signed URLs.
+                Upload a logo (used on invoices and the parent/student app). Stored securely and
+                served through signed URLs.
               </p>
               <div>
                 <Label htmlFor="prop-logo">Logo</Label>
@@ -384,10 +429,7 @@ function PropertySetupPage() {
             <Save className="h-4 w-4" /> Save
           </Button>
           {step === STEPS.length - 1 ? (
-            <Button
-              onClick={() => finishMut.mutate(form)}
-              disabled={finishMut.isPending}
-            >
+            <Button onClick={() => finishMut.mutate(form)} disabled={finishMut.isPending}>
               <CheckCircle2 className="h-4 w-4" /> Finish setup
             </Button>
           ) : (

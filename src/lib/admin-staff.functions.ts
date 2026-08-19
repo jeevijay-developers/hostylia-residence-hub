@@ -71,6 +71,9 @@ async function assertAdmin(supabase: any, userId: string, tenantId: string) {
  * which contact channel the person was invited through). Shared by
  * `inviteStaff` and `resendStaffInvite` so there's one notification path,
  * not two.
+ *
+ * Enriches the notification with: invitee display name, hostel/org name,
+ * invitation date, and a password-setup link generated via the admin API.
  */
 async function sendStaffInviteNotification(
   supabase: any,
@@ -84,7 +87,110 @@ async function sendStaffInviteNotification(
     referenceId: string;
   },
 ) {
+  try {
+    await sendStaffInviteNotificationInner(supabase, args);
+  } catch (e) {
+    // Fire-and-forget from the caller's side (see inviteStaff/resendStaffInvite)
+    // — staff creation must never fail because the invite email was slow or
+    // the provider errored, so nothing here is allowed to throw or reject.
+    console.warn("sendStaffInviteNotification failed (staff record was still created)", e);
+  }
+}
+
+async function sendStaffInviteNotificationInner(
+  supabase: any,
+  args: {
+    inviteeId: string;
+    email: string | null;
+    phone: string | null;
+    role: string;
+    tenantId: string;
+    propertyId?: string | null;
+    referenceId: string;
+  },
+) {
+  // Service-role client for cross-user lookups and admin auth API
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  // 1. Resolve invitee display name from profiles
+  const { data: profileRow } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", args.inviteeId)
+    .maybeSingle();
+  const inviteeName =
+    profileRow?.full_name?.trim() || (args.email ? args.email.split("@")[0] : null) || "there";
+
+  // 2. Resolve hostel/property name for the email body
+  let hostelName = "Hostylia";
+  if (args.propertyId) {
+    const { data: propRow } = await supabaseAdmin
+      .from("properties")
+      .select("name")
+      .eq("id", args.propertyId)
+      .maybeSingle();
+    if (propRow?.name) hostelName = propRow.name;
+  } else {
+    // Fall back to the tenant's organization legal name
+    const { data: orgRows } = await supabaseAdmin
+      .from("organizations")
+      .select("legal_name")
+      .eq("tenant_id", args.tenantId)
+      .limit(1);
+    const orgName = orgRows?.[0]?.legal_name;
+    if (orgName) hostelName = orgName;
+  }
+
+  // 3. Generate a password-setup link (email invites only).
+  //    We use type:"recovery" so the user lands on /reset-password and can
+  //    set their first password. APP_URL must be set to the production URL
+  //    in the server environment — falls back to localhost for local dev.
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  let setupUrl = `${appUrl}/reset-password`;
+  if (args.email) {
+    try {
+      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: args.email,
+        options: { redirectTo: `${appUrl}/reset-password` },
+      });
+      // Supabase returns the action_link under properties
+      const actionLink = (linkData as Record<string, unknown> | null)?.properties as
+        Record<string, unknown> | undefined;
+      if (actionLink?.action_link) setupUrl = String(actionLink.action_link);
+    } catch {
+      // best-effort — plain /reset-password link is still usable
+    }
+  }
+
+  // Human-readable role label
+  const roleDisplay =
+    args.role === "WARDEN"
+      ? "Warden"
+      : args.role === "ACCOUNTANT"
+        ? "Accountant"
+        : args.role === "HOSTEL_ADMIN"
+          ? "Hostel Admin"
+          : args.role;
+
+  const inviteDate = new Date().toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const variables: Record<string, string> = {
+    role: roleDisplay,
+    invitee_name: inviteeName,
+    hostel_name: hostelName,
+    invite_date: inviteDate,
+    setup_url: setupUrl,
+    expiry_days: "7",
+    year: new Date().getFullYear().toString(),
+  };
+
   const channels: Array<"IN_APP" | "EMAIL" | "SMS"> = ["IN_APP", args.email ? "EMAIL" : "SMS"];
+  let emailFailure: string | null = null;
   for (const ch of channels) {
     const recipient: Record<string, string | undefined> = {};
     if (ch === "IN_APP") recipient.userId = args.inviteeId;
@@ -92,22 +198,34 @@ async function sendStaffInviteNotification(
     if (ch === "SMS") recipient.phone = args.phone ?? undefined;
     if (!recipient.userId && !recipient.email && !recipient.phone) continue;
     try {
-      await supabase.functions.invoke("send-notification", {
+      // supabase.functions.invoke only rejects/sets `error` on a non-2xx HTTP
+      // response — send-notification always answers 200 and reports real
+      // provider failures (e.g. Resend rejecting the API key) in the JSON
+      // body instead. Reading `data.ok` here is required, not optional —
+      // without it a failed send looks identical to a successful one.
+      const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
           channel: ch,
           templateKey: "staff_invite",
           recipient,
-          variables: { role: args.role },
+          variables,
           eventType: "STAFF_INVITE",
           tenantId: args.tenantId,
           propertyId: args.propertyId ?? undefined,
           referenceId: args.referenceId,
         },
       });
-    } catch {
-      /* best-effort */
+      const body = data as { ok?: boolean; message?: string; error_code?: string } | null;
+      if (ch === "EMAIL" && (error || body?.ok === false)) {
+        emailFailure = body?.message || error?.message || "Email provider rejected the request";
+      }
+    } catch (e) {
+      // IN_APP/SMS stay best-effort (unchanged); EMAIL failures are surfaced
+      // so callers can decide whether to report or swallow them.
+      if (ch === "EMAIL") emailFailure = e instanceof Error ? e.message : "Email send failed";
     }
   }
+  if (emailFailure) throw new Error(emailFailure);
 }
 
 /**
@@ -191,7 +309,9 @@ export const inviteStaff = createServerFn({ method: "POST" })
         throw new Error("This person already has active access for this role.");
       }
       if (existing && !existing.is_active) {
-        await sendStaffInviteNotification(supabase, {
+        // Not awaited — the invite/resend response must not wait on email
+        // delivery; sendStaffInviteNotification never throws (see above).
+        void sendStaffInviteNotification(supabase, {
           inviteeId,
           email: data.email ?? null,
           phone,
@@ -256,7 +376,10 @@ export const inviteStaff = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw rErr;
 
-    await sendStaffInviteNotification(supabase, {
+    // Not awaited — staff is already saved (tenant_membership + role_assignment
+    // above are committed); the invite email sends in the background and can
+    // never fail or slow down this response.
+    void sendStaffInviteNotification(supabase, {
       inviteeId,
       email: data.email ?? null,
       phone,
@@ -298,17 +421,28 @@ export const resendStaffInvite = createServerFn({ method: "POST" })
       .eq("id", ra.user_id)
       .single();
 
-    await sendStaffInviteNotification(supabase, {
-      inviteeId: ra.user_id,
-      email: profile?.email ?? null,
-      phone: profile?.phone ?? null,
-      role: ra.role,
-      tenantId: data.tenant_id,
-      propertyId: ra.property_id,
-      referenceId: ra.id,
-    });
+    // Unlike inviteStaff's fire-and-forget (staff creation must never fail on
+    // a slow/broken email provider), "resend" IS the email — the admin needs
+    // to know if it actually went out. Call the inner sender directly (not
+    // the always-succeeds wrapper) and report its real outcome instead of
+    // silently claiming success when the provider rejected it.
+    try {
+      await sendStaffInviteNotificationInner(supabase, {
+        inviteeId: ra.user_id,
+        email: profile?.email ?? null,
+        phone: profile?.phone ?? null,
+        role: ra.role,
+        tenantId: data.tenant_id,
+        propertyId: ra.property_id,
+        referenceId: ra.id,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not send the invitation email";
+      console.error("resendStaffInvite: notification failed", e);
+      return { ok: false as const, message };
+    }
 
-    return { ok: true };
+    return { ok: true as const, message: null };
   });
 
 export const listStaff = createServerFn({ method: "GET" })
@@ -317,11 +451,14 @@ export const listStaff = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId, data.tenant_id);
+    // Delegated staff only — HOSTEL_ADMIN is the account-owner/superset role,
+    // not a "staff" member managed from this page (that assignment happens
+    // via Super Admin → Tenants, a separate flow this list must not affect).
     const { data: rows, error } = await supabase
       .from("role_assignments")
       .select("id,user_id,role,property_id,block_id,is_active,granted_at,revoked_at,permissions")
       .eq("tenant_id", data.tenant_id)
-      .in("role", ["WARDEN", "ACCOUNTANT", "HOSTEL_ADMIN"])
+      .in("role", ["WARDEN", "ACCOUNTANT"])
       .order("granted_at", { ascending: false });
     if (error) throw error;
 
