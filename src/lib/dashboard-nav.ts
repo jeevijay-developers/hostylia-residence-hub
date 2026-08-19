@@ -86,7 +86,6 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket },
     { label: "Mess", to: "/student/mess", icon: Utensils },
     { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning },
-    { label: "Profile", to: "/student/profile", icon: User },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },

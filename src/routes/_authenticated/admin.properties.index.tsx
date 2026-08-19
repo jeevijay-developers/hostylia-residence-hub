@@ -1,8 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Building2, LayoutGrid, Plus, Settings2 } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  LayoutGrid,
+  MoreVertical,
+  Plus,
+  Settings2,
+} from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +19,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -143,15 +155,14 @@ function PropertiesListPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Properties"
-        description="Manage the hostels and residences you operate."
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" /> Add new property
-          </Button>
-        }
-      />
+      <div className="flex justify-end">
+        <Button
+          onClick={() => setOpen(true)}
+          className="shadow-lg shadow-primary/30 hover:shadow-primary/40"
+        >
+          <Plus className="h-4 w-4" /> Add new property
+        </Button>
+      </div>
 
       {properties.isLoading ? (
         <div className="space-y-2">
@@ -165,10 +176,10 @@ function PropertiesListPage() {
           action={{ label: "Add property", onClick: () => setOpen(true) }}
         />
       ) : (
-        <div className="rounded-lg border border-border bg-card">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Name</TableHead>
                 <TableHead>City</TableHead>
                 <TableHead>Status</TableHead>
@@ -184,32 +195,50 @@ function PropertiesListPage() {
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-primary" />
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/30">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </span>
                         {p.name}
                       </div>
                     </TableCell>
                     <TableCell>{p.city}</TableCell>
                     <TableCell>
-                      <Badge variant={p.status === "ACTIVE" ? "default" : "secondary"}>
+                      <Badge
+                        variant={p.status === "ACTIVE" ? "default" : "info"}
+                        className="gap-1.5"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         {p.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{p.bed_count}</TableCell>
                     <TableCell className="text-right tabular-nums">{pct}%</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link to="/admin/properties/$id/setup" params={{ id: p.id }}>
-                            <Settings2 className="h-4 w-4" /> Setup
-                          </Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                          <Link to="/admin/properties/$id/structure" params={{ id: p.id }}>
-                            <LayoutGrid className="h-4 w-4" /> Structure
-                          </Link>
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Actions for ${p.name}`}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/properties/$id/setup" params={{ id: p.id }}>
+                              <Settings2 className="mr-2 h-4 w-4" /> Setup
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/properties/$id/structure" params={{ id: p.id }}>
+                              <LayoutGrid className="mr-2 h-4 w-4" /> Structure
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

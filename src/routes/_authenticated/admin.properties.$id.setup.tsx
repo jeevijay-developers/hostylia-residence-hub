@@ -167,7 +167,7 @@ function PropertySetupPage() {
   if (propertyQ.isError || !propertyQ.data) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Setup" description="Configure your property's basics, address, and branding." />
+        <PageHeader title="Setup" />
         <Card>
           <CardContent className="space-y-3 py-6 text-center">
             <p className="text-sm text-destructive">
@@ -186,10 +186,7 @@ function PropertySetupPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title={`Setup — ${propertyQ.data?.name ?? ""}`}
-        description="Configure your property's basics, address, and branding."
-      />
+      <PageHeader title={`Setup — ${propertyQ.data?.name ?? ""}`} />
 
       {/* Stepper */}
       <ol className="flex items-center gap-2">

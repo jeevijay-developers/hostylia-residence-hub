@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Sparkles, TrendingUp, UserCheck, Users, UserX } from "lucide-react";
 import { ReportTable, type Column } from "@/components/reports/ReportTable";
 import { ExportButton } from "@/components/reports/ExportButton";
 import { Input } from "@/components/ui/input";
@@ -201,8 +202,40 @@ interface AttendanceSummaryRow extends Record<string, unknown> {
   attendance_pct: number | null;
 }
 
+const AVATAR_COLOR_PAIRS = [
+  { bg: "bg-emerald-950/80", text: "text-emerald-400", border: "border-emerald-800/50" },
+  { bg: "bg-purple-950/80", text: "text-purple-400", border: "border-purple-800/50" },
+  { bg: "bg-teal-950/80", text: "text-teal-400", border: "border-teal-800/50" },
+  { bg: "bg-amber-950/80", text: "text-amber-400", border: "border-amber-800/50" },
+  { bg: "bg-blue-950/80", text: "text-blue-400", border: "border-blue-800/50" },
+  { bg: "bg-indigo-950/80", text: "text-indigo-400", border: "border-indigo-800/50" },
+];
+
+function getAvatarStyle(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return AVATAR_COLOR_PAIRS[Math.abs(hash) % AVATAR_COLOR_PAIRS.length];
+}
+
 const attendanceCols: Column<AttendanceSummaryRow>[] = [
-  { key: "full_name", header: "Student", sortable: true },
+  {
+    key: "full_name",
+    header: "Student",
+    sortable: true,
+    render: (r) => {
+      const name = r.full_name || "—";
+      const initial = name !== "—" ? name.trim()[0]?.toUpperCase() ?? "?" : "?";
+      const avatarStyle = getAvatarStyle(name);
+      return (
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${avatarStyle.bg} ${avatarStyle.text} border ${avatarStyle.border} shrink-0`}>
+            {initial}
+          </div>
+          <span className="font-semibold text-foreground text-sm">{name}</span>
+        </div>
+      );
+    },
+  },
   { key: "admission_number", header: "Admission #", sortable: true },
   { key: "present_days", header: "Present", align: "right", sortable: true },
   { key: "absent_days", header: "Absent", align: "right", sortable: true },
@@ -215,7 +248,19 @@ const attendanceCols: Column<AttendanceSummaryRow>[] = [
     header: "Attendance %",
     align: "right",
     sortable: true,
-    render: (r) => (r.attendance_pct === null ? "—" : `${r.attendance_pct}%`),
+    render: (r) => {
+      if (r.attendance_pct === null) return "—";
+      const pct = r.attendance_pct;
+      const colorClass =
+        pct >= 85
+          ? "text-emerald-400 font-bold"
+          : pct >= 70
+            ? "text-teal-400 font-bold"
+            : pct >= 50
+              ? "text-amber-400 font-bold"
+              : "text-rose-400 font-bold";
+      return <span className={colorClass}>{pct}%</span>;
+    },
   },
 ];
 
@@ -236,8 +281,8 @@ export function AttendanceReportPanel({
   propertyId: string;
   showExport?: boolean;
 }) {
-  const [monthInput, setMonthInput] = useState(currentMonthValue()); // "YYYY-MM"
-  const month = `${monthInput}-01`; // matches v_attendance_monthly_summary.month
+  const [monthInput, setMonthInput] = useState(currentMonthValue());
+  const month = `${monthInput}-01`;
 
   const fn = useServerFn(getAttendanceReport);
   const q = useQuery({
@@ -260,18 +305,22 @@ export function AttendanceReportPanel({
   }, [rows]);
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Attendance summary</h2>
-        <div className="flex items-center gap-3">
+    <section className="space-y-6 max-w-6xl pb-4">
+      {/* Top Controls Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
+          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground">
+            <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground font-semibold">
               Month
             </Label>
             <Input
               id="attendance-report-month"
               type="month"
-              className="h-9 w-40"
+              className="h-10 w-44 bg-background/90 border-border text-foreground rounded-xl"
               value={monthInput}
               max={currentMonthValue()}
               onChange={(e) => setMonthInput(e.target.value)}
@@ -288,35 +337,61 @@ export function AttendanceReportPanel({
         </div>
       </div>
 
-      {rows.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-4">
-          <Kpi label="Students marked" value={String(summary.studentsMarked)} />
-          <Kpi label="Present (days)" value={String(summary.present)} tone="success" />
-          <Kpi label="Absent (days)" value={String(summary.absent)} tone="warning" />
-          <Kpi
-            label="Avg attendance %"
-            value={summary.avgPct === null ? "—" : `${summary.avgPct}%`}
-          />
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
+          <div className="w-11 h-11 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-sm shadow-purple-500/10">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Students marked</p>
+            <p className="text-3xl font-bold text-purple-400 mt-1">{summary.studentsMarked}</p>
+          </div>
         </div>
-      )}
 
-      <ReportTable
-        rows={rows}
-        columns={attendanceCols}
-        empty="No attendance marked for this month yet."
-      />
+        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
+          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/10">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Present (days)</p>
+            <p className="text-3xl font-bold text-emerald-400 mt-1">{summary.present}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
+          <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shadow-amber-500/10">
+            <UserX className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Absent (days)</p>
+            <p className="text-3xl font-bold text-amber-400 mt-1">{summary.absent}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
+          <div className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm shadow-blue-500/10">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Avg attendance %</p>
+            <p className="text-3xl font-bold text-blue-400 mt-1">
+              {summary.avgPct === null ? "—" : `${summary.avgPct}%`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Table */}
+      <div className="rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden p-1">
+        <ReportTable
+          rows={rows}
+          columns={attendanceCols}
+          empty="No attendance marked for this month yet."
+        />
+      </div>
     </section>
   );
 }
 
-/* ----------------------- shared KPI ----------------------- */
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) {
-  const t = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
-  return (
-    <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${t}`}>{value}</p>
-    </div>
-  );
-}

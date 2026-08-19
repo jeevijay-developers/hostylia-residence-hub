@@ -131,7 +131,6 @@ function AdminInvoicesPage() {
     <div className="space-y-4">
       <PageHeader
         title="Invoices"
-        description="Monthly invoices generate automatically on each allocation's billing cycle day; use Create for one-off charges or corrections."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button

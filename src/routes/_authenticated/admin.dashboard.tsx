@@ -2,8 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Users, Wallet, MessageSquareWarning } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
-import { KpiCard } from "@/components/dashboard/KpiCard";
+import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -113,11 +112,6 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Dashboard"
-        description="A quick pulse of your hostels — occupancy, collections and open issues."
-      />
-
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties
@@ -126,29 +120,38 @@ function AdminDashboardPage() {
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
+          <KpiSummaryCard
             icon={Building2}
             label="Occupancy"
             value={`${kpis.data?.occupancyPct ?? 0}%`}
+            progressPercent={kpis.data?.occupancyPct ?? 0}
             loading={kpis.isLoading}
+            tone="warning"
+            onNavigate={() => navigate({ to: "/admin/properties" })}
           />
-          <KpiCard
+          <KpiSummaryCard
             icon={Wallet}
             label="Collections this month"
             value={formatInr(kpis.data?.collectionsPaise ?? 0)}
             loading={kpis.isLoading}
+            tone="info"
+            onNavigate={() => navigate({ to: "/admin/finance" })}
           />
-          <KpiCard
+          <KpiSummaryCard
             icon={MessageSquareWarning}
             label="Open complaints"
             value={kpis.data?.openComplaints ?? 0}
             loading={kpis.isLoading}
+            tone="destructive"
+            onNavigate={() => navigate({ to: "/admin/complaints" })}
           />
-          <KpiCard
+          <KpiSummaryCard
             icon={Users}
             label="Active students"
             value={kpis.data?.activeStudents ?? 0}
             loading={kpis.isLoading}
+            tone="success"
+            onNavigate={() => navigate({ to: "/admin/students" })}
           />
         </div>
       )}

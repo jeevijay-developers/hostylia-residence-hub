@@ -3,12 +3,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCheck, Loader2, Save, Search, Trash2 } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  CheckCheck,
+  Loader2,
+  Save,
+  Search,
+  Trash2,
+  UserCheck,
+  UserMinus,
+  Users,
+  UserX,
+} from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -39,10 +48,6 @@ export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
 });
 
-// PRD §attendance fields: date, student, status — status limited to
-// present/absent/on-leave only (unlike the warden module's Present/Absent/
-// Late/Leave, which is a separate, already-shipped decision this task
-// doesn't touch).
 type Status = "PRESENT" | "ABSENT" | "ON_LEAVE";
 const STATUS_LABEL: Record<Status, string> = {
   PRESENT: "Present",
@@ -63,7 +68,6 @@ function AdminAttendancePage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [roomFilter, setRoomFilter] = useState("ALL");
 
-  // Local overrides (student_id -> Status / remark text)
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
@@ -152,9 +156,6 @@ function AdminAttendancePage() {
     onError: (e) => toast.error(getErrorMessage(e, "Failed to save attendance")),
   });
 
-  // Delete (VCED's "D"): RLS-gated directly (att_admin_all covers DELETE),
-  // same "simple RLS-protected write" pattern as other admin CUD screens —
-  // clears a mistakenly-marked record back to unmarked for that date.
   const deleteMut = useMutation({
     mutationFn: async (attendanceId: string) => {
       const { error } = await supabase.from("attendance").delete().eq("id", attendanceId);
@@ -182,73 +183,113 @@ function AdminAttendancePage() {
   if (!propertyId) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Attendance"
-          description="Bulk-mark: default all Present, flag exceptions."
-        />
         <p className="text-sm text-muted-foreground">Select a property from the switcher first.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Attendance"
-        description="Bulk-mark: default all Present, flag exceptions."
-      />
-
-      {/* Same monthly view + CSV/PDF export already used on the parent
-          dashboard's attendance section (MonthlyAttendanceReport) and on
-          /admin/reports — property-wide here instead of per-student, via
-          the existing v_attendance_monthly_summary view/report fn. */}
+    <div className="space-y-8 max-w-6xl pb-10">
+      {/* Monthly Attendance Summary Panel */}
       <AttendanceReportPanel propertyId={propertyId} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-40"
-        />
-        <Button size="sm" variant="outline" onClick={() => setAllExcept("PRESENT")}>
-          <CheckCheck className="h-4 w-4" /> Mark all Present
+      {/* Controls Bar for Daily Attendance */}
+      <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
+        <div className="relative">
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="bg-background/90 border-border text-foreground rounded-xl h-11 px-3.5 pl-10 text-sm font-medium w-48"
+          />
+          <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={() => setAllExcept("PRESENT")}
+          className="border-border bg-background/80 hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+        >
+          <CheckCheck className="h-4 w-4 text-emerald-400" />
+          <span>Mark all Present</span>
         </Button>
-        <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+
+        <Button
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending}
+          className="bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-300/40 transition-all duration-200 hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-2 cursor-pointer ml-auto sm:ml-0"
+        >
           {saveMut.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
           ) : (
-            <Save className="h-4 w-4" />
+            <Save className="h-4 w-4 text-slate-950 stroke-[2.5]" />
           )}
-          {saveMut.isPending ? "Saving…" : "Save"}
+          <span>{saveMut.isPending ? "Saving…" : "Save"}</span>
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-          <SummaryStat label="Total" value={summary.total} />
-          <SummaryStat label="Present" value={summary.PRESENT} tone="text-success" />
-          <SummaryStat label="Absent" value={summary.ABSENT} tone="text-destructive" />
-          <SummaryStat label="On leave" value={summary.ON_LEAVE} tone="text-warning" />
-        </CardContent>
-      </Card>
+      {/* Daily Metrics Summary Row */}
+      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xl">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
+          <div className="flex items-center gap-3.5 p-2">
+            <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 shadow-sm shadow-purple-500/10">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Total</p>
+              <p className="text-2xl font-bold text-purple-400">{summary.total}</p>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Present</p>
+              <p className="text-2xl font-bold text-emerald-400">{summary.PRESENT}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
+              <UserX className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Absent</p>
+              <p className="text-2xl font-bold text-amber-400">{summary.ABSENT}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
+            <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0 shadow-sm shadow-rose-500/10">
+              <UserMinus className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">On leave</p>
+              <p className="text-2xl font-bold text-rose-400">{summary.ON_LEAVE}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by student name, student ID, or room number"
+            placeholder="Search by student name, student ID, or room"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="bg-background/90 border-border text-foreground rounded-xl h-11 pl-10 text-sm font-medium"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-10 text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-card border-border text-foreground">
               <SelectItem value="ALL">All statuses</SelectItem>
               {STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
@@ -258,14 +299,14 @@ function AdminAttendancePage() {
             </SelectContent>
           </Select>
           <Select value={roomFilter} onValueChange={setRoomFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-10 text-sm">
               <SelectValue placeholder="Room" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-card border-border text-foreground">
               <SelectItem value="ALL">All rooms</SelectItem>
               {rooms.map((r) => (
                 <SelectItem key={r} value={r}>
-                  {r}
+                  Room {r}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -273,12 +314,13 @@ function AdminAttendancePage() {
         </div>
       </div>
 
+      {/* Student Roster List */}
       {studentsQ.isLoading || attendanceQ.isLoading ? (
-        <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-          Loading…
+        <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Loading student roster…
         </div>
       ) : (
-        <div className="rounded-md border divide-y">
+        <div className="rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden divide-y divide-border/60">
           {filteredRoster.map((s) => {
             const st = effective(s.id);
             const saved = currentMap[s.id];
@@ -291,28 +333,28 @@ function AdminAttendancePage() {
               <div
                 key={s.id}
                 className={cn(
-                  "space-y-2 p-3",
-                  needsRemark && !remarkValue.trim() && "border-l-2 border-destructive",
+                  "space-y-3 p-4 transition-colors hover:bg-accent/20",
+                  needsRemark && !remarkValue.trim() && "border-l-4 border-rose-500/80 bg-rose-500/5",
                 )}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Avatar className="h-8 w-8 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 shrink-0 border border-border">
                       <AvatarImage src={avatarUrl} alt={s.full_name} />
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                         {s.full_name.trim()[0]?.toUpperCase() ?? "S"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{s.full_name}</div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div className="font-semibold text-foreground text-sm truncate">{s.full_name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
                         {s.admission_number}
                         {s.roomNumber ? ` · Room ${s.roomNumber}` : ""}
                         {s.blockName ? ` · ${s.blockName}` : ""}
                       </div>
                       {saved && (
-                        <div className="mt-0.5">
-                          <Badge variant="secondary">
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
                             Saved: {STATUS_LABEL[saved.status] ?? saved.status}
                             {saved.notes ? ` — ${saved.notes}` : ""}
                           </Badge>
@@ -320,15 +362,16 @@ function AdminAttendancePage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
                     <Select
                       value={st}
                       onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                     >
-                      <SelectTrigger className="w-32 shrink-0">
+                      <SelectTrigger className="w-36 bg-background border-border text-foreground rounded-xl h-10 text-sm font-semibold">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-card border-border text-foreground">
                         {STATUSES.map((v) => (
                           <SelectItem key={v} value={v}>
                             {STATUS_LABEL[v]}
@@ -336,11 +379,12 @@ function AdminAttendancePage() {
                         ))}
                       </SelectContent>
                     </Select>
+
                     {saved && (
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 shrink-0"
+                        className="h-9 w-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-500 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all shrink-0"
                         onClick={() => setPendingDelete({ id: saved.id, name: s.full_name })}
                         aria-label={`Delete attendance record for ${s.full_name}`}
                       >
@@ -349,44 +393,47 @@ function AdminAttendancePage() {
                     )}
                   </div>
                 </div>
+
                 {needsRemark && (
                   <Input
                     placeholder="Remark required — e.g. Sick, Medical Leave, Went Home"
                     value={remarkValue}
                     onChange={(e) => setRemarks({ ...remarks, [s.id]: e.target.value })}
-                    className="h-8 text-sm"
+                    className="bg-background/90 border-border text-foreground rounded-xl h-9 text-xs"
                   />
                 )}
               </div>
             );
           })}
           {studentsQ.data?.length === 0 && (
-            <div className="p-6 text-center text-sm text-muted-foreground">
+            <div className="p-8 text-center text-sm text-muted-foreground">
               No active students in this property.
             </div>
           )}
           {(studentsQ.data?.length ?? 0) > 0 && filteredRoster.length === 0 && (
-            <div className="p-6 text-center text-sm text-muted-foreground">
+            <div className="p-8 text-center text-sm text-muted-foreground">
               No students match your filters.
             </div>
           )}
         </div>
       )}
 
+      {/* Delete Record Dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => !v && setPendingDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete attendance record?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-foreground">Delete attendance record?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
               This clears {pendingDelete?.name}'s attendance for {date} back to unmarked. This can't
               be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => pendingDelete && deleteMut.mutate(pendingDelete.id)}
               disabled={deleteMut.isPending}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Confirm
             </AlertDialogAction>
@@ -397,11 +444,3 @@ function AdminAttendancePage() {
   );
 }
 
-function SummaryStat({ label, value, tone }: { label: string; value: number; tone?: string }) {
-  return (
-    <div className="space-y-0.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-lg font-semibold", tone)}>{value}</p>
-    </div>
-  );
-}

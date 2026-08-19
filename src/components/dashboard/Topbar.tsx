@@ -118,24 +118,18 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {crumbs.map((c, i) => {
+          {crumbs.slice(0, -1).map((c, i) => {
             const path = "/" + crumbs.slice(0, i + 1).join("/");
-            const last = i === crumbs.length - 1;
             return (
               <li key={path} className="flex min-w-0 items-center gap-1.5">
                 {i > 0 && <span className="text-muted-foreground/50">/</span>}
-                {last ? (
-                  <span className="truncate font-medium text-foreground capitalize">
-                    {c.replace(/-/g, " ")}
-                  </span>
-                ) : (
-                  <Link to={path} className="truncate capitalize hover:text-foreground">
-                    {c.replace(/-/g, " ")}
-                  </Link>
-                )}
+                <Link to={path} className="truncate capitalize hover:text-foreground">
+                  {c.replace(/-/g, " ")}
+                </Link>
               </li>
             );
           })}
+          {crumbs.length > 1 && <li className="text-muted-foreground/50">/</li>}
         </ol>
       </nav>
 
@@ -177,8 +171,9 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <NotificationBell />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary ring-2 ring-primary/40">
           {avatarInitial}
+          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel>Account</DropdownMenuLabel>

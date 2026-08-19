@@ -5,11 +5,13 @@ import type { NavItem } from "@/lib/dashboard-nav";
 
 interface BottomNavProps {
   items: NavItem[];
+  centerElevated?: boolean;
 }
 
-export function BottomNav({ items }: BottomNavProps) {
+export function BottomNav({ items, centerElevated = true }: BottomNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const centerIndex = items.length % 2 === 1 ? Math.floor(items.length / 2) : -1;
+  const centerIndex =
+    centerElevated && items.length % 2 === 1 ? Math.floor(items.length / 2) : -1;
 
   return (
     <nav

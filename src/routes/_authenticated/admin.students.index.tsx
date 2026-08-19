@@ -2,10 +2,24 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, Upload, Search, Eye, Link2, Loader2, Trash2 } from "lucide-react";
+import {
+  UserPlus,
+  Upload,
+  Search,
+  Eye,
+  Link2,
+  Loader2,
+  Trash2,
+  Building2,
+  Filter,
+  Users,
+  UserCheck,
+  ClipboardList,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
@@ -33,12 +48,50 @@ export const Route = createFileRoute("/_authenticated/admin/students/")({
   component: StudentsListPage,
 });
 
+const AVATAR_COLOR_PAIRS = [
+  { bg: "bg-indigo-950/90", text: "text-indigo-400", border: "border-indigo-800/60" },
+  { bg: "bg-emerald-950/90", text: "text-emerald-400", border: "border-emerald-800/60" },
+  { bg: "bg-purple-950/90", text: "text-purple-400", border: "border-purple-800/60" },
+  { bg: "bg-teal-950/90", text: "text-teal-400", border: "border-teal-800/60" },
+  { bg: "bg-amber-950/90", text: "text-amber-400", border: "border-amber-800/60" },
+  { bg: "bg-blue-950/90", text: "text-blue-400", border: "border-blue-800/60" },
+];
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase() || "?";
+}
+
+function getAvatarStyle(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return AVATAR_COLOR_PAIRS[Math.abs(hash) % AVATAR_COLOR_PAIRS.length];
+}
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+function pageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = new Set<number>([1, 2, 3, total - 1, total, current - 1, current, current + 1]);
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const out: (number | "ellipsis")[] = [];
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - sorted[i - 1] > 1) out.push("ellipsis");
+    out.push(p);
+  });
+  return out;
+}
+
 function StudentsListPage() {
   const { data: resolved } = useResolvedRole();
   const tenantId = resolved?.tenantId ?? null;
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; full_name: string } | null>(null);
@@ -112,119 +165,298 @@ function StudentsListPage() {
     return s;
   }, [studentsQ.data]);
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Students"
-        description="Applicants, active residents and alumni."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={shareAdmissionLink}>
-              <Link2 className="h-4 w-4" /> Share public form
-            </Button>
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4" /> Bulk import
-            </Button>
-            <Button disabled={!effectiveProperty} onClick={() => setAddOpen(true)}>
-              <UserPlus className="h-4 w-4" /> Add student
-            </Button>
-          </div>
-        }
-      />
+  const totalRows = studentsQ.data?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedStudents = useMemo(
+    () => (studentsQ.data ?? []).slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [studentsQ.data, currentPage, pageSize],
+  );
 
-      <div className="flex flex-wrap items-center gap-3">
-        {propertiesQ.data && propertiesQ.data.length > 1 && (
-          <Select value={effectiveProperty ?? ""} onValueChange={(v) => setLocalPropertyId(v)}>
-            <SelectTrigger className="w-56"><SelectValue placeholder="Property" /></SelectTrigger>
-            <SelectContent>
-              {propertiesQ.data.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
+  return (
+    <div className="space-y-6 max-w-6xl pb-10">
+      {/* Top Action Buttons Section */}
+      <div className="flex flex-wrap gap-3 items-center justify-between sm:justify-start">
+        <div className="flex flex-wrap gap-3 items-center">
+          <Button
+            variant="outline"
+            onClick={shareAdmissionLink}
+            className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
+          >
+            <Link2 className="h-4 w-4 text-amber-400" />
+            <span>Share public form</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
+          >
+            <Upload className="h-4 w-4 text-amber-400" />
+            <span>Bulk import</span>
+          </Button>
+        </div>
+
+        <Button
+          disabled={!effectiveProperty}
+          onClick={() => setAddOpen(true)}
+          className="bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl h-11 px-6 shadow-lg shadow-amber-500/20 border border-amber-300/40 flex items-center gap-2 cursor-pointer transition-all ml-auto sm:ml-0"
+        >
+          <UserPlus className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+          <span>Add student</span>
+        </Button>
+      </div>
+
+      {/* Filters & Search Section */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {propertiesQ.data && propertiesQ.data.length > 1 && (
+            <Select
+              value={effectiveProperty ?? ""}
+              onValueChange={(v) => {
+                setLocalPropertyId(v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-11 text-sm font-medium">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Property" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border text-foreground">
+                {propertiesQ.data.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-11 text-sm font-medium">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="Status" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border text-foreground">
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="APPLICANT">Applicant</SelectItem>
+              <SelectItem value="VERIFIED">Verified</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="NOTICE_GIVEN">Notice given</SelectItem>
+              <SelectItem value="MOVED_OUT">Moved out</SelectItem>
+              <SelectItem value="ARCHIVED">Archived</SelectItem>
             </SelectContent>
           </Select>
-        )}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All statuses</SelectItem>
-            <SelectItem value="APPLICANT">Applicant</SelectItem>
-            <SelectItem value="VERIFIED">Verified</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="NOTICE_GIVEN">Notice given</SelectItem>
-            <SelectItem value="MOVED_OUT">Moved out</SelectItem>
-            <SelectItem value="ARCHIVED">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="w-64 pl-8"
-            placeholder="Search by name…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
         </div>
-        <div className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {stats.total} total • {stats.active} active • {stats.applicants} applicants
+
+        <div className="relative w-full">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="bg-card border-border text-foreground rounded-xl h-11 pl-10 text-sm font-medium placeholder:text-muted-foreground"
+            placeholder="Search by name..."
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
 
+      {/* Dashboard Stats KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Card */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-purple-500/10">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-foreground">{stats.total}</div>
+            <div className="text-sm font-medium text-muted-foreground">Total</div>
+          </div>
+        </div>
+
+        {/* Active Card */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-emerald-500/10">
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-foreground">{stats.active}</div>
+            <div className="text-sm font-medium text-muted-foreground">Active</div>
+          </div>
+        </div>
+
+        {/* Applicants Card */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 flex items-center gap-4 shadow-xl">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-xl shrink-0 shadow-sm shadow-blue-500/10">
+            <ClipboardList className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-foreground">{stats.applicants}</div>
+            <div className="text-sm font-medium text-muted-foreground">Applicants</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Table Section */}
       {studentsQ.isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       ) : (studentsQ.data ?? []).length === 0 ? (
         <EmptyState
           title="No students yet"
           description="Share your public admission link or bulk import to start onboarding."
         />
       ) : (
-        <div className="rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Admission #</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(studentsQ.data ?? []).map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.full_name}</TableCell>
-                  <TableCell className="font-mono text-xs">{s.admission_number}</TableCell>
-                  <TableCell>{s.phone ?? "—"}</TableCell>
-                  <TableCell><StudentStatusBadge status={s.status} /></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/admin/students/$id" params={{ id: s.id }}>
-                          <Eye className="h-4 w-4" /> Open
-                        </Link>
-                      </Button>
-                      {s.status === "ACTIVE" || s.status === "NOTICE_GIVEN" ? (
-                        <span
-                          className="inline-flex items-center px-2 text-xs text-muted-foreground"
-                          title="Move this student out before deleting their record"
-                        >
-                          <Trash2 className="h-4 w-4 opacity-40" />
-                        </span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setPendingDelete({ id: s.id, full_name: s.full_name })}
-                        >
-                          <Trash2 className="h-4 w-4" /> Delete
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-2xl">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-border/80 bg-card">
+                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">NAME</TableHead>
+                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">ADMISSION #</TableHead>
+                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">PHONE</TableHead>
+                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">STATUS</TableHead>
+                  <TableHead className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">ACTIONS</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="divide-y divide-border/60">
+                {pagedStudents.map((s) => {
+                  const parts = s.full_name.trim().split(/\s+/);
+                  const firstName = parts[0] ?? "";
+                  const lastName = parts.slice(1).join(" ");
+                  const avatarStyle = getAvatarStyle(s.full_name);
+                  const initialStr = (firstName[0] || "") + (lastName[0] || "");
+                  return (
+                    <TableRow key={s.id} className="hover:bg-accent/30 transition-colors">
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full border ${avatarStyle.border} ${avatarStyle.bg} ${avatarStyle.text} flex items-center justify-center font-bold text-xs shrink-0 shadow-sm`}>
+                            {initialStr.toUpperCase() || initials(s.full_name)}
+                          </div>
+                          <div>
+                            <div className="text-foreground font-semibold text-sm">{firstName}</div>
+                            {lastName && <div className="text-muted-foreground text-xs">{lastName}</div>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap font-mono text-xs text-muted-foreground">
+                        {s.admission_number}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                        {s.phone ?? "—"}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <StudentStatusBadge status={s.status} />
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button asChild size="icon" variant="ghost" className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all">
+                            <Link to="/admin/students/$id" params={{ id: s.id }} aria-label={`Open ${s.full_name}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          {s.status === "ACTIVE" || s.status === "NOTICE_GIVEN" ? (
+                            <span
+                              className="inline-flex h-9 w-9 rounded-xl border border-border/40 bg-background/40 items-center justify-center text-muted-foreground opacity-40 cursor-not-allowed"
+                              title="Move this student out before deleting their record"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </span>
+                          ) : (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Delete ${s.full_name}`}
+                              className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"
+                              onClick={() => setPendingDelete({ id: s.id, full_name: s.full_name })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination Footer */}
+          {!studentsQ.isLoading && totalRows > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-card border-t border-border/80">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-36 bg-card border-border text-foreground rounded-xl h-10 text-xs font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border text-foreground">
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} per page</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {pageNumbers(currentPage, totalPages).map((p, i) =>
+                  p === "ellipsis" ? (
+                    <span key={`e-${i}`} className="px-2 text-sm text-muted-foreground">
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant="outline"
+                      size="icon"
+                      className={cn(
+                        "h-9 w-9 rounded-xl text-sm font-semibold transition-all",
+                        p === currentPage
+                          ? "border-amber-500 bg-amber-500/10 text-amber-400 shadow-sm shadow-amber-500/10"
+                          : "border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent",
+                      )}
+                      onClick={() => setPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                    >
+                      {p}
+                    </Button>
+                  ),
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -248,23 +480,23 @@ function StudentsListPage() {
       )}
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {pendingDelete?.full_name ?? "this student"}?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-foreground">Delete {pendingDelete?.full_name ?? "this student"}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
               This removes them from the students list. Their record is kept for audit purposes
               and can be recovered by support if needed — this isn't a permanent erase.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 if (pendingDelete) deleteMut.mutate(pendingDelete.id);
               }}
               disabled={deleteMut.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Delete
@@ -275,3 +507,4 @@ function StudentsListPage() {
     </div>
   );
 }
+

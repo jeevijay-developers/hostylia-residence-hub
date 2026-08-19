@@ -3,22 +3,44 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { BedSingle, Check, ChevronsUpDown, DoorOpen, LayoutGrid, User } from "lucide-react";
+import {
+  BedSingle,
+  Check,
+  ChevronRight,
+  ChevronsUpDown,
+  DoorOpen,
+  HelpCircle,
+  LayoutGrid,
+  Lightbulb,
+  User,
+} from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { Button } from "@/components/ui/button";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -91,7 +113,13 @@ function AllocationBoard() {
           "id, status, start_date, rent_snapshot_paise, deposit_snapshot_paise, student_id, students(id, full_name, admission_number, phone)",
         )
         .eq("bed_id", viewBed!.id)
-        .in("status", ["ACTIVE", "NOTICE_GIVEN", "MOVE_OUT_INSPECTION", "PENDING_PAYMENT", "PENDING_AGREEMENT"])
+        .in("status", [
+          "ACTIVE",
+          "NOTICE_GIVEN",
+          "MOVE_OUT_INSPECTION",
+          "PENDING_PAYMENT",
+          "PENDING_AGREEMENT",
+        ])
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -154,37 +182,70 @@ function AllocationBoard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Allocations"
-        description="Tap a vacant bed to assign an applicant. Bed status flips automatically."
-        actions={
-          effectiveProp ? (
-            <Button asChild variant="outline">
-              <Link to="/admin/properties/$id/structure" params={{ id: effectiveProp }}>
-                <LayoutGrid className="h-4 w-4" /> Manage rooms & beds
-              </Link>
-            </Button>
-          ) : undefined
-        }
-      />
+      {effectiveProp && (
+        <Link
+          to="/admin/properties/$id/structure"
+          params={{ id: effectiveProp }}
+          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+            <LayoutGrid className="h-6 w-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+              Manage rooms & beds
+            </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              View and manage all rooms and beds in your property
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+          <BedSingle
+            className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+            aria-hidden="true"
+          />
+        </Link>
+      )}
 
       {!effectiveProp ? (
-        <p className="text-sm text-muted-foreground">
-          Choose a property from the sidebar first.
-        </p>
+        <p className="text-sm text-muted-foreground">Choose a property from the sidebar first.</p>
       ) : bedsQ.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
-        <BedGrid
-          beds={bedsQ.data ?? []}
-          onSelect={(b) => {
-            if (b.status === "VACANT") {
-              setSelectedBed(b);
-              return;
-            }
-            setViewBed(b);
-          }}
-        />
+        <>
+          <BedGrid
+            variant="expanded"
+            beds={bedsQ.data ?? []}
+            onSelect={(b) => {
+              if (b.status === "VACANT") {
+                setSelectedBed(b);
+                return;
+              }
+              setViewBed(b);
+            }}
+          />
+
+          <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
+                <Lightbulb className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Tip: Click on any room to view detailed information
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Occupancy status is updated in real-time
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="ghost" size="sm" className="shrink-0">
+              <Link to="/admin/support">
+                <HelpCircle className="h-4 w-4" /> Need help?
+              </Link>
+            </Button>
+          </div>
+        </>
       )}
 
       <Dialog open={!!selectedBed} onOpenChange={(v) => !v && setSelectedBed(null)}>
@@ -260,28 +321,45 @@ function AllocationBoard() {
               </Select>
               {feePlansQ.data && feePlansQ.data.length === 0 && (
                 <p className="mt-1 text-xs text-destructive">
-                  No active fee plan for this property — create one first, or this allocation
-                  won't be billable.
+                  No active fee plan for this property — create one first, or this allocation won't
+                  be billable.
                 </p>
               )}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="sd">Start date</Label>
-                <Input id="sd" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <Input
+                  id="sd"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
               </div>
               <div>
                 <Label htmlFor="rent">Rent (₹)</Label>
-                <Input id="rent" type="number" value={rent / 100} onChange={(e) => setRent(Math.round(+e.target.value * 100))} />
+                <Input
+                  id="rent"
+                  type="number"
+                  value={rent / 100}
+                  onChange={(e) => setRent(Math.round(+e.target.value * 100))}
+                />
               </div>
               <div>
                 <Label htmlFor="dep">Deposit (₹)</Label>
-                <Input id="dep" type="number" value={deposit / 100} onChange={(e) => setDeposit(Math.round(+e.target.value * 100))} />
+                <Input
+                  id="dep"
+                  type="number"
+                  value={deposit / 100}
+                  onChange={(e) => setDeposit(Math.round(+e.target.value * 100))}
+                />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSelectedBed(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setSelectedBed(null)}>
+              Cancel
+            </Button>
             <Button
               disabled={!studentId || !feePlanId || create.isPending}
               onClick={() => create.mutate()}
@@ -299,8 +377,9 @@ function AllocationBoard() {
           </DialogHeader>
           {viewBed?.status !== "OCCUPIED" ? (
             <p className="text-sm text-muted-foreground">
-              This bed is currently <span className="font-medium">{viewBed?.status.toLowerCase()}</span>.
-              Manage its status from Manage rooms & beds.
+              This bed is currently{" "}
+              <span className="font-medium">{viewBed?.status.toLowerCase()}</span>. Manage its
+              status from Manage rooms & beds.
             </p>
           ) : bedDetailQ.isLoading ? (
             <Skeleton className="h-24 w-full" />
@@ -323,13 +402,21 @@ function AllocationBoard() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <Info label="Since" value={bedDetailQ.data.start_date ?? "—"} />
                 <Info label="Status" value={bedDetailQ.data.status} />
-                <Info label="Rent" value={`₹ ${(bedDetailQ.data.rent_snapshot_paise / 100).toFixed(2)}`} />
-                <Info label="Deposit" value={`₹ ${(bedDetailQ.data.deposit_snapshot_paise / 100).toFixed(2)}`} />
+                <Info
+                  label="Rent"
+                  value={`₹ ${(bedDetailQ.data.rent_snapshot_paise / 100).toFixed(2)}`}
+                />
+                <Info
+                  label="Deposit"
+                  value={`₹ ${(bedDetailQ.data.deposit_snapshot_paise / 100).toFixed(2)}`}
+                />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setViewBed(null)}>Close</Button>
+            <Button variant="ghost" onClick={() => setViewBed(null)}>
+              Close
+            </Button>
             {viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
               <>
                 <Button asChild variant="outline">
@@ -338,7 +425,10 @@ function AllocationBoard() {
                   </Link>
                 </Button>
                 <Button asChild>
-                  <Link to="/admin/students/$id/move-out" params={{ id: bedDetailQ.data.student_id }}>
+                  <Link
+                    to="/admin/students/$id/move-out"
+                    params={{ id: bedDetailQ.data.student_id }}
+                  >
                     <DoorOpen className="h-4 w-4" /> Deallocate / move out
                   </Link>
                 </Button>

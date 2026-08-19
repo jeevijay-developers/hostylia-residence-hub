@@ -13,7 +13,7 @@ function AdminPaymentsPage() {
     return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
   return (
     <div className="space-y-4">
-      <PageHeader title="Record payment" description="Cash, cheque, bank transfer or UPI." />
+      <PageHeader title="Record payment" />
       <PaymentEntryForm propertyId={propertyId} />
     </div>
   );

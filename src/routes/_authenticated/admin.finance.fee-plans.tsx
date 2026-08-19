@@ -14,10 +14,7 @@ function FeePlansPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Fee plans"
-        description="Rent, mess, deposit and other charges by property."
-      />
+      <PageHeader title="Fee plans" />
       <FeePlansPanel propertyId={propertyId} />
     </div>
   );
