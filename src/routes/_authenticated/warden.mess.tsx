@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Clock, MessageCircle, Pencil, Send, Trash2 } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -182,7 +181,6 @@ function WardenMessPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Mess" description="Publish menu, capture headcount, view feedback." />
       <div className="flex items-center gap-2">
         <Input
           type="date"

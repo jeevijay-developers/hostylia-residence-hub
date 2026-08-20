@@ -10,7 +10,11 @@ export const Route = createFileRoute("/_authenticated/admin/finance/fee-plans")(
 function FeePlansPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   if (!propertyId)
-    return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
+    return (
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+        Choose a property first.
+      </p>
+    );
 
   return (
     <div className="space-y-6">

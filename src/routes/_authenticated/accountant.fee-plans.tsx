@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { FeePlansPanel } from "@/components/finance/FeePlansPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
@@ -12,17 +11,13 @@ function AccFeePlansPage() {
   if (propertyLoading) return null;
   if (!propertyId)
     return (
-      <p className="p-6 text-sm text-muted-foreground">
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
         No property assigned to your account yet — contact your Hostel Admin.
       </p>
     );
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Fee plans"
-        description="Rent, mess, deposit and other charges by property."
-      />
       <FeePlansPanel propertyId={propertyId} />
     </div>
   );

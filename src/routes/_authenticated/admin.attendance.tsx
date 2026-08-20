@@ -189,104 +189,104 @@ function AdminAttendancePage() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl pb-10">
+    <div className="space-y-6 sm:space-y-8 max-w-6xl pb-10 overflow-x-hidden">
       {/* Monthly Attendance Summary Panel */}
       <AttendanceReportPanel propertyId={propertyId} />
 
       {/* Controls Bar for Daily Attendance */}
-      <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/60">
-        <div className="relative">
+      <div className="flex items-center gap-2 sm:flex-wrap sm:gap-3 pt-4 border-t border-border/60 overflow-x-auto sm:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="relative shrink-0">
           <Input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="bg-background/90 border-border text-foreground rounded-xl h-11 px-3.5 pl-10 text-sm font-medium w-48"
+            className="bg-background/90 border-border text-foreground rounded-xl h-9 px-3 pl-9 text-xs w-36 sm:h-11 sm:px-3.5 sm:pl-10 sm:text-sm sm:font-medium sm:w-48"
           />
-          <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <CalendarIcon className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
         </div>
 
         <Button
           variant="outline"
           onClick={() => setAllExcept("PRESENT")}
-          className="border-border bg-background/80 hover:bg-accent text-foreground rounded-xl h-11 px-4 font-semibold text-sm flex items-center gap-2 cursor-pointer"
+          className="shrink-0 border-border bg-background/80 hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer"
         >
-          <CheckCheck className="h-4 w-4 text-emerald-400" />
+          <CheckCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
           <span>Mark all Present</span>
         </Button>
 
         <Button
           onClick={() => saveMut.mutate()}
           disabled={saveMut.isPending}
-          className="bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-300/40 transition-all duration-200 hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-2 cursor-pointer ml-auto sm:ml-0"
+          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-1.5 sm:gap-2 cursor-pointer sm:ml-0"
         >
           {saveMut.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+            <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-primary-foreground dark:text-slate-950" />
           ) : (
-            <Save className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+            <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
           )}
           <span>{saveMut.isPending ? "Saving…" : "Save"}</span>
         </Button>
       </div>
 
       {/* Daily Metrics Summary Row */}
-      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xl">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
-          <div className="flex items-center gap-3.5 p-2">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 shadow-sm shadow-purple-500/10">
-              <Users className="w-5 h-5" />
+      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-xl">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-500/10">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold text-purple-400">{summary.total}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Present</p>
-              <p className="text-2xl font-bold text-emerald-400">{summary.PRESENT}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Total</p>
+              <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{summary.total}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
-            <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
-              <UserX className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 sm:pt-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
+              <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Absent</p>
-              <p className="text-2xl font-bold text-amber-400">{summary.ABSENT}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Present</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary.PRESENT}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3.5 p-2 pt-4 sm:pt-2">
-            <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0 shadow-sm shadow-rose-500/10">
-              <UserMinus className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
+              <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">On leave</p>
-              <p className="text-2xl font-bold text-rose-400">{summary.ON_LEAVE}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Absent</p>
+              <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">{summary.ABSENT}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-sm shadow-rose-500/10">
+              <UserMinus className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">On leave</p>
+              <p className="text-lg sm:text-2xl font-bold text-rose-600 dark:text-rose-400">{summary.ON_LEAVE}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by student name, student ID, or room"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-background/90 border-border text-foreground rounded-xl h-11 pl-10 text-sm font-medium"
+            className="bg-background/90 border-border text-foreground rounded-xl h-9 pl-9 text-xs sm:h-11 sm:pl-10 sm:text-sm font-medium"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-10 text-sm">
+            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
@@ -299,7 +299,7 @@ function AdminAttendancePage() {
             </SelectContent>
           </Select>
           <Select value={roomFilter} onValueChange={setRoomFilter}>
-            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-10 text-sm">
+            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm">
               <SelectValue placeholder="Room" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
@@ -354,7 +354,7 @@ function AdminAttendancePage() {
                       </div>
                       {saved && (
                         <div className="mt-1">
-                          <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                          <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                             Saved: {STATUS_LABEL[saved.status] ?? saved.status}
                             {saved.notes ? ` — ${saved.notes}` : ""}
                           </Badge>

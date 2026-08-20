@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RefundRequestForm } from "@/components/finance/RefundRequestForm";
 import { RefundHistoryPanel } from "@/components/finance/RefundHistoryPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
@@ -18,13 +17,9 @@ function AccRefundsPage() {
       </p>
     );
   return (
-    <div className="space-y-6">
-      <PageHeader title="Refunds" description="Initiate a refund — a Hostel Admin will approve." />
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
       <RefundRequestForm propertyId={propertyId} />
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Refund history</h2>
-        <RefundHistoryPanel propertyId={propertyId} />
-      </div>
+      <RefundHistoryPanel propertyId={propertyId} />
     </div>
   );
 }

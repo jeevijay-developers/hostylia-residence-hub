@@ -68,6 +68,14 @@
 
   --shadow-glow: 0 0 60px -10px color-mix(in oklab, var(--soft-teal) 35%, transparent);
   --shadow-card: 0 10px 40px -12px rgb(0 0 0 / 0.5);
+  /* Ambient card shadow tuned to read consistently in both light and dark —
+     replaces per-mode ad hoc shadow strings on individual components. */
+  --shadow-card-ambient:
+    0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+    0 8px 24px -8px color-mix(in oklab, var(--foreground) 10%, transparent);
+
+  --color-neutral-accent: var(--neutral-accent);
+  --color-neutral-accent-foreground: var(--neutral-accent-foreground);
 
   --animate-fade-in: fade-in 0.6s ease-out;
   --animate-fade-up: fade-up 0.7s ease-out;
@@ -145,25 +153,29 @@
   --radius: 0.75rem;
 
   /* Hostylia brand — Design.md */
-  --background: #f6f8f8;
-  --foreground: #0a141e;
-  --card: #ffffff;
-  --card-foreground: #0a141e;
-  --popover: #ffffff;
-  --popover-foreground: #0a141e;
-  --primary: #00696f;
-  --primary-foreground: #ffffff;
-  --secondary: #00609c;
-  --secondary-foreground: #ffffff;
-  --muted: #f0f3f3;
-  --muted-foreground: #51606b;
-  --accent: #00609c;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #dce4e7;
-  --input: #cbd6da;
-  --ring: #00d8cc;
+  --background: #F6F8F8;
+  --foreground: #0A141E;
+  --card: #FFFFFF;
+  --card-foreground: #0A141E;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A141E;
+  --primary: #00696F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #00609C;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F0F3F3;
+  --muted-foreground: #51606B;
+  /* `accent` is shadcn's quiet hover/focus surface (hover:bg-accent on ghost
+     buttons, dropdown/select items, etc.) — it must stay a soft neutral tint,
+     not a saturated brand colour, or every hover state in the app reads as a
+     loud blue flash. Mirrors dark mode's "raised, quiet" accent surface. */
+  --accent: #E7F1F1;
+  --accent-foreground: #0A141E;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #DCE4E7;
+  --input: #CBD6DA;
+  --ring: #00D8CC;
 
   --success: #15803d;
   --success-foreground: #ffffff;
@@ -171,6 +183,8 @@
   --warning-foreground: #ffffff;
   --info: #00609c;
   --info-foreground: #ffffff;
+  --neutral-accent: #6d28d9;
+  --neutral-accent-foreground: #ffffff;
 
   --brand-teal: #00b4b4;
   --brand-cyan: #00d8cc;
@@ -231,6 +245,8 @@
   --warning-foreground: #070b18;
   --info: #60a5fa;
   --info-foreground: #070b18;
+  --neutral-accent: #a78bfa;
+  --neutral-accent-foreground: #070b18;
 }
 
 @layer base {
@@ -331,6 +347,30 @@
     transform: translateY(-4px);
     box-shadow: var(--shadow-card);
     border-color: color-mix(in oklab, var(--soft-teal) 50%, var(--dark-border));
+  }
+
+  /* Ambient, theme-aware card shadow — same visual weight in light and dark
+     instead of per-component ad hoc shadow strings. */
+  .shadow-card-ambient {
+    box-shadow: var(--shadow-card-ambient);
+  }
+
+  /* Soft tone-tinted glow behind stat/icon badges (success/warning/destructive/
+     info/muted/neutral-accent) — pass the token via `--glow-tone`. */
+  .shadow-tone-glow {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--glow-tone, var(--primary)) 20%, transparent),
+      0 8px 24px -8px color-mix(in oklab, var(--glow-tone, var(--primary)) 45%, transparent);
+  }
+
+  .panel-lift {
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
+  }
+  .panel-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-ambient);
   }
   .text-gradient-teal {
     background: linear-gradient(135deg, #4fb7a8 0%, #2f8f6b 100%);

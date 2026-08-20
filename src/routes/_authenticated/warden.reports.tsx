@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   OccupancyReportPanel,
   SlaComplianceReportPanel,
@@ -44,10 +43,6 @@ function WardenReportsPage() {
   const propertyId = q.data;
   return (
     <div className="space-y-8 p-4">
-      <PageHeader
-        title="Reports"
-        description="Your scope only. Attendance can be downloaded; occupancy and SLA are view-only."
-      />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           No assigned property scope yet. Ask your admin to assign a block or property.

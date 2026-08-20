@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Download } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RevenueCollectionsSummary } from "@/components/finance/RevenueCollectionsSummary";
 import { RefundApprovalList } from "@/components/finance/RefundApprovalList";
@@ -13,15 +14,23 @@ export const Route = createFileRoute("/_authenticated/admin/finance/pnl")({
 function RevenueCollectionsPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   if (!propertyId)
-    return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
+    return (
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+        Choose a property first.
+      </p>
+    );
   return (
-    <div className="space-y-6">
-      <PageHeader title="Revenue & Collections Summary" />
+    <div className="max-w-3xl space-y-6">
+      <PageHeader
+        title="Revenue & Collections Summary"
+        actions={
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-sm">
+            <Download className="h-4 w-4" aria-hidden="true" />
+          </span>
+        }
+      />
       <RevenueCollectionsSummary propertyId={propertyId} />
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Refund approvals</h2>
-        <RefundApprovalList propertyId={propertyId} />
-      </section>
+      <RefundApprovalList propertyId={propertyId} />
     </div>
   );
 }

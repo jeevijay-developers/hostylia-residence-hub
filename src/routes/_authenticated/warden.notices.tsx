@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { NoticeComposer } from "@/components/notifications/NoticeComposer";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,7 +29,6 @@ function WardenNoticesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Notices" description="Broadcast announcements to your property." />
       {propertyId ? (
         <NoticeComposer propertyId={propertyId} />
       ) : (

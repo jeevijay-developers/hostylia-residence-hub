@@ -11,14 +11,14 @@ export const Route = createFileRoute("/_authenticated/admin/notices")({
 function AdminNoticesPage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-warning/10 text-warning">
-          <Megaphone className="h-6 w-6" />
+    <div className="w-full max-w-full space-y-6 overflow-x-hidden">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warning/10 text-warning sm:h-14 sm:w-14">
+          <Megaphone className="h-5 w-5 sm:h-6 sm:w-6" />
         </span>
-        <div>
-          <p className="font-display text-xl font-semibold text-foreground sm:text-2xl">Notices</p>
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <p className="font-display text-lg font-semibold text-foreground sm:text-2xl">Notices</p>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Manage and publish announcements across channels
           </p>
         </div>

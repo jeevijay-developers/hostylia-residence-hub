@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Plus, Upload, Building2 } from "lucide-react";
+import { BedDouble, ChevronRight, Plus, Upload, Building2 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -141,15 +141,23 @@ function StructurePage() {
   const noBlockFloors = floors.filter((f) => !f.block_id);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl space-y-6">
       <PageHeader
         title={`Structure — ${propertyQ.data?.name ?? ""}`}
+        description="Manage blocks, floors and rooms"
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setCsvOpen(true)}>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl border-border bg-card font-semibold shadow-sm"
+              onClick={() => setCsvOpen(true)}
+            >
               <Upload className="h-4 w-4" /> Import CSV
             </Button>
-            <Button onClick={() => setAddBlockOpen(true)}>
+            <Button
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
+              onClick={() => setAddBlockOpen(true)}
+            >
               <Plus className="h-4 w-4" /> Block
             </Button>
           </div>
@@ -177,15 +185,18 @@ function StructurePage() {
         ))}
 
         {(noBlockFloors.length > 0 || blocks.length === 0) && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                No block (floors direct on property)
+          <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <Building2 className="h-4 w-4" />
+                </span>
+                <span className="truncate">No block (floors direct on property)</span>
               </CardTitle>
               <Button
                 size="sm"
                 variant="ghost"
+                className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
                 onClick={() => {
                   setFloorParentBlock(null);
                   setAddFloorOpen(true);
@@ -279,6 +290,26 @@ interface Bed {
   status: string;
 }
 
+const ROOM_STATUS_TONE: Record<string, string> = {
+  ACTIVE: "bg-success/15 text-success border-success/30",
+  MAINTENANCE: "bg-warning/15 text-warning border-warning/30",
+  BLOCKED: "bg-destructive/15 text-destructive border-destructive/30",
+  INACTIVE: "bg-muted text-muted-foreground border-border",
+};
+
+function RoomStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wide",
+        ROOM_STATUS_TONE[status] ?? "bg-muted text-muted-foreground border-border",
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
 function BlockCard({
   block,
   floors,
@@ -295,14 +326,23 @@ function BlockCard({
   onAddRoom: (floorId: string) => void;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Building2 className="h-4 w-4 text-primary" />
-          {block.name}
-          {block.code && <Badge variant="secondary">{block.code}</Badge>}
+    <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <Building2 className="h-4 w-4" />
+          </span>
+          <span className="truncate">{block.name}</span>
+          {block.code && (
+            <Badge variant="secondary" className="shrink-0 rounded-full">{block.code}</Badge>
+          )}
         </CardTitle>
-        <Button size="sm" variant="ghost" onClick={onAddFloor}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
+          onClick={onAddFloor}
+        >
           <Plus className="h-4 w-4" /> Floor
         </Button>
       </CardHeader>
@@ -338,23 +378,31 @@ function FloorRow({
 }) {
   const [open, setOpen] = useState(true);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-md border border-border">
-      <div className="flex items-center justify-between px-3 py-2">
-        <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium">
-          <ChevronRight className={cn("h-4 w-4 transition", open && "rotate-90")} />
-          {floor.name}
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-xl border border-border/80 bg-background/40">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+        <CollapsibleTrigger className="flex min-w-0 items-center gap-2 text-sm font-medium">
+          <ChevronRight className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <Building2 className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate font-semibold text-foreground">{floor.name}</span>
           {floor.floor_number != null && (
-            <span className="text-muted-foreground">· L{floor.floor_number}</span>
+            <span className="shrink-0 font-medium text-indigo-600 dark:text-indigo-400">· L{floor.floor_number}</span>
           )}
-          <Badge variant="outline" className="ml-2">
+          <Badge variant="outline" className="ml-1 shrink-0 rounded-full border-border bg-card">
             {rooms.length} rooms
           </Badge>
         </CollapsibleTrigger>
-        <Button size="sm" variant="ghost" onClick={onAddRoom}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
+          onClick={onAddRoom}
+        >
           <Plus className="h-4 w-4" /> Room
         </Button>
       </div>
-      <CollapsibleContent className="space-y-3 border-t border-border px-3 py-3">
+      <CollapsibleContent className="space-y-3 border-t border-border/80 px-3 py-3">
         {rooms.length === 0 ? (
           <p className="text-sm text-muted-foreground">No rooms yet.</p>
         ) : (
@@ -363,13 +411,18 @@ function FloorRow({
               .filter((b) => b.room_id === r.id)
               .map((b) => ({ ...b, status: b.status as BedStatus }));
             return (
-              <div key={r.id} className="rounded-md border border-border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    Room {r.room_number}{" "}
-                    <span className="text-muted-foreground">· capacity {r.capacity}</span>
+              <div key={r.id} className="rounded-xl border border-border/80 bg-card p-3.5 shadow-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-foreground">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                      <BedDouble className="h-4 w-4" />
+                    </span>
+                    <span className="truncate">
+                      Room {r.room_number}{" "}
+                      <span className="font-normal text-muted-foreground">· Capacity {r.capacity}</span>
+                    </span>
                   </span>
-                  <Badge variant="secondary">{r.status}</Badge>
+                  <RoomStatusBadge status={r.status} />
                 </div>
                 <BedGrid beds={rBeds} />
               </div>

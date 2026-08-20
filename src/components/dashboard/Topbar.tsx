@@ -37,6 +37,8 @@ interface TopbarProps {
   tenantId?: string | null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
@@ -69,7 +71,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
       {navItems.length > 0 && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
@@ -118,25 +120,38 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {crumbs.slice(0, -1).map((c, i) => {
+          {crumbs.map((c, i) => {
             const path = "/" + crumbs.slice(0, i + 1).join("/");
+            const isLast = i === crumbs.length - 1;
+            const isId = UUID_RE.test(c) || /^\d+$/.test(c);
+            const label = isId ? c : c.replace(/-/g, " ");
+            const crumbClasses = cn(
+              isId ? "max-w-[64px] sm:max-w-[110px]" : "shrink-0",
+              "truncate",
+              isId ? "" : "capitalize",
+            );
             return (
               <li key={path} className="flex min-w-0 items-center gap-1.5">
-                {i > 0 && <span className="text-muted-foreground/50">/</span>}
-                <Link to={path} className="truncate capitalize hover:text-foreground">
-                  {c.replace(/-/g, " ")}
-                </Link>
+                {i > 0 && <span className="shrink-0 text-muted-foreground/50">/</span>}
+                {isLast ? (
+                  <span className={cn(crumbClasses, "font-semibold text-foreground")} title={label}>
+                    {label}
+                  </span>
+                ) : (
+                  <Link to={path} className={cn(crumbClasses, "hover:text-foreground")} title={label}>
+                    {label}
+                  </Link>
+                )}
               </li>
             );
           })}
-          {crumbs.length > 1 && <li className="text-muted-foreground/50">/</li>}
         </ol>
       </nav>
 
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground md:flex md:w-72"
+        className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left">Search…</span>
@@ -171,7 +186,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <NotificationBell />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary ring-2 ring-primary/40">
+        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
           {avatarInitial}
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
         </DropdownMenuTrigger>

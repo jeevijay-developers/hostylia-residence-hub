@@ -4,7 +4,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  ClipboardList,
+  Clock,
+  Package,
+  Plus,
+  ShieldCheck,
+  Tag,
+  Trash2,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IconFormField as FormField } from "@/components/ui/icon-field";
 import { feePlanFormSchema, type FeePlanFormInput } from "@/schemas/finance";
 import { upsertFeePlan } from "@/lib/finance.functions";
 
@@ -88,21 +100,28 @@ export function FeePlanForm({
   return (
     <form
       onSubmit={form.handleSubmit((v) => m.mutate(v as FeePlanFormInput))}
-      className="space-y-4 rounded-md border border-border bg-card p-4"
+      className="space-y-6 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label>Name</Label>
-          <Input placeholder="e.g. Standard Rent Plan" {...form.register("name")} />
-          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+      <div className="flex items-center gap-3 border-b border-border/80 pb-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+          <ClipboardList className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-display text-lg font-semibold text-foreground sm:text-xl">
+            {isEdit ? "Edit Fee Plan" : "Create Fee Plan"}
+          </h2>
+          <p className="text-sm text-muted-foreground">Add a new fee plan with billing details</p>
         </div>
-        <div>
-          <Label>Code</Label>
-          <Input placeholder="e.g. STD-RENT" {...form.register("code")} />
-          {errors.code && <p className="mt-1 text-xs text-destructive">{errors.code.message}</p>}
-        </div>
-        <div>
-          <Label>Billing frequency</Label>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField icon={User} label="Name" htmlFor="fee-plan-name" error={errors.name?.message}>
+          <Input id="fee-plan-name" placeholder="e.g. Standard Rent Plan" {...form.register("name")} />
+        </FormField>
+        <FormField icon={Tag} label="Code" htmlFor="fee-plan-code" error={errors.code?.message}>
+          <Input id="fee-plan-code" placeholder="e.g. STD-RENT" {...form.register("code")} />
+        </FormField>
+        <FormField icon={Calendar} label="Billing frequency">
           <Select
             value={form.watch("billing_frequency")}
             onValueChange={(v) => form.setValue("billing_frequency", v as never)}
@@ -118,31 +137,29 @@ export function FeePlanForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div>
-          <Label>Due day (1–28)</Label>
+        </FormField>
+        <FormField icon={Calendar} label="Due day (1–28)" htmlFor="fee-plan-due-day">
           <Input
+            id="fee-plan-due-day"
             type="number"
             min={1}
             max={28}
             {...form.register("due_day", { valueAsNumber: true })}
           />
-        </div>
-        <div>
-          <Label>Grace days</Label>
+        </FormField>
+        <FormField icon={Clock} label="Grace days" htmlFor="fee-plan-grace-days">
           <Input
+            id="fee-plan-grace-days"
             type="number"
             min={0}
             max={30}
             {...form.register("grace_period_days", { valueAsNumber: true })}
           />
-        </div>
-        <div>
-          <Label>Effective from</Label>
-          <Input type="date" {...form.register("effective_from")} />
-        </div>
-        <div>
-          <Label>Status</Label>
+        </FormField>
+        <FormField icon={Calendar} label="Effective from" htmlFor="fee-plan-effective-from">
+          <Input id="fee-plan-effective-from" type="date" {...form.register("effective_from")} />
+        </FormField>
+        <FormField icon={ShieldCheck} label="Status">
           <Select
             value={form.watch("status")}
             onValueChange={(v) => form.setValue("status", v as never)}
@@ -158,14 +175,19 @@ export function FeePlanForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Components</Label>
+      <div className="space-y-3 rounded-2xl border border-border/80 bg-muted/20 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
+              <Package className="h-4 w-4" />
+            </span>
+            <Label className="text-sm font-semibold">Components</Label>
+          </div>
           <Button type="button" size="sm" variant="outline" onClick={() => append(emptyComponent)}>
-            <Plus size={14} className="mr-1" />
+            <Plus size={14} />
             Add
           </Button>
         </div>
@@ -173,8 +195,11 @@ export function FeePlanForm({
           const amountError = errors.components?.[i]?.amount_paise;
           const allowZero = form.watch(`components.${i}.allow_zero_amount`);
           return (
-            <div key={f.id} className="space-y-1 rounded border border-border p-2">
-              <div className="grid gap-2 sm:grid-cols-4">
+            <div
+              key={f.id}
+              className="space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-sm"
+            >
+              <div className="grid gap-2 sm:grid-cols-[2fr_1.2fr_1fr_auto]">
                 <Input placeholder="Name" {...form.register(`components.${i}.name`)} />
                 <Select
                   value={form.watch(`components.${i}.component_type`)}
@@ -219,7 +244,14 @@ export function FeePlanForm({
                     );
                   }}
                 />
-                <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => remove(i)}
+                  aria-label="Remove component"
+                >
                   <Trash2 size={14} />
                 </Button>
               </div>
@@ -246,12 +278,13 @@ export function FeePlanForm({
         })}
       </div>
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={m.isPending}>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" size="lg" disabled={m.isPending} className="sm:flex-1">
           {m.isPending ? "Saving…" : isEdit ? "Save changes" : "Create fee plan"}
+          {!m.isPending && <ArrowRight className="h-4 w-4" />}
         </Button>
         {isEdit && (
-          <Button type="button" variant="ghost" onClick={() => onSaved?.()}>
+          <Button type="button" variant="ghost" size="lg" onClick={() => onSaved?.()}>
             Cancel
           </Button>
         )}

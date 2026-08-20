@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, toneClasses } from "@/lib/utils";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 
 const CHANNELS = [
   { key: "IN_APP", label: "In-app", icon: Smartphone },
@@ -165,11 +166,11 @@ export function NoticeComposer({ propertyId }: Props) {
   const canSubmit = title.trim().length >= 3 && body.trim().length >= 3 && channels.length > 0;
 
   return (
-    <div className="grid gap-6">
-      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <SquarePen className="h-4 w-4 text-primary" />
-          <h2 className="font-display font-semibold text-foreground">Compose notice</h2>
+    <div className="grid w-full max-w-full gap-6 overflow-x-hidden">
+      <Card className="rounded-2xl p-4 shadow-card-ambient sm:p-6">
+        <div className="mb-4 flex min-w-0 items-center gap-2">
+          <SquarePen className="h-4 w-4 shrink-0 text-primary" />
+          <h2 className="truncate font-display font-semibold text-foreground">Compose notice</h2>
         </div>
         <div className="space-y-4">
           <div>
@@ -249,13 +250,13 @@ export function NoticeComposer({ propertyId }: Props) {
                         )
                       }
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+                        "inline-flex items-center gap-1 sm:gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
                         selected
                           ? "border-warning bg-warning/10 text-warning"
                           : "border-border bg-transparent text-muted-foreground hover:border-primary/40",
                       )}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       {c.label}
                     </button>
                   );
@@ -290,7 +291,7 @@ export function NoticeComposer({ propertyId }: Props) {
           <Button
             onClick={() => publish.mutate()}
             disabled={!canSubmit || publish.isPending}
-            className="w-full shadow-lg shadow-primary/20"
+            className="w-full shadow-tone-glow"
             size="lg"
           >
             <Send className="h-4 w-4" />
@@ -299,36 +300,36 @@ export function NoticeComposer({ propertyId }: Props) {
         </div>
       </Card>
 
-      <Card className="rounded-2xl p-4 shadow-sm sm:p-6">
+      <Card className="rounded-2xl p-4 shadow-card-ambient sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Files className="h-4 w-4 text-primary" />
-            <h2 className="font-display font-semibold text-foreground">Recent notices</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            <Files className="h-4 w-4 shrink-0 text-primary" />
+            <h2 className="truncate font-display font-semibold text-foreground">Recent notices</h2>
           </div>
           {sortedNotices.length > 5 && (
-            <Button variant="outline" size="sm" onClick={() => setShowAll((v) => !v)}>
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => setShowAll((v) => !v)}>
               {showAll ? "Show less" : "View all"}
             </Button>
           )}
         </div>
         {sortedNotices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No notices yet.</p>
+          <EmptyState title="No notices yet" description="Published notices will appear here." />
         ) : (
           <ul className="space-y-3">
             {visibleNotices.map((n: NoticeRow) => (
               <li
                 key={n.id}
-                className="rounded-2xl border border-border p-4 transition hover:border-primary/30"
+                className="w-full max-w-full overflow-hidden rounded-2xl border border-border p-3 transition hover:border-primary/30 sm:p-4"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-foreground">{n.title}</p>
-                    <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="flex w-full min-w-0 items-start justify-between gap-2 sm:gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground sm:text-base">{n.title}</p>
+                    <p className="mt-0.5 break-words text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
                       {n.audience_type} · {n.channels.join(", ")}
                     </p>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground sm:text-xs">
                       <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="h-3.5 w-3.5" />
+                        <CalendarDays className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         {new Date(n.created_at).toLocaleDateString(undefined, {
                           day: "2-digit",
                           month: "short",
@@ -336,7 +337,7 @@ export function NoticeComposer({ propertyId }: Props) {
                         })}
                       </span>
                       {n.status === "SCHEDULED" && n.publish_at && (
-                        <span>Scheduled for {new Date(n.publish_at).toLocaleString()}</span>
+                        <span className="break-words">Scheduled for {new Date(n.publish_at).toLocaleString()}</span>
                       )}
                     </div>
                   </div>
@@ -344,7 +345,7 @@ export function NoticeComposer({ propertyId }: Props) {
                     <Badge
                       variant="outline"
                       className={cn(
-                        "rounded-full border-transparent px-2.5 py-1 text-[11px]",
+                        "rounded-full border-transparent px-1.5 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[11px]",
                         toneClasses[STATUS_TONE[n.status] ?? "muted"],
                       )}
                     >
@@ -355,9 +356,9 @@ export function NoticeComposer({ propertyId }: Props) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground"
+                          className="h-7 w-7 text-muted-foreground sm:h-8 sm:w-8"
                         >
-                          <MoreVertical className="h-4 w-4" />
+                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           <span className="sr-only">Notice actions</span>
                         </Button>
                       </DropdownMenuTrigger>

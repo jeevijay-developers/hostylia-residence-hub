@@ -40,7 +40,15 @@ const STATUS_META: Record<BedStatus, { className: string; label: string; Icon: t
 
 const STATUS_CARD_META: Record<
   BedStatus,
-  { border: string; badge: string; text: string; label: string; caption: string; Icon: typeof Bed }
+  {
+    border: string;
+    badge: string;
+    text: string;
+    label: string;
+    caption: string;
+    Icon: typeof Bed;
+    glow: string;
+  }
 > = {
   VACANT: {
     border: "border-bed-vacant/40",
@@ -49,6 +57,7 @@ const STATUS_CARD_META: Record<
     label: "Vacant",
     caption: "Available beds",
     Icon: Bed,
+    glow: "var(--bed-vacant)",
   },
   OCCUPIED: {
     border: "border-bed-occupied/40",
@@ -57,6 +66,7 @@ const STATUS_CARD_META: Record<
     label: "Occupied",
     caption: "Occupied beds",
     Icon: CheckCircle2,
+    glow: "var(--bed-occupied)",
   },
   MAINTENANCE: {
     border: "border-bed-maintenance/40",
@@ -65,6 +75,7 @@ const STATUS_CARD_META: Record<
     label: "Maintenance",
     caption: "Under maintenance",
     Icon: Wrench,
+    glow: "var(--bed-maintenance)",
   },
   BLOCKED: {
     border: "border-bed-blocked/40",
@@ -73,6 +84,7 @@ const STATUS_CARD_META: Record<
     label: "Blocked",
     caption: "Currently blocked",
     Icon: XCircle,
+    glow: "var(--bed-blocked)",
   },
 };
 
@@ -133,18 +145,18 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
   if (variant === "compact") {
     return (
       <div className="space-y-3">
-        <div className="flex flex-wrap gap-3 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-2.5">
           {(Object.keys(STATUS_META) as BedStatus[]).map((s) => {
             const { className, label, Icon } = STATUS_META[s];
             return (
               <span
                 key={s}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-1",
+                  "inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-1.5 font-semibold shadow-sm sm:justify-start",
                   className,
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5 shrink-0" />
                 {label}: {counts[s]}
               </span>
             );
@@ -162,13 +174,20 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
           const meta = STATUS_CARD_META[s];
           const Icon = meta.Icon;
           return (
-            <div key={s} className={cn("rounded-2xl border bg-card p-4 shadow-sm", meta.border)}>
+            <div
+              key={s}
+              className={cn(
+                "rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift",
+                meta.border,
+              )}
+            >
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-full",
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-full shadow-tone-glow",
                     meta.badge,
                   )}
+                  style={{ ["--glow-tone" as string]: meta.glow }}
                 >
                   <Icon className="h-4 w-4" />
                 </span>
@@ -321,7 +340,7 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
 
 function BedTileGrid({ beds, onSelect }: { beds: BedTile[]; onSelect?: (bed: BedTile) => void }) {
   return (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
+    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6">
       {beds.map((b) => {
         const { className, Icon, label } = STATUS_META[b.status];
         const title = b.occupantName
@@ -333,7 +352,7 @@ function BedTileGrid({ beds, onSelect }: { beds: BedTile[]; onSelect?: (bed: Bed
             onClick={() => onSelect?.(b)}
             title={title}
             className={cn(
-              "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-md border-2 px-2 py-2 text-xs font-medium transition hover:opacity-80",
+              "flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 px-2 py-3 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
               className,
             )}
           >

@@ -3,11 +3,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown, Download, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Download, Plus, ReceiptText } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { InvoiceTable, type InvoiceRow } from "@/components/finance/InvoiceTable";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,7 +154,11 @@ function AdminInvoicesPage() {
   }
 
   if (!propertyId)
-    return <p className="p-6 text-sm text-muted-foreground">Choose a property first.</p>;
+    return (
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+        Choose a property first.
+      </p>
+    );
 
   return (
     <div className="space-y-4">
@@ -199,9 +203,9 @@ function AdminInvoicesPage() {
       </Select>
 
       {q.isLoading ? (
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       ) : q.isError ? (
-        <p className="text-sm text-destructive">
+        <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
           {q.error instanceof Error ? q.error.message : "Could not load invoices."}
         </p>
       ) : (
@@ -339,7 +343,12 @@ function CreateInvoiceDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create invoice</DialogTitle>
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+              <Plus className="h-5 w-5" />
+            </span>
+            <DialogTitle>Create invoice</DialogTitle>
+          </div>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -429,7 +438,7 @@ function CreateInvoiceDialog({
               maxLength={500}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="rounded-xl border border-border/80 bg-muted/20 p-3 text-xs text-muted-foreground">
             Total is computed from the allocation's fee plan components — the same rollup the
             automated monthly generator uses. A duplicate for the same allocation + billing period
             is rejected.
@@ -494,7 +503,12 @@ function InvoiceDetailDialog({
     <Dialog key={row?.id ?? "none"} open={!!row} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{row?.invoice_number}</DialogTitle>
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+              <ReceiptText className="h-5 w-5" />
+            </span>
+            <DialogTitle className="font-mono">{row?.invoice_number}</DialogTitle>
+          </div>
         </DialogHeader>
         {row && (
           <div className="space-y-4 text-sm">
@@ -504,7 +518,7 @@ function InvoiceDetailDialog({
               </Badge>
               <span className="text-muted-foreground">{row.students?.full_name}</span>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl border border-border/80 bg-muted/20 p-3 text-muted-foreground">
               <span>Subtotal</span>
               <span className="text-right text-foreground">{formatInr(row.subtotal_paise)}</span>
               <span>Tax</span>
@@ -520,7 +534,7 @@ function InvoiceDetailDialog({
             </div>
 
             {editable ? (
-              <div className="space-y-3 border-t border-border pt-3">
+              <div className="space-y-3 border-t border-border/80 pt-3">
                 <div>
                   <Label htmlFor="edit-due">Due date</Label>
                   <Input
@@ -553,7 +567,7 @@ function InvoiceDetailDialog({
                 </Button>
               </div>
             ) : (
-              <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+              <p className="border-t border-border/80 pt-3 text-xs text-muted-foreground">
                 {row.status === "VOID" && row.void_reason
                   ? `Voided: ${row.void_reason}`
                   : "This invoice can no longer be edited."}
@@ -561,7 +575,7 @@ function InvoiceDetailDialog({
             )}
 
             {editable && (
-              <div className="space-y-2 border-t border-border pt-3">
+              <div className="space-y-2 border-t border-border/80 pt-3">
                 {!confirmingVoid ? (
                   <Button size="sm" variant="destructive" onClick={() => setConfirmingVoid(true)}>
                     Delete invoice

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
+import { Download, ReceiptText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,12 +55,17 @@ export function InvoiceDetailDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-mono text-base">
-            {inv?.invoice_number ?? "Invoice"}
-          </DialogTitle>
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+              <ReceiptText className="h-5 w-5" />
+            </span>
+            <DialogTitle className="font-mono text-base">
+              {inv?.invoice_number ?? "Invoice"}
+            </DialogTitle>
+          </div>
         </DialogHeader>
 
-        {invoiceQ.isLoading && <Skeleton className="h-40 w-full" />}
+        {invoiceQ.isLoading && <Skeleton className="h-40 w-full rounded-xl" />}
 
         {inv && (
           <div className="space-y-4 text-sm">
@@ -71,7 +76,7 @@ export function InvoiceDetailDialog({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/80 bg-muted/20 p-3">
               <Row label="Issue date" value={inv.issue_date} />
               <Row label="Due date" value={inv.due_date} />
               <Row label="Subtotal" value={formatInr(inv.subtotal_paise)} />
@@ -85,7 +90,7 @@ export function InvoiceDetailDialog({
             </div>
 
             {inv.gst_invoice && (
-              <div className="rounded-md border border-border p-3 text-xs">
+              <div className="rounded-xl border border-border/80 bg-muted/20 p-3 text-xs">
                 <p className="mb-1 font-medium text-foreground">GST invoice</p>
                 <p className="text-muted-foreground">
                   Seller GSTIN: {inv.seller_gstin_snapshot ?? "—"}
@@ -99,8 +104,8 @@ export function InvoiceDetailDialog({
             {inv.notes && <p className="text-xs text-muted-foreground">Notes: {inv.notes}</p>}
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Payment history</p>
-              {paymentsQ.isLoading && <Skeleton className="h-12 w-full" />}
+              <p className="text-xs font-semibold text-muted-foreground">Payment history</p>
+              {paymentsQ.isLoading && <Skeleton className="h-12 w-full rounded-xl" />}
               {!paymentsQ.isLoading && (paymentsQ.data ?? []).length === 0 && (
                 <p className="text-xs text-muted-foreground">No payments recorded yet.</p>
               )}
@@ -108,14 +113,16 @@ export function InvoiceDetailDialog({
                 (paymentsQ.data ?? []).map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
+                    className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs"
                   >
                     <span>
                       {p.payment_number} · {p.mode}
                       {p.paid_at && ` · ${new Date(p.paid_at).toLocaleDateString()}`}
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="font-medium">{formatInr(p.amount_paise)}</span>
+                      <span className="font-semibold text-foreground">
+                        {formatInr(p.amount_paise)}
+                      </span>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -141,7 +148,7 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={strong ? "font-semibold" : ""}>{value}</p>
+      <p className={strong ? "font-semibold text-foreground" : "text-foreground"}>{value}</p>
     </div>
   );
 }

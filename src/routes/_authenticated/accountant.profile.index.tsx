@@ -26,7 +26,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 function ReadOnlyField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="space-y-1 rounded-md bg-muted/50 p-2">
+    <div className="space-y-1 rounded-xl border border-border/60 bg-muted/30 p-3">
       <p className="flex items-center gap-1 text-xs text-muted-foreground">
         <Lock className="h-3 w-3" /> {label}
       </p>
@@ -71,13 +71,14 @@ function AccountantProfilePage() {
     },
   });
 
-  if (profileQ.isLoading) return <Skeleton className="h-96 w-full" />;
+  if (profileQ.isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   if (!profileQ.data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="My Profile" />
-        <p className="text-sm text-muted-foreground">Could not load your profile.</p>
+        <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+          Could not load your profile.
+        </p>
       </div>
     );
   }
@@ -92,8 +93,6 @@ function AccountantProfilePage() {
   return (
     <div className="flex h-full flex-col gap-3">
       <PageHeader
-        title="My Profile"
-        description="Your account details"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
@@ -112,9 +111,11 @@ function AccountantProfilePage() {
 
       <Card className="gap-3 py-4">
         <CardContent className="flex items-center gap-4 px-4">
-          <Avatar className="h-16 w-16">
+          <Avatar className="h-16 w-16 ring-2 ring-neutral-accent/20 ring-offset-2 ring-offset-card">
             <AvatarImage src={avatarUrl} alt={p.full_name} />
-            <AvatarFallback className="text-lg">{initial}</AvatarFallback>
+            <AvatarFallback className="bg-neutral-accent/15 text-lg text-neutral-accent">
+              {initial}
+            </AvatarFallback>
           </Avatar>
           <div>
             <p className="text-lg font-semibold text-foreground">{p.full_name}</p>

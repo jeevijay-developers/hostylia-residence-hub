@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { useAccountantProperty } from "@/lib/staff-scope";
 import { AgingReportPanel, OccupancyReportPanel } from "@/components/reports/panels";
 
@@ -20,7 +19,6 @@ function AccountantReportsPage() {
     );
   return (
     <div className="space-y-8">
-      <PageHeader title="Reports" description="Collections and revenue-relevant occupancy." />
       <AgingReportPanel propertyId={propertyId} />
       <OccupancyReportPanel propertyId={propertyId} />
     </div>

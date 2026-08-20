@@ -174,12 +174,12 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const AVATAR_COLOR_PAIRS = [
-  { bg: "bg-purple-950/80", text: "text-purple-400", border: "border-purple-800/50" },
-  { bg: "bg-blue-950/80", text: "text-blue-400", border: "border-blue-800/50" },
-  { bg: "bg-teal-950/80", text: "text-teal-400", border: "border-teal-800/50" },
-  { bg: "bg-amber-950/80", text: "text-amber-400", border: "border-amber-800/50" },
-  { bg: "bg-emerald-950/80", text: "text-emerald-400", border: "border-emerald-800/50" },
-  { bg: "bg-indigo-950/80", text: "text-indigo-400", border: "border-indigo-800/50" },
+  { bg: "bg-purple-100 dark:bg-purple-950/80", text: "text-purple-600 dark:text-purple-400", border: "border-purple-300 dark:border-purple-800/50" },
+  { bg: "bg-blue-100 dark:bg-blue-950/80", text: "text-blue-600 dark:text-blue-400", border: "border-blue-300 dark:border-blue-800/50" },
+  { bg: "bg-teal-100 dark:bg-teal-950/80", text: "text-teal-600 dark:text-teal-400", border: "border-teal-300 dark:border-teal-800/50" },
+  { bg: "bg-amber-100 dark:bg-amber-950/80", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-800/50" },
+  { bg: "bg-emerald-100 dark:bg-emerald-950/80", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800/50" },
+  { bg: "bg-indigo-100 dark:bg-indigo-950/80", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-300 dark:border-indigo-800/50" },
 ];
 
 function getAvatarStyle(name: string) {
@@ -191,7 +191,7 @@ function getAvatarStyle(name: string) {
 function StaffStatusBadge({ row }: { row: StaffRow }) {
   if (row.revoked_at) {
     return (
-      <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+      <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-rose-400 shadow-sm shadow-rose-400/50" />
         Revoked
       </Badge>
@@ -199,14 +199,14 @@ function StaffStatusBadge({ row }: { row: StaffRow }) {
   }
   if (row.is_active) {
     return (
-      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse" />
         Active
       </Badge>
     );
   }
   return (
-    <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
       <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
       Invited
     </Badge>
@@ -393,7 +393,7 @@ function AdminStaffPage() {
       {/* Top Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-card border border-border/80 flex items-center justify-center text-amber-400 shadow-md shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-card border border-border/80 flex items-center justify-center text-amber-700 dark:text-amber-400 shadow-md shrink-0">
             <Users className="w-6 h-6" />
           </div>
           <div>
@@ -409,7 +409,7 @@ function AdminStaffPage() {
             setAddPermissions(defaultPermissions("WARDEN"));
             setAddOpen(true);
           }}
-          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/90 font-bold rounded-full px-5 py-2.5 shadow-sm shadow-amber-500/10 flex items-center gap-2 self-start sm:self-center cursor-pointer transition-all"
+          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/90 font-bold rounded-full px-5 py-2.5 shadow-sm shadow-amber-500/10 flex items-center gap-2 self-start sm:self-center cursor-pointer transition-all"
         >
           <UserPlus className="h-4 w-4 stroke-[2.5]" />
           <span>Add</span>
@@ -559,12 +559,12 @@ function AdminStaffPage() {
             <Button
               disabled={!canInvite}
               onClick={() => invite.mutate()}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
             >
               {invite.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
               ) : (
-                <Send className="h-4 w-4 text-slate-950" />
+                <Send className="h-4 w-4 text-primary-foreground dark:text-slate-950" />
               )}
               {invite.isPending ? "Adding…" : "Add"}
             </Button>
@@ -578,7 +578,7 @@ function AdminStaffPage() {
           <TableHeader>
             <TableRow className="border-b border-border/80 bg-background/40 hover:bg-transparent">
               <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <User className="w-3.5 h-3.5 text-indigo-400 inline mr-1.5" />
+                <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 inline mr-1.5" />
                 NAME
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
@@ -586,15 +586,15 @@ function AdminStaffPage() {
                 CONTACT
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <Shield className="w-3.5 h-3.5 text-amber-400 inline mr-1.5" />
+                <Shield className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 inline mr-1.5" />
                 ROLE
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <Activity className="w-3.5 h-3.5 text-emerald-400 inline mr-1.5" />
+                <Activity className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 inline mr-1.5" />
                 STATUS
               </TableHead>
               <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4 text-right">
-                <Settings className="w-3.5 h-3.5 text-slate-400 inline mr-1.5" />
+                <Settings className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 inline mr-1.5" />
                 ACTIONS
               </TableHead>
             </TableRow>
@@ -668,8 +668,8 @@ function AdminStaffPage() {
                                 variant="outline"
                                 className={
                                   granted
-                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] px-2 py-0.5"
-                                    : "bg-rose-500/10 text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] px-2 py-0.5"
+                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5"
                                 }
                               >
                                 {granted ? "+" : "−"} {item.label}
@@ -717,10 +717,10 @@ function AdminStaffPage() {
                                 aria-label="Resend invitation"
                                 disabled={resend.isPending}
                                 onClick={() => resend.mutate(s.id)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
+                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
                               >
                                 {resend.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                                  <Loader2 className="h-4 w-4 animate-spin text-amber-700 dark:text-amber-400" />
                                 ) : (
                                   <Mail className="h-4 w-4" />
                                 )}
@@ -731,7 +731,7 @@ function AdminStaffPage() {
                                 title="Cancel invitation"
                                 aria-label="Cancel invitation"
                                 onClick={() => setPendingRevoke(s)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
+                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
                               >
                                 <UserX className="h-4 w-4" />
                               </Button>
@@ -766,7 +766,7 @@ function AdminStaffPage() {
                                     ),
                                   );
                                 }}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-blue-400 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all"
+                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-blue-700 dark:hover:text-blue-400 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all"
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -776,7 +776,7 @@ function AdminStaffPage() {
                                 title="Revoke access"
                                 aria-label="Revoke access"
                                 onClick={() => setPendingRevoke(s)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
+                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
                               >
                                 <UserX className="h-4 w-4" />
                               </Button>
@@ -959,9 +959,9 @@ function AdminStaffPage() {
             <Button
               disabled={!canUpdate}
               onClick={() => update.mutate()}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
             >
-              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin text-slate-950" /> : null}
+              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" /> : null}
               {update.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

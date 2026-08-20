@@ -1,7 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, TrendingUp, UserCheck, Users, UserX } from "lucide-react";
+import {
+  CalendarClock,
+  FileText,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  Users,
+  UserX,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { ReportTable, type Column } from "@/components/reports/ReportTable";
 import { ExportButton } from "@/components/reports/ExportButton";
 import { Input } from "@/components/ui/input";
@@ -14,6 +24,7 @@ import {
   getAttendanceReport,
 } from "@/lib/reports.functions";
 import { formatInr } from "@/lib/finance";
+import { cn } from "@/lib/utils";
 import type { CsvColumn } from "@/lib/csv";
 
 /* ----------------------- OCCUPANCY ----------------------- */
@@ -64,9 +75,11 @@ export function OccupancyReportPanel({
   });
   const rows = (q.data ?? []) as OccupancyRow[];
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Occupancy accuracy</h2>
+    <section className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+          Occupancy accuracy
+        </h2>
         {showExport && (
           <ExportButton
             filename="occupancy-report"
@@ -76,7 +89,11 @@ export function OccupancyReportPanel({
           />
         )}
       </div>
-      {rows.length > 0 && <OccupancyChart data={rows} />}
+      {rows.length > 0 && (
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
+          <OccupancyChart data={rows} />
+        </div>
+      )}
       <ReportTable rows={rows} columns={occupancyCols} />
     </section>
   );
@@ -136,9 +153,11 @@ export function AgingReportPanel({
   const rows = (d?.rows ?? []).filter((r: any) => r.aging_bucket !== "paid") as AgingInvoiceRow[];
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">DSO &amp; aging</h2>
+    <section className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+          DSO &amp; aging
+        </h2>
         {showExport && (
           <ExportButton
             filename="aging-report"
@@ -149,14 +168,41 @@ export function AgingReportPanel({
         )}
       </div>
       {d && (
-        <div className="grid gap-3 sm:grid-cols-4">
-          <Kpi label="Outstanding" value={formatInr(d.total_outstanding_paise)} tone="warning" />
-          <Kpi label="Collected" value={formatInr(d.total_collected_paise)} tone="success" />
-          <Kpi label="Total issued" value={formatInr(d.total_issued_paise)} />
-          <Kpi label="DSO (avg days)" value={`${d.dso_days}d`} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <Kpi
+            icon={Wallet}
+            label="Outstanding"
+            value={formatInr(d.total_outstanding_paise)}
+            tone="warning"
+          />
+          <Kpi
+            icon={Wallet}
+            label="Collected"
+            value={formatInr(d.total_collected_paise)}
+            tone="success"
+          />
+          <Kpi
+            icon={FileText}
+            label="Total issued"
+            value={formatInr(d.total_issued_paise)}
+            tone="info"
+            className="col-span-2 sm:col-span-1"
+          />
+          <Kpi
+            icon={CalendarClock}
+            label="DSO (avg days)"
+            value={`${d.dso_days}d`}
+            tone="neutral"
+            className="col-span-2 sm:col-span-1"
+          />
         </div>
       )}
-      {d && <DsoChart aging={d.aging_paise} />}
+      {d && (
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">DSO aging buckets (₹)</h3>
+          <DsoChart aging={d.aging_paise} />
+        </div>
+      )}
       <ReportTable rows={rows} columns={agingCols} empty="No overdue invoices. 🎉" />
     </section>
   );
@@ -205,9 +251,11 @@ export function SlaComplianceReportPanel({
   });
   const rows = (q.data ?? []) as SlaRow[];
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Complaint SLA compliance</h2>
+    <section className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">
+          Complaint SLA compliance
+        </h2>
         {showExport && (
           <ExportButton
             filename="sla-compliance"
@@ -217,7 +265,11 @@ export function SlaComplianceReportPanel({
           />
         )}
       </div>
-      {rows.length > 0 && <SlaComplianceChart data={rows} />}
+      {rows.length > 0 && (
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
+          <SlaComplianceChart data={rows} />
+        </div>
+      )}
       <ReportTable rows={rows} columns={slaCols} />
     </section>
   );
@@ -239,12 +291,12 @@ interface AttendanceSummaryRow extends Record<string, unknown> {
 }
 
 const AVATAR_COLOR_PAIRS = [
-  { bg: "bg-emerald-950/80", text: "text-emerald-400", border: "border-emerald-800/50" },
-  { bg: "bg-purple-950/80", text: "text-purple-400", border: "border-purple-800/50" },
-  { bg: "bg-teal-950/80", text: "text-teal-400", border: "border-teal-800/50" },
-  { bg: "bg-amber-950/80", text: "text-amber-400", border: "border-amber-800/50" },
-  { bg: "bg-blue-950/80", text: "text-blue-400", border: "border-blue-800/50" },
-  { bg: "bg-indigo-950/80", text: "text-indigo-400", border: "border-indigo-800/50" },
+  { bg: "bg-emerald-100 dark:bg-emerald-950/80", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800/50" },
+  { bg: "bg-purple-100 dark:bg-purple-950/80", text: "text-purple-600 dark:text-purple-400", border: "border-purple-300 dark:border-purple-800/50" },
+  { bg: "bg-teal-100 dark:bg-teal-950/80", text: "text-teal-600 dark:text-teal-400", border: "border-teal-300 dark:border-teal-800/50" },
+  { bg: "bg-amber-100 dark:bg-amber-950/80", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-800/50" },
+  { bg: "bg-blue-100 dark:bg-blue-950/80", text: "text-blue-600 dark:text-blue-400", border: "border-blue-300 dark:border-blue-800/50" },
+  { bg: "bg-indigo-100 dark:bg-indigo-950/80", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-300 dark:border-indigo-800/50" },
 ];
 
 function getAvatarStyle(name: string) {
@@ -289,12 +341,12 @@ const attendanceCols: Column<AttendanceSummaryRow>[] = [
       const pct = r.attendance_pct;
       const colorClass =
         pct >= 85
-          ? "text-emerald-400 font-bold"
+          ? "text-success font-bold"
           : pct >= 70
-            ? "text-teal-400 font-bold"
+            ? "text-info font-bold"
             : pct >= 50
-              ? "text-amber-400 font-bold"
-              : "text-rose-400 font-bold";
+              ? "text-warning font-bold"
+              : "text-destructive font-bold";
       return <span className={colorClass}>{pct}%</span>;
     },
   },
@@ -341,14 +393,14 @@ export function AttendanceReportPanel({
   }, [rows]);
 
   return (
-    <section className="space-y-6 max-w-6xl pb-4">
+    <section className="space-y-4 sm:space-y-6 max-w-6xl pb-4 overflow-x-hidden">
       {/* Top Controls Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
-          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
+          <Sparkles className="w-4 h-4 text-warning animate-pulse shrink-0" />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground font-semibold">
               Month
@@ -356,7 +408,7 @@ export function AttendanceReportPanel({
             <Input
               id="attendance-report-month"
               type="month"
-              className="h-10 w-44 bg-background/90 border-border text-foreground rounded-xl"
+              className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl text-xs sm:text-sm"
               value={monthInput}
               max={currentMonthValue()}
               onChange={(e) => setMonthInput(e.target.value)}
@@ -374,44 +426,56 @@ export function AttendanceReportPanel({
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-sm shadow-purple-500/10">
-            <Users className="w-5 h-5" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="min-w-0 space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-card-ambient panel-lift sm:space-y-3 sm:rounded-2xl sm:p-5">
+          <div
+            className="grid h-9 w-9 place-items-center rounded-full border border-neutral-accent/30 bg-neutral-accent/10 text-neutral-accent shadow-tone-glow sm:h-11 sm:w-11"
+            style={{ ["--glow-tone" as string]: "var(--neutral-accent)" }}
+          >
+            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Students marked</p>
-            <p className="text-3xl font-bold text-purple-400 mt-1">{summary.studentsMarked}</p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/10">
-            <UserCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Present (days)</p>
-            <p className="text-3xl font-bold text-emerald-400 mt-1">{summary.present}</p>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Students marked</p>
+            <p className="mt-1 text-xl font-bold text-neutral-accent sm:text-3xl">{summary.studentsMarked}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shadow-amber-500/10">
-            <UserX className="w-5 h-5" />
+        <div className="min-w-0 space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-card-ambient panel-lift sm:space-y-3 sm:rounded-2xl sm:p-5">
+          <div
+            className="grid h-9 w-9 place-items-center rounded-full border border-success/30 bg-success/10 text-success shadow-tone-glow sm:h-11 sm:w-11"
+            style={{ ["--glow-tone" as string]: "var(--success)" }}
+          >
+            <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Absent (days)</p>
-            <p className="text-3xl font-bold text-amber-400 mt-1">{summary.absent}</p>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Present (days)</p>
+            <p className="mt-1 text-xl font-bold text-success sm:text-3xl">{summary.present}</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3 shadow-xl">
-          <div className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm shadow-blue-500/10">
-            <TrendingUp className="w-5 h-5" />
+        <div className="min-w-0 space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-card-ambient panel-lift sm:space-y-3 sm:rounded-2xl sm:p-5">
+          <div
+            className="grid h-9 w-9 place-items-center rounded-full border border-warning/30 bg-warning/10 text-warning shadow-tone-glow sm:h-11 sm:w-11"
+            style={{ ["--glow-tone" as string]: "var(--warning)" }}
+          >
+            <UserX className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Avg attendance %</p>
-            <p className="text-3xl font-bold text-blue-400 mt-1">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Absent (days)</p>
+            <p className="mt-1 text-xl font-bold text-warning sm:text-3xl">{summary.absent}</p>
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-card-ambient panel-lift sm:space-y-3 sm:rounded-2xl sm:p-5">
+          <div
+            className="grid h-9 w-9 place-items-center rounded-full border border-info/30 bg-info/10 text-info shadow-tone-glow sm:h-11 sm:w-11"
+            style={{ ["--glow-tone" as string]: "var(--info)" }}
+          >
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Avg attendance %</p>
+            <p className="mt-1 text-xl font-bold text-info sm:text-3xl">
               {summary.avgPct === null ? "—" : `${summary.avgPct}%`}
             </p>
           </div>
@@ -419,7 +483,7 @@ export function AttendanceReportPanel({
       </div>
 
       {/* Summary Table */}
-      <div className="rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden p-1">
+      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-card-ambient overflow-hidden p-1">
         <ReportTable
           rows={rows}
           columns={attendanceCols}
@@ -431,21 +495,52 @@ export function AttendanceReportPanel({
 }
 
 
+const KPI_TONE = {
+  success: { border: "border-l-success", text: "text-success", iconBg: "bg-success/15", glow: "var(--success)" },
+  warning: { border: "border-l-warning", text: "text-warning", iconBg: "bg-warning/15", glow: "var(--warning)" },
+  info: { border: "border-l-info", text: "text-info", iconBg: "bg-info/15", glow: "var(--info)" },
+  neutral: {
+    border: "border-l-neutral-accent",
+    text: "text-neutral-accent",
+    iconBg: "bg-neutral-accent/15",
+    glow: "var(--neutral-accent)",
+  },
+} as const;
+
 function Kpi({
+  icon: Icon,
   label,
   value,
-  tone,
+  tone = "neutral",
+  className,
 }: {
+  icon?: LucideIcon;
   label: string;
   value: string;
-  tone?: "success" | "warning";
+  tone?: keyof typeof KPI_TONE;
+  className?: string;
 }) {
-  const t =
-    tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
+  const t = KPI_TONE[tone];
   return (
-    <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${t}`}>{value}</p>
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border-l-4 bg-card p-4 shadow-card-ambient panel-lift sm:p-5",
+        t.border,
+        className,
+      )}
+    >
+      {Icon && (
+        <span
+          className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-tone-glow", t.iconBg, t.text)}
+          style={{ ["--glow-tone" as string]: t.glow }}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="truncate text-sm text-muted-foreground">{label}</p>
+        <p className={cn("mt-0.5 font-display text-2xl font-bold sm:text-3xl", t.text)}>{value}</p>
+      </div>
     </div>
   );
 }

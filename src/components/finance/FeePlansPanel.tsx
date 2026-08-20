@@ -69,22 +69,25 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
         plan={editingPlan ?? undefined}
         onSaved={() => setEditingPlan(null)}
       />
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {(q.data ?? []).map((p) => {
           const activeComponents = (p.fee_plan_components ?? []).filter(
             (c) => c.is_active !== false,
           );
           return (
-            <div key={p.id} className="rounded-md border border-border bg-card p-3">
+            <div
+              key={p.id}
+              className="rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-colors hover:border-border"
+            >
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{p.name}</p>
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">{p.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {p.code} · {p.billing_frequency} · due day {p.due_day} · {p.status}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <p className="mr-2 text-sm font-mono">
+                <div className="flex shrink-0 items-center gap-1">
+                  <p className="mr-2 font-mono text-sm font-semibold text-foreground">
                     {formatInr(
                       activeComponents.reduce(
                         (s: number, c: { amount_paise: number }) => s + c.amount_paise,
@@ -142,7 +145,7 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
           );
         })}
         {q.data && q.data.length === 0 && (
-          <p className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
             No fee plans yet.
           </p>
         )}

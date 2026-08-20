@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { BrandLockup } from "@/components/BrandLockup";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
@@ -51,12 +52,13 @@ export function MobileHeader() {
     studentProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border/80 bg-background/90 px-4 backdrop-blur-md">
       <Link to="/" className="flex items-center gap-2">
         <BrandLockup variant="lockup" className="h-7" />
       </Link>
       <div className="flex items-center gap-1">
         {isWarden && <MessagesPanel />}
+        {isWarden && <ThemeToggle />}
         <NotificationBell />
         {!isStudent && <LanguageSwitcher />}
         {isWarden ? (
@@ -119,7 +121,7 @@ export function MobileHeader() {
           <Link
             to="/student/profile"
             aria-label="Profile"
-            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary ring-2 ring-primary/40"
+            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
           >
             {studentInitial}
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />

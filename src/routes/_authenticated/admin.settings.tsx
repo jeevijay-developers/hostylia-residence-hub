@@ -75,19 +75,19 @@ function AdminSettingsPage() {
         <TabsList className="bg-card/80 border border-border/80 p-1.5 rounded-xl h-auto inline-flex w-full sm:w-auto gap-1">
           <TabsTrigger
             value="property"
-            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
+            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-700 dark:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
           >
             Property
           </TabsTrigger>
           <TabsTrigger
             value="organization"
-            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
+            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-700 dark:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
           >
             Organization
           </TabsTrigger>
           <TabsTrigger
             value="billing"
-            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
+            className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-700 dark:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
           >
             Billing
           </TabsTrigger>
@@ -180,7 +180,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
       <div className="space-y-6">
         {/* Curfew time */}
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-1 shadow-sm shadow-amber-500/10">
+          <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 mt-1 shadow-sm shadow-amber-500/10">
             <Clock className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
@@ -200,7 +200,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
 
         {/* Timezone */}
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 mt-1 shadow-sm shadow-blue-500/10">
+          <div className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-1 shadow-sm shadow-blue-500/10">
             <Globe className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
@@ -223,7 +223,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
 
         {/* Default notification channel */}
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
+          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
             <Bell className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
@@ -247,12 +247,12 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
         <Button
           onClick={() => save.mutate()}
           disabled={save.isPending}
-          className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-300/40 transition-all duration-200 hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           {save.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
           ) : (
-            <Save className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+            <Save className="h-4 w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
           )}
           <span>{save.isPending ? "Saving…" : "Save changes"}</span>
         </Button>
@@ -328,7 +328,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
       <div className="space-y-6">
         {/* Legal name */}
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 mt-1 shadow-sm shadow-indigo-500/10">
+          <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 mt-1 shadow-sm shadow-indigo-500/10">
             <Building2 className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
@@ -377,7 +377,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
 
         {/* Billing phone */}
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
+          <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
             <Phone className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
@@ -396,12 +396,12 @@ function OrgForm({ tenantId }: { tenantId: string }) {
         <Button
           onClick={() => save.mutate()}
           disabled={save.isPending}
-          className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-300/40 transition-all duration-200 hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           {save.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
           ) : (
-            <Save className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+            <Save className="h-4 w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
           )}
           <span>{save.isPending ? "Saving…" : "Save changes"}</span>
         </Button>
@@ -454,7 +454,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
     <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
             <CreditCard className="w-6 h-6" />
           </div>
           <div>
@@ -478,7 +478,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-4">
-          <div className="w-9 h-9 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-9 h-9 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
             <Calendar className="w-4 h-4" />
           </div>
           <div>
@@ -490,7 +490,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
         </div>
 
         <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-background/50 p-4">
-          <div className="w-9 h-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-9 h-9 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>

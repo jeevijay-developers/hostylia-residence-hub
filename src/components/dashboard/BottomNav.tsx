@@ -16,7 +16,7 @@ export function BottomNav({ items, centerElevated = true }: BottomNavProps) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 overflow-visible border-t border-border bg-card"
+      className="fixed inset-x-0 bottom-0 z-30 overflow-visible border-t border-border/80 bg-card/95 shadow-card-ambient backdrop-blur-md"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="relative mx-auto grid h-16 max-w-md auto-cols-fr grid-flow-col overflow-visible">
@@ -56,7 +56,12 @@ export function BottomNav({ items, centerElevated = true }: BottomNavProps) {
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <span className="relative">
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {active && (
+                    <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary shadow-tone-glow" />
+                  )}
+                </span>
                 <span className="w-full truncate text-center">{item.label}</span>
               </Link>
             </li>

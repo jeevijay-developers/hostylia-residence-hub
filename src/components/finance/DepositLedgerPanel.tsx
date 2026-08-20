@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { PiggyBank, Wallet } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { previewMoveOut } from "@/lib/student.functions";
 import { formatInr } from "@/lib/finance";
+import { cn } from "@/lib/utils";
 
 /**
  * Read-only finance view of a student's deposit ledger + provisional
@@ -85,27 +87,39 @@ export function DepositLedgerPanel({ propertyId }: { propertyId: string }) {
       </Select>
 
       {studentId && !activeAllocationId && (
-        <p className="text-sm text-muted-foreground">No active allocation for this student.</p>
+        <p className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-4 text-sm text-muted-foreground">
+          No active allocation for this student.
+        </p>
       )}
 
       {activeAllocationId && (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-border bg-card p-3">
-              <p className="text-xs text-muted-foreground">Current deposit balance</p>
-              <p className="text-xl font-semibold">{formatInr(balance)}</p>
+            <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-card p-4 shadow-sm">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+                <Wallet className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground">Current deposit balance</p>
+                <p className="text-xl font-semibold text-foreground">{formatInr(balance)}</p>
+              </div>
             </div>
-            <div className="rounded-md border border-border bg-card p-3">
-              <p className="text-xs text-muted-foreground">Provisional move-out refund</p>
-              <p className="text-xl font-semibold">
-                {previewQ.data ? formatInr(previewQ.data.provisional_refund_paise) : "—"}
-              </p>
+            <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-card p-4 shadow-sm">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
+                <PiggyBank className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground">Provisional move-out refund</p>
+                <p className="text-xl font-semibold text-foreground">
+                  {previewQ.data ? formatInr(previewQ.data.provisional_refund_paise) : "—"}
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Ledger history</p>
-            {ledgerQ.isLoading && <Skeleton className="h-16 w-full" />}
+            <p className="text-xs font-semibold text-muted-foreground">Ledger history</p>
+            {ledgerQ.isLoading && <Skeleton className="h-16 w-full rounded-xl" />}
             {!ledgerQ.isLoading && (ledgerQ.data ?? []).length === 0 && (
               <p className="text-xs text-muted-foreground">No deposit entries yet.</p>
             )}
@@ -113,14 +127,19 @@ export function DepositLedgerPanel({ propertyId }: { propertyId: string }) {
               (ledgerQ.data ?? []).map((e) => (
                 <div
                   key={e.id}
-                  className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
+                  className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs"
                 >
-                  <span>
+                  <span className="text-foreground">
                     {e.entry_type.replaceAll("_", " ")} · {e.description}
                     {" · "}
                     {new Date(e.created_at).toLocaleDateString()}
                   </span>
-                  <span className={e.direction === "CREDIT" ? "text-success" : "text-destructive"}>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      e.direction === "CREDIT" ? "text-success" : "text-destructive",
+                    )}
+                  >
                     {e.direction === "CREDIT" ? "+" : "-"}
                     {formatInr(e.amount_paise)}
                   </span>
