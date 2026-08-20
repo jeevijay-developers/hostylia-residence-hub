@@ -2,14 +2,19 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, Info, Upload } from "lucide-react";
+import { Camera, EyeOff, Info, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { registerDocument } from "@/lib/student.functions";
@@ -31,6 +36,7 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -39,6 +45,7 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
         title,
         description,
         priority: priority || undefined,
+        is_anonymous: isAnonymous,
       });
       if (!student.data) throw new Error("Student profile not found");
       const s = student.data;
@@ -55,6 +62,7 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
           title: parsed.title,
           description: parsed.description,
           priority: parsed.priority ?? "MEDIUM",
+          is_anonymous: parsed.is_anonymous,
           complaint_number: "", // trigger fills
           sla_due_at: new Date().toISOString(), // trigger overwrites
         })
@@ -87,7 +95,12 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
     },
     onSuccess: () => {
       toast.success("Complaint submitted");
-      setCategoryId(""); setTitle(""); setDescription(""); setPhoto(null); setPriority("");
+      setCategoryId("");
+      setTitle("");
+      setDescription("");
+      setPhoto(null);
+      setPriority("");
+      setIsAnonymous(false);
       qc.invalidateQueries({ queryKey: ["complaints"] });
       onDone?.();
     },
@@ -97,23 +110,36 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   return (
     <form
       className="space-y-4"
-      onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit.mutate();
+      }}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>Category</Label>
           <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger><SelectValue placeholder="Pick a category" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Pick a category" />
+            </SelectTrigger>
             <SelectContent>
               {(cats.data ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label>Title</Label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Enter title" />
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={160}
+            required
+            placeholder="Enter title"
+          />
         </div>
       </div>
       <div className="space-y-1">
@@ -131,10 +157,14 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
         <div className="space-y-1">
           <Label>Priority (optional)</Label>
           <Select value={priority} onValueChange={setPriority}>
-            <SelectTrigger><SelectValue placeholder="Use category default" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Use category default" />
+            </SelectTrigger>
             <SelectContent>
-              {["LOW","MEDIUM","HIGH","URGENT"].map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
+              {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -162,7 +192,27 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
               />
             </label>
           </div>
-          {photo && <span className="block truncate text-xs text-muted-foreground">{photo.name}</span>}
+          {photo && (
+            <span className="block truncate text-xs text-muted-foreground">{photo.name}</span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3">
+        <Checkbox
+          id="complaint-anonymous"
+          checked={isAnonymous}
+          onCheckedChange={(v) => setIsAnonymous(v === true)}
+          className="mt-0.5"
+        />
+        <div className="space-y-0.5">
+          <Label htmlFor="complaint-anonymous" className="flex items-center gap-1.5 font-normal">
+            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+            Submit anonymously
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Your name won't be shown to the Hostel Admin or Warden. Status tracking works the same
+            either way.
+          </p>
         </div>
       </div>
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground">

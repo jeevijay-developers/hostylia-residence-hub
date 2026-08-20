@@ -20,6 +20,7 @@ export const complaintFormSchema = z.object({
   title: z.string().trim().min(3).max(160),
   description: z.string().trim().min(5).max(4000),
   priority: complaintPriorityEnum.optional(),
+  is_anonymous: z.boolean().optional().default(false),
 });
 export type ComplaintFormInput = z.infer<typeof complaintFormSchema>;
 

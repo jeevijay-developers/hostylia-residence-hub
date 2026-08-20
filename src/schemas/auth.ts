@@ -15,6 +15,34 @@ export const phoneSchema = z
 
 export const indianPhoneSchema = phoneSchema;
 
+/**
+ * Strict Indian mobile check (exactly 10 digits, optional +91/91 prefix,
+ * first digit 6-9) — for fields specifically presented as an Indian mobile
+ * number (signup/login phone, guardian phone). The general `phoneSchema`
+ * above accepts 8-15 digit international-looking numbers, which was letting
+ * through obviously-wrong values (e.g. a 13-digit string, or one with
+ * stray letters slipping past a loose regex) without blocking the form.
+ * This is the one used across every authentication phone field in the app.
+ */
+export const indianMobileSchema = z
+  .string()
+  .trim()
+  .regex(/^(?:\+?91)?[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number");
+
+/**
+ * Sanitizes phone input as the user types — used as an `onChange` filter so
+ * invalid characters (letters, symbols, extra digits) never make it into
+ * the field in the first place, instead of only rejecting on submit.
+ * Keeps a leading "+" if the user typed one (matches the "+91 98765 43210"
+ * placeholder shown on these fields) and caps length to a full +91 number
+ * (12 digits after the +) or a bare 10-digit number otherwise.
+ */
+export function sanitizePhoneKeystroke(input: string): string {
+  const hasPlus = input.trimStart().startsWith("+");
+  const digits = input.replace(/\D/g, "");
+  return hasPlus ? `+${digits.slice(0, 12)}` : digits.slice(0, 10);
+}
+
 export function sanitizeIndianPhoneInput(input: string): string {
   return input.replace(/\D/g, "").slice(0, 10);
 }
@@ -72,7 +100,7 @@ export const hostelNameSchema = z
   .max(120, "Name is too long");
 
 export const phoneLoginSchema = z.object({
-  phone: phoneSchema,
+  phone: indianMobileSchema,
 });
 
 export const emailLoginSchema = z.object({
@@ -114,8 +142,8 @@ export const signupIdentitySchema = z
     message: "Enter your parent/guardian's name",
     path: ["guardianName"],
   })
-  .refine((d) => d.role !== "STUDENT" || phoneSchema.safeParse(d.guardianPhone).success, {
-    message: "Enter a valid guardian phone number",
+  .refine((d) => d.role !== "STUDENT" || indianMobileSchema.safeParse(d.guardianPhone).success, {
+    message: "Enter a valid 10-digit Indian mobile number",
     path: ["guardianPhone"],
   });
 
@@ -133,7 +161,7 @@ export const emailCredentialsSchema = z
 
 /** Step 3b — phone (OTP) credentials. */
 export const phoneCredentialsSchema = z.object({
-  phone: phoneSchema,
+  phone: indianMobileSchema,
 });
 
 export const emailSignupSchema = z

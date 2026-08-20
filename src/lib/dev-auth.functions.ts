@@ -26,15 +26,14 @@ import type { Database } from "@/integrations/supabase/types";
  */
 
 function devTestLoginEnabled() {
-  return process.env.NODE_ENV !== "production" && process.env.DEV_TEST_LOGIN_ENABLED === "true";
+  return process.env.NODE_ENV !== "production" && !!process.env.VITE_DEV_PARENT_PHONE;
 }
 
 /** Used by sendPhoneOtp to skip the real signInWithOtp call for the test phone. */
 export function isDevTestParentPhone(phone: string): boolean {
   return (
     devTestLoginEnabled() &&
-    !!process.env.DEV_TEST_PARENT_PHONE &&
-    phone === process.env.DEV_TEST_PARENT_PHONE
+    phone === process.env.VITE_DEV_PARENT_PHONE
   );
 }
 
@@ -61,10 +60,10 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
     if (!devTestLoginEnabled()) {
       return { ok: false as const, message: "Test login is not available." };
     }
-    const testPhone = process.env.DEV_TEST_PARENT_PHONE;
-    const testOtp = process.env.DEV_TEST_PARENT_OTP;
-    const testPassword = process.env.DEV_TEST_PARENT_PASSWORD;
-    if (!testPhone || !testOtp || !testPassword) {
+    const testPhone = process.env.VITE_DEV_PARENT_PHONE;
+    const testOtp = process.env.VITE_DEV_PARENT_OTP;
+    const testPassword = "DevTestPassword123!"; // Managed internally, not required in env
+    if (!testPhone || !testOtp) {
       return { ok: false as const, message: "Test login is not configured." };
     }
     if (data.phone !== testPhone || data.otp !== testOtp) {
@@ -94,13 +93,54 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
         }
         user = created.user;
       } else {
-        // Keep the account's password/confirmation in sync with the current
-        // env values on every use, so rotating DEV_TEST_PARENT_PASSWORD
-        // locally doesn't leave a stale credential behind.
+        // Keep the account's password/confirmation in sync
         await admin.auth.admin.updateUserById(user.id, {
           password: testPassword,
           phone_confirm: true,
         });
+      }
+
+      // Ensure the test user has a guardian row so they reach the Parent Dashboard
+      const { data: gCheck } = await admin
+        .from("guardians")
+        .select("id")
+        .eq("phone", testPhone)
+        .limit(1);
+
+      if (!gCheck || gCheck.length === 0) {
+        // Find any student to link to so the dashboard populates
+        const { data: student } = await admin
+          .from("students")
+          .select("id, tenant_id")
+          .limit(1)
+          .maybeSingle();
+
+        if (student) {
+          const { data: g } = await admin
+            .from("guardians")
+            .insert({
+              tenant_id: student.tenant_id,
+              phone: testPhone,
+              full_name: "Dev Test Parent",
+              portal_access_enabled: true,
+              profile_id: user.id,
+              status: "ACTIVE",
+            })
+            .select("id")
+            .single();
+
+          if (g) {
+            await admin.from("student_guardians").insert({
+              tenant_id: student.tenant_id,
+              student_id: student.id,
+              guardian_id: g.id,
+              relationship: "Dev Test",
+              is_primary: true,
+              is_emergency_contact: true,
+              portal_access_enabled: true,
+            });
+          }
+        }
       }
 
       const anon = createClient<Database>(

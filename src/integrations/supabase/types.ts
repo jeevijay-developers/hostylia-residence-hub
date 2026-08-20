@@ -677,6 +677,7 @@ export type Database = {
           deleted_by: string | null
           description: string
           id: string
+          is_anonymous: boolean
           priority: string
           property_id: string
           rating: number | null
@@ -708,6 +709,7 @@ export type Database = {
           deleted_by?: string | null
           description: string
           id?: string
+          is_anonymous?: boolean
           priority?: string
           property_id: string
           rating?: number | null
@@ -739,6 +741,7 @@ export type Database = {
           deleted_by?: string | null
           description?: string
           id?: string
+          is_anonymous?: boolean
           priority?: string
           property_id?: string
           rating?: number | null
@@ -4079,6 +4082,59 @@ export type Database = {
       }
     }
     Views: {
+      v_complaint_comments_feed: {
+        Row: {
+          author_full_name: string | null
+          author_user_id: string
+          body: string
+          complaint_id: string
+          created_at: string
+          id: string
+          is_anonymous_author: boolean | null
+          property_id: string
+          tenant_id: string
+        }
+        Relationships: []
+      }
+      v_complaints_feed: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          bed_id: string | null
+          block_id: string | null
+          block_name: string | null
+          category_id: string
+          category_name: string | null
+          closed_at: string | null
+          complaint_number: string
+          created_at: string
+          description: string
+          id: string
+          is_anonymous: boolean
+          priority: string
+          property_id: string
+          rating: number | null
+          rating_comment: string | null
+          reopen_until: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          room_id: string | null
+          room_number: string | null
+          sla_breached_at: string | null
+          sla_due_at: string
+          status: string
+          student_admission_number: string | null
+          student_avatar_path: string | null
+          student_full_name: string | null
+          student_id: string
+          student_profile_id: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Relationships: []
+      }
       v_complaint_sla_summary: {
         Row: {
           assigned_to: string | null

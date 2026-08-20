@@ -25,13 +25,16 @@ import {
   signupIdentitySchema,
   emailCredentialsSchema,
   phoneCredentialsSchema,
+  indianMobileSchema,
   normalizeIndianPhone,
+  sanitizePhoneKeystroke,
   type SignupRole,
   type SignupIdentityInput,
   type EmailCredentialsInput,
   type PhoneCredentialsInput,
 } from "@/schemas/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 
 type Mode = "phone" | "email";
 type Step = 0 | 1 | 2 | 3;
@@ -249,6 +252,7 @@ function IdentityStep({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SignupIdentityInput>({
     resolver: zodResolver(signupIdentitySchema),
@@ -259,7 +263,11 @@ function IdentityStep({
       guardianName: initial?.guardianName ?? "",
       guardianPhone: initial?.guardianPhone ?? "",
     },
+    mode: "onChange",
   });
+  const guardianPhoneField = register("guardianPhone");
+  const guardianPhoneValid =
+    !isStudent || indianMobileSchema.safeParse(watch("guardianPhone")).success;
 
   return (
     <form
@@ -346,7 +354,11 @@ function IdentityStep({
               placeholder="+91 98765 43210"
               className="min-h-11"
               aria-invalid={errors.guardianPhone ? "true" : undefined}
-              {...register("guardianPhone")}
+              {...guardianPhoneField}
+              onChange={(e) => {
+                e.target.value = sanitizePhoneKeystroke(e.target.value);
+                guardianPhoneField.onChange(e);
+              }}
             />
             {errors.guardianPhone ? (
               <p className="text-sm text-destructive" role="alert">
@@ -360,7 +372,7 @@ function IdentityStep({
         </>
       ) : null}
 
-      <StepButtons onBack={onBack} nextLabel={t("auth.continue")} />
+      <StepButtons onBack={onBack} nextLabel={t("auth.continue")} disabled={!guardianPhoneValid} />
     </form>
   );
 }
@@ -444,6 +456,7 @@ function EmailCredentialsForm({
   } = useForm<EmailCredentialsInput>({
     resolver: zodResolver(emailCredentialsSchema),
     defaultValues: { email: "", password: "", confirmPassword: "" },
+    mode: "onChange",
   });
 
   const onSubmit = async (values: EmailCredentialsInput) => {
@@ -552,27 +565,32 @@ function PhoneCredentialsForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<PhoneCredentialsInput>({
     resolver: zodResolver(phoneCredentialsSchema),
     defaultValues: { phone: "" },
+    mode: "onChange",
   });
+  const phoneField = register("phone");
+  const phoneValid = indianMobileSchema.safeParse(watch("phone")).success;
 
   const onSubmit = async (values: PhoneCredentialsInput) => {
     setSubmitting(true);
     try {
       const phone = normalizeIndianPhone(values.phone);
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
-        options: { shouldCreateUser: true, data: signupMetadata(role, identity) },
+      const result = await sendPhoneOtp({
+        data: { phone, intent: "signup", metadata: signupMetadata(role, identity) },
       });
-      if (error) {
-        toast.error(error.message);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not send OTP. Please try again.");
         return;
       }
       navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not send OTP. Please try again.";
+      console.error("sendPhoneOtp (signup) failed:", err);
+      const message =
+        err instanceof Error && err.message ? err.message : "Could not send OTP. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -591,7 +609,11 @@ function PhoneCredentialsForm({
           placeholder="+91 98765 43210"
           className="min-h-11"
           aria-invalid={errors.phone ? "true" : undefined}
-          {...register("phone")}
+          {...phoneField}
+          onChange={(e) => {
+            e.target.value = sanitizePhoneKeystroke(e.target.value);
+            phoneField.onChange(e);
+          }}
         />
         {errors.phone ? (
           <p className="text-sm text-destructive" role="alert">
@@ -601,7 +623,12 @@ function PhoneCredentialsForm({
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
       </div>
-      <StepButtons onBack={onBack} nextLabel={t("auth.sendCode")} submitting={submitting} />
+      <StepButtons
+        onBack={onBack}
+        nextLabel={t("auth.sendCode")}
+        submitting={submitting}
+        disabled={!phoneValid}
+      />
     </form>
   );
 }
@@ -610,10 +637,13 @@ function StepButtons({
   onBack,
   nextLabel,
   submitting,
+  disabled,
 }: {
   onBack: () => void;
   nextLabel: string;
   submitting?: boolean;
+  /** Blocks only the forward/submit button — e.g. current step has an invalid field. */
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -628,7 +658,7 @@ function StepButtons({
         <ArrowLeft className="h-4 w-4" />
         <span className="sr-only sm:not-sr-only">{t("common.back")}</span>
       </Button>
-      <Button type="submit" disabled={submitting} className="min-h-11 flex-1">
+      <Button type="submit" disabled={submitting || disabled} className="min-h-11 flex-1">
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {nextLabel}
         {!submitting ? <ArrowRight className="h-4 w-4" /> : null}

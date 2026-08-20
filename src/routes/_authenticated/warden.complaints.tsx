@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, Search } from "lucide-react";
+import { Eye, EyeOff, Search } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
@@ -74,8 +74,8 @@ function WardenComplaintsPage() {
       l = l.filter(
         (c) =>
           c.complaint_number.toLowerCase().includes(q) ||
-          (c.students?.full_name ?? "").toLowerCase().includes(q) ||
-          (c.rooms?.room_number ?? "").toLowerCase().includes(q),
+          (c.student_full_name ?? "").toLowerCase().includes(q) ||
+          (c.room_number ?? "").toLowerCase().includes(q),
       );
     }
     return [...l].sort(
@@ -239,19 +239,30 @@ function ComplaintDetailsDialog({
           <div className="space-y-1 text-sm">
             <p className="text-muted-foreground">{complaint.description}</p>
             <p className="text-xs text-muted-foreground">
-              {complaint.complaint_categories?.name ?? "Uncategorised"} · {complaint.priority}
+              {complaint.category_name ?? "Uncategorised"} · {complaint.priority}
             </p>
           </div>
 
-          {complaint.students && (
-            <div className="rounded-md border border-border bg-card p-3 text-xs">
-              <p className="font-medium text-foreground">{complaint.students.full_name}</p>
+          {complaint.is_anonymous ? (
+            <div className="flex items-center gap-1.5 rounded-md border border-border bg-card p-3 text-xs">
+              <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <p className="text-muted-foreground">
-                {complaint.students.admission_number}
-                {complaint.rooms?.room_number ? ` · Room ${complaint.rooms.room_number}` : ""}
-                {complaint.blocks?.name ? ` · ${complaint.blocks.name}` : ""}
+                Anonymous student
+                {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+                {complaint.block_name ? ` · ${complaint.block_name}` : ""}
               </p>
             </div>
+          ) : (
+            complaint.student_full_name && (
+              <div className="rounded-md border border-border bg-card p-3 text-xs">
+                <p className="font-medium text-foreground">{complaint.student_full_name}</p>
+                <p className="text-muted-foreground">
+                  {complaint.student_admission_number}
+                  {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+                  {complaint.block_name ? ` · ${complaint.block_name}` : ""}
+                </p>
+              </div>
+            )
           )}
 
           <div className="space-y-2 rounded-md border border-border p-3">

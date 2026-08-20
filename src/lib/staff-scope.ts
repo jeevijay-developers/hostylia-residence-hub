@@ -9,14 +9,31 @@ import { useResolvedRole } from "@/lib/user-role";
  * tenant's properties) or the first property their own `role_assignments`
  * row is scoped to (RLS: "own role_assignments readable", `user_id =
  * auth.uid()` — works identically for every role, no per-role filter here).
+ *
+ * `tenantId` is optional (and unfiltered when omitted) for backward
+ * compatibility with existing callers, but should be passed whenever it's
+ * available: a staff member can hold `role_assignments` rows across more
+ * than one tenant (re-invited, a second demo property, a stale duplicate
+ * grant, etc.), and without a tenant filter this picks the most-recently
+ * -granted row *for that user_id regardless of tenant* — which can resolve a
+ * property belonging to a different tenant than the one the rest of the app
+ * (sidebar, dashboard, `useResolvedRole`) currently has them signed into.
+ * That property then legitimately has zero rows for whatever's being
+ * queried (invoices, students, ...), which just looks like "data missing"
+ * rather than a permissions error, since RLS itself is satisfied — the
+ * property really is one this user is assigned to, just the wrong tenant's.
  */
-export function useMyStaffProperty(userId: string | null | undefined, fallbackId?: string | null) {
+export function useMyStaffProperty(
+  userId: string | null | undefined,
+  fallbackId?: string | null,
+  tenantId?: string | null,
+) {
   return useQuery({
-    queryKey: ["my-staff-property", userId, fallbackId],
+    queryKey: ["my-staff-property", userId, fallbackId, tenantId],
     enabled: !!userId,
     queryFn: async () => {
       if (fallbackId) return fallbackId;
-      const { data } = await supabase
+      let q = supabase
         .from("role_assignments")
         .select("property_id")
         .eq("user_id", userId!)
@@ -24,6 +41,8 @@ export function useMyStaffProperty(userId: string | null | undefined, fallbackId
         .not("property_id", "is", null)
         .order("granted_at", { ascending: false })
         .limit(1);
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data } = await q;
       return data?.[0]?.property_id ?? null;
     },
   });
@@ -41,6 +60,6 @@ export function useMyStaffProperty(userId: string | null | undefined, fallbackId
  */
 export function useAccountantProperty() {
   const { data: role } = useResolvedRole();
-  const propQ = useMyStaffProperty(role?.userId);
+  const propQ = useMyStaffProperty(role?.userId, undefined, role?.tenantId);
   return { propertyId: propQ.data ?? null, isLoading: propQ.isLoading };
 }
