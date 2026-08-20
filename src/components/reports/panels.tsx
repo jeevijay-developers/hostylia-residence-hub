@@ -524,22 +524,29 @@ function Kpi({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-2xl border-l-4 bg-card p-4 shadow-card-ambient panel-lift sm:p-5",
+        "flex min-w-0 items-center gap-3 rounded-2xl border-l-4 bg-card p-3 shadow-card-ambient panel-lift sm:p-5",
         t.border,
         className,
       )}
     >
       {Icon && (
         <span
-          className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-tone-glow", t.iconBg, t.text)}
+          className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full shadow-tone-glow sm:h-11 sm:w-11", t.iconBg, t.text)}
           style={{ ["--glow-tone" as string]: t.glow }}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </span>
       )}
-      <div className="min-w-0">
-        <p className="truncate text-sm text-muted-foreground">{label}</p>
-        <p className={cn("mt-0.5 font-display text-2xl font-bold sm:text-3xl", t.text)}>{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs text-muted-foreground sm:text-sm">{label}</p>
+        <p
+          className={cn(
+            "mt-0.5 break-words font-display text-lg font-bold leading-tight sm:text-3xl",
+            t.text,
+          )}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );

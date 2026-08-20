@@ -118,21 +118,33 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
           </SheetContent>
         </Sheet>
       )}
-      <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
-        <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
+        <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => {
             const path = "/" + crumbs.slice(0, i + 1).join("/");
             const isLast = i === crumbs.length - 1;
             const isId = UUID_RE.test(c) || /^\d+$/.test(c);
             const label = isId ? c : c.replace(/-/g, " ");
             const crumbClasses = cn(
-              isId ? "max-w-[64px] sm:max-w-[110px]" : "shrink-0",
-              "truncate",
+              "min-w-0 truncate",
+              isId
+                ? "max-w-[64px] sm:max-w-[110px]"
+                : "max-w-[140px] shrink sm:max-w-none sm:shrink-0",
               isId ? "" : "capitalize",
             );
             return (
-              <li key={path} className="flex min-w-0 items-center gap-1.5">
-                {i > 0 && <span className="shrink-0 text-muted-foreground/50">/</span>}
+              <li
+                key={path}
+                className={cn(
+                  "flex min-w-0 items-center gap-1.5",
+                  // Intermediate crumbs are hidden on narrow screens to avoid
+                  // crowding — only the current page stays visible there.
+                  !isLast && "hidden sm:flex",
+                )}
+              >
+                {i > 0 && (
+                  <span className="hidden shrink-0 text-muted-foreground/50 sm:inline">/</span>
+                )}
                 {isLast ? (
                   <span className={cn(crumbClasses, "font-semibold text-foreground")} title={label}>
                     {label}

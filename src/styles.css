@@ -152,7 +152,14 @@
 :root {
   --radius: 0.75rem;
 
-  /* Hostylia brand — Design.md */
+  /* Hostylia brand — Design.md
+     Tuned for the same "premium, defined" read as dark mode: dark mode gets
+     its structure from real value contrast between navy/indigo-deep/border;
+     the original light values here (muted/border/input/accent all sitting
+     within a few % of each other and of white) collapsed that structure into
+     a flat, washed-out surface. Widened the steps between background → muted
+     → border → input so panels, dividers and field boundaries read clearly
+     without going darker/heavier than the brand's soft, airy tone. */
   --background: #F6F8F8;
   --foreground: #0A141E;
   --card: #FFFFFF;
@@ -163,19 +170,32 @@
   --primary-foreground: #FFFFFF;
   --secondary: #00609C;
   --secondary-foreground: #FFFFFF;
-  --muted: #F0F3F3;
-  --muted-foreground: #51606B;
+  --muted: #E7ECEC;
+  --muted-foreground: #4A5A64;
   /* `accent` is shadcn's quiet hover/focus surface (hover:bg-accent on ghost
      buttons, dropdown/select items, etc.) — it must stay a soft neutral tint,
      not a saturated brand colour, or every hover state in the app reads as a
      loud blue flash. Mirrors dark mode's "raised, quiet" accent surface. */
-  --accent: #E7F1F1;
+  --accent: #DFEBEB;
   --accent-foreground: #0A141E;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: #DCE4E7;
-  --input: #CBD6DA;
+  --border: #D2DBDE;
+  --input: #BFCBCF;
   --ring: #00D8CC;
+
+  /* Light-mode-only elevation: the shared `--shadow-card-ambient` formula
+     (below, in `@theme inline`) derives its shadow colour from `--foreground`
+     so it automatically inverts direction between modes — dark mode's near-
+     white foreground already reads correctly as a soft glow there and must
+     stay untouched. On white/near-white surfaces that formula came out too
+     faint to give cards real lift, so light mode gets an explicit, slightly
+     richer multi-layer shadow instead; this only overrides the token inside
+     `:root`, so `.dark` keeps computing the original formula unchanged. */
+  --shadow-card-ambient:
+    0 1px 2px rgba(10, 20, 30, 0.06),
+    0 6px 16px -6px rgba(10, 20, 30, 0.10),
+    0 20px 36px -20px rgba(10, 20, 30, 0.14);
 
   --success: #15803d;
   --success-foreground: #ffffff;
@@ -247,6 +267,15 @@
   --info-foreground: #070b18;
   --neutral-accent: #a78bfa;
   --neutral-accent-foreground: #070b18;
+
+  /* Re-pin the original theme-formula shadow explicitly. `:root`'s light
+     block (above) now overrides `--shadow-card-ambient` with a fixed light
+     value; without redeclaring it here, that override would win under
+     `.dark` too via source order. This keeps dark mode's computed shadow
+     byte-for-byte identical to before. */
+  --shadow-card-ambient:
+    0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+    0 8px 24px -8px color-mix(in oklab, var(--foreground) 10%, transparent);
 }
 
 @layer base {

@@ -392,11 +392,11 @@ export function NoticeComposer({ propertyId }: Props) {
       <Dialog open={!!viewingNotice} onOpenChange={(v) => !v && setViewingNotice(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{viewingNotice?.title}</DialogTitle>
+            <DialogTitle className="break-words">{viewingNotice?.title}</DialogTitle>
           </DialogHeader>
           {viewingNotice && (
             <div className="space-y-3 text-sm">
-              <p className="whitespace-pre-wrap">{viewingNotice.body}</p>
+              <p className="whitespace-pre-wrap break-words">{viewingNotice.body}</p>
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <Badge
                   variant="outline"

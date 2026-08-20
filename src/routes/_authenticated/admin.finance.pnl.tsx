@@ -20,7 +20,7 @@ function RevenueCollectionsPage() {
       </p>
     );
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Revenue & Collections Summary"
         actions={

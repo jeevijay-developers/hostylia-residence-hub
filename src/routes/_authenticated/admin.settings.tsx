@@ -61,7 +61,7 @@ function AdminSettingsPage() {
   const tenantId = role?.tenantId ?? null;
 
   return (
-    <div className="space-y-6 max-w-4xl pb-10">
+    <div className="space-y-6 max-w-4xl pb-10 lg:max-w-6xl">
       {/* Page Header */}
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
@@ -169,7 +169,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
   });
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Property settings</h2>
         <p className="text-sm text-muted-foreground">Manage property level preferences and defaults.</p>
@@ -317,7 +317,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Organization settings</h2>
         <p className="text-sm text-muted-foreground">Manage legal entity details and billing contact information.</p>
@@ -436,7 +436,8 @@ function BillingTab({ tenantId }: { tenantId: string }) {
     },
   });
 
-  if (subQ.isLoading) return <Skeleton className="h-48 w-full max-w-2xl rounded-2xl" />;
+  if (subQ.isLoading)
+    return <Skeleton className="h-48 w-full max-w-2xl rounded-2xl lg:max-w-4xl" />;
 
   const sub = subQ.data;
   if (!sub) {
@@ -451,7 +452,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
   const effectivePrice = sub.custom_price_paise ?? plan?.price_paise ?? null;
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">

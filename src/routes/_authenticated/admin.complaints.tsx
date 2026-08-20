@@ -120,7 +120,7 @@ function AdminComplaintsPage() {
           <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
             <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
               <Layers className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 sm:h-4 sm:w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Status" className="truncate" />
             </div>
           </SelectTrigger>
           <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -135,7 +135,7 @@ function AdminComplaintsPage() {
           <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
             <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
               <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 sm:h-4 sm:w-4" />
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder="Category" className="truncate" />
             </div>
           </SelectTrigger>
           <SelectContent className="rounded-xl border-border bg-card text-foreground">
@@ -151,7 +151,7 @@ function AdminComplaintsPage() {
           <SelectTrigger className="h-9 rounded-xl border-border bg-card px-2.5 text-xs font-medium text-foreground sm:h-11 sm:px-3 sm:text-sm">
             <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
               <Package className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-400 sm:h-4 sm:w-4" />
-              <SelectValue placeholder="Block" />
+              <SelectValue placeholder="Block" className="truncate" />
             </div>
           </SelectTrigger>
           <SelectContent className="rounded-xl border-border bg-card text-foreground">

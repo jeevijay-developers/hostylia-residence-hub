@@ -197,13 +197,13 @@ function PropertySetupPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8 lg:max-w-4xl">
       <PageHeader title={`Setup — ${propertyQ.data?.name ?? ""}`} />
 
       {/* Stepper */}
-      <ol className="flex items-center gap-1 sm:gap-2">
+      <ol className="flex items-center gap-1 sm:gap-3 lg:gap-4">
         {STEPS.map((label, i) => (
-          <li key={label} className="flex flex-1 items-center gap-1.5 sm:gap-2">
+          <li key={label} className="flex flex-1 items-center gap-1.5 sm:gap-2 lg:gap-3">
             <button
               onClick={() => setStep(i)}
               className={cn(
@@ -228,16 +228,16 @@ function PropertySetupPage() {
             >
               {label}
             </span>
-            {i < STEPS.length - 1 ? <div className="mx-1 h-px flex-1 bg-border sm:mx-2" /> : null}
+            {i < STEPS.length - 1 ? <div className="mx-1 h-px flex-1 bg-border sm:mx-2 lg:mx-3" /> : null}
           </li>
         ))}
       </ol>
 
       <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
-        <CardHeader className="border-b border-border/60 pb-4">
+        <CardHeader className="border-b border-border/60 px-6 pb-4 sm:px-8">
           <CardTitle className="text-lg font-semibold sm:text-xl">{STEPS[step]}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5 pt-6">
+        <CardContent className="space-y-5 px-6 pt-6 sm:px-8 lg:space-y-6">
           {step === 0 && (
             <>
               <Field id="prop-name" label="Property name">
@@ -412,7 +412,7 @@ function PropertySetupPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
         <Button
           variant="ghost"
           className="font-medium text-muted-foreground hover:text-foreground"
@@ -422,7 +422,7 @@ function PropertySetupPage() {
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap gap-2">
           <Button
             variant="outline"
             className="rounded-xl border-border bg-card font-semibold shadow-sm"

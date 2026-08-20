@@ -118,7 +118,7 @@ function StudentDetailPage() {
           <CardHeader>
             <CardTitle>Profile</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 text-sm">
+          <CardContent className="grid grid-cols-1 gap-x-3 gap-y-3 text-sm sm:grid-cols-2">
             <Info label="Email" value={s.email ?? "—"} />
             <Info label="Date of birth" value={s.date_of_birth ?? "—"} />
             <Info label="Gender" value={s.gender ?? "—"} />
@@ -206,9 +206,9 @@ function StudentDetailPage() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value}</p>
+      <p className="break-words text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }

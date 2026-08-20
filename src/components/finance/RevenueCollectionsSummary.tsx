@@ -22,7 +22,7 @@ export function RevenueCollectionsSummary({ propertyId }: { propertyId: string }
   const d = q.data;
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi icon={FileEdit} label="Total Invoiced" value={formatInr(d.total_issued_paise)} tone="info" />
         <Kpi icon={Wallet} label="Collected" value={formatInr(d.total_collected_paise)} tone="success" />
