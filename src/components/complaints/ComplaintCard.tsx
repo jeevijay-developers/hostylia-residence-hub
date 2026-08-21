@@ -1,10 +1,10 @@
 import { format } from "date-fns";
-import { CalendarClock, CheckCircle2, EyeOff } from "lucide-react";
+import { CalendarClock, CheckCircle2, EyeOff, UserCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PriorityBadge, SlaBadge, StatusBadge, slaAccentBorderClass } from "./SlaBadge";
 import { supabase } from "@/integrations/supabase/client";
-import { slaMeta, type ComplaintWithRelations } from "@/lib/complaint";
+import { slaMeta, useResolvedByLabel, type ComplaintWithRelations } from "@/lib/complaint";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -21,6 +21,7 @@ export function ComplaintCard({
     ? supabase.storage.from("avatars").getPublicUrl(complaint.student_avatar_path).data.publicUrl
     : undefined;
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
+  const resolvedByLabel = useResolvedByLabel(complaint.resolved_by);
 
   return (
     <Card
@@ -92,19 +93,34 @@ export function ComplaintCard({
               <span className="text-muted-foreground/40">|</span>
               <span className="inline-flex items-center gap-1.5">
                 <CalendarClock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                Resolved {format(new Date(complaint.resolved_at), DATE_FORMAT)}
+                Resolved on {format(new Date(complaint.resolved_at), DATE_FORMAT)}
               </span>
             </>
           )}
         </div>
         <p className="line-clamp-3 text-sm text-muted-foreground">{complaint.description}</p>
-        {complaint.resolution_summary && (
-          <div className="inline-flex items-start gap-1.5 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-xs">
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
-            <span>
-              <span className="font-semibold text-success">Resolution: </span>
-              <span className="text-foreground">{complaint.resolution_summary}</span>
-            </span>
+        {(complaint.resolved_by || complaint.resolution_summary) && (
+          <div className="space-y-1.5 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-xs">
+            {complaint.resolved_by && (
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
+                <span className="font-semibold text-success">
+                  Resolved by {resolvedByLabel.data ?? "—"}
+                </span>
+              </div>
+            )}
+            {complaint.resolution_summary && (
+              <div className="flex items-start gap-1.5">
+                <CheckCircle2
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
+                  aria-hidden="true"
+                />
+                <span>
+                  <span className="font-semibold text-success">Resolution: </span>
+                  <span className="text-foreground">{complaint.resolution_summary}</span>
+                </span>
+              </div>
+            )}
           </div>
         )}
         {actions && <div className="flex flex-wrap gap-2 pt-1">{actions}</div>}

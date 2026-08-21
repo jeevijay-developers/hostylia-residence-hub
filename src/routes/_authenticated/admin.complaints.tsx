@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -48,7 +49,15 @@ import { listStaff } from "@/lib/admin-staff.functions";
 import { resolutionSchema } from "@/schemas/complaint";
 import { cn } from "@/lib/utils";
 
+const complaintsSearchSchema = z.object({
+  // Deep-link target for the "View complaint →" toast action fired when a
+  // COMPLAINT_RESOLVED notification lands (see src/lib/notifications.ts) —
+  // scrolls to and expands that complaint's timeline/detail section below.
+  complaintId: z.string().uuid().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/admin/complaints")({
+  validateSearch: complaintsSearchSchema,
   component: AdminComplaintsPage,
 });
 
@@ -85,6 +94,7 @@ function useBlocks(propertyId: string | null | undefined) {
 }
 
 function AdminComplaintsPage() {
+  const { complaintId } = Route.useSearch();
   const propId = usePropertyStore((s) => s.activePropertyId);
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
@@ -169,7 +179,7 @@ function AdminComplaintsPage() {
       )}
       <div className="space-y-4">
         {list.map((c) => (
-          <AdminComplaintRow key={c.id} complaint={c} />
+          <AdminComplaintRow key={c.id} complaint={c} highlightId={complaintId} />
         ))}
         {propId && !all.isLoading && list.length === 0 && (
           <p className="text-sm text-muted-foreground">No complaints match these filters.</p>
@@ -179,17 +189,33 @@ function AdminComplaintsPage() {
   );
 }
 
-function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations }) {
+function AdminComplaintRow({
+  complaint,
+  highlightId,
+}: {
+  complaint: ComplaintWithRelations;
+  highlightId?: string;
+}) {
   const qc = useQueryClient();
   const { data: role } = useResolvedRole();
   const tenantId = role?.tenantId ?? null;
+  const userId = role?.userId ?? null;
   const listStaffFn = useServerFn(listStaff);
+  const isHighlighted = complaint.id === highlightId;
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignee, setAssignee] = useState<string>("");
   const [resolveOpen, setResolveOpen] = useState(false);
   const [summary, setSummary] = useState("");
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(isHighlighted);
+
+  useEffect(() => {
+    if (isHighlighted) {
+      setDetailsOpen(true);
+      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
 
   const staffQ = useQuery({
     queryKey: ["staff-wardens", tenantId],
@@ -239,6 +265,7 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
           status: "RESOLVED",
           resolution_summary: parsed.resolution_summary,
           resolved_at: new Date().toISOString(),
+          resolved_by: userId,
         })
         .eq("id", complaint.id);
       if (error) throw new Error(error.message);
@@ -276,10 +303,15 @@ function AdminComplaintRow({ complaint }: { complaint: ComplaintWithRelations })
     "REOPENED",
   ].includes(complaint.status);
   const canReopen = ["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
+  // Once resolved/closed/cancelled, a stale sla_breached_at (set before
+  // resolution and never cleared) shouldn't keep showing this as a live red
+  // alert — mirrors slaMeta()'s own "done" gating for the SlaBadge/accent.
+  const showSlaBreachAlert =
+    !!complaint.sla_breached_at && !["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
 
   return (
-    <div className="space-y-3">
-      {complaint.sla_breached_at && (
+    <div ref={rowRef} className="space-y-3">
+      {showSlaBreachAlert && (
         <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> SLA breached
         </div>

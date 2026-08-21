@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useKycComplete } from "@/lib/kyc";
 import { useStudentSelf } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions } from "@/lib/staff-scope";
 import { formatInr } from "@/lib/finance";
 
 export const Route = createFileRoute("/_authenticated/student/home")({
@@ -51,6 +52,7 @@ function StudentHomePage() {
   const studentId = student.data?.id ?? null;
   const propertyId = student.data?.property_id ?? null;
   const { complete: kycComplete, isLoading: kycLoading } = useKycComplete(studentId);
+  const { can } = useStudentPermissions();
 
   // Same key/select as student.profile.tsx's "my-profile-record" query.
   const profileQ = useQuery({
@@ -181,12 +183,14 @@ function StudentHomePage() {
 
       {studentId && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <AttendanceSection studentId={studentId} />
-            <FeesSection studentId={studentId} />
-          </div>
-          <GatePassSection studentId={studentId} />
-          <MessSection propertyId={propertyId} />
+          {(can("attendance", "view") || can("finance", "view")) && (
+            <div className="grid grid-cols-2 gap-3">
+              {can("attendance", "view") && <AttendanceSection studentId={studentId} />}
+              {can("finance", "view") && <FeesSection studentId={studentId} />}
+            </div>
+          )}
+          {can("gate_passes", "view") && <GatePassSection studentId={studentId} />}
+          {can("mess", "view") && <MessSection propertyId={propertyId} />}
         </div>
       )}
     </div>

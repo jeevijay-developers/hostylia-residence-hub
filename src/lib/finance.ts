@@ -43,3 +43,24 @@ export const INVOICE_STATUS_TONE: Record<InvoiceStatus, string> = {
   PARTIALLY_REFUNDED: "bg-warning/10 text-warning",
   REFUNDED: "bg-muted text-muted-foreground",
 };
+
+export type PaymentStatus =
+  | "CREATED"
+  | "PENDING"
+  | "AUTHORIZED"
+  | "CAPTURED"
+  | "FAILED"
+  | "CANCELLED"
+  | "PARTIALLY_REFUNDED"
+  | "REFUNDED";
+
+export const PAYMENT_STATUS_TONE: Record<PaymentStatus, string> = {
+  CREATED: "bg-muted text-muted-foreground",
+  PENDING: "bg-warning/10 text-warning",
+  AUTHORIZED: "bg-info/10 text-info",
+  CAPTURED: "bg-success/10 text-success",
+  FAILED: "bg-destructive/10 text-destructive",
+  CANCELLED: "bg-muted text-muted-foreground line-through",
+  PARTIALLY_REFUNDED: "bg-warning/10 text-warning",
+  REFUNDED: "bg-muted text-muted-foreground",
+};

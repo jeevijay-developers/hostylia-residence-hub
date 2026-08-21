@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useComplaints, useStudentSelf, type ComplaintWithRelations } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions } from "@/lib/staff-scope";
+import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/student/complaints")({
@@ -19,51 +21,64 @@ export const Route = createFileRoute("/_authenticated/student/complaints")({
 function StudentComplaintsPage() {
   const role = useResolvedRole();
   const student = useStudentSelf();
+  const { can } = useStudentPermissions();
+  const canWrite = can("complaints", "edit");
   const complaints = useComplaints({
     propertyId: student.data?.property_id,
     studentId: student.data?.id,
   });
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <FileEdit className="h-4 w-4" />
-            </span>
-            New complaint
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ComplaintForm />
-        </CardContent>
-      </Card>
-      <div className="space-y-3">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <ClipboardList className="h-4 w-4" />
-          </span>
-          Your complaints
-        </h2>
-        {complaints.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {(complaints.data ?? []).map((c) => (
-          <StudentComplaintItem key={c.id} complaint={c} userId={role.data?.userId ?? null} />
-        ))}
-        {complaints.data && complaints.data.length === 0 && (
-          <p className="text-sm text-muted-foreground">No complaints yet.</p>
+    <StudentModuleGuard module="complaints">
+      <div className="space-y-6">
+        {canWrite && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <FileEdit className="h-4 w-4" />
+                </span>
+                New complaint
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ComplaintForm />
+            </CardContent>
+          </Card>
         )}
+        <div className="space-y-3">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <ClipboardList className="h-4 w-4" />
+            </span>
+            Your complaints
+          </h2>
+          {complaints.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {(complaints.data ?? []).map((c) => (
+            <StudentComplaintItem
+              key={c.id}
+              complaint={c}
+              userId={role.data?.userId ?? null}
+              canWrite={canWrite}
+            />
+          ))}
+          {complaints.data && complaints.data.length === 0 && (
+            <p className="text-sm text-muted-foreground">No complaints yet.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </StudentModuleGuard>
   );
 }
 
 function StudentComplaintItem({
   complaint,
   userId,
+  canWrite,
 }: {
   complaint: ComplaintWithRelations;
   userId: string | null;
+  canWrite: boolean;
 }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
@@ -90,7 +105,7 @@ function StudentComplaintItem({
           </Collapsible>
         }
       />
-      <RatingWidget complaint={complaint} />
+      <RatingWidget complaint={complaint} canWrite={canWrite} />
       <div className="rounded-xl border border-border bg-card p-3">
         <Button
           variant="outline"
@@ -103,7 +118,7 @@ function StudentComplaintItem({
         </Button>
         {conversationOpen && (
           <div className="mt-2">
-            <ComplaintCommentThread complaint={complaint} userId={userId} />
+            <ComplaintCommentThread complaint={complaint} userId={userId} canWrite={canWrite} />
           </div>
         )}
       </div>

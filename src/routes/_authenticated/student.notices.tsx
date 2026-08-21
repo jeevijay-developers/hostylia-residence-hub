@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { NoticeFeed } from "@/components/notifications/NoticeFeed";
+import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/student/notices")({
@@ -26,14 +27,16 @@ function StudentNoticesPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Notices" description="Announcements from your hostel." />
-      <NoticeFeed
-        tenantId={data?.tenant_id}
-        propertyId={data?.property_id}
-        audienceFilter={["ALL", "STUDENTS"]}
-        emptyLabel="No notices posted yet."
-      />
-    </div>
+    <StudentModuleGuard module="notices">
+      <div className="space-y-6">
+        <PageHeader title="Notices" description="Announcements from your hostel." />
+        <NoticeFeed
+          tenantId={data?.tenant_id}
+          propertyId={data?.property_id}
+          audienceFilter={["ALL", "STUDENTS"]}
+          emptyLabel="No notices posted yet."
+        />
+      </div>
+    </StudentModuleGuard>
   );
 }

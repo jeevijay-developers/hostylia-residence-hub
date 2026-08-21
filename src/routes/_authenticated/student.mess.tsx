@@ -11,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions } from "@/lib/staff-scope";
+import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 
@@ -55,18 +57,22 @@ function StudentMessPage() {
   });
   const submittedMap = new Map((feedbackQ.data ?? []).map((f) => [f.mess_menu_id, f.rating]));
   const { complete: kycComplete } = useKycComplete(studentQ.data?.id);
+  const { can } = useStudentPermissions();
+  const canWrite = can("mess", "edit");
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Today's menu and your feedback."
-        description="Help us serve you better every day."
-      />
-      {(menusQ.data ?? []).map((m) => (
-        <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
-      ))}
-      {menusQ.data?.length === 0 && <div className="text-sm text-muted-foreground text-center p-6">No menu published for today.</div>}
-    </div>
+    <StudentModuleGuard module="mess">
+      <div className="space-y-4">
+        <PageHeader
+          title="Today's menu and your feedback."
+          description="Help us serve you better every day."
+        />
+        {(menusQ.data ?? []).map((m) => (
+          <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} canWrite={canWrite} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
+        ))}
+        {menusQ.data?.length === 0 && <div className="text-sm text-muted-foreground text-center p-6">No menu published for today.</div>}
+      </div>
+    </StudentModuleGuard>
   );
 }
 
@@ -78,7 +84,7 @@ const MEAL_STYLE: Record<string, { icon: LucideIcon; iconBg: string; iconText: s
 };
 const DEFAULT_MEAL_STYLE = { icon: UtensilsCrossed, iconBg: "bg-muted", iconText: "text-muted-foreground" };
 
-function MenuCard({ menu, submittedRating, student, kycComplete, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; onSubmitted: () => void }) {
+function MenuCard({ menu, submittedRating, student, kycComplete, canWrite, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; canWrite: boolean; onSubmitted: () => void }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const submitMut = useMutation({
@@ -111,7 +117,7 @@ function MenuCard({ menu, submittedRating, student, kycComplete, onSubmitted }: 
         </div>
         {submittedRating && <Badge variant="secondary">⭐ {submittedRating}</Badge>}
       </div>
-      {!submittedRating && (
+      {!submittedRating && canWrite && (
         <div className="space-y-3 border-t border-border pt-3">
           <div>
             <p className="mb-1 text-sm text-muted-foreground">Rate your meal</p>

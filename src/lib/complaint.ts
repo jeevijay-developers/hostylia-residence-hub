@@ -216,6 +216,32 @@ export function slaMeta(c: ComplaintRow): {
   return { label: `SLA in ${formatMinutes(mins)}`, tone };
 }
 
+/**
+ * Human label for `complaints.resolved_by` — "Super Admin" when the resolver
+ * is a platform super admin (they have no tenant `profiles` row worth
+ * showing by name), otherwise their `profiles.full_name`. Shared by
+ * ComplaintCard and the warden resolve dialog so both agree on the label.
+ */
+export function useResolvedByLabel(resolvedBy: string | null | undefined) {
+  return useQuery({
+    queryKey: ["complaint-resolved-by-label", resolvedBy],
+    enabled: !!resolvedBy,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: isSuper } = await supabase.rpc("is_super_admin", {
+        _user_id: resolvedBy!,
+      });
+      if (isSuper) return "Super Admin";
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", resolvedBy!)
+        .maybeSingle();
+      return data?.full_name ?? null;
+    },
+  });
+}
+
 export type ComplaintCommentWithAuthor =
   Database["public"]["Views"]["v_complaint_comments_feed"]["Row"];
 

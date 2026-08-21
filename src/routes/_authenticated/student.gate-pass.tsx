@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions } from "@/lib/staff-scope";
+import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { createGatePass, reissueGatePassQrToken } from "@/lib/operations.functions";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
@@ -35,6 +37,8 @@ function StudentGatePassPage() {
   const uid = role.data?.userId ?? null;
   const qc = useQueryClient();
   const create = useServerFn(createGatePass);
+  const { can } = useStudentPermissions();
+  const canWrite = can("gate_passes", "edit");
 
   const studentQ = useQuery({
     queryKey: ["me-student", uid],
@@ -91,67 +95,71 @@ function StudentGatePassPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <SquarePen className="h-4 w-4" />
-            </span>
-            New Request
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Going out — date</label>
-              <Input type="date" value={outDate} onChange={(e) => setOutDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Going out — time</label>
-              <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Expected back — date</label>
-              <Input type="date" value={inDate} onChange={(e) => setInDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Expected back — time</label>
-              <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
-            </div>
-          </div>
-          {(!reason || !outAt || !inAt) && (
-            <p className="text-xs text-muted-foreground">
-              {!reason
-                ? "Enter a reason to continue."
-                : "Fill in both the date and time for \"Going out\" and \"Expected back\" — the Request button unlocks once all four are set."}
-            </p>
-          )}
-          {!kycComplete && <KycGateNotice message="Complete your KYC to request a gate pass." />}
-          <Button
-            className="rounded-full"
-            onClick={() => createMut.mutate()}
-            disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}
-          >
-            {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Request
-          </Button>
-        </CardContent>
-      </Card>
+    <StudentModuleGuard module="gate_passes">
+      <div className="space-y-4">
+        {canWrite && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <SquarePen className="h-4 w-4" />
+                </span>
+                New Request
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+              <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Going out — date</label>
+                  <Input type="date" value={outDate} onChange={(e) => setOutDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Going out — time</label>
+                  <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Expected back — date</label>
+                  <Input type="date" value={inDate} onChange={(e) => setInDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Expected back — time</label>
+                  <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
+                </div>
+              </div>
+              {(!reason || !outAt || !inAt) && (
+                <p className="text-xs text-muted-foreground">
+                  {!reason
+                    ? "Enter a reason to continue."
+                    : "Fill in both the date and time for \"Going out\" and \"Expected back\" — the Request button unlocks once all four are set."}
+                </p>
+              )}
+              {!kycComplete && <KycGateNotice message="Complete your KYC to request a gate pass." />}
+              <Button
+                className="rounded-full"
+                onClick={() => createMut.mutate()}
+                disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}
+              >
+                {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Request
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <ListChecks className="h-4 w-4" />
-          </span>
-          My Passes
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <ListChecks className="h-4 w-4" />
+            </span>
+            My Passes
+          </div>
+          {(passesQ.data ?? []).map((p) => <PassCard key={p.id} pass={p} canWrite={canWrite} />)}
+          {passesQ.data?.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>}
         </div>
-        {(passesQ.data ?? []).map((p) => <PassCard key={p.id} pass={p} />)}
-        {passesQ.data?.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>}
       </div>
-    </div>
+    </StudentModuleGuard>
   );
 }
 
@@ -161,9 +169,15 @@ const PASS_STATUS_TONE: Record<string, string> = {
   ACTIVE: "bg-success text-success-foreground",
 };
 
-function PassCard({ pass }: { pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string } }) {
+function PassCard({
+  pass,
+  canWrite,
+}: {
+  pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string };
+  canWrite: boolean;
+}) {
   const reissue = useServerFn(reissueGatePassQrToken);
-  const scannable = pass.status === "APPROVED" || pass.status === "ACTIVE";
+  const scannable = canWrite && (pass.status === "APPROVED" || pass.status === "ACTIVE");
 
   // Issues a fresh token + QR on demand from the backend rather than reading
   // one out of localStorage — works from any device/browser once logged in.

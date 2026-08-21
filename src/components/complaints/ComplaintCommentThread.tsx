@@ -14,9 +14,12 @@ import { complaintCommentSchema } from "@/schemas/complaint";
 export function ComplaintCommentThread({
   complaint,
   userId,
+  canWrite = true,
 }: {
   complaint: Pick<ComplaintWithRelations, "id" | "tenant_id" | "property_id">;
   userId: string | null;
+  /** Hides the composer for Read-tier students — RLS blocks the insert either way. */
+  canWrite?: boolean;
 }) {
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
@@ -66,22 +69,24 @@ export function ComplaintCommentThread({
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <Textarea
-          placeholder="Add a comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          className="flex-1"
-        />
-        <Button
-          size="sm"
-          disabled={postComment.isPending || !comment.trim()}
-          onClick={() => postComment.mutate()}
-        >
-          Post
-        </Button>
-      </div>
+      {canWrite && (
+        <div className="flex gap-2">
+          <Textarea
+            placeholder="Add a comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            className="flex-1"
+          />
+          <Button
+            size="sm"
+            disabled={postComment.isPending || !comment.trim()}
+            onClick={() => postComment.mutate()}
+          >
+            Post
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

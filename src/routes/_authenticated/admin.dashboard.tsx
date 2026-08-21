@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/components/warden/ActivityIcon";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { RoomOccupancyChart } from "@/components/dashboard/RoomOccupancyChart";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
@@ -95,9 +96,8 @@ function AdminDashboardPage() {
       // Matches v_occupancy_summary's own formula: occupied / (occupied + vacant),
       // excluding MAINTENANCE/BLOCKED beds from the denominator.
       const occupied = beds.filter((b) => b.status === "OCCUPIED").length;
-      const occupiable = beds.filter(
-        (b) => b.status === "OCCUPIED" || b.status === "VACANT",
-      ).length;
+      const vacant = beds.filter((b) => b.status === "VACANT").length;
+      const occupiable = occupied + vacant;
       const occupancyPct = occupiable > 0 ? Math.round((occupied / occupiable) * 100) : 0;
 
       const collectionsPaise = (paymentsRes.data ?? []).reduce((sum, p) => sum + p.amount_paise, 0);
@@ -107,6 +107,9 @@ function AdminDashboardPage() {
         collectionsPaise,
         openComplaints: complaintsRes.count ?? 0,
         activeStudents: studentsRes.count ?? 0,
+        totalBeds: beds.length,
+        occupiedBeds: occupied,
+        vacantBeds: vacant,
       };
     },
     staleTime: 60_000,
@@ -177,33 +180,42 @@ function AdminDashboardPage() {
       )}
 
       {propertyId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activityLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : recentActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent activity yet.</p>
-            ) : (
-              <ol className="space-y-3 text-sm">
-                {recentActivity.slice(0, 8).map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <ActivityIcon type={item.type} />
-                    <div className="min-w-0">
-                      <div className="font-medium">{item.type}</div>
-                      <div className="truncate text-xs text-muted-foreground">{item.detail}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(item.at).toLocaleString()}
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <RoomOccupancyChart
+            totalBeds={kpis.data?.totalBeds ?? 0}
+            occupiedBeds={kpis.data?.occupiedBeds ?? 0}
+            vacantBeds={kpis.data?.vacantBeds ?? 0}
+            occupancyPct={kpis.data?.occupancyPct ?? 0}
+            loading={kpis.isLoading}
+          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent activity yet.</p>
+              ) : (
+                <ol className="space-y-3 text-sm">
+                  {recentActivity.slice(0, 8).map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <ActivityIcon type={item.type} />
+                      <div className="min-w-0">
+                        <div className="font-medium">{item.type}</div>
+                        <div className="truncate text-xs text-muted-foreground">{item.detail}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(item.at).toLocaleString()}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </CardContent>
-        </Card>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

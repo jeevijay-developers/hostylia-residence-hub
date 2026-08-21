@@ -255,7 +255,9 @@ interface EligibleAllocation {
   billing_cycle_day: number | null;
   fee_plan_id: string | null;
   students: { full_name: string; admission_number: string } | null;
-  fee_plans: { name: string; due_day: number; grace_period_days: number } | null;
+  rooms: { room_number: string } | null;
+  beds: { code: string } | null;
+  fee_plan: { id: string; name: string; due_day: number; grace_period_days: number } | null;
 }
 
 function CreateInvoiceDialog({
@@ -281,53 +283,74 @@ function CreateInvoiceDialog({
     queryKey: ["invoice-eligible-allocations", propertyId],
     enabled: open,
     queryFn: async (): Promise<EligibleAllocation[]> => {
-      const { data, error } = await supabase
+      // `allocations.fee_plan_id` has no FK constraint to `fee_plans` (only
+      // fee_plan_components/invoices do), so PostgREST can't resolve an
+      // embedded `fee_plans(...)` select here — it throws "could not find a
+      // relationship", which the old code silently swallowed into an empty
+      // list. room_id/bed_id *do* have FKs, so those embed normally; fee
+      // plans are resolved in a second pass and merged client-side instead
+      // (same missing-FK workaround already used for complaint_comments/
+      // reports.functions.ts elsewhere in this codebase).
+      const { data: allocs, error } = await supabase
         .from("allocations")
-        .select("id, billing_cycle_day, fee_plan_id, students(full_name, admission_number)")
+        .select(
+          "id, billing_cycle_day, fee_plan_id, students(full_name, admission_number, status), rooms(room_number), beds(code)",
+        )
         .eq("property_id", propertyId)
         .eq("status", "ACTIVE")
         .not("fee_plan_id", "is", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const rows = (data ?? []) as unknown as Omit<EligibleAllocation, "fee_plans">[];
 
-      // allocations.fee_plan_id has no declared FK to fee_plans, so
-      // PostgREST can't embed it via `fee_plans(...)` (fails with PGRST200
-      // "Could not find a relationship") — that silent failure was why this
-      // list always came back empty. Resolved the same way the Student
-      // profile page and generateFirstInvoiceForAllocation do: a separate
-      // lookup by id, merged in client-side.
-      const feePlanIds = [
-        ...new Set(rows.map((r) => r.fee_plan_id).filter((v): v is string => !!v)),
-      ];
-      const feePlanById = new Map<
-        string,
-        { name: string; due_day: number; grace_period_days: number }
-      >();
-      if (feePlanIds.length > 0) {
-        const { data: plans, error: planErr } = await supabase
-          .from("fee_plans")
-          .select("id, name, due_day, grace_period_days")
-          .in("id", feePlanIds);
-        if (planErr) throw planErr;
-        for (const p of plans ?? []) feePlanById.set(p.id, p);
-      }
+      type AllocRow = {
+        id: string;
+        billing_cycle_day: number | null;
+        fee_plan_id: string | null;
+        students: { full_name: string; admission_number: string; status: string } | null;
+        rooms: { room_number: string } | null;
+        beds: { code: string } | null;
+      };
+      // Only currently-active students — an allocation can stay ACTIVE for a
+      // beat after the student themselves moves to NOTICE_GIVEN/MOVED_OUT.
+      const activeRows = ((allocs ?? []) as unknown as AllocRow[]).filter(
+        (r) => r.students?.status === "ACTIVE",
+      );
+      if (activeRows.length === 0) return [];
 
-      return rows.map((r) => ({
-        ...r,
-        fee_plans: r.fee_plan_id ? (feePlanById.get(r.fee_plan_id) ?? null) : null,
-      }));
+      const feePlanIds = Array.from(
+        new Set(activeRows.map((r) => r.fee_plan_id).filter((id): id is string => !!id)),
+      );
+      const { data: plans, error: plansErr } = await supabase
+        .from("fee_plans")
+        .select("id, name, due_day, grace_period_days")
+        .in("id", feePlanIds)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null);
+      if (plansErr) throw plansErr;
+      const planMap = new Map((plans ?? []).map((p) => [p.id, p]));
+
+      // Drop allocations whose fee plan turned out inactive/archived/deleted
+      // — "valid active fee plan" is part of eligibility, not just "has one".
+      return activeRows
+        .map((r) => ({ ...r, fee_plan: planMap.get(r.fee_plan_id ?? "") ?? null }))
+        .filter((r) => r.fee_plan !== null);
     },
   });
   const allocations = allocationsQ.data ?? [];
   const selected = allocations.find((a) => a.id === allocationId) ?? null;
 
+  function roomBedLabel(a: EligibleAllocation) {
+    const room = a.rooms?.room_number ? `Room ${a.rooms.room_number}` : null;
+    const bed = a.beds?.code ? `Bed ${a.beds.code}` : null;
+    return [room, bed].filter(Boolean).join(" · ") || "—";
+  }
+
   function applyDefaults(a: EligibleAllocation) {
     setAllocationId(a.id);
     setPeriodStart(monthStartIso());
     setPeriodEnd(monthEndIso());
-    const grace = a.fee_plans?.grace_period_days ?? 0;
+    const grace = a.fee_plan?.grace_period_days ?? 0;
     const d = new Date();
     d.setDate(d.getDate() + grace);
     setDueDate(d.toISOString().slice(0, 10));
@@ -391,7 +414,7 @@ function CreateInvoiceDialog({
                   className="w-full justify-between font-normal"
                 >
                   {selected
-                    ? `${selected.students?.full_name ?? "—"} · ${selected.fee_plans?.name ?? "—"}`
+                    ? `${selected.students?.full_name ?? "—"} · ${roomBedLabel(selected)} · ${selected.fee_plan?.name ?? "—"}`
                     : "Choose an active allocation"}
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -405,7 +428,7 @@ function CreateInvoiceDialog({
                       {allocations.map((a) => (
                         <CommandItem
                           key={a.id}
-                          value={`${a.students?.full_name ?? ""} ${a.students?.admission_number ?? ""}`}
+                          value={`${a.students?.full_name ?? ""} ${a.students?.admission_number ?? ""} ${a.rooms?.room_number ?? ""} ${a.beds?.code ?? ""}`}
                           onSelect={() => {
                             applyDefaults(a);
                             setPickerOpen(false);
@@ -417,10 +440,14 @@ function CreateInvoiceDialog({
                               allocationId === a.id ? "opacity-100" : "opacity-0",
                             )}
                           />
-                          <span className="truncate">
-                            {a.students?.full_name} ({a.students?.admission_number}) ·{" "}
-                            {a.fee_plans?.name}
-                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {a.students?.full_name} ({a.students?.admission_number})
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {roomBedLabel(a)} · {a.fee_plan?.name}
+                            </p>
+                          </div>
                         </CommandItem>
                       ))}
                     </CommandGroup>

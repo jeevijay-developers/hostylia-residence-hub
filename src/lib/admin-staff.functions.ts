@@ -23,24 +23,48 @@ import { normalizeIndianPhone } from "@/schemas/auth";
 // role already has View by default, so there's no gap to grant.
 const staffPermissionsSchema = z
   .object({
-    fee_plans: z.boolean(),
-    payments: z.boolean(),
+    fee_plans_view: z.boolean(),
+    fee_plans_create: z.boolean(),
+    fee_plans_edit: z.boolean(),
+    fee_plans_delete: z.boolean(),
+    payments_view: z.boolean(),
+    payments_create: z.boolean(),
+    payments_edit: z.boolean(),
+    payments_delete: z.boolean(),
     refunds: z.boolean(),
     invoices_view: z.boolean(),
     invoices_create: z.boolean(),
     invoices_edit: z.boolean(),
     invoices_delete: z.boolean(),
-    attendance: z.boolean(),
     complaints: z.boolean(),
-    gate_passes: z.boolean(),
     gate_events: z.boolean(),
-    visitors: z.boolean(),
     notices: z.boolean(),
     mess_menus: z.boolean(),
     feedback: z.boolean(),
+    students_view: z.boolean(),
     students_create: z.boolean(),
     students_edit: z.boolean(),
     students_delete: z.boolean(),
+    allocations_view: z.boolean(),
+    allocations_create: z.boolean(),
+    allocations_edit: z.boolean(),
+    rooms_beds_view: z.boolean(),
+    rooms_beds_edit: z.boolean(),
+    rooms_beds_create: z.boolean(),
+    rooms_beds_delete: z.boolean(),
+    attendance_view: z.boolean(),
+    attendance_create: z.boolean(),
+    attendance_edit: z.boolean(),
+    attendance_delete: z.boolean(),
+    gate_passes_view: z.boolean(),
+    gate_passes_create: z.boolean(),
+    gate_passes_edit: z.boolean(),
+    gate_passes_delete: z.boolean(),
+    visitors_view: z.boolean(),
+    visitors_create: z.boolean(),
+    visitors_edit: z.boolean(),
+    visitors_delete: z.boolean(),
+    reports_view: z.boolean(),
   })
   .partial();
 
@@ -496,6 +520,8 @@ const updateStaffSchema = z.object({
   role_assignment_id: z.string().uuid(),
   full_name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(6),
+  // Omitted = leave block scope untouched; null = "all blocks" (property-wide).
+  block_id: z.string().uuid().nullable().optional(),
   // Omitted = leave permissions untouched. An explicit {} clears any
   // existing override, reverting the staff member to their role default.
   permissions: staffPermissionsSchema.optional(),
@@ -525,6 +551,15 @@ export const updateStaff = createServerFn({ method: "POST" })
       .eq("id", ra.user_id);
     if (error) throw error;
 
+    if (data.block_id !== undefined) {
+      const { error: blockErr } = await supabase
+        .from("role_assignments")
+        .update({ block_id: data.block_id })
+        .eq("id", data.role_assignment_id)
+        .eq("tenant_id", data.tenant_id);
+      if (blockErr) throw blockErr;
+    }
+
     if (data.permissions !== undefined) {
       // Hostel Admin already has unconditional access to every feature —
       // customizing wouldn't mean anything, and a stray `finance: false`
@@ -540,6 +575,115 @@ export const updateStaff = createServerFn({ method: "POST" })
       if (permErr) throw permErr;
     }
 
+    return { ok: true };
+  });
+
+// The 7 real student-facing modules (see 20260821060645_student_module_permissions.sql)
+// — Attendance/Notices are read-only for students, so they have no `_edit`
+// key at all; sending one is simply ignored by the CHECK constraint's
+// allow-list (it isn't in it), so keep them out of this schema too.
+const studentPermissionsSchema = z
+  .object({
+    student_profile_view: z.boolean(),
+    student_profile_edit: z.boolean(),
+    student_attendance_view: z.boolean(),
+    student_complaints_view: z.boolean(),
+    student_complaints_edit: z.boolean(),
+    student_notices_view: z.boolean(),
+    student_finance_view: z.boolean(),
+    student_finance_edit: z.boolean(),
+    student_gate_passes_view: z.boolean(),
+    student_gate_passes_edit: z.boolean(),
+    student_mess_view: z.boolean(),
+    student_mess_edit: z.boolean(),
+  })
+  .partial();
+
+const getStudentPermissionsSchema = z.object({
+  tenant_id: z.string().uuid(),
+  student_id: z.string().uuid(),
+});
+
+export const getStudentPermissions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => getStudentPermissionsSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId, data.tenant_id);
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("profile_id")
+      .eq("id", data.student_id)
+      .eq("tenant_id", data.tenant_id)
+      .single();
+    if (sErr || !student) throw new Error("Student not found");
+    if (!student.profile_id) return { permissions: {}, linked: false as const };
+
+    const { data: ra } = await supabase
+      .from("role_assignments")
+      .select("permissions")
+      .eq("tenant_id", data.tenant_id)
+      .eq("user_id", student.profile_id)
+      .eq("role", "STUDENT")
+      .order("granted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { permissions: ra?.permissions ?? {}, linked: true as const };
+  });
+
+const updateStudentPermissionsSchema = z.object({
+  tenant_id: z.string().uuid(),
+  student_id: z.string().uuid(),
+  // An explicit {} clears any existing override, reverting every module to
+  // its default (Edit — see the migration's column comment).
+  permissions: studentPermissionsSchema,
+});
+
+/**
+ * Admin-only write path for a student's module permissions — same shape as
+ * updateStaff's permissions PATCH (client → server fn → RLS-protected
+ * update of role_assignments.permissions), not a new privileged flow. A
+ * student's STUDENT role_assignments row already exists for every admitted
+ * student (created for tenant/property scoping); this only ever updates
+ * it, never inserts one, since an unlinked student (no portal account yet)
+ * has nothing to gate.
+ */
+export const updateStudentPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => updateStudentPermissionsSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId, data.tenant_id);
+
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("profile_id")
+      .eq("id", data.student_id)
+      .eq("tenant_id", data.tenant_id)
+      .single();
+    if (sErr || !student) throw new Error("Student not found");
+    if (!student.profile_id) {
+      throw new Error("Student has no linked portal account yet — nothing to configure");
+    }
+
+    const { data: ra, error: raErr } = await supabase
+      .from("role_assignments")
+      .select("id")
+      .eq("tenant_id", data.tenant_id)
+      .eq("user_id", student.profile_id)
+      .eq("role", "STUDENT")
+      .order("granted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (raErr) throw raErr;
+    if (!ra) throw new Error("Student has no role assignment on record");
+
+    const { error } = await supabase
+      .from("role_assignments")
+      .update({ permissions: data.permissions })
+      .eq("id", ra.id);
+    if (error) throw error;
     return { ok: true };
   });
 

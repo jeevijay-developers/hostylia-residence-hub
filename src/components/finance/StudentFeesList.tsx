@@ -21,7 +21,14 @@ const INVOICE_STATUS_ICON: Record<InvoiceStatus, typeof CheckCircle2 | null> = {
   REFUNDED: null,
 };
 
-export function StudentFeesList({ studentId }: { studentId: string }) {
+export function StudentFeesList({
+  studentId,
+  canPay = true,
+}: {
+  studentId: string;
+  /** Hides the "Pay now" action for Read-tier students — RLS blocks the payment_orders insert either way. */
+  canPay?: boolean;
+}) {
   const qc = useQueryClient();
   const createOrder = useServerFn(createRazorpayOrder);
   const { complete: kycComplete } = useKycComplete(studentId);
@@ -90,7 +97,7 @@ export function StudentFeesList({ studentId }: { studentId: string }) {
               </div>
             </div>
 
-            {i.balance_paise > 0 && i.status !== "VOID" && (
+            {canPay && i.balance_paise > 0 && i.status !== "VOID" && (
               <Button
                 size="sm"
                 className="mt-3 w-full"

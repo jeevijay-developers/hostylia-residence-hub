@@ -45,6 +45,7 @@ import { StudentProfileEditDialog } from "@/components/students/StudentProfileEd
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
 import { confirmStudentAdmission } from "@/lib/student.functions";
+import { useWardenPermissions } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/warden/students/$id")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }] }),
@@ -69,6 +70,7 @@ function WardenStudentDetailPage() {
   const { id } = Route.useParams();
   const [editOpen, setEditOpen] = useState(false);
   const [stayOpen, setStayOpen] = useState(false);
+  const { can } = useWardenPermissions();
 
   const studentQ = useQuery({
     queryKey: ["student", id],
@@ -167,9 +169,11 @@ function WardenStudentDetailPage() {
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-semibold">Student profile</p>
-          <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" /> Edit
-          </Button>
+          {can("students_edit") && (
+            <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 py-4 sm:grid-cols-3">
           {profileDetails.map((detail) => (
@@ -182,7 +186,7 @@ function WardenStudentDetailPage() {
         <Card className="min-w-0 shadow-none">
           <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
             <CardTitle className="text-base">Current stay</CardTitle>
-            {currentAllocation && (
+            {currentAllocation && can("allocations_edit") && (
               <StayEditor
                 allocation={currentAllocation}
                 propertyId={s.property_id}

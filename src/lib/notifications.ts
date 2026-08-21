@@ -1,13 +1,25 @@
 import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type NoticeRow = Database["public"]["Tables"]["notices"]["Row"];
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 
+interface ComplaintResolvedPayload {
+  complaint_id?: string;
+  complaint_number?: string;
+  resolved_by_label?: string | null;
+}
+
+/** How long the "Complaint Resolved" toast stays up before auto-dismissing. */
+const COMPLAINT_RESOLVED_TOAST_MS = 5500;
+
 export function useMyNotifications() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const query = useQuery({
     queryKey: ["my-notifications"],
     queryFn: async () => {
@@ -52,7 +64,32 @@ export function useMyNotifications() {
             table: "notifications",
             filter: `recipient_user_id=eq.${data.user.id}`,
           },
-          () => qc.invalidateQueries({ queryKey: ["my-notifications"] }),
+          (payload) => {
+            qc.invalidateQueries({ queryKey: ["my-notifications"] });
+
+            // Newly-arrived "your complaint got resolved" notification — surface
+            // it as a toast right away instead of making the admin dig into the
+            // bell to notice it. Every other notification keeps its existing
+            // bell-only behaviour.
+            if (payload.eventType !== "INSERT") return;
+            const row = payload.new as NotificationRow;
+            if (row.event_type !== "COMPLAINT_RESOLVED") return;
+            const info = (row.payload ?? {}) as ComplaintResolvedPayload;
+            toast.success("Complaint Resolved", {
+              description: `Your complaint has been resolved by ${info.resolved_by_label ?? "the team"}.`,
+              duration: COMPLAINT_RESOLVED_TOAST_MS,
+              action: info.complaint_id
+                ? {
+                    label: "View complaint →",
+                    onClick: () =>
+                      navigate({
+                        to: "/admin/complaints",
+                        search: { complaintId: info.complaint_id },
+                      }),
+                  }
+                : undefined,
+            });
+          },
         )
         .subscribe();
 
@@ -68,7 +105,7 @@ export function useMyNotifications() {
       cancelled = true;
       if (sub) supabase.removeChannel(sub);
     };
-  }, [qc]);
+  }, [qc, navigate]);
 
   return query;
 }

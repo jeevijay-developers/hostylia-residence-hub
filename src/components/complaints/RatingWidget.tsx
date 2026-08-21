@@ -7,7 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { ComplaintRow } from "@/lib/complaint";
 
-export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
+export function RatingWidget({
+  complaint,
+  canWrite = true,
+}: {
+  complaint: ComplaintRow;
+  /** Hides rate/reopen controls for Read-tier students — RLS blocks the update either way. */
+  canWrite?: boolean;
+}) {
   const [rating, setRating] = useState<number>(complaint.rating ?? 0);
   const [comment, setComment] = useState<string>(complaint.rating_comment ?? "");
   const qc = useQueryClient();
@@ -51,7 +58,8 @@ export function RatingWidget({ complaint }: { complaint: ComplaintRow }) {
 
   if (!canRate) return null;
 
-  if (complaint.rating != null) {
+  if (complaint.rating != null || !canWrite) {
+    if (complaint.rating == null) return null;
     const savedRating = complaint.rating;
     return (
       <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-3">

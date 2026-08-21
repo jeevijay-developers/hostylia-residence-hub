@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Eye, EyeOff, Search } from "lucide-react";
 
@@ -24,10 +24,11 @@ import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
 import {
   useComplaints,
   useComplaintCategories,
+  useResolvedByLabel,
   type ComplaintWithRelations,
 } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
-import { useMyStaffProperty } from "@/lib/staff-scope";
+import { useMyStaffProperty, useWardenPermissions } from "@/lib/staff-scope";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/utils";
 import {
@@ -178,21 +179,11 @@ function ComplaintDetailsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const { can } = useWardenPermissions();
   const [status, setStatus] = useState<string>(complaint.status);
   const [resolutionSummary, setResolutionSummary] = useState(complaint.resolution_summary ?? "");
 
-  const resolvedByQ = useQuery({
-    queryKey: ["complaint-resolved-by", complaint.resolved_by],
-    enabled: !!complaint.resolved_by,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", complaint.resolved_by!)
-        .maybeSingle();
-      return data?.full_name ?? null;
-    },
-  });
+  const resolvedByQ = useResolvedByLabel(complaint.resolved_by);
 
   const statusOptions = Array.from(new Set([complaint.status, ...wardenStatusOptions]));
 
@@ -265,38 +256,40 @@ function ComplaintDetailsDialog({
             )
           )}
 
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <Label className="text-xs">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s.replaceAll("_", " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {status === "RESOLVED" && (
-              <Textarea
-                placeholder="Resolution notes (required)"
-                value={resolutionSummary}
-                onChange={(e) => setResolutionSummary(e.target.value)}
-                rows={3}
-              />
-            )}
-            <Button
-              size="sm"
-              disabled={
-                updateStatus.isPending || (status === complaint.status && status !== "RESOLVED")
-              }
-              onClick={() => updateStatus.mutate()}
-            >
-              Save status
-            </Button>
-          </div>
+          {can("complaints") && (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <Label className="text-xs">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.replaceAll("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {status === "RESOLVED" && (
+                <Textarea
+                  placeholder="Resolution notes (required)"
+                  value={resolutionSummary}
+                  onChange={(e) => setResolutionSummary(e.target.value)}
+                  rows={3}
+                />
+              )}
+              <Button
+                size="sm"
+                disabled={
+                  updateStatus.isPending || (status === complaint.status && status !== "RESOLVED")
+                }
+                onClick={() => updateStatus.mutate()}
+              >
+                Save status
+              </Button>
+            </div>
+          )}
 
           {complaint.resolved_at && (
             <div className="rounded-md border border-success/30 bg-success/5 p-3 text-xs">

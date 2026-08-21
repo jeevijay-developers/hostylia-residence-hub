@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { MobileShell } from "@/components/dashboard/MobileShell";
-import { BOTTOM_NAV } from "@/lib/dashboard-nav";
+import { BOTTOM_NAV, type NavItem } from "@/lib/dashboard-nav";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions, type StudentModule } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/student")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }, { name: "robots", content: "noindex" }] }),
@@ -22,6 +23,7 @@ function StudentLayout() {
   const qc = useQueryClient();
   const { data: resolved } = useResolvedRole();
   const userId = resolved?.userId ?? null;
+  const { can: canModule } = useStudentPermissions();
 
   const gateQ = useQuery({
     queryKey: ["student-agreement-gate", userId],
@@ -50,7 +52,11 @@ function StudentLayout() {
   });
 
   const pending = gateQ.data?.pending ?? false;
-  const navItems = pending ? [] : (BOTTOM_NAV.STUDENT ?? []);
+  const navItems: NavItem[] = pending
+    ? []
+    : (BOTTOM_NAV.STUDENT ?? []).filter(
+        (item) => !item.module || canModule(item.module as StudentModule, "view"),
+      );
 
   return (
     <MobileShell allow={["STUDENT"]} navItems={navItems}>

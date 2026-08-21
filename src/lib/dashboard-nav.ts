@@ -30,6 +30,12 @@ export interface NavItem {
   label: string;
   to: string;
   icon: LucideIcon;
+  /**
+   * Student module key this item is gated on (see `StudentModule` in
+   * staff-scope.ts) — omitted for items with no No-Access-able module
+   * (e.g. Home). Only STUDENT nav items use this today.
+   */
+  module?: string;
 }
 
 /**
@@ -82,10 +88,10 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ],
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
-    { label: "Fees", to: "/student/fees", icon: Receipt },
-    { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket },
-    { label: "Mess", to: "/student/mess", icon: Utensils },
-    { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning },
+    { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
+    { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
+    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
+    { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning, module: "complaints" },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },

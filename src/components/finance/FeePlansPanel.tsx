@@ -18,17 +18,23 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { formatInr } from "@/lib/finance";
 import { deleteOrDeactivateFeePlan } from "@/lib/finance.functions";
+import { useMyPermission } from "@/lib/staff-scope";
 import type { FeePlanFormInput } from "@/schemas/finance";
 
 /**
  * Shared fee-plan view (create/edit form + list) — reused by both the Admin
  * and Accountant fee-plans routes so the query/list rendering isn't
- * duplicated. RLS (`fee_plans_staff_all` via `is_finance_staff`) already
- * allows both HOSTEL_ADMIN and ACCOUNTANT, so no policy changes were needed.
+ * duplicated. RLS (`fee_plans_staff_select/insert/update/delete` via
+ * `can_view_fee_plans`/`can_create_fee_plans`/`can_edit_fee_plans`/
+ * `can_delete_fee_plans`) already allows View/Create/Edit for both
+ * HOSTEL_ADMIN and ACCOUNTANT by default — Delete defaults to HOSTEL_ADMIN
+ * only, hidden here to match (an Admin can still opt an Accountant into it
+ * via Customize Permissions).
  */
 export function FeePlansPanel({ propertyId }: { propertyId: string }) {
   const qc = useQueryClient();
   const deleteFn = useServerFn(deleteOrDeactivateFeePlan);
+  const canDelete = useMyPermission("fee_plans_delete", false);
   const [editingPlan, setEditingPlan] = useState<FeePlanFormInput | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -129,16 +135,18 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Delete"
-                    aria-label="Delete"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => setPendingDelete({ id: p.id, name: p.name })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Delete"
+                      aria-label="Delete"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setPendingDelete({ id: p.id, name: p.name })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

@@ -61,6 +61,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
+import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone, normalizeIndianPhone } from "@/schemas/auth";
 import {
   deleteStaff,
@@ -79,24 +80,48 @@ export const Route = createFileRoute("/_authenticated/admin/staff")({
 });
 
 type PermissionKey =
-  | "fee_plans"
-  | "payments"
+  | "fee_plans_view"
+  | "fee_plans_create"
+  | "fee_plans_edit"
+  | "fee_plans_delete"
+  | "payments_view"
+  | "payments_create"
+  | "payments_edit"
+  | "payments_delete"
   | "refunds"
   | "invoices_view"
   | "invoices_create"
   | "invoices_edit"
   | "invoices_delete"
-  | "attendance"
   | "complaints"
-  | "gate_passes"
   | "gate_events"
-  | "visitors"
   | "notices"
   | "mess_menus"
   | "feedback"
+  | "students_view"
   | "students_create"
   | "students_edit"
-  | "students_delete";
+  | "students_delete"
+  | "allocations_view"
+  | "allocations_create"
+  | "allocations_edit"
+  | "rooms_beds_view"
+  | "rooms_beds_edit"
+  | "rooms_beds_create"
+  | "rooms_beds_delete"
+  | "attendance_view"
+  | "attendance_create"
+  | "attendance_edit"
+  | "attendance_delete"
+  | "gate_passes_view"
+  | "gate_passes_create"
+  | "gate_passes_edit"
+  | "gate_passes_delete"
+  | "visitors_view"
+  | "visitors_create"
+  | "visitors_edit"
+  | "visitors_delete"
+  | "reports_view";
 
 type StaffPermissions = Partial<Record<PermissionKey, boolean>>;
 
@@ -105,46 +130,64 @@ interface StaffRow {
   role: string;
   is_active: boolean;
   revoked_at: string | null;
+  property_id?: string | null;
+  block_id?: string | null;
   permissions?: StaffPermissions | null;
   profile?: { full_name?: string | null; email?: string | null; phone?: string | null } | null;
 }
 
-const FINANCE_PERMISSION_ITEMS: { key: PermissionKey; label: string; helper?: string }[] = [
-  { key: "fee_plans", label: "Fee Plans" },
+const FINANCE_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; helper?: string }[] = [
+  { keys: ["fee_plans_view"], label: "View Fee Plans" },
+  { keys: ["fee_plans_create"], label: "Create Fee Plans" },
+  { keys: ["fee_plans_edit"], label: "Edit Fee Plans" },
+  { keys: ["fee_plans_delete"], label: "Delete Fee Plans" },
   {
-    key: "invoices_view",
+    keys: ["invoices_view"],
     label: "View Invoices",
     helper: "Also covers viewing receipts and aging/DSO reports.",
   },
-  { key: "invoices_create", label: "Create Invoices" },
+  { keys: ["invoices_create"], label: "Create Invoices" },
   {
-    key: "invoices_edit",
+    keys: ["invoices_edit"],
     label: "Edit Invoices",
     helper: "Also covers GST invoicing fields and discounts/waivers.",
   },
-  { key: "invoices_delete", label: "Delete Invoices" },
-  { key: "payments", label: "Cash/Cheque Payments" },
-  { key: "refunds", label: "Refunds" },
+  { keys: ["invoices_delete"], label: "Delete Invoices" },
+  { keys: ["payments_view"], label: "View Payments" },
+  { keys: ["payments_create"], label: "Record Cash/Cheque Payments" },
+  { keys: ["payments_edit"], label: "Edit Payments" },
+  { keys: ["payments_delete"], label: "Delete Payments" },
+  { keys: ["refunds"], label: "Refunds" },
 ];
 
-const OPERATIONAL_PERMISSION_ITEMS: { key: PermissionKey; label: string; helper?: string }[] = [
-  { key: "attendance", label: "Manage Attendance" },
-  { key: "complaints", label: "Manage Complaints" },
-  { key: "gate_passes", label: "Manage Gate Pass/Out-Pass" },
-  { key: "gate_events", label: "Manage Gate Events" },
-  { key: "visitors", label: "Manage Visitors" },
-  { key: "notices", label: "Manage Notices" },
-  { key: "mess_menus", label: "Manage Mess Menu", helper: "Also covers menu items and headcount." },
-  { key: "feedback", label: "Manage Feedback" },
+// One checkbox = full manage (all 4 verbs together) for these — matches the
+// "one flag covered every verb" shape these resources always had for the
+// role that already owns them by default (Warden); an Accountant opting in
+// gets the same all-or-nothing grant a Warden already has unconditionally.
+const OPERATIONAL_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; helper?: string }[] = [
+  {
+    keys: ["attendance_view", "attendance_create", "attendance_edit", "attendance_delete"],
+    label: "Manage Attendance",
+  },
+  { keys: ["complaints"], label: "Manage Complaints" },
+  {
+    keys: ["gate_passes_view", "gate_passes_create", "gate_passes_edit", "gate_passes_delete"],
+    label: "Manage Gate Pass/Out-Pass",
+  },
+  { keys: ["gate_events"], label: "Manage Gate Events" },
+  {
+    keys: ["visitors_view", "visitors_create", "visitors_edit", "visitors_delete"],
+    label: "Manage Visitors",
+  },
+  { keys: ["notices"], label: "Manage Notices" },
+  { keys: ["mess_menus"], label: "Manage Mess Menu", helper: "Also covers menu items and headcount." },
+  { keys: ["feedback"], label: "Manage Feedback" },
 ];
 
-const STUDENT_PERMISSION_ITEMS_FOR_WARDEN: { key: PermissionKey; label: string }[] = [
-  { key: "students_delete", label: "Delete Students" },
-];
-const STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT: { key: PermissionKey; label: string }[] = [
-  { key: "students_create", label: "Create Students" },
-  { key: "students_edit", label: "Edit Students" },
-  { key: "students_delete", label: "Delete Students" },
+const STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT: { keys: PermissionKey[]; label: string }[] = [
+  { keys: ["students_create"], label: "Create Students" },
+  { keys: ["students_edit"], label: "Edit Students" },
+  { keys: ["students_delete"], label: "Delete Students" },
 ];
 
 const ALL_PERMISSION_ITEMS = [
@@ -153,9 +196,123 @@ const ALL_PERMISSION_ITEMS = [
   ...STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT,
 ];
 
+type Verb = "view" | "create" | "edit" | "delete";
+const VERB_LABEL: Record<Verb, string> = {
+  view: "Read",
+  create: "Create",
+  edit: "Update",
+  delete: "Delete",
+};
+
+interface ModuleGridRow {
+  id: string;
+  label: string;
+  helper?: string;
+  verbs: Partial<Record<Verb, PermissionKey>>;
+}
+
+/** The Warden per-module Read/Create/Update/Delete grid — only verbs with a
+ * real corresponding RLS-enforced action get a column filled in for a given
+ * module (e.g. Complaints has no Create for staff, Notices has no Delete —
+ * no phantom checkboxes for capabilities that don't exist). */
+const WARDEN_MODULE_GRID: ModuleGridRow[] = [
+  {
+    id: "students",
+    label: "Students",
+    verbs: {
+      view: "students_view",
+      create: "students_create",
+      edit: "students_edit",
+      delete: "students_delete",
+    },
+  },
+  {
+    id: "allocations",
+    label: "Allocations",
+    helper: "No Delete — allocations are closed via status change, never deleted.",
+    verbs: { view: "allocations_view", create: "allocations_create", edit: "allocations_edit" },
+  },
+  {
+    id: "attendance",
+    label: "Attendance",
+    verbs: {
+      view: "attendance_view",
+      create: "attendance_create",
+      edit: "attendance_edit",
+      delete: "attendance_delete",
+    },
+  },
+  {
+    id: "complaints",
+    label: "Complaints",
+    helper: "Read and Update share one permission — students raise complaints, staff never create or delete them.",
+    verbs: { view: "complaints", edit: "complaints" },
+  },
+  {
+    id: "rooms_beds",
+    label: "Rooms / Beds",
+    helper: "Also covers Blocks and Floors.",
+    verbs: {
+      view: "rooms_beds_view",
+      create: "rooms_beds_create",
+      edit: "rooms_beds_edit",
+      delete: "rooms_beds_delete",
+    },
+  },
+  {
+    id: "gate_passes",
+    label: "Gate Pass",
+    verbs: {
+      view: "gate_passes_view",
+      create: "gate_passes_create",
+      edit: "gate_passes_edit",
+      delete: "gate_passes_delete",
+    },
+  },
+  {
+    id: "visitors",
+    label: "Visitors",
+    verbs: {
+      view: "visitors_view",
+      create: "visitors_create",
+      edit: "visitors_edit",
+      delete: "visitors_delete",
+    },
+  },
+  {
+    id: "notices",
+    label: "Notices",
+    helper: "Read and Create share one permission — Update/Delete aren't staff-manage actions.",
+    verbs: { view: "notices", create: "notices" },
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    helper: "Controls whether the Reports section is shown at all.",
+    verbs: { view: "reports_view" },
+  },
+];
+
+const WARDEN_GRID_KEYS: PermissionKey[] = Array.from(
+  new Set(WARDEN_MODULE_GRID.flatMap((row) => Object.values(row.verbs))),
+);
+
+// Keys a Warden already has unconditionally today (see the migration this
+// UI was built for) — "Customize Permissions" must seed these true, not
+// blanket-false, or turning it on would look like revoking everything.
+const WARDEN_GRID_DEFAULT_FALSE = new Set<PermissionKey>([
+  "students_delete",
+  "rooms_beds_create",
+  "rooms_beds_delete",
+]);
+
+function wardenGridDefault(key: PermissionKey): boolean {
+  return !WARDEN_GRID_DEFAULT_FALSE.has(key);
+}
+
 function permissionItemsForRole(role: "WARDEN" | "ACCOUNTANT") {
   return role === "WARDEN"
-    ? [...FINANCE_PERMISSION_ITEMS, ...STUDENT_PERMISSION_ITEMS_FOR_WARDEN]
+    ? FINANCE_PERMISSION_ITEMS
     : [...OPERATIONAL_PERMISSION_ITEMS, ...STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT];
 }
 
@@ -163,8 +320,27 @@ function otherRoleLabel(role: "WARDEN" | "ACCOUNTANT"): string {
   return role === "WARDEN" ? "Accountant" : "Warden";
 }
 
+const GRID_KEY_LABELS: Partial<Record<PermissionKey, string>> = Object.fromEntries(
+  WARDEN_MODULE_GRID.flatMap((row) =>
+    (Object.entries(row.verbs) as [Verb, PermissionKey | undefined][])
+      .filter((e): e is [Verb, PermissionKey] => !!e[1])
+      .map(([verb, key]) => [key, `${row.label} ${VERB_LABEL[verb]}`]),
+  ),
+);
+const FLAT_KEY_LABELS: Partial<Record<PermissionKey, string>> = Object.fromEntries(
+  ALL_PERMISSION_ITEMS.flatMap((item) => item.keys.map((k) => [k, item.label])),
+);
+function permissionKeyLabel(key: PermissionKey): string {
+  return FLAT_KEY_LABELS[key] ?? GRID_KEY_LABELS[key] ?? key;
+}
+
 function defaultPermissions(role: "WARDEN" | "ACCOUNTANT"): StaffPermissions {
-  return Object.fromEntries(permissionItemsForRole(role).map((item) => [item.key, false]));
+  const flat = Object.fromEntries(
+    permissionItemsForRole(role).flatMap((item) => item.keys.map((k) => [k, false])),
+  );
+  if (role !== "WARDEN") return flat;
+  const grid = Object.fromEntries(WARDEN_GRID_KEYS.map((k) => [k, wardenGridDefault(k)]));
+  return { ...flat, ...grid };
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -217,6 +393,115 @@ function errorMessage(e: unknown, fallback: string) {
   return e instanceof Error ? e.message : fallback;
 }
 
+function PermissionChecklist({
+  items,
+  values,
+  onChange,
+}: {
+  items: { keys: PermissionKey[]; label: string; helper?: string }[];
+  values: StaffPermissions;
+  onChange: (keys: PermissionKey[], checked: boolean) => void;
+}) {
+  return (
+    <div className="space-y-2 pt-1">
+      {items.map((item) => (
+        <label
+          key={item.keys.join("+")}
+          className="flex items-start gap-2 text-sm text-foreground cursor-pointer"
+        >
+          <Checkbox
+            className="mt-0.5"
+            checked={values[item.keys[0]]}
+            onCheckedChange={(v) => onChange(item.keys, v === true)}
+          />
+          <span>
+            {item.label}
+            {item.helper && <span className="block text-xs text-muted-foreground">{item.helper}</span>}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+const GRID_VERBS: Verb[] = ["view", "create", "edit", "delete"];
+
+/** Warden's per-module Read/Create/Update/Delete grid — a `—` cell means
+ * that verb has no corresponding RLS-enforced action for this module (no
+ * checkbox shown, so nothing implies a capability that doesn't exist). */
+function PermissionGrid({
+  values,
+  onChange,
+}: {
+  values: StaffPermissions;
+  onChange: (key: PermissionKey, checked: boolean) => void;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border/60">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-2.5 py-2">Module</th>
+            {GRID_VERBS.map((v) => (
+              <th key={v} className="px-2 py-2 text-center">
+                {VERB_LABEL[v]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/50">
+          {WARDEN_MODULE_GRID.map((row) => (
+            <tr key={row.id}>
+              <td className="px-2.5 py-2 align-top">
+                <span className="font-medium text-foreground">{row.label}</span>
+                {row.helper && (
+                  <span className="block text-[10px] leading-relaxed text-muted-foreground">
+                    {row.helper}
+                  </span>
+                )}
+              </td>
+              {GRID_VERBS.map((v) => {
+                const key = row.verbs[v];
+                return (
+                  <td key={v} className="px-2 py-2 text-center align-top">
+                    {key ? (
+                      <Checkbox
+                        checked={values[key] ?? false}
+                        onCheckedChange={(c) => onChange(key, c === true)}
+                        aria-label={`${row.label} ${VERB_LABEL[v]}`}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground/30">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function useBlocks(propertyId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["blocks-lookup", propertyId],
+    enabled: !!propertyId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blocks")
+        .select("id, name")
+        .eq("property_id", propertyId!)
+        .is("deleted_at", null)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 function AdminStaffPage() {
   const { data: role } = useResolvedRole();
   const tenantId = role?.tenantId ?? null;
@@ -242,6 +527,7 @@ function AdminStaffPage() {
   const [staffName, setStaffName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [addBlockId, setAddBlockId] = useState<string>("ALL");
   const [addCustomizePerms, setAddCustomizePerms] = useState(false);
   const [addPermissions, setAddPermissions] = useState<StaffPermissions>(
     defaultPermissions("WARDEN"),
@@ -251,11 +537,19 @@ function AdminStaffPage() {
   const [editRow, setEditRow] = useState<StaffRow | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editBlockId, setEditBlockId] = useState<string>("ALL");
   const [editCustomizePerms, setEditCustomizePerms] = useState(false);
   const [editPermissions, setEditPermissions] = useState<StaffPermissions>(
     defaultPermissions("WARDEN"),
   );
   const [duplicateContact, setDuplicateContact] = useState<string | null>(null);
+
+  // Property access = the property currently active in the picker (the same
+  // scope every other Admin page/action already operates against — inviting
+  // staff "for a different property" than the one you're looking at isn't a
+  // flow anywhere else in the app). Block access is a real per-invite choice.
+  const blocksQ = useBlocks(propertyId);
+  const blocks = blocksQ.data ?? [];
 
   const activeContacts = useMemo(() => {
     const phones = new Set<string>();
@@ -295,6 +589,7 @@ function AdminStaffPage() {
         data: {
           tenant_id: tenantId!,
           property_id: propertyId,
+          block_id: addRole === "WARDEN" && addBlockId !== "ALL" ? addBlockId : null,
           full_name: staffName || null,
           phone: addMode === "phone" ? phone || null : null,
           email: addMode === "email" ? email || null : null,
@@ -317,6 +612,7 @@ function AdminStaffPage() {
       setStaffName("");
       setPhone("");
       setEmail("");
+      setAddBlockId("ALL");
       setAddCustomizePerms(false);
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
@@ -349,6 +645,8 @@ function AdminStaffPage() {
           role_assignment_id: editRow!.id,
           full_name: editName,
           phone: editPhone,
+          block_id:
+            editRow?.role === "WARDEN" ? (editBlockId !== "ALL" ? editBlockId : null) : undefined,
           permissions: editCustomizePerms ? editPermissions : {},
         },
       }),
@@ -427,6 +725,7 @@ function AdminStaffPage() {
             setStaffName("");
             setPhone("");
             setEmail("");
+            setAddBlockId("ALL");
             setAddCustomizePerms(false);
           }
         }}
@@ -455,6 +754,32 @@ function AdminStaffPage() {
                 </SelectContent>
               </Select>
             </div>
+            {addRole === "WARDEN" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="add-staff-block" className="text-foreground">Block access</Label>
+                <Select value={addBlockId} onValueChange={setAddBlockId}>
+                  <SelectTrigger
+                    id="add-staff-block"
+                    className="bg-background border-border text-foreground rounded-xl"
+                  >
+                    <SelectValue placeholder="All blocks" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border text-foreground">
+                    <SelectItem value="ALL">All blocks (property-wide)</SelectItem>
+                    {blocks.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Property access is the property currently selected at the top of the app. Block
+                  access narrows write actions (Attendance, Gate Pass, Rooms/Beds edits, etc.) to
+                  just this block — leave as "All blocks" for property-wide access.
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="add-staff-name" className="text-foreground">Name</Label>
               <Input
@@ -515,9 +840,11 @@ function AdminStaffPage() {
                     Customize Permissions
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {addRole
-                      ? `By default a ${STAFF_ROLE_LABEL[addRole]} does not have ${otherRoleLabel(addRole)} permissions — grant specific ones below.`
-                      : ""}
+                    {addRole === "WARDEN"
+                      ? "Fine-tune what this Warden can Read/Create/Update/Delete per module below — unchecking revokes access they'd otherwise have by default."
+                      : addRole
+                        ? `By default an ${STAFF_ROLE_LABEL[addRole]} does not have ${otherRoleLabel(addRole)} permissions — grant specific ones below.`
+                        : ""}
                   </p>
                 </div>
                 <Switch
@@ -530,24 +857,28 @@ function AdminStaffPage() {
                 />
               </div>
               {addCustomizePerms && addRole && (
-                <div className="space-y-2 pt-1">
-                  {permissionItemsForRole(addRole).map((item) => (
-                    <label key={item.key} className="flex items-start gap-2 text-sm text-foreground cursor-pointer">
-                      <Checkbox
-                        className="mt-0.5"
-                        checked={addPermissions[item.key]}
-                        onCheckedChange={(v) =>
-                          setAddPermissions((prev) => ({ ...prev, [item.key]: v === true }))
-                        }
-                      />
-                      <span>
-                        {item.label}
-                        {item.helper && (
-                          <span className="block text-xs text-muted-foreground">{item.helper}</span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
+                <div className="space-y-3 pt-1">
+                  {addRole === "WARDEN" && (
+                    <PermissionGrid
+                      values={addPermissions}
+                      onChange={(key, checked) =>
+                        setAddPermissions((prev) => ({ ...prev, [key]: checked }))
+                      }
+                    />
+                  )}
+                  <PermissionChecklist
+                    items={permissionItemsForRole(addRole)}
+                    values={addPermissions}
+                    onChange={(keys, checked) =>
+                      setAddPermissions((prev) => {
+                        const next = { ...prev };
+                        keys.forEach((k) => {
+                          next[k] = checked;
+                        });
+                        return next;
+                      })
+                    }
+                  />
                 </div>
               )}
             </div>
@@ -658,24 +989,19 @@ function AdminStaffPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-foreground font-semibold text-sm">{ROLE_LABEL[s.role] ?? s.role}</span>
                         {s.role !== "HOSTEL_ADMIN" &&
-                          ALL_PERMISSION_ITEMS.map((item) => {
-                            const override = s.permissions?.[item.key];
-                            if (override === undefined) return null;
-                            const granted = override === true;
-                            return (
-                              <Badge
-                                key={item.key}
-                                variant="outline"
-                                className={
-                                  granted
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] px-2 py-0.5"
-                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5"
-                                }
-                              >
-                                {granted ? "+" : "−"} {item.label}
-                              </Badge>
-                            );
-                          })}
+                          Object.entries(s.permissions ?? {}).map(([key, granted]) => (
+                            <Badge
+                              key={key}
+                              variant="outline"
+                              className={
+                                granted
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] px-2 py-0.5"
+                                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5"
+                              }
+                            >
+                              {granted ? "+" : "−"} {permissionKeyLabel(key as PermissionKey)}
+                            </Badge>
+                          ))}
                       </div>
                     </TableCell>
                     <TableCell className="py-4 px-4">
@@ -750,19 +1076,21 @@ function AdminStaffPage() {
                                   setEditPhone(
                                     s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
                                   );
+                                  setEditBlockId(s.block_id ?? "ALL");
                                   const role = s.role as "WARDEN" | "ACCOUNTANT";
-                                  const items = permissionItemsForRole(role);
-                                  const hasOverride = items.some(
-                                    (item) => s.permissions?.[item.key] !== undefined,
+                                  const flatKeys = permissionItemsForRole(role).flatMap(
+                                    (item) => item.keys,
+                                  );
+                                  const allKeys =
+                                    role === "WARDEN" ? [...WARDEN_GRID_KEYS, ...flatKeys] : flatKeys;
+                                  const hasOverride = allKeys.some(
+                                    (key) => s.permissions?.[key] !== undefined,
                                   );
                                   setEditCustomizePerms(hasOverride);
                                   const defaults = defaultPermissions(role);
                                   setEditPermissions(
                                     Object.fromEntries(
-                                      items.map((item) => [
-                                        item.key,
-                                        s.permissions?.[item.key] ?? defaults[item.key],
-                                      ]),
+                                      allKeys.map((key) => [key, s.permissions?.[key] ?? defaults[key]]),
                                     ),
                                   );
                                 }}
@@ -899,6 +1227,27 @@ function AdminStaffPage() {
                 className="bg-background border-border text-foreground rounded-xl"
               />
             </div>
+            {editRow?.role === "WARDEN" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-staff-block" className="text-foreground">Block access</Label>
+                <Select value={editBlockId} onValueChange={setEditBlockId}>
+                  <SelectTrigger
+                    id="edit-staff-block"
+                    className="bg-background border-border text-foreground rounded-xl"
+                  >
+                    <SelectValue placeholder="All blocks" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border text-foreground">
+                    <SelectItem value="ALL">All blocks (property-wide)</SelectItem>
+                    {blocks.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {editRow && editRow.role !== "HOSTEL_ADMIN" && (
               <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-3.5">
@@ -908,9 +1257,11 @@ function AdminStaffPage() {
                       Customize Permissions
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {`By default a ${ROLE_LABEL[editRow.role] ?? editRow.role} does not have ${otherRoleLabel(
-                        editRow.role as "WARDEN" | "ACCOUNTANT",
-                      )} permissions — grant specific ones below.`}
+                      {editRow.role === "WARDEN"
+                        ? "Fine-tune what this Warden can Read/Create/Update/Delete per module below — unchecking revokes access they'd otherwise have by default."
+                        : `By default an ${ROLE_LABEL[editRow.role] ?? editRow.role} does not have ${otherRoleLabel(
+                            editRow.role as "WARDEN" | "ACCOUNTANT",
+                          )} permissions — grant specific ones below.`}
                     </p>
                   </div>
                   <Switch
@@ -927,26 +1278,28 @@ function AdminStaffPage() {
                   />
                 </div>
                 {editCustomizePerms && (
-                  <div className="space-y-2 pt-1">
-                    {permissionItemsForRole(editRow.role as "WARDEN" | "ACCOUNTANT").map((item) => (
-                      <label key={item.key} className="flex items-start gap-2 text-sm text-foreground cursor-pointer">
-                        <Checkbox
-                          className="mt-0.5"
-                          checked={editPermissions[item.key]}
-                          onCheckedChange={(v) =>
-                            setEditPermissions((prev) => ({ ...prev, [item.key]: v === true }))
-                          }
-                        />
-                        <span>
-                          {item.label}
-                          {item.helper && (
-                            <span className="block text-xs text-muted-foreground">
-                              {item.helper}
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    ))}
+                  <div className="space-y-3 pt-1">
+                    {editRow.role === "WARDEN" && (
+                      <PermissionGrid
+                        values={editPermissions}
+                        onChange={(key, checked) =>
+                          setEditPermissions((prev) => ({ ...prev, [key]: checked }))
+                        }
+                      />
+                    )}
+                    <PermissionChecklist
+                      items={permissionItemsForRole(editRow.role as "WARDEN" | "ACCOUNTANT")}
+                      values={editPermissions}
+                      onChange={(keys, checked) =>
+                        setEditPermissions((prev) => {
+                          const next = { ...prev };
+                          keys.forEach((k) => {
+                            next[k] = checked;
+                          });
+                          return next;
+                        })
+                      }
+                    />
                   </div>
                 )}
               </div>

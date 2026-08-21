@@ -43,6 +43,8 @@ import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { useStudentPermissions } from "@/lib/staff-scope";
+import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { updateMyProfile } from "@/lib/student.functions";
 import { studentSelfProfileSchema } from "@/schemas/student";
 
@@ -63,6 +65,8 @@ function StudentProfilePage() {
   const { data: resolved } = useResolvedRole();
   const userId = resolved?.userId ?? null;
   const qc = useQueryClient();
+  const { can } = useStudentPermissions();
+  const canEdit = can("profile", "edit");
 
   const studentQ = useQuery({
     queryKey: ["my-profile-record", userId],
@@ -175,21 +179,25 @@ function StudentProfilePage() {
 
   if (studentQ.isLoading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="My Profile" />
-        <FormSkeleton fields={5} />
-      </div>
+      <StudentModuleGuard module="profile">
+        <div className="space-y-6">
+          <PageHeader title="My Profile" />
+          <FormSkeleton fields={5} />
+        </div>
+      </StudentModuleGuard>
     );
   }
 
   if (!studentQ.data) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="" />
-        <p className="text-sm text-muted-foreground">
-          No student record is linked to your account yet.
-        </p>
-      </div>
+      <StudentModuleGuard module="profile">
+        <div className="space-y-6">
+          <PageHeader title="" />
+          <p className="text-sm text-muted-foreground">
+            No student record is linked to your account yet.
+          </p>
+        </div>
+      </StudentModuleGuard>
     );
   }
 
@@ -224,6 +232,7 @@ function StudentProfilePage() {
     : "Not allocated yet";
 
   return (
+    <StudentModuleGuard module="profile">
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <h1 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
@@ -242,6 +251,7 @@ function StudentProfilePage() {
                 className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                disabled={!canEdit}
               />
             </IconField>
             <IconField icon={Phone} label="Phone" htmlFor="p-phone" trailingIcon={Phone} error={fieldErrors.phone}>
@@ -251,6 +261,7 @@ function StudentProfilePage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+919876543210"
+                disabled={!canEdit}
               />
             </IconField>
             <IconField icon={Mail} label="Email" htmlFor="p-email" trailingIcon={Mail} error={fieldErrors.email}>
@@ -260,6 +271,7 @@ function StudentProfilePage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={!canEdit}
               />
             </IconField>
             <IconField
@@ -276,10 +288,11 @@ function StudentProfilePage() {
                 value={dob}
                 max={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDob(e.target.value)}
+                disabled={!canEdit}
               />
             </IconField>
             <IconField icon={User} label="Gender" htmlFor="p-gender">
-              <Select value={gender} onValueChange={setGender}>
+              <Select value={gender} onValueChange={setGender} disabled={!canEdit}>
                 <SelectTrigger
                   id="p-gender"
                   className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus:ring-0"
@@ -305,6 +318,7 @@ function StudentProfilePage() {
                 className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
                 value={institute}
                 onChange={(e) => setInstitute(e.target.value)}
+                disabled={!canEdit}
               />
             </IconField>
             <IconField icon={BookOpen} label="Course" htmlFor="p-course" trailingIcon={BookOpen}>
@@ -313,6 +327,7 @@ function StudentProfilePage() {
                 className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
+                disabled={!canEdit}
               />
             </IconField>
             <IconField icon={CalendarDays} label="Academic year" htmlFor="p-year" trailingIcon={CalendarDays}>
@@ -322,6 +337,7 @@ function StudentProfilePage() {
                 value={academicYear}
                 onChange={(e) => setAcademicYear(e.target.value)}
                 placeholder="—"
+                disabled={!canEdit}
               />
             </IconField>
           </div>
@@ -343,19 +359,21 @@ function StudentProfilePage() {
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
-            <Button
-              variant="outline"
-              className="min-h-10 border-primary/40 text-primary hover:text-primary"
-              disabled={save.isPending || !fullName.trim()}
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Save changes
-            </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="min-h-10 border-primary/40 text-primary hover:text-primary"
+                disabled={save.isPending || !fullName.trim()}
+                onClick={() => save.mutate()}
+              >
+                {save.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save changes
+              </Button>
+            )}
             <Button
               variant="ghost"
               className="min-h-10 text-muted-foreground hover:text-foreground"
@@ -373,18 +391,26 @@ function StudentProfilePage() {
           <DialogHeader>
             <DialogTitle>KYC documents</DialogTitle>
           </DialogHeader>
-          {kycRejected && (
-            <p className="text-xs text-destructive">
-              Your last submission was rejected — please upload again.
+          {canEdit ? (
+            <>
+              {kycRejected && (
+                <p className="text-xs text-destructive">
+                  Your last submission was rejected — please upload again.
+                </p>
+              )}
+              <KycUploadForm
+                tenantId={s.tenant_id}
+                propertyId={s.property_id}
+                studentId={s.id}
+                existingDocs={docs}
+                onUploaded={() => docsQ.refetch()}
+              />
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You have read-only access to KYC documents.
             </p>
           )}
-          <KycUploadForm
-            tenantId={s.tenant_id}
-            propertyId={s.property_id}
-            studentId={s.id}
-            existingDocs={docs}
-            onUploaded={() => docsQ.refetch()}
-          />
         </DialogContent>
       </Dialog>
 
@@ -395,6 +421,7 @@ function StudentProfilePage() {
         confirmLabel="Logout"
       />
     </div>
+    </StudentModuleGuard>
   );
 }
 

@@ -29,6 +29,7 @@ import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { GuardianCard } from "@/components/students/GuardianCard";
+import { StudentPermissionCard } from "@/components/students/StudentPermissionCard";
 import { confirmStudentAdmission } from "@/lib/student.functions";
 import { formatInr } from "@/lib/finance";
 import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
@@ -307,6 +308,8 @@ function StudentDetailPage() {
               <AgreementViewer studentId={s.id} readOnly />
             </CardContent>
           </Card>
+
+          <StudentPermissionCard tenantId={s.tenant_id} studentId={s.id} />
         </div>
       </div>
     </div>

@@ -57,6 +57,29 @@ export function OccupancyChart({
   );
 }
 
+/** Today/This Week/This Month collections — same bar-chart shape as the
+ * other report charts, "success" tone since collected money is the good
+ * outcome (same semantic as RevenueCollectionsSummary's "Collected" KPI). */
+export function CollectionOverviewChart({
+  data,
+}: {
+  data: Array<{ period: string; amount_paise: number }>;
+}) {
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer>
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+          <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatInr(v)} width={80} />
+          <Tooltip formatter={(v: number) => formatInr(v)} />
+          <Bar dataKey="amount_paise" radius={[4, 4, 0, 0]} fill={TOKEN.success} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function DsoChart({ aging }: { aging: Record<string, number> }) {
   const data = [
     { bucket: "Current", value: aging.current ?? 0, color: TOKEN.success },
