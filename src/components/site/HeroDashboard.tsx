@@ -33,8 +33,11 @@ const statusStyle: Record<string, string> = {
 };
 
 export function HeroDashboard() {
+  // Pinned dark regardless of the page's theme — this is a screenshot of the
+  // (always-dark-by-default) product UI, not page chrome, so it shouldn't
+  // flip when a visitor switches the marketing site to light mode.
   return (
-    <div className="relative">
+    <div className="dark relative">
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-[radial-gradient(60%_60%_at_50%_50%,color-mix(in_oklab,var(--soft-teal)_25%,transparent),transparent_70%)] blur-2xl" />
       <div className="glass-panel rounded-3xl p-5 shadow-2xl">
         {/* Top stats */}

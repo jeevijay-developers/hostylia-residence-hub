@@ -178,10 +178,10 @@ function ScrollToTop() {
 // access-pending/403) force their own dark class via AuthLayout; the rest
 // (dashboards) follow the user's saved preference (see stores/theme-store.ts),
 // which toggles the `.dark` class on <html> — this wrapper never forces a
-// class itself. Marketing routes keep their own bespoke dark theme
-// unconditionally (the `dark` class below is hardcoded, not tied to the
-// user's toggle), since that palette isn't part of the semantic light/dark
-// token system yet.
+// class itself. Marketing routes follow the same shared preference (default
+// dark, via theme-store's default + THEME_INIT_SCRIPT below) — SiteHeader
+// renders a ThemeToggle so visitors can switch, same mechanism as the
+// authenticated app's Topbar/MobileHeader toggle.
 const APP_ROUTE_PREFIXES = [
   "/login",
   "/signup",
@@ -246,7 +246,7 @@ function RootComponent() {
           <Outlet />
         </div>
       ) : (
-        <div className="dark flex min-h-screen flex-col bg-background text-foreground">
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
           <SiteHeader />
           <main className="flex-1">
             <Outlet />

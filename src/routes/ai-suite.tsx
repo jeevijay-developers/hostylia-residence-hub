@@ -86,7 +86,7 @@ function AISuitePage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Why operators love Hostylia AI
             </div>
-            <h2 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">
+            <h2 className="mt-2 text-3xl font-extrabold text-foreground md:text-4xl">
               An AI co-pilot, not a chatbot
             </h2>
             <p className="mt-4 text-base leading-relaxed text-soft-grey">
@@ -175,7 +175,7 @@ function AISuitePage() {
                 className="card-lift rounded-2xl border border-dark-border bg-card p-6"
               >
                 <x.icon size={22} className="text-soft-teal" />
-                <div className="mt-3 text-base font-bold text-white">{x.t}</div>
+                <div className="mt-3 text-base font-bold text-foreground">{x.t}</div>
                 <div className="mt-1 text-sm text-soft-grey">{x.d}</div>
               </div>
             ))}

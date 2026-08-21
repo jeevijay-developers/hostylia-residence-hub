@@ -85,8 +85,10 @@ function VideoCard({ t }: { t: Testimonial }) {
       {/* Glow */}
       <div className="pointer-events-none absolute -inset-3 rounded-[2.75rem] bg-gradient-to-br from-[color:var(--brand-blue)]/20 via-soft-teal/15 to-gold/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
 
-      {/* Phone frame */}
-      <div className="relative mx-auto w-full max-w-[260px] rounded-[2.25rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
+      {/* Phone frame — pinned dark regardless of page theme, same reasoning as
+          HtmlMockups.tsx's PhoneFrame (a device mockup with a black video
+          screen, not page chrome). */}
+      <div className="dark relative mx-auto w-full max-w-[260px] rounded-[2.25rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
         <div className="relative overflow-hidden rounded-[1.85rem] border border-dark-border bg-black">
           <div className="relative aspect-[9/16]">
             <video
@@ -159,7 +161,7 @@ function VideoCard({ t }: { t: Testimonial }) {
           ))}
         </div>
         <Quote className="mx-auto mt-2 text-soft-teal" size={14} />
-        <blockquote className="mt-1 text-xs leading-relaxed text-white">"{t.quote}"</blockquote>
+        <blockquote className="mt-1 text-xs leading-relaxed text-foreground">"{t.quote}"</blockquote>
       </figcaption>
     </figure>
   );

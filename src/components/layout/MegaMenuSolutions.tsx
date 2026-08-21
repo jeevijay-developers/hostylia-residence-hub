@@ -63,13 +63,13 @@ export function MegaMenuSolutions({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     to="/solutions"
                     onClick={onNavigate}
-                    className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-white/5"
+                    className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-foreground/5"
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklab,var(--brand-blue)_22%,transparent)] text-soft-teal">
                       <item.icon size={18} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-white group-hover:text-soft-teal">
+                      <span className="block text-sm font-semibold text-foreground group-hover:text-soft-teal">
                         {item.label}
                       </span>
                       <span className="block truncate text-xs text-soft-grey">{item.desc}</span>
@@ -81,9 +81,9 @@ export function MegaMenuSolutions({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </div>
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-dark-border bg-[color-mix(in_oklab,var(--indigo-deep)_70%,transparent)] p-4">
+      <div className="mt-6 flex items-center justify-between rounded-xl border border-dark-border bg-[color-mix(in_oklab,var(--card)_70%,transparent)] p-4">
         <div>
-          <div className="text-sm font-semibold text-white">
+          <div className="text-sm font-semibold text-foreground">
             One platform for every residential property type
           </div>
           <div className="text-xs text-soft-grey">

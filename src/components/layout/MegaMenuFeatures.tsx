@@ -103,10 +103,10 @@ export function MegaMenuFeatures({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     to="/features"
                     onClick={onNavigate}
-                    className="group flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-white/5"
+                    className="group flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-foreground/5"
                   >
                     <item.icon size={16} className="shrink-0 text-soft-teal" />
-                    <span className="truncate text-sm text-white group-hover:text-soft-teal">
+                    <span className="truncate text-sm text-foreground group-hover:text-soft-teal">
                       {item.label}
                     </span>
                   </Link>

@@ -233,7 +233,7 @@ function FeaturesPage() {
                     <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                       {g.title} · live mockup
                     </div>
-                    <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+                    <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
                       What {g.title.toLowerCase()} looks like inside Hostylia
                     </h3>
                     <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -252,7 +252,7 @@ function FeaturesPage() {
                     <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                       {g.title} in action
                     </div>
-                    <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+                    <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
                       Built for real residential operations
                     </h3>
                     <p className="mt-3 text-base leading-relaxed text-soft-grey">

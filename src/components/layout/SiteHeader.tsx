@@ -7,6 +7,7 @@ import { MegaMenuSolutions } from "./MegaMenuSolutions";
 import { MegaMenuFeatures } from "./MegaMenuFeatures";
 import { MobileNav } from "./MobileNav";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavItem = { label: string; to: string; mega?: "solutions" | "features" };
 
@@ -35,7 +36,7 @@ export function SiteHeader() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-dark-border bg-[color-mix(in_oklab,var(--navy)_85%,transparent)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-dark-border bg-[color-mix(in_oklab,var(--background)_85%,transparent)] backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 md:px-6">
         <Logo className="h-12 w-auto md:h-14" />
 
@@ -53,7 +54,7 @@ export function SiteHeader() {
                     }
                   }}
                   className={`group inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    active ? "text-white" : "text-soft-grey hover:text-white"
+                    active ? "text-foreground" : "text-soft-grey hover:text-foreground"
                   }`}
                 >
                   {item.label}
@@ -85,23 +86,24 @@ export function SiteHeader() {
           </Link>
           <Link
             to="/login"
-            className="hidden items-center gap-1.5 rounded-lg border border-dark-border bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
+            className="hidden items-center gap-1.5 rounded-lg border border-dark-border bg-foreground/5 px-4 py-2 text-sm font-semibold text-foreground hover:bg-foreground/10 md:inline-flex"
           >
             <LogIn size={16} />
             Sign In
           </Link>
+          <ThemeToggle className="border border-dark-border text-foreground hover:bg-foreground/10" />
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <button
                 aria-label="Open menu"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-dark-border bg-white/5 text-white lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-dark-border bg-foreground/5 text-foreground lg:hidden"
               >
                 <Menu size={20} />
               </button>
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-full max-w-sm overflow-y-auto border-l border-dark-border bg-navy p-0 text-white"
+              className="w-full max-w-sm overflow-y-auto border-l border-dark-border bg-background p-0 text-foreground"
             >
               <MobileNav onNavigate={() => setMobileOpen(false)} />
             </SheetContent>

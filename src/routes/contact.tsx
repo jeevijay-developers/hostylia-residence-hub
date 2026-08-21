@@ -53,7 +53,7 @@ function ContactPage() {
       <section className="py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 md:px-6 lg:grid-cols-[1fr_1.3fr]">
           <div className="space-y-4">
-            <InfoCard icon={Mail} title="Email" value="hello@hostylia.com" />
+            <InfoCard icon={Mail} title="Email" value="team@hostylia.com" />
             <InfoCard icon={Phone} title="Phone" value="+91 80000 00000" />
             <InfoCard icon={MapPin} title="Office" value="Jeevijay Technologies Private Limited" />
           </div>
@@ -107,7 +107,7 @@ function ContactPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Built for every stakeholder
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               From owners to parents — one team, one app
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -131,7 +131,7 @@ function ContactPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Support that ships
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               Every ticket tracked, every promise kept
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -204,7 +204,7 @@ function InfoCard({ icon: Icon, title, value }: { icon: any; title: string; valu
       <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-soft-grey">
         {title}
       </div>
-      <div className="text-base font-bold text-white">{value}</div>
+      <div className="text-base font-bold text-foreground">{value}</div>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function Field({
   textarea?: boolean;
 }) {
   const cls =
-    "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] px-3 py-2.5 text-sm text-white placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
+    "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] px-3 py-2.5 text-sm text-foreground placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
   return (
     <label className={textarea ? "mt-4 block" : "block"}>
       <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">

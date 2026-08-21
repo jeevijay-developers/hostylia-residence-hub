@@ -126,7 +126,7 @@ function AboutPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Why we built it
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A control room, not a clipboard
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -151,7 +151,7 @@ function AboutPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Operations, simplified
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               Complaints close in hours, not days
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -208,7 +208,7 @@ function AboutPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Intelligent by default
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               Built with AI in the foundation
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -241,7 +241,7 @@ function AboutPage() {
         <div className="mx-auto max-w-4xl px-4 md:px-6">
           <div className="glass-panel rounded-3xl p-8 text-center md:p-12">
             <Building2 className="mx-auto text-soft-teal" size={40} />
-            <h3 className="mt-4 text-2xl font-extrabold text-white">
+            <h3 className="mt-4 text-2xl font-extrabold text-foreground">
               Powered by Jeevijay Technologies
             </h3>
             <p className="mt-3 text-base text-soft-grey">

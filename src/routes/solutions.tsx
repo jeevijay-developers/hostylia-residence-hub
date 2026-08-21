@@ -154,7 +154,7 @@ function SolutionsPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Property Showcase
             </div>
-            <h2 className="mt-2 text-3xl font-extrabold leading-tight text-white md:text-4xl">
+            <h2 className="mt-2 text-3xl font-extrabold leading-tight text-foreground md:text-4xl">
               List, showcase and book your residences
             </h2>
             <p className="mt-4 text-base leading-relaxed text-soft-grey">
@@ -200,7 +200,7 @@ function SolutionsPage() {
             {gi === 0 && (
               <div className="mt-14 grid items-center gap-10 lg:grid-cols-2">
                 <div>
-                  <h3 className="text-2xl font-extrabold text-white md:text-3xl">
+                  <h3 className="text-2xl font-extrabold text-foreground md:text-3xl">
                     A resident-first services panel
                   </h3>
                   <p className="mt-3 text-base text-soft-grey">
@@ -222,7 +222,7 @@ function SolutionsPage() {
               <div className="mt-14 grid items-stretch gap-10 lg:grid-cols-2">
                 <MockOccupancyDashboard />
                 <div>
-                  <h3 className="text-2xl font-extrabold text-white md:text-3xl">
+                  <h3 className="text-2xl font-extrabold text-foreground md:text-3xl">
                     Engineered for campuses at scale
                   </h3>
                   <p className="mt-3 text-base text-soft-grey">
@@ -247,7 +247,7 @@ function SolutionsPage() {
             {gi === 2 && (
               <div className="mt-14 grid items-center gap-10 lg:grid-cols-2">
                 <div>
-                  <h3 className="text-2xl font-extrabold text-white md:text-3xl">
+                  <h3 className="text-2xl font-extrabold text-foreground md:text-3xl">
                     Mission-critical security and audit
                   </h3>
                   <p className="mt-3 text-base text-soft-grey">

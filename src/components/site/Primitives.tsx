@@ -24,7 +24,7 @@ export function FeatureCard({
       <div className={`mb-4 inline-grid h-12 w-12 place-items-center rounded-xl ${toneClasses}`}>
         <Icon size={22} />
       </div>
-      <h3 className="text-base font-bold text-white">{title}</h3>
+      <h3 className="text-base font-bold text-foreground">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-soft-grey">{desc}</p>
     </div>
   );
@@ -44,11 +44,11 @@ export function SectionHeading({
   return (
     <div className={`max-w-3xl ${align === "center" ? "mx-auto text-center" : ""}`}>
       {eyebrow && (
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-dark-border bg-foreground/5 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold">
           {eyebrow}
         </div>
       )}
-      <h2 className="text-3xl font-extrabold leading-tight text-white md:text-4xl lg:text-5xl">
+      <h2 className="text-3xl font-extrabold leading-tight text-foreground md:text-4xl lg:text-5xl">
         {title}
       </h2>
       {desc && <p className="mt-4 text-base leading-relaxed text-soft-grey md:text-lg">{desc}</p>}

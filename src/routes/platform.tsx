@@ -102,7 +102,7 @@ function PlatformPage() {
             {["Cloud Hosting", "Encrypted Storage", "UPI Gateways", "SMS / WhatsApp"].map((t) => (
               <div key={t} className="rounded-xl border border-dark-border bg-card p-5 text-center">
                 <Cpu size={20} className="mx-auto text-soft-teal" />
-                <div className="mt-2 text-sm font-bold text-white">{t}</div>
+                <div className="mt-2 text-sm font-bold text-foreground">{t}</div>
               </div>
             ))}
           </div>
@@ -115,7 +115,7 @@ function PlatformPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Live Operations
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A control room for every residence
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -141,7 +141,7 @@ function PlatformPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Stay Lifecycle
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               From onboarding to move-out — fully tracked
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -178,7 +178,7 @@ function PlatformPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Engineered for Scale
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A platform that grows with your portfolio
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">

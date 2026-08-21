@@ -128,7 +128,7 @@ function Hero() {
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 md:px-6 md:py-28 lg:grid-cols-2">
         <div className="animate-fade-up">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
+            <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-foreground/5 px-3 py-1.5 text-xs font-semibold text-soft-grey">
               <Sparkles size={12} className="text-gold" />
               Smart Residential Operating System
             </div>
@@ -137,7 +137,7 @@ function Hero() {
               Trusted by 120+ properties · 65,000 beds
             </div>
           </div>
-          <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
+          <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground md:text-5xl lg:text-6xl">
             Smart Residential Management for{" "}
             <span className="text-gradient-teal">Hostels, Boarding Schools</span> and Student
             Housing
@@ -155,7 +155,7 @@ function Hero() {
             </Link>
             <Link
               to="/platform"
-              className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-5 py-3 text-sm font-bold text-foreground hover:bg-foreground/10"
             >
               <Compass size={16} /> Explore Platform
             </Link>
@@ -167,7 +167,7 @@ function Hero() {
               { v: "24x7", l: "Parent Alerts" },
             ].map((s) => (
               <div key={s.l}>
-                <div className="text-2xl font-extrabold text-white">{s.v}</div>
+                <div className="text-2xl font-extrabold text-foreground">{s.v}</div>
                 <div className="text-xs text-soft-grey">{s.l}</div>
               </div>
             ))}
@@ -289,7 +289,7 @@ function PropertyHierarchy() {
               <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                 Level {i + 1}
               </div>
-              <div className="mt-1 text-base font-bold text-white">{l.label}</div>
+              <div className="mt-1 text-base font-bold text-foreground">{l.label}</div>
               <div className="text-xs text-soft-grey">{l.desc}</div>
             </div>
           ))}
@@ -300,7 +300,7 @@ function PropertyHierarchy() {
             <div className="text-xs font-semibold uppercase tracking-widest text-soft-grey">
               Live preview · Block B · Floor 2
             </div>
-            <div className="text-xl font-bold text-white">Room Grid</div>
+            <div className="text-xl font-bold text-foreground">Room Grid</div>
             <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
               {rooms.map((s, i) => (
                 <div
@@ -322,11 +322,11 @@ function PropertyHierarchy() {
             ].map((x) => (
               <div
                 key={x.l}
-                className="flex items-start gap-3 rounded-xl border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] p-3"
+                className="flex items-start gap-3 rounded-xl border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] p-3"
               >
                 <span className={`mt-1.5 h-3 w-3 rounded-full ${x.c}`} />
                 <div>
-                  <div className="text-sm font-bold text-white">{x.l}</div>
+                  <div className="text-sm font-bold text-foreground">{x.l}</div>
                   <div className="text-xs text-soft-grey">{x.d}</div>
                 </div>
               </div>
@@ -343,7 +343,7 @@ function PropertyHierarchy() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Live Inventory
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               Every bed, every status — at a glance
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -503,7 +503,7 @@ function ComplaintFlow() {
                 <div className="mt-3 text-xs font-semibold uppercase tracking-widest text-gold">
                   Step {i + 1}
                 </div>
-                <div className="mt-1 text-sm font-bold text-white">{s.title}</div>
+                <div className="mt-1 text-sm font-bold text-foreground">{s.title}</div>
                 <span className="mt-3 inline-block rounded-full bg-[color-mix(in_oklab,var(--brand-blue)_25%,transparent)] px-2 py-0.5 text-[10px] font-bold text-white">
                   {s.chip}
                 </span>
@@ -540,7 +540,7 @@ function FeeManagement() {
                 <span className="mt-0.5 inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] text-[color:var(--trust-green)]">
                   <Check size={12} />
                 </span>
-                <span className="text-white/90">{f}</span>
+                <span className="text-foreground/90">{f}</span>
               </li>
             ))}
           </ul>
@@ -553,7 +553,10 @@ function FeeManagement() {
             </Link>
           </div>
         </div>
-        <div className="glass-panel rounded-3xl p-5">
+        {/* Pinned dark — this is a "here's the app" preview widget with fake
+            data, same treatment as HeroDashboard/HtmlMockups, not real page
+            content that should follow the theme toggle. */}
+        <div className="dark glass-panel rounded-3xl p-5">
           <div className="flex items-center justify-between border-b border-dark-border pb-3">
             <div>
               <div className="text-xs uppercase tracking-widest text-soft-grey">June 2026</div>
@@ -750,11 +753,11 @@ function FounderSection() {
               <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                 Founder
               </div>
-              <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">Vikas Patel</h3>
+              <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">Vikas Patel</h3>
               <div className="text-sm text-soft-grey">
                 Founder & CEO, Hostylia · Powered by Jeevijay Technologies Private Limited
               </div>
-              <p className="mt-4 text-base leading-relaxed text-white/90">
+              <p className="mt-4 text-base leading-relaxed text-foreground/90">
                 "Hostylia was created to simplify the way residential businesses manage students,
                 parents, staff, rooms, fees and daily operations through one intelligent platform."
               </p>
@@ -800,7 +803,7 @@ function PricingPreview() {
           {plans.map((p) => (
             <div
               key={p.name}
-              className={`card-lift rounded-2xl border p-6 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--indigo-deep)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
+              className={`card-lift rounded-2xl border p-6 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
             >
               {p.featured && (
                 <div className="mb-3 inline-block rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-navy">
@@ -808,21 +811,21 @@ function PricingPreview() {
                 </div>
               )}
               <div className="text-sm font-semibold text-soft-grey">{p.name}</div>
-              <div className="mt-2 text-4xl font-extrabold text-white">
+              <div className="mt-2 text-4xl font-extrabold text-foreground">
                 {p.price}
                 <span className="text-base font-medium text-soft-grey"> /student/mo</span>
               </div>
               <div className="mt-2 text-sm text-soft-grey">{p.desc}</div>
               <ul className="mt-5 space-y-2 text-sm">
                 {p.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-white/90">
+                  <li key={f} className="flex items-center gap-2 text-foreground/90">
                     <Check size={14} className="text-[color:var(--trust-green)]" /> {f}
                   </li>
                 ))}
               </ul>
               <Link
                 to="/book-demo"
-                className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-white/5 text-white hover:bg-white/10"}`}
+                className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-foreground/5 text-foreground hover:bg-foreground/10"}`}
               >
                 <ArrowRight size={16} /> Book Demo for Pricing
               </Link>
@@ -838,10 +841,10 @@ function FinalCTA() {
   return (
     <section className="bg-section-dark py-20">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] via-[#0b1330] to-[color:var(--navy)] p-10 md:p-14">
+        <div className="relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-card via-background to-background p-10 md:p-14">
           <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--brand-blue)_35%,transparent),transparent_70%)] blur-2xl" />
           <div className="relative max-w-2xl">
-            <h2 className="text-3xl font-extrabold text-white md:text-4xl">
+            <h2 className="text-3xl font-extrabold text-foreground md:text-4xl">
               Ready to digitize your residential business?
             </h2>
             <p className="mt-3 text-base text-soft-grey">
@@ -857,13 +860,13 @@ function FinalCTA() {
               </Link>
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
+                className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-5 py-3 text-sm font-bold text-foreground hover:bg-foreground/10"
               >
                 <MessageCircle size={16} /> Contact Sales
               </Link>
               <Link
                 to="/founder"
-                className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-transparent px-5 py-3 text-sm font-bold text-soft-teal hover:bg-white/5"
+                className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-transparent px-5 py-3 text-sm font-bold text-soft-teal hover:bg-foreground/5"
               >
                 <User size={16} /> Talk to the Founder
               </Link>
@@ -954,7 +957,7 @@ function HowItWorks() {
               className="card-lift relative overflow-hidden rounded-2xl border border-dark-border bg-card p-6"
             >
               <div
-                className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-white/[0.04]"
+                className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-foreground/[0.04]"
                 aria-hidden
               >
                 {s.n}
@@ -965,7 +968,7 @@ function HowItWorks() {
               <div className="mt-4 text-xs font-bold uppercase tracking-widest text-gold">
                 {s.eyebrow}
               </div>
-              <h3 className="mt-1 text-lg font-extrabold text-white">{s.title}</h3>
+              <h3 className="mt-1 text-lg font-extrabold text-foreground">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-soft-grey">{s.desc}</p>
               <BenefitList items={s.items} />
             </div>
@@ -985,7 +988,7 @@ function OccupancyLive() {
           <div className="text-xs font-semibold uppercase tracking-widest text-gold">
             Live Operations
           </div>
-          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+          <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
             A control room for every residence
           </h3>
           <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -1013,7 +1016,7 @@ function ComplaintsLive() {
           <div className="text-xs font-semibold uppercase tracking-widest text-gold">
             Complaints, closed in hours
           </div>
-          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+          <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
             An AI triage board your team will actually use
           </h3>
           <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -1043,7 +1046,7 @@ function FinanceLive() {
           <div className="text-xs font-semibold uppercase tracking-widest text-gold">
             Finance dashboard
           </div>
-          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+          <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
             From invoicing to reconciliation — in one click
           </h3>
           <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -1071,7 +1074,7 @@ function ParentLive() {
           <div className="text-xs font-semibold uppercase tracking-widest text-gold">
             Built for every role
           </div>
-          <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+          <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
             The parent app that ends the daily phone calls
           </h3>
           <p className="mt-3 text-base leading-relaxed text-soft-grey">

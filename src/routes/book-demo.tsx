@@ -85,7 +85,7 @@ function BookDemoPage() {
               </span>
               <select
                 name="type"
-                className="mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] px-3 py-2.5 text-sm text-white focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30"
+                className="mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] px-3 py-2.5 text-sm text-foreground focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30"
               >
                 {types.map((t) => (
                   <option key={t}>{t}</option>
@@ -158,7 +158,7 @@ function BookDemoPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Live occupancy
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               See every bed in real time
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -179,7 +179,7 @@ function BookDemoPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Finance, automated
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               From invoicing to reconciliation — in one click
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -236,7 +236,7 @@ function Field({
   textarea?: boolean;
 }) {
   const cls =
-    "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] px-3 py-2.5 text-sm text-white placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
+    "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] px-3 py-2.5 text-sm text-foreground placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
   return (
     <label className={textarea ? "mt-4 block" : "block"}>
       <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">
@@ -267,7 +267,7 @@ function Bullet({ icon: Icon, title, desc }: { icon: any; title: string; desc: s
   return (
     <div className="card-lift rounded-2xl border border-dark-border bg-card p-5">
       <Icon size={20} className="text-soft-teal" />
-      <div className="mt-2 text-base font-bold text-white">{title}</div>
+      <div className="mt-2 text-base font-bold text-foreground">{title}</div>
       <div className="text-sm text-soft-grey">{desc}</div>
     </div>
   );

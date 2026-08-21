@@ -16,10 +16,10 @@ export function PageHero({
   return (
     <section className="bg-hero-gradient border-b border-dark-border">
       <div className="mx-auto max-w-6xl px-4 py-20 text-center md:px-6 md:py-28">
-        <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold">
+        <div className="inline-flex items-center gap-2 rounded-full border border-dark-border bg-foreground/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold">
           {eyebrow}
         </div>
-        <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-extrabold leading-tight text-white md:text-5xl lg:text-6xl">
+        <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-extrabold leading-tight text-foreground md:text-5xl lg:text-6xl">
           {title}
         </h1>
         {desc && (
@@ -37,7 +37,7 @@ export function CTAStrip() {
       <div className="mx-auto max-w-5xl px-4 md:px-6">
         <div className="glass-panel flex flex-col items-start justify-between gap-5 rounded-2xl p-8 md:flex-row md:items-center">
           <div>
-            <h3 className="text-2xl font-extrabold text-white">See Hostylia in action</h3>
+            <h3 className="text-2xl font-extrabold text-foreground">See Hostylia in action</h3>
             <p className="text-sm text-soft-grey">
               Personalized walkthrough for your property type.
             </p>
@@ -51,7 +51,7 @@ export function CTAStrip() {
             </Link>
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-5 py-3 text-sm font-bold text-white"
+              className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-5 py-3 text-sm font-bold text-foreground"
             >
               <MessageCircle size={16} /> Contact Sales
             </Link>

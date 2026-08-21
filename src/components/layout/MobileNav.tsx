@@ -28,13 +28,13 @@ export function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       <div className="flex-1 overflow-y-auto p-4">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="solutions" className="border-dark-border">
-            <AccordionTrigger className="text-white">Solutions</AccordionTrigger>
+            <AccordionTrigger className="text-foreground">Solutions</AccordionTrigger>
             <AccordionContent>
               <MegaMenuSolutions onNavigate={onNavigate} />
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="features" className="border-dark-border">
-            <AccordionTrigger className="text-white">Features</AccordionTrigger>
+            <AccordionTrigger className="text-foreground">Features</AccordionTrigger>
             <AccordionContent>
               <MegaMenuFeatures onNavigate={onNavigate} />
             </AccordionContent>
@@ -46,7 +46,7 @@ export function MobileNav({ onNavigate }: { onNavigate: () => void }) {
               <Link
                 to={l.to}
                 onClick={onNavigate}
-                className="block rounded-md px-3 py-3 text-base font-semibold text-white hover:bg-white/5"
+                className="block rounded-md px-3 py-3 text-base font-semibold text-foreground hover:bg-foreground/5"
               >
                 {l.label}
               </Link>
@@ -66,7 +66,7 @@ export function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         <Link
           to="/login"
           onClick={onNavigate}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-dark-border bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dark-border bg-foreground/5 px-4 py-3 text-center text-sm font-semibold text-foreground"
         >
           <LogIn size={16} />
           Sign In

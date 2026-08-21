@@ -18,9 +18,12 @@ export function IllustrationCard({
   className = "",
   ratio = "aspect-square",
 }: Props) {
+  // Pinned dark regardless of the page's theme — this is a fixed decorative
+  // photo frame (premium dark gradient border around a brand illustration),
+  // not text-carrying page chrome, so it doesn't need a light variant.
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] via-[#0c1530] to-[color:var(--navy)] shadow-2xl ${className}`}
+      className={`dark relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] via-[#0c1530] to-[color:var(--navy)] shadow-2xl ${className}`}
     >
       {/* Soft inner glow accents */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--soft-teal)_30%,transparent),transparent_70%)] blur-2xl" />

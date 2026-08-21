@@ -111,7 +111,7 @@ function PricingPage() {
             {plans.map((p) => (
               <div
                 key={p.name}
-                className={`card-lift rounded-2xl border p-7 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--indigo-deep)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
+                className={`card-lift rounded-2xl border p-7 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
               >
                 {p.featured && (
                   <div className="mb-3 inline-block rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-navy">
@@ -119,21 +119,21 @@ function PricingPage() {
                   </div>
                 )}
                 <div className="text-sm font-semibold text-soft-grey">{p.name}</div>
-                <div className="mt-2 text-4xl font-extrabold text-white">
+                <div className="mt-2 text-4xl font-extrabold text-foreground">
                   {p.price}
                   <span className="text-base font-medium text-soft-grey"> /student/mo</span>
                 </div>
                 <div className="mt-2 text-sm text-soft-grey">{p.desc}</div>
                 <ul className="mt-5 space-y-2 text-sm">
                   {p.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-white/90">
+                    <li key={f} className="flex items-center gap-2 text-foreground/90">
                       <Check size={14} className="text-[color:var(--trust-green)]" /> {f}
                     </li>
                   ))}
                 </ul>
                 <Link
                   to="/book-demo"
-                  className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-white/5 text-white hover:bg-white/10"}`}
+                  className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold ${p.featured ? "bg-gold text-navy" : "border border-dark-border bg-foreground/5 text-foreground hover:bg-foreground/10"}`}
                 >
                   <ArrowRight size={16} /> Book Demo for Pricing
                 </Link>
@@ -163,7 +163,7 @@ function PricingPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Returns on day one
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               Pricing that pays for itself
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -189,7 +189,7 @@ function PricingPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               Loved by parents
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A premium receipt — every single time
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -263,7 +263,7 @@ function PricingPage() {
           <Accordion type="single" collapsible className="mt-8">
             {faqs.map((f, i) => (
               <AccordionItem key={f.q} value={`f-${i}`} className="border-dark-border">
-                <AccordionTrigger className="text-left text-white">{f.q}</AccordionTrigger>
+                <AccordionTrigger className="text-left text-foreground">{f.q}</AccordionTrigger>
                 <AccordionContent className="text-soft-grey">{f.a}</AccordionContent>
               </AccordionItem>
             ))}

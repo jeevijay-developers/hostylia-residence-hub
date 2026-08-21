@@ -215,17 +215,22 @@
   --bed-maintenance: #b45309;
   --bed-blocked: #dc2626;
 
-  /* Legacy marketing tokens — retained so existing landing pages
-     (which run in a .dark scope, see __root.tsx) render unchanged. */
+  /* Legacy marketing tokens. --navy/--indigo-deep stay fixed dark ink in both
+     modes (dual-purpose today — both a background AND fixed-dark text on gold
+     CTA buttons, e.g. text-navy; background *uses* are migrated to
+     bg-background/bg-card directly instead). --soft-grey/--dark-border alias
+     the already-designed shadcn light values (no new color decisions).
+     --gold/--soft-teal get their own tuned light values for contrast on
+     white — .dark below restores today's values unchanged. */
   --navy: #070b18;
   --indigo-deep: #111b3d;
   --brand-blue: #0e6ba8;
   --trust-green: #2f8f6b;
-  --soft-teal: #4fb7a8;
-  --gold: #d9a441;
-  --soft-grey: #b8c0cc;
+  --soft-teal: #0e8a7a;
+  --gold: #b8842e;
+  --soft-grey: var(--muted-foreground);
   --light-bg: #f7f8fb;
-  --dark-border: #263247;
+  --dark-border: var(--border);
 }
 
 /* =====================================================================
@@ -258,6 +263,15 @@
   --border: #263247; /* dark-border — same as marketing */
   --input: #263247;
   --ring: #4fb7a8; /* soft-teal focus ring */
+
+  /* Restore the legacy marketing tokens' original dark-mode values — :root
+     above now gives soft-grey/dark-border/gold/soft-teal lighter, split
+     values for contrast on white; .dark pins them back to today's palette
+     so dark mode stays byte-for-byte unchanged. */
+  --soft-grey: #b8c0cc;
+  --dark-border: #263247;
+  --gold: #d9a441;
+  --soft-teal: #4fb7a8;
 
   --success: #34d399;
   --success-foreground: #070b18;
@@ -355,16 +369,25 @@
         color-mix(in oklab, var(--soft-teal) 18%, transparent),
         transparent 60%
       ),
-      linear-gradient(180deg, #070b18 0%, #0b1024 50%, #070b18 100%);
+      linear-gradient(
+        180deg,
+        var(--background) 0%,
+        color-mix(in oklab, var(--background) 92%, var(--card)) 50%,
+        var(--background) 100%
+      );
   }
   .bg-section-dark {
-    background: linear-gradient(180deg, #070b18 0%, #0a1226 100%);
+    background: linear-gradient(
+      180deg,
+      var(--background) 0%,
+      color-mix(in oklab, var(--background) 85%, var(--card)) 100%
+    );
   }
   .glass-panel {
-    background: linear-gradient(180deg, rgba(17, 27, 61, 0.92), rgba(11, 16, 36, 0.92));
+    background: color-mix(in oklab, var(--card) 92%, transparent);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--dark-border);
+    border: 1px solid var(--border);
   }
   .card-lift {
     transition:

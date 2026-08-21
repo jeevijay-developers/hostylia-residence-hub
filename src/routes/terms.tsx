@@ -54,9 +54,9 @@ function TermsPage() {
           <LegalTocNav items={TOC} />
 
           <article className="min-w-0">
-            <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5 text-sm text-white/90">
+            <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5 text-sm text-foreground/90">
               This page is maintained by{" "}
-              <strong className="text-white">Jeevijay Technologies Private Limited</strong> to
+              <strong className="text-foreground">Jeevijay Technologies Private Limited</strong> to
               describe the terms on which Hostylia is provided. It is not legal advice — please
               consult counsel before relying on it for any specific compliance purpose.
             </div>
@@ -74,23 +74,23 @@ function TermsPage() {
               <LegalSection id="definitions" title="2. Definitions">
                 <ul className="list-inside list-disc space-y-2">
                   <li>
-                    <strong className="text-white">"Hostylia"</strong>,{" "}
-                    <strong className="text-white">"we"</strong>,{" "}
-                    <strong className="text-white">"us"</strong> or{" "}
-                    <strong className="text-white">"our"</strong> refers to Jeevijay Technologies
+                    <strong className="text-foreground">"Hostylia"</strong>,{" "}
+                    <strong className="text-foreground">"we"</strong>,{" "}
+                    <strong className="text-foreground">"us"</strong> or{" "}
+                    <strong className="text-foreground">"our"</strong> refers to Jeevijay Technologies
                     Private Limited.
                   </li>
                   <li>
-                    <strong className="text-white">"Customer"</strong> means the organisation that
+                    <strong className="text-foreground">"Customer"</strong> means the organisation that
                     has subscribed to the Services (for example, a hostel, school or operator).
                   </li>
                   <li>
-                    <strong className="text-white">"User"</strong> means any individual authorised
+                    <strong className="text-foreground">"User"</strong> means any individual authorised
                     by the Customer to access the Services — including owners, managers, wardens,
                     students and parents.
                   </li>
                   <li>
-                    <strong className="text-white">"Customer Data"</strong> means all data submitted
+                    <strong className="text-foreground">"Customer Data"</strong> means all data submitted
                     to the Services by the Customer or its Users.
                   </li>
                 </ul>

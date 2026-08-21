@@ -42,7 +42,7 @@ const cols = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-dark-border bg-[#06091A]">
+    <footer className="border-t border-dark-border bg-background">
       <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
@@ -56,7 +56,7 @@ export function SiteFooter() {
                 <Globe size={14} className="text-soft-teal" /> hostylia.com
               </p>
               <p className="flex items-center gap-2">
-                <Mail size={14} className="text-soft-teal" /> hello@hostylia.com
+                <Mail size={14} className="text-soft-teal" /> team@hostylia.com
               </p>
               <p className="flex items-center gap-2">
                 <Phone size={14} className="text-soft-teal" /> +91 86194 83010
@@ -77,7 +77,7 @@ export function SiteFooter() {
                   <li key={l.label}>
                     <Link
                       to={l.to}
-                      className="text-sm text-soft-grey transition-colors hover:text-white"
+                      className="text-sm text-soft-grey transition-colors hover:text-foreground"
                     >
                       {l.label}
                     </Link>

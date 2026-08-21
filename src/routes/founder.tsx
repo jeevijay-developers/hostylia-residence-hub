@@ -52,29 +52,29 @@ function FounderPage() {
                 <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                   Founder & CEO
                 </div>
-                <h2 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Vikas Patel</h2>
+                <h2 className="mt-2 text-3xl font-extrabold text-foreground md:text-4xl">Vikas Patel</h2>
                 <div className="text-sm text-soft-grey">
                   Hostylia · Powered by Jeevijay Technologies Private Limited
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <a
                     href="#"
-                    className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                    className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-4 py-2 text-sm font-semibold text-foreground hover:bg-foreground/10"
                   >
                     <Linkedin size={14} /> LinkedIn
                   </a>
                   <a
                     href="mailto:founder@hostylia.com"
-                    className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                    className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-4 py-2 text-sm font-semibold text-foreground hover:bg-foreground/10"
                   >
                     <Mail size={14} /> Email
                   </a>
                 </div>
               </div>
             </div>
-            <div className="mt-10 rounded-2xl border border-dark-border bg-[color-mix(in_oklab,var(--navy)_70%,transparent)] p-6">
+            <div className="mt-10 rounded-2xl border border-dark-border bg-card p-6">
               <Quote className="text-gold" size={22} />
-              <p className="mt-3 text-lg leading-relaxed text-white">
+              <p className="mt-3 text-lg leading-relaxed text-foreground">
                 "Hostylia was created to simplify the way residential businesses manage students,
                 parents, staff, rooms, fees and daily operations through one intelligent platform."
               </p>
@@ -112,7 +112,7 @@ function FounderPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               The origin story
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               From a 400-bed pilot to a national operating system
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -138,7 +138,7 @@ function FounderPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               What the product proves
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A live view of every residence on Hostylia
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">
@@ -165,7 +165,7 @@ function FounderPage() {
             <div className="text-xs font-semibold uppercase tracking-widest text-gold">
               AI in the foundation
             </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-white md:text-3xl">
+            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
               A bet on AI built into every screen
             </h3>
             <p className="mt-3 text-base leading-relaxed text-soft-grey">

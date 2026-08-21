@@ -27,8 +27,12 @@ export function BrowserFrame({
   children: ReactNode;
   url?: string;
 }) {
+  // Pinned dark regardless of the page's theme — this is a screenshot of the
+  // (always-dark-by-default) product UI, not page chrome, so every Mock*
+  // component nested inside it (they all render via BrowserFrame/PhoneFrame)
+  // shouldn't flip when a visitor switches the marketing site to light mode.
   return (
-    <div className="overflow-hidden rounded-2xl border border-dark-border bg-[color:var(--indigo-deep)] shadow-2xl">
+    <div className="dark overflow-hidden rounded-2xl border border-dark-border bg-[color:var(--indigo-deep)] shadow-2xl">
       <div className="flex items-center gap-2 border-b border-dark-border bg-[color:var(--navy)]/80 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
@@ -48,8 +52,9 @@ export function BrowserFrame({
 }
 
 export function PhoneFrame({ children }: { children: ReactNode }) {
+  // Pinned dark — same reasoning as BrowserFrame above.
   return (
-    <div className="mx-auto w-[280px] rounded-[2.5rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
+    <div className="dark mx-auto w-[280px] rounded-[2.5rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
       <div className="overflow-hidden rounded-[2rem] border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] to-[color:var(--navy)]">
         <div className="flex items-center justify-between px-5 pb-1 pt-3 text-[10px] font-semibold text-white">
           <span>9:41</span>
@@ -443,7 +448,7 @@ export function MockSecurityLog() {
 
 export function StatBand({ stats }: { stats: { v: string; l: string }[] }) {
   return (
-    <div className="rounded-3xl border border-dark-border bg-[color:var(--indigo-deep)]/60 p-8">
+    <div className="rounded-3xl border border-dark-border bg-card p-8">
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.l} className="text-center">
@@ -487,7 +492,7 @@ export function TestimonialCard({
           <span key={i}>★</span>
         ))}
       </div>
-      <blockquote className="mt-3 text-sm leading-relaxed text-white">"{quote}"</blockquote>
+      <blockquote className="mt-3 text-sm leading-relaxed text-foreground">"{quote}"</blockquote>
       <figcaption className="mt-4 flex items-center gap-3 border-t border-dark-border pt-4">
         <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-blue)] to-soft-teal text-sm font-extrabold text-white">
           {name
@@ -497,7 +502,7 @@ export function TestimonialCard({
             .slice(0, 2)}
         </div>
         <div>
-          <div className="text-sm font-bold text-white">{name}</div>
+          <div className="text-sm font-bold text-foreground">{name}</div>
           <div className="text-xs text-soft-grey">{role}</div>
         </div>
       </figcaption>
@@ -513,7 +518,7 @@ export function IndustryBadge({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-dark-border bg-white/5 px-3 py-1.5 text-xs font-semibold text-white">
+    <div className="flex items-center gap-2 rounded-full border border-dark-border bg-foreground/5 px-3 py-1.5 text-xs font-semibold text-foreground">
       <Icon size={14} className="text-soft-teal" />
       {label}
     </div>

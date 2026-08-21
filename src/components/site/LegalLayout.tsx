@@ -10,7 +10,7 @@ export function LegalCompanyCard() {
         </span>
         <div>
           <div className="text-xs font-semibold uppercase tracking-widest text-gold">Operator</div>
-          <div className="text-base font-extrabold text-white">
+          <div className="text-base font-extrabold text-foreground">
             Jeevijay Technologies Private Limited
           </div>
         </div>
@@ -26,13 +26,13 @@ export function LegalCompanyCard() {
         </div>
         <div className="flex items-start gap-2 text-sm text-soft-grey">
           <Mail size={14} className="mt-0.5 text-soft-teal" />
-          <a href="mailto:hello@hostylia.com" className="hover:text-white">
-            hello@hostylia.com
+          <a href="mailto:team@hostylia.com" className="hover:text-foreground">
+            team@hostylia.com
           </a>
         </div>
         <div className="flex items-start gap-2 text-sm text-soft-grey">
           <Phone size={14} className="mt-0.5 text-soft-teal" />
-          <a href="tel:+918619483010" className="hover:text-white">
+          <a href="tel:+918619483010" className="hover:text-foreground">
             +91 86194 83010
           </a>
         </div>
@@ -55,7 +55,7 @@ export function LegalSection({
       id={id}
       className="scroll-mt-24 border-t border-dark-border py-8 first:border-0 first:pt-0"
     >
-      <h2 className="text-xl font-extrabold text-white md:text-2xl">{title}</h2>
+      <h2 className="text-xl font-extrabold text-foreground md:text-2xl">{title}</h2>
       <div className="mt-3 space-y-3 text-sm leading-relaxed text-soft-grey md:text-[15px]">
         {children}
       </div>
@@ -72,7 +72,7 @@ export function LegalTocNav({ items }: { items: { id: string; label: string }[] 
           <li key={i.id}>
             <a
               href={`#${i.id}`}
-              className="flex items-baseline gap-2 text-soft-grey transition-colors hover:text-white"
+              className="flex items-baseline gap-2 text-soft-grey transition-colors hover:text-foreground"
             >
               <span className="w-6 text-[10px] font-bold text-soft-teal">
                 {String(idx + 1).padStart(2, "0")}
