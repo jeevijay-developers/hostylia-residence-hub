@@ -15,6 +15,8 @@ export interface ParentChild {
   can_pay_fees: boolean;
   is_primary: boolean;
   bed_code: string | null;
+  floor_name: string | null;
+  block_name: string | null;
   allocation_status: string | null;
 }
 
@@ -35,7 +37,7 @@ async function fetchLinkedChildren(userId: string): Promise<ParentChild[]> {
        can_view_attendance, can_view_complaints, can_view_gate_events, can_approve_gate_pass, can_pay_fees,
        students!inner(id, full_name, property_id, status,
          properties!inner(name),
-         allocations(status, deleted_at, beds(code))
+         allocations(status, deleted_at, beds(code, floors(name), blocks(name)))
        )`,
     )
     .in("guardian_id", guardianIds)
@@ -47,7 +49,12 @@ async function fetchLinkedChildren(userId: string): Promise<ParentChild[]> {
       (a: { status: string; deleted_at: string | null }) =>
         a.deleted_at === null &&
         ["ACTIVE", "PENDING_AGREEMENT", "PENDING_PAYMENT", "NOTICE_GIVEN"].includes(a.status),
-    ) as { status: string; beds?: { code: string } | null } | undefined;
+    ) as
+      | {
+          status: string;
+          beds?: { code: string; floors?: { name: string } | null; blocks?: { name: string } | null } | null;
+        }
+      | undefined;
     return {
       guardian_id: row.guardian_id,
       student_id: row.students.id,
@@ -62,6 +69,8 @@ async function fetchLinkedChildren(userId: string): Promise<ParentChild[]> {
       can_pay_fees: row.can_pay_fees,
       is_primary: row.is_primary,
       bed_code: alloc?.beds?.code ?? null,
+      floor_name: alloc?.beds?.floors?.name ?? null,
+      block_name: alloc?.beds?.blocks?.name ?? null,
       allocation_status: alloc?.status ?? null,
     };
   });

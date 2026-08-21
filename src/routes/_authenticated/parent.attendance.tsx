@@ -3,9 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { ParentPageFrame } from "@/components/parent/ParentPageFrame";
-import { AttendanceHistoryList } from "@/components/parent/AttendanceHistoryList";
-import { MonthlyAttendanceReport } from "@/components/parent/MonthlyAttendanceReport";
+import { AttendanceRecordsList } from "@/components/parent/AttendanceRecordsList";
+import { MonthlyAttendanceReportCard } from "@/components/parent/MonthlyAttendanceReportCard";
 import { GateHistoryList } from "@/components/parent/GateHistoryList";
+import { SectionHeading } from "@/components/parent/SectionHeading";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -28,7 +29,7 @@ function ParentAttendancePage() {
             {child.can_view_attendance ? (
               <>
                 <MonthlyAttendanceReportGate studentId={child.student_id} />
-                <AttendanceHistoryList studentId={child.student_id} />
+                <AttendanceRecordsList studentId={child.student_id} />
               </>
             ) : (
               <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
@@ -36,8 +37,8 @@ function ParentAttendancePage() {
               </p>
             )}
             {child.can_view_gate_events && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">{t("parent.gateHistory.title")}</div>
+              <div className="space-y-3">
+                <SectionHeading>{t("parent.gateHistory.title")}</SectionHeading>
                 <GateHistoryList studentId={child.student_id} />
               </div>
             )}
@@ -56,14 +57,14 @@ function MonthlyAttendanceReportGate({ studentId }: { studentId: string }) {
 
   if (!selectedMonth) {
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed border-border bg-muted/40 p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4">
         <Label htmlFor="attendance-report-month" className="text-sm text-muted-foreground">
           Select month to view the attendance report
         </Label>
         <Input
           id="attendance-report-month"
           type="month"
-          className="h-9 w-40"
+          className="h-10 w-44 rounded-xl"
           max={currentMonthValue()}
           onChange={(e) => setSelectedMonth(e.target.value)}
         />
@@ -71,5 +72,5 @@ function MonthlyAttendanceReportGate({ studentId }: { studentId: string }) {
     );
   }
 
-  return <MonthlyAttendanceReport studentId={studentId} initialMonth={selectedMonth} />;
+  return <MonthlyAttendanceReportCard studentId={studentId} initialMonth={selectedMonth} />;
 }

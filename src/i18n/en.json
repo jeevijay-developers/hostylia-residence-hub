@@ -82,6 +82,8 @@
     "snapshot": {
       "propertyLabel": "Property",
       "statusLabel": "Status",
+      "blockLabel": "Block",
+      "floorLabel": "Floor",
       "bedLabel": "Bed",
       "feesTitle": "Fees",
       "feesSoon": "Fee tracking is coming soon."
@@ -99,6 +101,7 @@
     },
     "messages": {
       "title": "Messages",
+      "headerSubtitle": "Chat with your hostel warden",
       "pickChild": "Choose a child to open a chat with the warden.",
       "startPlaceholder": "Type your message…",
       "systemJoined": "Conversation started with the warden.",

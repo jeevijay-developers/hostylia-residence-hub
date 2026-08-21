@@ -11,13 +11,15 @@ function ParentMessagesPage() {
   return (
     <div className="space-y-6">
       <ParentPageFrame>
-        {(child) => <ChatFrame studentId={child.student_id} />}
+        {(child) => <ChatFrame studentId={child.student_id} studentName={child.student_name} />}
       </ParentPageFrame>
     </div>
   );
 }
 
-function ChatFrame({ studentId }: { studentId: string }) {
+function ChatFrame({ studentId, studentName }: { studentId: string; studentName: string }) {
   const { userId } = useParentChild();
-  return <WardenChatThread studentId={studentId} currentUserId={userId} />;
+  return (
+    <WardenChatThread studentId={studentId} currentUserId={userId} studentName={studentName} />
+  );
 }

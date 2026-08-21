@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, User } from "lucide-react";
+import { LogOut, MessageSquare, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,23 @@ export function MobileHeader() {
   const studentInitial =
     studentProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
 
+  const guardianProfileQ = useQuery({
+    queryKey: ["my-guardian-name", userId],
+    enabled: isParent && !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("guardians")
+        .select("full_name")
+        .eq("profile_id", userId!)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const guardianInitial =
+    guardianProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
+
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border/80 bg-background/90 px-4 backdrop-blur-md">
       <Link to="/" className="flex items-center gap-2">
@@ -60,7 +77,14 @@ export function MobileHeader() {
         {isWarden && <MessagesPanel />}
         {isWarden && <ThemeToggle />}
         <NotificationBell />
-        {!isStudent && <LanguageSwitcher />}
+        {isParent && (
+          <Button variant="ghost" size="icon" className="min-h-10 min-w-10" asChild>
+            <Link to="/parent/messages" aria-label="Messages">
+              <MessageSquare className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+        {!isStudent && !isParent && <LanguageSwitcher />}
         {isWarden ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -92,9 +116,14 @@ export function MobileHeader() {
         ) : isParent ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="min-h-10">
-                <User className="h-4 w-4" />
-              </Button>
+              <button
+                type="button"
+                aria-label="Profile"
+                className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
+              >
+                {guardianInitial}
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Account</DropdownMenuLabel>

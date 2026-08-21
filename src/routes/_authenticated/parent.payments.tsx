@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ParentPageFrame } from "@/components/parent/ParentPageFrame";
-import { StudentFeesList } from "@/components/finance/StudentFeesList";
+import { InvoiceList } from "@/components/parent/InvoiceList";
+import { SectionHeading } from "@/components/parent/SectionHeading";
 
 export const Route = createFileRoute("/_authenticated/parent/payments")({
   component: ParentPaymentsPage,
@@ -8,9 +9,10 @@ export const Route = createFileRoute("/_authenticated/parent/payments")({
 
 function ParentPaymentsPage() {
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-6">
+      <SectionHeading>Payments</SectionHeading>
       <ParentPageFrame requirePermission="can_pay_fees">
-        {(child) => <StudentFeesList studentId={child.student_id} />}
+        {(child) => <InvoiceList studentId={child.student_id} />}
       </ParentPageFrame>
     </div>
   );

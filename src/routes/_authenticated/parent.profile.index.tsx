@@ -1,15 +1,17 @@
+import type { ReactNode } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, UserRoundPen } from "lucide-react";
+import { Lock, Mail, Phone, ShieldCheck, UserRoundPen, Users, type LucideIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WaveMark } from "@/components/parent/WaveMark";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { cn } from "@/lib/utils";
 import { displayIndianPhone } from "@/schemas/auth";
 
 export const Route = createFileRoute("/_authenticated/parent/profile/")({
@@ -57,22 +59,29 @@ function useOwnGuardian(userId: string | null) {
   return { guardianQ, relationsQ };
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: React.ReactNode }) {
+function ProfileField({
+  icon: Icon,
+  label,
+  value,
+  locked,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  locked?: boolean;
+}) {
   return (
-    <div className="space-y-1 rounded-md bg-muted/50 p-2">
-      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Lock className="h-3 w-3" /> {label}
-      </p>
-      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
+    <div className="flex items-start gap-3 rounded-2xl border border-border bg-muted/20 p-3.5">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-info/10 text-info">
+        <Icon className="h-4.5 w-4.5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          {label}
+          {locked && <Lock className="h-3 w-3" aria-hidden="true" />}
+        </p>
+        <div className="mt-0.5 text-sm font-semibold text-foreground">{value || "—"}</div>
+      </div>
     </div>
   );
 }
@@ -106,12 +115,12 @@ function ParentProfilePage() {
     .join(", ");
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full flex-col gap-6">
       <PageHeader
         title="My Profile"
         description="Your personal details"
         actions={
-          <Button size="sm" asChild>
+          <Button asChild className="rounded-full">
             <Link to="/parent/profile/edit">
               <UserRoundPen className="h-4 w-4" /> Edit Profile
             </Link>
@@ -119,33 +128,44 @@ function ParentProfilePage() {
         }
       />
 
-      <Card className="gap-3 py-4">
-        <CardContent className="flex items-center gap-4 px-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="text-lg">{initial}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="text-lg font-semibold text-foreground">{g.full_name}</p>
+      <Card className="relative overflow-hidden rounded-2xl border-info/20 bg-gradient-to-br from-info/5 via-card to-card shadow-card-ambient">
+        <WaveMark className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-40 text-info/10" />
+        <CardContent className="relative flex items-center gap-4 p-5">
+          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-primary/15 text-2xl font-semibold text-primary shadow-tone-glow ring-1 ring-primary/20">
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-display text-xl font-semibold text-foreground">
+              {g.full_name}
+            </p>
             <p className="text-sm text-muted-foreground">Parent / Guardian</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="gap-3 py-4">
-        <CardHeader className="px-4">
-          <CardTitle className="text-sm">Contact & identity</CardTitle>
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Contact &amp; identity</CardTitle>
+          <span aria-hidden="true" className="mt-1 block h-1 w-10 rounded-full bg-primary" />
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-x-3 gap-y-3 px-4 sm:grid-cols-2">
-          <ReadOnlyField
+        <CardContent className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2")}>
+          <ProfileField
+            icon={Phone}
             label="Mobile Number"
             value={g.phone ? displayIndianPhone(g.phone) : undefined}
+            locked
           />
-          <Field label="Email" value={g.email} />
-          <ReadOnlyField label="Relation" value={relationText} />
-          <ReadOnlyField
+          <ProfileField icon={Mail} label="Email" value={g.email} />
+          <ProfileField icon={Users} label="Relation" value={relationText} locked />
+          <ProfileField
+            icon={ShieldCheck}
             label="Portal Access"
+            locked
             value={
-              <Badge variant={g.portal_access_enabled ? "default" : "secondary"}>
+              <Badge
+                variant={g.portal_access_enabled ? "default" : "secondary"}
+                className="rounded-full"
+              >
                 {g.portal_access_enabled ? "Enabled" : "Disabled"}
               </Badge>
             }

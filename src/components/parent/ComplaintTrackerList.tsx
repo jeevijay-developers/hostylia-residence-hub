@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "@/components/dashboard/EmptyState";
-import { ComplaintCard } from "@/components/complaints/ComplaintCard";
+import { ComplaintCard } from "@/components/parent/ComplaintCard";
 import { useComplaints } from "@/lib/complaint";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -14,7 +15,23 @@ export function ComplaintTrackerList({ studentId }: { studentId: string }) {
   const { t } = useTranslation();
   const q = useComplaints({ studentId });
 
-  if (q.isLoading) return <Skeleton className="h-32 w-full" />;
+  if (q.isLoading)
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="rounded-2xl p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+              <div className="flex-1 space-y-2.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
   const list = q.data ?? [];
   if (list.length === 0) {
     return (

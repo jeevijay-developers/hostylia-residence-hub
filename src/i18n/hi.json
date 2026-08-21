@@ -82,6 +82,8 @@
     "snapshot": {
       "propertyLabel": "संपत्ति",
       "statusLabel": "स्थिति",
+      "blockLabel": "ब्लॉक",
+      "floorLabel": "मंज़िल",
       "bedLabel": "बेड",
       "feesTitle": "फ़ीस",
       "feesSoon": "फ़ीस ट्रैकिंग जल्द ही आ रही है।"
@@ -99,6 +101,7 @@
     },
     "messages": {
       "title": "संदेश",
+      "headerSubtitle": "अपने हॉस्टल वार्डन से चैट करें",
       "pickChild": "वार्डन से चैट खोलने के लिए एक बच्चा चुनें।",
       "startPlaceholder": "अपना संदेश लिखें…",
       "systemJoined": "वार्डन के साथ बातचीत शुरू हुई।",
