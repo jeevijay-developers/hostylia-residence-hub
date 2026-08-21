@@ -108,6 +108,7 @@ import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './
 import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
 import { Route as AuthenticatedWardenStudentsIndexRouteImport } from './routes/_authenticated/warden.students.index'
 import { Route as AuthenticatedWardenStudentsIdRouteImport } from './routes/_authenticated/warden.students.$id'
+import { Route as AuthenticatedAdminPropertiesIdIndexRouteImport } from './routes/_authenticated/admin.properties.$id.index'
 import { Route as AuthenticatedAdminPropertiesIdSetupRouteImport } from './routes/_authenticated/admin.properties.$id.setup'
 import { Route as AuthenticatedAdminPropertiesIdStructureRouteImport } from './routes/_authenticated/admin.properties.$id.structure'
 import { Route as AuthenticatedAdminStudentsIdIndexRouteImport } from './routes/_authenticated/admin.students.$id.index'
@@ -673,6 +674,12 @@ const AuthenticatedWardenStudentsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedWardenStudentsRoute,
   } as any)
+const AuthenticatedAdminPropertiesIdIndexRoute =
+  AuthenticatedAdminPropertiesIdIndexRouteImport.update({
+    id: '/$id/',
+    path: '/$id/',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminPropertiesIdSetupRoute =
   AuthenticatedAdminPropertiesIdSetupRouteImport.update({
     id: '/$id/setup',
@@ -800,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/admin/properties/$id/': typeof AuthenticatedAdminPropertiesIdIndexRoute
   '/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -899,6 +907,7 @@ export interface FileRoutesByTo {
   '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/admin/properties/$id': typeof AuthenticatedAdminPropertiesIdIndexRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesById {
@@ -1005,6 +1014,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
   '/_authenticated/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
+  '/_authenticated/admin/properties/$id/': typeof AuthenticatedAdminPropertiesIdIndexRoute
   '/_authenticated/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -1111,6 +1121,7 @@ export interface FileRouteTypes {
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
+    | '/admin/properties/$id/'
     | '/admin/students/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1210,6 +1221,7 @@ export interface FileRouteTypes {
     | '/admin/properties/$id/setup'
     | '/admin/properties/$id/structure'
     | '/admin/students/$id/move-out'
+    | '/admin/properties/$id'
     | '/admin/students/$id'
   id:
     | '__root__'
@@ -1315,6 +1327,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/properties/$id/setup'
     | '/_authenticated/admin/properties/$id/structure'
     | '/_authenticated/admin/students/$id/move-out'
+    | '/_authenticated/admin/properties/$id/'
     | '/_authenticated/admin/students/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -2040,6 +2053,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenStudentsIdRouteImport
       parentRoute: typeof AuthenticatedWardenStudentsRoute
     }
+    '/_authenticated/admin/properties/$id/': {
+      id: '/_authenticated/admin/properties/$id/'
+      path: '/$id'
+      fullPath: '/admin/properties/$id/'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/properties/$id/setup': {
       id: '/_authenticated/admin/properties/$id/setup'
       path: '/$id/setup'
@@ -2139,6 +2159,7 @@ interface AuthenticatedAdminPropertiesRouteChildren {
   AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
   AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
   AuthenticatedAdminPropertiesIdStructureRoute: typeof AuthenticatedAdminPropertiesIdStructureRoute
+  AuthenticatedAdminPropertiesIdIndexRoute: typeof AuthenticatedAdminPropertiesIdIndexRoute
 }
 
 const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRouteChildren =
@@ -2149,6 +2170,8 @@ const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRou
       AuthenticatedAdminPropertiesIdSetupRoute,
     AuthenticatedAdminPropertiesIdStructureRoute:
       AuthenticatedAdminPropertiesIdStructureRoute,
+    AuthenticatedAdminPropertiesIdIndexRoute:
+      AuthenticatedAdminPropertiesIdIndexRoute,
   }
 
 const AuthenticatedAdminPropertiesRouteWithChildren =
