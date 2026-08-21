@@ -4661,6 +4661,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      swap_allocation_bed: {
+        Args: { p_allocation_id: string; p_new_bed_id: string }
+        Returns: undefined
+      }
       warden_can_read_property: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean

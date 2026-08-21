@@ -122,7 +122,10 @@ function AdminInvoicesPage() {
           property_id: propertyId,
           status: status === "ALL" ? undefined : status,
           page: 0,
-          pageSize: 10000,
+          // Matches listPropertyInvoices' validator cap (max 5000) — this
+          // was previously 10000, which failed validation on every export
+          // click regardless of how many invoices actually matched.
+          pageSize: 5000,
         },
       });
       downloadCsv(
@@ -148,6 +151,8 @@ function AdminInvoicesPage() {
           (r.balance_paise / 100).toFixed(2),
         ]),
       );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not export invoices");
     } finally {
       setExporting(false);
     }
@@ -278,16 +283,41 @@ function CreateInvoiceDialog({
     queryFn: async (): Promise<EligibleAllocation[]> => {
       const { data, error } = await supabase
         .from("allocations")
-        .select(
-          "id, billing_cycle_day, fee_plan_id, students(full_name, admission_number), fee_plans(name, due_day, grace_period_days)",
-        )
+        .select("id, billing_cycle_day, fee_plan_id, students(full_name, admission_number)")
         .eq("property_id", propertyId)
         .eq("status", "ACTIVE")
         .not("fee_plan_id", "is", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as EligibleAllocation[];
+      const rows = (data ?? []) as unknown as Omit<EligibleAllocation, "fee_plans">[];
+
+      // allocations.fee_plan_id has no declared FK to fee_plans, so
+      // PostgREST can't embed it via `fee_plans(...)` (fails with PGRST200
+      // "Could not find a relationship") — that silent failure was why this
+      // list always came back empty. Resolved the same way the Student
+      // profile page and generateFirstInvoiceForAllocation do: a separate
+      // lookup by id, merged in client-side.
+      const feePlanIds = [
+        ...new Set(rows.map((r) => r.fee_plan_id).filter((v): v is string => !!v)),
+      ];
+      const feePlanById = new Map<
+        string,
+        { name: string; due_day: number; grace_period_days: number }
+      >();
+      if (feePlanIds.length > 0) {
+        const { data: plans, error: planErr } = await supabase
+          .from("fee_plans")
+          .select("id, name, due_day, grace_period_days")
+          .in("id", feePlanIds);
+        if (planErr) throw planErr;
+        for (const p of plans ?? []) feePlanById.set(p.id, p);
+      }
+
+      return rows.map((r) => ({
+        ...r,
+        fee_plans: r.fee_plan_id ? (feePlanById.get(r.fee_plan_id) ?? null) : null,
+      }));
     },
   });
   const allocations = allocationsQ.data ?? [];

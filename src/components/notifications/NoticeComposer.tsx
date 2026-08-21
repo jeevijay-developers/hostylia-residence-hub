@@ -307,7 +307,12 @@ export function NoticeComposer({ propertyId }: Props) {
             <h2 className="truncate font-display font-semibold text-foreground">Recent notices</h2>
           </div>
           {sortedNotices.length > 5 && (
-            <Button variant="outline" size="sm" className="shrink-0" onClick={() => setShowAll((v) => !v)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setShowAll((v) => !v)}
+            >
               {showAll ? "Show less" : "View all"}
             </Button>
           )}
@@ -323,7 +328,9 @@ export function NoticeComposer({ propertyId }: Props) {
               >
                 <div className="flex w-full min-w-0 items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground sm:text-base">{n.title}</p>
+                    <p className="truncate text-sm font-semibold text-foreground sm:text-base">
+                      {n.title}
+                    </p>
                     <p className="mt-0.5 break-words text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
                       {n.audience_type} · {n.channels.join(", ")}
                     </p>
@@ -337,7 +344,9 @@ export function NoticeComposer({ propertyId }: Props) {
                         })}
                       </span>
                       {n.status === "SCHEDULED" && n.publish_at && (
-                        <span className="break-words">Scheduled for {new Date(n.publish_at).toLocaleString()}</span>
+                        <span className="break-words">
+                          Scheduled for {new Date(n.publish_at).toLocaleString()}
+                        </span>
                       )}
                     </div>
                   </div>

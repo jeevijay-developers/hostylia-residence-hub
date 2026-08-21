@@ -169,15 +169,17 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
   });
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-2xl">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Property settings</h2>
-        <p className="text-sm text-muted-foreground">Manage property level preferences and defaults.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage property level preferences and defaults.
+        </p>
       </div>
 
       <div className="border-b border-border/60" />
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Curfew time */}
         <div className="flex items-start gap-4">
           <div className="w-11 h-11 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 mt-1 shadow-sm shadow-amber-500/10">
@@ -185,7 +187,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
             <Label className="text-foreground text-sm font-semibold">Curfew time</Label>
-            <div className="relative">
+            <div className="relative sm:max-w-sm">
               <Input
                 type="time"
                 value={curfewTime}
@@ -194,7 +196,9 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
               />
               <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
-            <p className="text-xs text-muted-foreground">Gate entries after this time flag as late.</p>
+            <p className="text-xs text-muted-foreground">
+              Gate entries after this time flag as late.
+            </p>
           </div>
         </div>
 
@@ -206,7 +210,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
           <div className="flex-1 space-y-1.5 min-w-0">
             <Label className="text-foreground text-sm font-semibold">Timezone</Label>
             <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger className="bg-background/90 border-border focus:border-blue-500 focus:ring-blue-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium">
+              <SelectTrigger className="bg-background/90 border-border focus:border-blue-500 focus:ring-blue-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm">
                 <SelectValue placeholder="Select timezone" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border text-foreground">
@@ -222,14 +226,16 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
         </div>
 
         {/* Default notification channel */}
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 lg:col-span-2">
           <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
             <Bell className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
-            <Label className="text-foreground text-sm font-semibold">Default notification channel</Label>
+            <Label className="text-foreground text-sm font-semibold">
+              Default notification channel
+            </Label>
             <Select value={notifyPref} onValueChange={setNotifyPref}>
-              <SelectTrigger className="bg-background/90 border-border focus:border-emerald-500 focus:ring-emerald-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium">
+              <SelectTrigger className="bg-background/90 border-border focus:border-emerald-500 focus:ring-emerald-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm">
                 <SelectValue placeholder="Select channel" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border text-foreground">
@@ -317,15 +323,17 @@ function OrgForm({ tenantId }: { tenantId: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-2xl">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Organization settings</h2>
-        <p className="text-sm text-muted-foreground">Manage legal entity details and billing contact information.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage legal entity details and billing contact information.
+        </p>
       </div>
 
       <div className="border-b border-border/60" />
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Legal name */}
         <div className="flex items-start gap-4">
           <div className="w-11 h-11 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 mt-1 shadow-sm shadow-indigo-500/10">
@@ -337,7 +345,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
               value={legal}
               onChange={(e) => setLegal(e.target.value)}
               placeholder="e.g. Hostylia Residency Pvt Ltd"
-              className="bg-background/90 border-border focus:border-indigo-500 focus:ring-indigo-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
+              className="bg-background/90 border-border focus:border-indigo-500 focus:ring-indigo-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm"
             />
           </div>
         </div>
@@ -353,7 +361,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
               value={gstin}
               onChange={(e) => setGstin(e.target.value)}
               placeholder="22AAAAA0000A1Z5"
-              className="bg-background/90 border-border focus:border-cyan-500 focus:ring-cyan-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
+              className="bg-background/90 border-border focus:border-cyan-500 focus:ring-cyan-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm"
             />
           </div>
         </div>
@@ -370,7 +378,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
               value={bEmail}
               onChange={(e) => setBEmail(e.target.value)}
               placeholder="billing@hostel.com"
-              className="bg-background/90 border-border focus:border-sky-500 focus:ring-sky-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
+              className="bg-background/90 border-border focus:border-sky-500 focus:ring-sky-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm"
             />
           </div>
         </div>
@@ -386,7 +394,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
               value={bPhone}
               onChange={(e) => setBPhone(e.target.value)}
               placeholder="+91 9876543210"
-              className="bg-background/90 border-border focus:border-emerald-500 focus:ring-emerald-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
+              className="bg-background/90 border-border focus:border-emerald-500 focus:ring-emerald-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm"
             />
           </div>
         </div>
@@ -436,8 +444,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
     },
   });
 
-  if (subQ.isLoading)
-    return <Skeleton className="h-48 w-full max-w-2xl rounded-2xl lg:max-w-4xl" />;
+  if (subQ.isLoading) return <Skeleton className="h-48 w-full rounded-2xl" />;
 
   const sub = subQ.data;
   if (!sub) {
@@ -452,14 +459,16 @@ function BillingTab({ tenantId }: { tenantId: string }) {
   const effectivePrice = sub.custom_price_paise ?? plan?.price_paise ?? null;
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 max-w-2xl shadow-2xl lg:max-w-4xl">
+    <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-2xl">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
             <CreditCard className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">{plan?.name ?? "Subscription Plan"}</h2>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              {plan?.name ?? "Subscription Plan"}
+            </h2>
             <p className="text-sm text-muted-foreground font-medium">
               {effectivePrice != null && plan
                 ? `${formatInr(effectivePrice)} / ${plan.billing_interval?.toLowerCase()}`
@@ -485,7 +494,13 @@ function BillingTab({ tenantId }: { tenantId: string }) {
           <div>
             <p className="text-xs font-medium text-muted-foreground">Started Date</p>
             <p className="text-sm font-semibold text-foreground">
-              {sub.starts_at ? new Date(sub.starts_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              {sub.starts_at
+                ? new Date(sub.starts_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
             </p>
           </div>
         </div>
@@ -497,7 +512,13 @@ function BillingTab({ tenantId }: { tenantId: string }) {
           <div>
             <p className="text-xs font-medium text-muted-foreground">Period Ends</p>
             <p className="text-sm font-semibold text-foreground">
-              {sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              {sub.current_period_end
+                ? new Date(sub.current_period_end).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
             </p>
           </div>
         </div>
@@ -505,7 +526,12 @@ function BillingTab({ tenantId }: { tenantId: string }) {
 
       {sub.status === "ACTIVE" && (
         <div className="pt-2">
-          <Button variant="destructive" size="sm" onClick={() => setCancelOpen(true)} className="rounded-xl px-4 py-2 text-xs font-semibold gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setCancelOpen(true)}
+            className="rounded-xl px-4 py-2 text-xs font-semibold gap-2"
+          >
             <XCircle className="h-4 w-4" />
             Cancel subscription
           </Button>
@@ -622,7 +648,9 @@ function CancelSubscriptionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-foreground">Would you like to continue using Hostylia in the future?</Label>
+            <Label className="text-foreground">
+              Would you like to continue using Hostylia in the future?
+            </Label>
             <RadioGroup
               value={continueInFuture}
               onValueChange={(v) => setContinueInFuture(v as "yes" | "no")}
@@ -686,4 +714,3 @@ function CancelSubscriptionDialog({
     </Dialog>
   );
 }
-

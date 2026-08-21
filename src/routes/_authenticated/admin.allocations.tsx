@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  ArrowRightLeft,
   BedSingle,
   Check,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -45,13 +47,25 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { createAllocation } from "@/lib/student.functions";
+import { createAllocation, swapAllocationBed } from "@/lib/student.functions";
 import { usePropertyStore } from "@/stores/property-store";
 
 export const Route = createFileRoute("/_authenticated/admin/allocations")({
   head: () => ({ meta: [{ title: "Allocations — Hostylia" }] }),
   component: AllocationBoard,
 });
+
+// Matches uidx_allocations_active_student (see student.functions.ts) — the
+// statuses that count as a student's current, not-yet-closed stay. A student
+// picked in the Allocate Bed dialog who already sits in one of these gets
+// routed to Swap instead of a second allocation.
+const OPEN_ALLOCATION_STATUSES = [
+  "PENDING_AGREEMENT",
+  "PENDING_PAYMENT",
+  "ACTIVE",
+  "NOTICE_GIVEN",
+  "MOVE_OUT_INSPECTION",
+];
 
 function AllocationBoard() {
   const effectiveProp = usePropertyStore((s) => s.activePropertyId);
@@ -89,6 +103,11 @@ function AllocationBoard() {
     },
   });
 
+  // Eligible = every student in this property who could plausibly need a
+  // bed: not-yet-allocated applicants/verified students, plus already
+  // allocated ACTIVE/NOTICE_GIVEN students (picking one of those routes to
+  // the Swap flow below instead of a second allocation). Excludes
+  // MOVED_OUT/ARCHIVED/REJECTED, which need re-admission, not allocation.
   const studentsQ = useQuery({
     queryKey: ["allocation-eligible-students", effectiveProp],
     enabled: !!effectiveProp,
@@ -97,7 +116,7 @@ function AllocationBoard() {
         .from("students")
         .select("id, full_name, admission_number, status")
         .eq("property_id", effectiveProp!)
-        .in("status", ["APPLICANT", "VERIFIED"])
+        .in("status", ["APPLICANT", "VERIFIED", "ACTIVE", "NOTICE_GIVEN"])
         .is("deleted_at", null)
         .order("full_name");
       return data ?? [];
@@ -182,6 +201,55 @@ function AllocationBoard() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  // Looked up whenever a student is picked in the Allocate Bed dialog: if
+  // they already have an open allocation, the dialog switches from "create a
+  // new allocation" to "swap their existing bed for this one" — the DB's
+  // uidx_allocations_active_student would reject a second allocation anyway,
+  // so this check keeps the UI from ever attempting one.
+  const openAllocationQ = useQuery({
+    queryKey: ["student-open-allocation", studentId],
+    enabled: !!selectedBed && !!studentId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("allocations")
+        .select(
+          "id, status, start_date, rent_snapshot_paise, deposit_snapshot_paise, bed_id, beds(code, rooms(room_number))",
+        )
+        .eq("student_id", studentId)
+        .in("status", OPEN_ALLOCATION_STATUSES)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const swapFn = useServerFn(swapAllocationBed);
+  const swap = useMutation({
+    mutationFn: async () => {
+      if (!selectedBed || !openAllocationQ.data) throw new Error("Pick bed + student");
+      return swapFn({
+        data: { allocation_id: openAllocationQ.data.id, new_bed_id: selectedBed.id },
+      });
+    },
+    onSuccess: () => {
+      toast.success(`Student moved to bed ${selectedBed?.code}`);
+      qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+      qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
+      qc.invalidateQueries({ queryKey: ["student-open-allocation"] });
+      setSelectedBed(null);
+      setStudentId("");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Swap failed"),
+  });
+
+  function closeAllocateDialog() {
+    setSelectedBed(null);
+    setStudentId("");
+    setFeePlanId("");
+  }
+
   return (
     <div className="space-y-6">
       {effectiveProp && (
@@ -250,7 +318,7 @@ function AllocationBoard() {
         </>
       )}
 
-      <Dialog open={!!selectedBed} onOpenChange={(v) => !v && setSelectedBed(null)}>
+      <Dialog open={!!selectedBed} onOpenChange={(v) => !v && closeAllocateDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Allocate bed {selectedBed?.code}</DialogTitle>
@@ -299,6 +367,11 @@ function AllocationBoard() {
                               )}
                             />
                             {s.full_name} • {s.admission_number}
+                            {s.status !== "APPLICANT" && s.status !== "VERIFIED" && (
+                              <Badge variant="outline" className="ml-auto rounded-full text-xs">
+                                {s.status}
+                              </Badge>
+                            )}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -307,67 +380,120 @@ function AllocationBoard() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div>
-              <Label htmlFor="fee-plan">Fee plan</Label>
-              <Select value={feePlanId} onValueChange={setFeePlanId}>
-                <SelectTrigger id="fee-plan">
-                  <SelectValue placeholder="Select a fee plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(feePlansQ.data ?? []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {feePlansQ.data && feePlansQ.data.length === 0 && (
-                <p className="mt-1 text-xs text-destructive">
-                  No active fee plan for this property — create one first, or this allocation won't
-                  be billable.
+
+            {openAllocationQ.isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : openAllocationQ.data ? (
+              <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning/5 p-4">
+                <p className="text-sm font-medium text-foreground">
+                  This student already has an active allocation
                 </p>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="sd">Start date</Label>
-                <Input
-                  id="sd"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <Info
+                    label="Current bed"
+                    value={
+                      (
+                        openAllocationQ.data.beds as {
+                          code: string;
+                          rooms: { room_number: string } | null;
+                        } | null
+                      )?.code ?? "—"
+                    }
+                  />
+                  <Info
+                    label="Room"
+                    value={
+                      (
+                        openAllocationQ.data.beds as {
+                          code: string;
+                          rooms: { room_number: string } | null;
+                        } | null
+                      )?.rooms?.room_number ?? "—"
+                    }
+                  />
+                  <Info label="Status" value={openAllocationQ.data.status} />
+                  <Info label="Since" value={openAllocationQ.data.start_date ?? "—"} />
+                  <Info
+                    label="Rent"
+                    value={`₹ ${(openAllocationQ.data.rent_snapshot_paise / 100).toFixed(2)}`}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  To move them to bed {selectedBed?.code}, use Swap — this keeps their existing
+                  agreement, invoices, and payment history intact.
+                </p>
               </div>
-              <div>
-                <Label htmlFor="rent">Rent (₹)</Label>
-                <Input
-                  id="rent"
-                  type="number"
-                  value={rent / 100}
-                  onChange={(e) => setRent(Math.round(+e.target.value * 100))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="dep">Deposit (₹)</Label>
-                <Input
-                  id="dep"
-                  type="number"
-                  value={deposit / 100}
-                  onChange={(e) => setDeposit(Math.round(+e.target.value * 100))}
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="fee-plan">Fee plan</Label>
+                  <Select value={feePlanId} onValueChange={setFeePlanId}>
+                    <SelectTrigger id="fee-plan">
+                      <SelectValue placeholder="Select a fee plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(feePlansQ.data ?? []).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} ({p.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {feePlansQ.data && feePlansQ.data.length === 0 && (
+                    <p className="mt-1 text-xs text-destructive">
+                      No active fee plan for this property — create one first, or this allocation
+                      won't be billable.
+                    </p>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="sd">Start date</Label>
+                    <Input
+                      id="sd"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="rent">Rent (₹)</Label>
+                    <Input
+                      id="rent"
+                      type="number"
+                      value={rent / 100}
+                      onChange={(e) => setRent(Math.round(+e.target.value * 100))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dep">Deposit (₹)</Label>
+                    <Input
+                      id="dep"
+                      type="number"
+                      value={deposit / 100}
+                      onChange={(e) => setDeposit(Math.round(+e.target.value * 100))}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSelectedBed(null)}>
+            <Button variant="ghost" onClick={closeAllocateDialog}>
               Cancel
             </Button>
-            <Button
-              disabled={!studentId || !feePlanId || create.isPending}
-              onClick={() => create.mutate()}
-            >
-              <BedSingle className="h-4 w-4" /> Allocate
-            </Button>
+            {openAllocationQ.data ? (
+              <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
+                <ArrowRightLeft className="h-4 w-4" /> Swap
+              </Button>
+            ) : (
+              <Button
+                disabled={!studentId || !feePlanId || create.isPending}
+                onClick={() => create.mutate()}
+              >
+                <BedSingle className="h-4 w-4" /> Allocate
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

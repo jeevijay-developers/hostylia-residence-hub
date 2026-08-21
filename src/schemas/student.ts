@@ -77,6 +77,14 @@ export const allocationCreateSchema = z.object({
   notice_period_days: z.number().int().min(0).default(30),
 });
 
+// PRD 6.2.3 one-tap bed swap — moves a student's existing open allocation to
+// a different vacant bed without closing/recreating it (see
+// swap_allocation_bed in the DB, RULES.md 19.3).
+export const swapAllocationBedSchema = z.object({
+  allocation_id: z.string().uuid(),
+  new_bed_id: z.string().uuid(),
+});
+
 export const clickConsentSchema = z.object({
   agreement_id: z.string().uuid(),
   document_hash: z.string().min(8).max(200),

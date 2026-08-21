@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Pencil, Users } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
 import { GuardianPhoneEditDialog } from "@/components/students/GuardianPhoneEditDialog";
+import { toneClasses } from "@/lib/utils";
 
 export interface GuardianAddress {
   line1?: string;
@@ -59,8 +60,13 @@ export function GuardianCard({ studentId, canEdit }: GuardianCardProps) {
   });
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden rounded-2xl">
+      <CardHeader className="flex-row items-center gap-3 space-y-0">
+        <span
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${toneClasses.primary}`}
+        >
+          <Users className="h-4 w-4" aria-hidden="true" />
+        </span>
         <CardTitle>Guardian / Parent</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -74,16 +80,20 @@ export function GuardianCard({ studentId, canEdit }: GuardianCardProps) {
         {(guardiansQ.data ?? []).map((row) => (
           <div
             key={row.guardian_id}
-            className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3.5"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="truncate text-sm font-medium text-foreground">
                   {row.guardian?.full_name ?? "—"}
                 </p>
-                {row.is_primary && <Badge variant="outline">Primary</Badge>}
+                {row.is_primary && (
+                  <Badge variant="outline" className="rounded-full">
+                    Primary
+                  </Badge>
+                )}
               </div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <p className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
                 {row.relationship ?? "Guardian"} ·{" "}
                 {row.guardian?.phone ? displayIndianPhone(row.guardian.phone) : "no phone"}
               </p>
@@ -92,6 +102,7 @@ export function GuardianCard({ studentId, canEdit }: GuardianCardProps) {
               <Button
                 size="icon"
                 variant="ghost"
+                className="shrink-0 rounded-full"
                 title="Edit phone"
                 aria-label="Edit phone"
                 onClick={() => setEditing(row)}

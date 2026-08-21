@@ -10,6 +10,7 @@ import {
   studentBulkRowSchema,
   manualStudentRowSchema,
   allocationCreateSchema,
+  swapAllocationBedSchema,
   clickConsentSchema,
   studentSelfProfileSchema,
   studentStaffProfileEditSchema,
@@ -473,7 +474,21 @@ export const createAllocation = createServerFn({ method: "POST" })
       })
       .select("id, tenant_id, property_id, student_id")
       .single();
-    if (aErr) throw new Error(aErr.message);
+    if (aErr) {
+      // 23505 = uidx_allocations_active_student — the student already has an
+      // open allocation (PENDING_AGREEMENT/PENDING_PAYMENT/ACTIVE/
+      // NOTICE_GIVEN/MOVE_OUT_INSPECTION). The Allocate Bed dialog checks for
+      // this up front and offers Swap instead, but this stays as a
+      // defense-in-depth guard against a race (e.g. two admins allocating
+      // the same student at once) so the raw Postgres error never reaches
+      // the toast.
+      if ((aErr as { code?: string }).code === "23505") {
+        throw new Error(
+          "This student already has an active or pending allocation. Use Swap bed instead.",
+        );
+      }
+      throw new Error(aErr.message);
+    }
 
     // Draft agreement
     const { data: agree, error: agErr } = await supabase
@@ -656,6 +671,31 @@ export const moveOutAllocation = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("complete_move_out", {
       p_allocation_id: data.allocation_id,
       p_actual_end_date: data.actual_end_date,
+    });
+    if (error) throw new Error(error.message);
+
+    return { ok: true as const };
+  });
+
+/**
+ * PRD 6.2.3 one-tap bed swap: moves a student's existing open allocation to
+ * a different vacant bed in the same property, atomically, without closing
+ * or recreating the allocation — the agreement, invoices, and payment
+ * history all stay attached to the same allocation_id. Used by the Allocate
+ * Bed dialog when the picked student already has an open allocation, as the
+ * alternative to (blocked) re-allocation.
+ */
+export const swapAllocationBed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => swapAllocationBedSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    // Atomic in one DB function per RULES.md 19.3/19.5 (no independent
+    // allocation.bed_id / bed.status writes from the client).
+    const { error } = await supabase.rpc("swap_allocation_bed", {
+      p_allocation_id: data.allocation_id,
+      p_new_bed_id: data.new_bed_id,
     });
     if (error) throw new Error(error.message);
 
