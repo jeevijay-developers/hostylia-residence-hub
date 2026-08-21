@@ -21,19 +21,21 @@ function ParentOverviewPage() {
         {(child) => (
           <div className="space-y-6">
             <ChildSnapshotCard child={child} />
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Megaphone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                Recent notices
-              </h2>
-              <Separator />
-              <NoticeFeed
-                tenantId={null}
-                propertyId={child.property_id}
-                audienceFilter={["ALL", "PARENTS"]}
-                emptyVariant="framed"
-              />
-            </section>
+            {child.can_view_notices && (
+              <section className="space-y-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Megaphone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Recent notices
+                </h2>
+                <Separator />
+                <NoticeFeed
+                  tenantId={null}
+                  propertyId={child.property_id}
+                  audienceFilter={["ALL", "PARENTS"]}
+                  emptyVariant="framed"
+                />
+              </section>
+            )}
           </div>
         )}
       </ParentPageFrame>

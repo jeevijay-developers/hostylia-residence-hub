@@ -43,7 +43,14 @@ const STATUS_BADGE_VARIANT: Record<InvoiceStatus, BadgeProps["variant"]> = {
  * visual pass stays scoped to the Parent portal and doesn't touch the
  * student Fees screen. Same query, same Razorpay mutation, same KYC gate.
  */
-export function InvoiceList({ studentId }: { studentId: string }) {
+export function InvoiceList({
+  studentId,
+  canPay = true,
+}: {
+  studentId: string;
+  /** Hides "Pay now" for view-only parents — RLS blocks the payment_orders insert either way. */
+  canPay?: boolean;
+}) {
   const qc = useQueryClient();
   const createOrder = useServerFn(createRazorpayOrder);
   const { complete: kycComplete } = useKycComplete(studentId);
@@ -156,7 +163,7 @@ export function InvoiceList({ studentId }: { studentId: string }) {
                 </div>
               </div>
 
-              {i.balance_paise > 0 && status !== "VOID" && (
+              {canPay && i.balance_paise > 0 && status !== "VOID" && (
                 <Button
                   size="sm"
                   className="relative mt-4 w-full rounded-full"

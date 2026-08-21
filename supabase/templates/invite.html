@@ -1,15 +1,19 @@
 <!--
-  Hostylia — "Reset Your Password" email.
-  Bound to GoTrue's recovery slot (triggered by supabase.auth.resetPasswordForEmail,
-  i.e. the existing Forgot Password flow), via [auth.email.template.recovery] in
-  supabase/config.toml. Visual design mirrors the Staff Invitation email
-  (supabase/functions/send-notification/index.ts, "staff_invite" HTML template) —
-  same navy header, illustration style, blue CTA, info-card, and footer pattern —
-  so both emails read as the same Hostylia product.
+  Hostylia — "You've Been Invited" email.
+  Bound to GoTrue's invite slot ([auth.email.template.invite] in
+  supabase/config.toml) — this is Supabase Auth's own native invite flow
+  (supabase.auth.admin.inviteUserByEmail), distinct from the app's custom
+  Resend-based staff-invite email (supabase/functions/send-notification/
+  index.ts, "staff_invite" template, sent via a "recovery"-type generated
+  link) — that one already covers Warden/Accountant invites end to end, this
+  GoTrue-native slot isn't currently triggered by any code path, but styling
+  it keeps every auth email consistent if/when it (or a future admin action
+  that does call inviteUserByEmail) is used.
+  Visual design matches recovery.html — same navy header/logo, white card,
+  blue CTA, info-card and footer pattern.
   Available GoTrue variables: {{ .Email }} {{ .SiteURL }} {{ .ConfirmationURL }}
-  {{ .Token }} {{ .TokenHash }}
-  No user "name" variable exists in GoTrue's recovery template — {{ .Email }} is
-  used for the greeting instead of inventing a name.
+  {{ .Token }} {{ .TokenHash }} {{ .Data }} {{ .RedirectTo }}
+  No user "name" variable exists — {{ .Email }} is used for the greeting.
 -->
 <!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -17,7 +21,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Reset Your Password — Hostylia</title>
+    <title>You've Been Invited — Hostylia</title>
   </head>
   <body
     style="
@@ -57,16 +61,6 @@
             <!-- HEADER -->
             <tr>
               <td style="background-color: #0f1f3d; padding: 20px 32px">
-                <!--
-                  Real Hostylia lockup (icon + wordmark + tagline), the same
-                  "dark" asset used on-navy elsewhere in the app
-                  (src/components/BrandLockup.tsx's DARK_ASSET) — served from
-                  a stable, non-fingerprinted path (public/hostylia-logo.png)
-                  so the URL never breaks across deploys, unlike the
-                  Vite-hashed src/assets import. Sized by height only, at its
-                  natural 1491:584 aspect ratio, so an email client that
-                  ignores the width attribute doesn't distort it.
-                -->
                 <img
                   src="https://hostylia-residence-hub.vercel.app/hostylia-logo.png"
                   alt="Hostylia"
@@ -77,10 +71,10 @@
               </td>
             </tr>
 
-            <!-- LOCK ILLUSTRATION + HEADING -->
+            <!-- ENVELOPE ILLUSTRATION + HEADING -->
             <tr>
               <td style="padding: 40px 32px 20px; text-align: center; background: #ffffff">
-                <!-- Lock with checkmark SVG illustration -->
+                <!-- Envelope with checkmark badge, same palette as the lock illustration -->
                 <svg
                   width="130"
                   height="130"
@@ -97,28 +91,16 @@
                   <circle cx="65" cy="62" r="56" fill="#dbeafe" opacity="0.45" />
                   <!-- Main circle -->
                   <circle cx="65" cy="62" r="46" fill="#eff6ff" />
-                  <!-- Lock shackle (arc above body) -->
+                  <!-- Envelope body -->
+                  <rect x="33" y="46" width="64" height="46" rx="8" fill="#2563eb" />
+                  <!-- Envelope flap -->
                   <path
-                    d="M45 60 V46 A20 20 0 0 1 85 46 V60"
-                    stroke="#1d4ed8"
-                    stroke-width="7"
+                    d="M35 50 L65 74 L95 50"
+                    stroke="#eff6ff"
+                    stroke-width="5"
                     fill="none"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                  />
-                  <!-- Lock body -->
-                  <rect x="35" y="60" width="60" height="42" rx="9" fill="#2563eb" />
-                  <!-- Keyhole circle -->
-                  <circle cx="65" cy="76" r="7" fill="white" opacity="0.88" />
-                  <!-- Keyhole stem -->
-                  <rect
-                    x="61.5"
-                    y="78"
-                    width="7"
-                    height="10"
-                    rx="2.5"
-                    fill="white"
-                    opacity="0.88"
                   />
                   <!-- Green check badge -->
                   <circle cx="90" cy="90" r="16" fill="#10b981" />
@@ -141,7 +123,7 @@
                     font-family: Arial, Helvetica, sans-serif;
                   "
                 >
-                  Reset Your Password
+                  You're Invited!
                 </h1>
               </td>
             </tr>
@@ -168,7 +150,7 @@
                     font-family: Arial, Helvetica, sans-serif;
                   "
                 >
-                  We received a request to reset your password for your Hostylia account.
+                  You've been invited to create a Hostylia account.
                 </p>
                 <p
                   style="
@@ -179,7 +161,7 @@
                     font-family: Arial, Helvetica, sans-serif;
                   "
                 >
-                  Click the button below to choose a new password.
+                  Click the button below to accept the invitation and set up your account.
                 </p>
               </td>
             </tr>
@@ -202,7 +184,7 @@
                     font-family: Arial, Helvetica, sans-serif;
                   "
                 >
-                  Reset Your Password
+                  Accept Invitation
                 </a>
               </td>
             </tr>
@@ -340,7 +322,7 @@
                                 font-family: Arial, Helvetica, sans-serif;
                               "
                             >
-                              This password reset link is unique to you and can only be used once.
+                              This invitation link is unique to you and can only be used once.
                             </p>
                             <p
                               style="
@@ -351,7 +333,7 @@
                                 font-family: Arial, Helvetica, sans-serif;
                               "
                             >
-                              If you did not request a password reset, you can safely ignore this
+                              If you weren't expecting this invitation, you can safely ignore this
                               email.
                             </p>
                           </td>

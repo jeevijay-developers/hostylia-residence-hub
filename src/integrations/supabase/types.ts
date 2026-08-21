@@ -647,6 +647,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "complaint_comments_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "v_complaints_feed"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "complaint_comments_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -3281,10 +3288,17 @@ export type Database = {
       student_guardians: {
         Row: {
           can_approve_gate_pass: boolean
+          can_create_complaints: boolean
+          can_edit_own_complaints: boolean
           can_pay_fees: boolean
           can_view_attendance: boolean
+          can_view_child_profile: boolean
           can_view_complaints: boolean
+          can_view_documents: boolean
+          can_view_finance: boolean
           can_view_gate_events: boolean
+          can_view_notices: boolean
+          can_view_room_allocation: boolean
           created_by: string | null
           guardian_id: string
           id: string
@@ -3299,10 +3313,17 @@ export type Database = {
         }
         Insert: {
           can_approve_gate_pass?: boolean
+          can_create_complaints?: boolean
+          can_edit_own_complaints?: boolean
           can_pay_fees?: boolean
           can_view_attendance?: boolean
+          can_view_child_profile?: boolean
           can_view_complaints?: boolean
+          can_view_documents?: boolean
+          can_view_finance?: boolean
           can_view_gate_events?: boolean
+          can_view_notices?: boolean
+          can_view_room_allocation?: boolean
           created_by?: string | null
           guardian_id: string
           id?: string
@@ -3317,10 +3338,17 @@ export type Database = {
         }
         Update: {
           can_approve_gate_pass?: boolean
+          can_create_complaints?: boolean
+          can_edit_own_complaints?: boolean
           can_pay_fees?: boolean
           can_view_attendance?: boolean
+          can_view_child_profile?: boolean
           can_view_complaints?: boolean
+          can_view_documents?: boolean
+          can_view_finance?: boolean
           can_view_gate_events?: boolean
+          can_view_notices?: boolean
+          can_view_room_allocation?: boolean
           created_by?: string | null
           guardian_id?: string
           id?: string
@@ -4082,58 +4110,94 @@ export type Database = {
       }
     }
     Views: {
+      v_attendance_monthly_summary: {
+        Row: {
+          absent_days: number | null
+          attendance_pct: number | null
+          block_id: string | null
+          late_days: number | null
+          leave_days: number | null
+          marked_days: number | null
+          month: string | null
+          out_pass_days: number | null
+          present_days: number | null
+          property_id: string | null
+          student_id: string | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_complaint_comments_feed: {
         Row: {
           author_full_name: string | null
-          author_user_id: string
-          body: string
-          complaint_id: string
-          created_at: string
-          id: string
+          author_user_id: string | null
+          body: string | null
+          complaint_id: string | null
+          created_at: string | null
+          id: string | null
           is_anonymous_author: boolean | null
-          property_id: string
-          tenant_id: string
+          property_id: string | null
+          tenant_id: string | null
         }
-        Relationships: []
-      }
-      v_complaints_feed: {
-        Row: {
-          assigned_at: string | null
-          assigned_to: string | null
-          bed_id: string | null
-          block_id: string | null
-          block_name: string | null
-          category_id: string
-          category_name: string | null
-          closed_at: string | null
-          complaint_number: string
-          created_at: string
-          description: string
-          id: string
-          is_anonymous: boolean
-          priority: string
-          property_id: string
-          rating: number | null
-          rating_comment: string | null
-          reopen_until: string | null
-          resolution_summary: string | null
-          resolved_at: string | null
-          resolved_by: string | null
-          room_id: string | null
-          room_number: string | null
-          sla_breached_at: string | null
-          sla_due_at: string
-          status: string
-          student_admission_number: string | null
-          student_avatar_path: string | null
-          student_full_name: string | null
-          student_id: string
-          student_profile_id: string | null
-          tenant_id: string
-          title: string
-          updated_at: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "complaint_comments_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "complaints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_comments_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "v_complaints_feed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_comments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaint_comments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_complaint_sla_summary: {
         Row: {
@@ -4160,6 +4224,95 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_complaints_feed: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          bed_id: string | null
+          block_id: string | null
+          block_name: string | null
+          category_id: string | null
+          category_name: string | null
+          closed_at: string | null
+          complaint_number: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          is_anonymous: boolean | null
+          priority: string | null
+          property_id: string | null
+          rating: number | null
+          rating_comment: string | null
+          reopen_until: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          room_id: string | null
+          room_number: string | null
+          sla_breached_at: string | null
+          sla_due_at: string | null
+          status: string | null
+          student_admission_number: string | null
+          student_avatar_path: string | null
+          student_full_name: string | null
+          student_id: string | null
+          student_profile_id: string | null
+          tenant_id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaints_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "complaint_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
           {
@@ -4291,7 +4444,46 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      can_create_allocations: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_create_attendance: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_create_fee_plans: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_create_gate_passes: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       can_create_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_create_payments: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_create_rooms_beds: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4299,7 +4491,41 @@ export type Database = {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      can_create_visitors: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_attendance: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_delete_fee_plans: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_gate_passes: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       can_delete_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_payments: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_delete_rooms_beds: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4307,21 +4533,88 @@ export type Database = {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      can_edit_invoices: {
+      can_delete_visitors: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      can_edit_students: {
-        Args: { _property_id: string; _tenant_id: string; _user_id: string }
-        Returns: boolean
-      }
-      can_manage_attendance: {
+      can_edit_allocations: {
         Args: {
           _block_id: string
           _property_id: string
           _tenant_id: string
           _user_id: string
         }
+        Returns: boolean
+      }
+      can_edit_attendance: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_edit_fee_plans: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_gate_passes: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_edit_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_payments: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_rooms_beds: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      can_edit_students: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_visitors: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_create_complaints: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_edit_own_complaints: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_view_child_profile: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_view_documents: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_view_notices: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_guardian_view_room_allocation: {
+        Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
       can_manage_complaints: {
@@ -4333,25 +4626,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      can_manage_fee_plans: {
-        Args: { _property_id: string; _tenant_id: string; _user_id: string }
-        Returns: boolean
-      }
       can_manage_feedback: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       can_manage_gate_events: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
-        Returns: boolean
-      }
-      can_manage_gate_passes: {
-        Args: {
-          _block_id: string
-          _property_id: string
-          _tenant_id: string
-          _user_id: string
-        }
         Returns: boolean
       }
       can_manage_mess_menus: {
@@ -4362,19 +4642,74 @@ export type Database = {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      can_manage_payments: {
-        Args: { _property_id: string; _tenant_id: string; _user_id: string }
-        Returns: boolean
-      }
       can_manage_refunds: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
-      can_manage_visitors: {
+      can_student_edit_complaints: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_edit_finance: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_edit_gate_passes: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_edit_mess: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_edit_profile: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_attendance: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_complaints: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_finance: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_gate_passes: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_mess: { Args: { _user_id: string }; Returns: boolean }
+      can_student_view_mess_feedback: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_student_view_notices: { Args: { _user_id: string }; Returns: boolean }
+      can_student_view_profile: {
+        Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_allocations: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_attendance: {
+        Args: {
+          _block_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       can_view_complaints: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_fee_plans: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4383,6 +4718,22 @@ export type Database = {
         Returns: boolean
       }
       can_view_invoices: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_payments: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_rooms_beds: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_students: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_visitors: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4576,6 +4927,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_student_permission_for_user: {
+        Args: { _default: boolean; _key: string; _user_id: string }
+        Returns: boolean
+      }
       has_tenant_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4615,6 +4970,10 @@ export type Database = {
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_member: {
         Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_viewing_parent: {
+        Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
       provisional_refund_paise: {

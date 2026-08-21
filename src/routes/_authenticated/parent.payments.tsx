@@ -11,8 +11,8 @@ function ParentPaymentsPage() {
   return (
     <div className="space-y-6">
       <SectionHeading>Payments</SectionHeading>
-      <ParentPageFrame requirePermission="can_pay_fees">
-        {(child) => <InvoiceList studentId={child.student_id} />}
+      <ParentPageFrame requirePermission="can_view_finance">
+        {(child) => <InvoiceList studentId={child.student_id} canPay={child.can_pay_fees} />}
       </ParentPageFrame>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { displayIndianPhone } from "@/schemas/auth";
 import { guardianSelfEditSchema } from "@/schemas/guardian";
+import { updateMyGuardianProfile } from "@/lib/guardian.functions";
 
 export const Route = createFileRoute("/_authenticated/parent/profile/edit")({
   head: () => ({ meta: [{ title: "Edit Profile — Hostylia" }] }),
@@ -27,6 +29,7 @@ function ParentProfileEditPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const updateProfileFn = useServerFn(updateMyGuardianProfile);
 
   const guardianQ = useQuery({
     queryKey: ["own-guardian", userId],
@@ -66,15 +69,7 @@ function ParentProfileEditPage() {
         throw new Error("Please fix the highlighted fields");
       }
       setErrors({});
-      const d = parsed.data;
-      const { error } = await supabase
-        .from("guardians")
-        .update({
-          full_name: d.fullName,
-          email: d.email || null,
-        })
-        .eq("id", guardianQ.data.id);
-      if (error) throw error;
+      await updateProfileFn({ data: parsed.data });
     },
     onSuccess: () => {
       toast.success("Profile updated");

@@ -62,7 +62,7 @@ export function ComplaintCommentThread({
                 {m.is_anonymous_author ? "Anonymous student" : (m.author_full_name ?? "User")}
               </span>
               <span className="text-muted-foreground">
-                {new Date(m.created_at).toLocaleString()}
+                {m.created_at ? new Date(m.created_at).toLocaleString() : ""}
               </span>
             </div>
             <p className="mt-1 text-muted-foreground">{m.body}</p>

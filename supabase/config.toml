@@ -38,3 +38,24 @@ otp_length = 8
 [auth.email.template.recovery]
 subject = "Reset your password"
 content_path = "./supabase/templates/recovery.html"
+
+# GoTrue's native invite slot (supabase.auth.admin.inviteUserByEmail) — not
+# currently called by any code path here (staff invites go through the
+# app's own Resend-based send-notification "staff_invite" template instead),
+# but styled to match in case it's ever used.
+[auth.email.template.invite]
+subject = "You've been invited"
+content_path = "./supabase/templates/invite.html"
+
+# Confirm signup — triggered live by supabase.auth.signUp()
+# (src/components/auth/SignupForm.tsx).
+[auth.email.template.confirmation]
+subject = "Confirm your email address"
+content_path = "./supabase/templates/confirmation.html"
+
+# Change email address — not currently called by any code path here (every
+# profile-edit form keeps email staff-only or read-only), styled to match
+# in case an email-change flow is ever added.
+[auth.email.template.email_change]
+subject = "Confirm your new email address"
+content_path = "./supabase/templates/email_change.html"

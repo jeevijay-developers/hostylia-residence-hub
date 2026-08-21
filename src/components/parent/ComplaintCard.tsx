@@ -60,13 +60,13 @@ function categoryIcon(categoryName: string | null | undefined): LucideIcon {
  * portal and doesn't touch the admin/warden/student complaint screens.
  */
 export function ComplaintCard({ complaint }: { complaint: ComplaintWithRelations }) {
-  const student = complaint.students;
-  const avatarUrl = student?.profiles?.avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(student.profiles.avatar_path).data.publicUrl
+  const studentName = complaint.student_full_name;
+  const avatarUrl = complaint.student_avatar_path
+    ? supabase.storage.from("avatars").getPublicUrl(complaint.student_avatar_path).data.publicUrl
     : undefined;
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
   const tone = PRIORITY_TONE[complaint.priority as ComplaintPriority] ?? "muted";
-  const Icon = categoryIcon(complaint.complaint_categories?.name);
+  const Icon = categoryIcon(complaint.category_name);
 
   return (
     <Card
@@ -93,9 +93,9 @@ export function ComplaintCard({ complaint }: { complaint: ComplaintWithRelations
                   <span className="text-muted-foreground/50">·</span>
                   <PriorityBadge priority={complaint.priority} />
                 </div>
-                {complaint.complaint_categories?.name && (
+                {complaint.category_name && (
                   <span className="mt-1.5 inline-flex items-center rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                    {complaint.complaint_categories.name}
+                    {complaint.category_name}
                   </span>
                 )}
                 <p className="mt-1.5 truncate font-display text-base font-semibold text-foreground sm:text-lg">
@@ -108,20 +108,20 @@ export function ComplaintCard({ complaint }: { complaint: ComplaintWithRelations
               </div>
             </div>
 
-            {student && (
+            {studentName && (
               <div className="flex items-center gap-2.5">
                 <Avatar className="h-8 w-8 border border-primary/30 shadow-sm">
-                  <AvatarImage src={avatarUrl} alt={student.full_name} />
+                  <AvatarImage src={avatarUrl} alt={studentName} />
                   <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                    {student.full_name.trim()[0]?.toUpperCase() ?? "S"}
+                    {studentName.trim()[0]?.toUpperCase() ?? "S"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{student.full_name}</span>
+                  <span className="font-semibold text-foreground">{studentName}</span>
                   {" · "}
-                  {student.admission_number}
-                  {complaint.rooms?.room_number ? ` · Room ${complaint.rooms.room_number}` : ""}
-                  {complaint.blocks?.name ? ` · ${complaint.blocks.name}` : ""}
+                  {complaint.student_admission_number}
+                  {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+                  {complaint.block_name ? ` · ${complaint.block_name}` : ""}
                 </div>
               </div>
             )}

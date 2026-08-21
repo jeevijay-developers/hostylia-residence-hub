@@ -35,7 +35,15 @@ export function ParentPageFrame({
 }: {
   requirePermission?: keyof Pick<
     ParentChild,
-    "can_view_attendance" | "can_view_complaints" | "can_view_gate_events" | "can_pay_fees"
+    | "can_view_attendance"
+    | "can_view_complaints"
+    | "can_view_gate_events"
+    | "can_pay_fees"
+    | "can_view_child_profile"
+    | "can_view_finance"
+    | "can_view_notices"
+    | "can_view_room_allocation"
+    | "can_view_documents"
   >;
   children: (child: ParentChild) => ReactNode;
 }) {

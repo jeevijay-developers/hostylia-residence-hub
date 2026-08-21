@@ -56,31 +56,33 @@ export function ChildSnapshotCard({ child }: { child: ParentChild }) {
           </div>
         </div>
       </CardHeader>
-      <Separator />
+      {(child.can_view_room_allocation || child.can_view_finance) && <Separator />}
       <CardContent className="space-y-5 pt-5 text-sm">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
-          <Meta
-            icon={Building2}
-            label={t("parent.snapshot.propertyLabel")}
-            value={child.property_name}
-          />
-          <Meta
-            icon={LayoutGrid}
-            label={t("parent.snapshot.blockLabel")}
-            value={child.block_name ?? "—"}
-          />
-          <Meta
-            icon={Layers}
-            label={t("parent.snapshot.floorLabel")}
-            value={child.floor_name ?? "—"}
-          />
-          <Meta
-            icon={BedDouble}
-            label={t("parent.snapshot.bedLabel")}
-            value={child.bed_code ?? "—"}
-          />
-        </div>
-        {child.can_pay_fees && (
+        {child.can_view_room_allocation && (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
+            <Meta
+              icon={Building2}
+              label={t("parent.snapshot.propertyLabel")}
+              value={child.property_name}
+            />
+            <Meta
+              icon={LayoutGrid}
+              label={t("parent.snapshot.blockLabel")}
+              value={child.block_name ?? "—"}
+            />
+            <Meta
+              icon={Layers}
+              label={t("parent.snapshot.floorLabel")}
+              value={child.floor_name ?? "—"}
+            />
+            <Meta
+              icon={BedDouble}
+              label={t("parent.snapshot.bedLabel")}
+              value={child.bed_code ?? "—"}
+            />
+          </div>
+        )}
+        {child.can_view_finance && (
           <div className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-border bg-muted/30 p-4">
             <div className="flex min-w-0 items-center gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">

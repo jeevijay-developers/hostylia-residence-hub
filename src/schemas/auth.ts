@@ -91,7 +91,8 @@ export const fullNameSchema = z
   .string()
   .trim()
   .min(2, "Enter your full name")
-  .max(80, "Name is too long");
+  .max(80, "Name is too long")
+  .regex(/^\p{L}[\p{L}\s.'-]*$/u, "Name can only contain letters, spaces, and . ' -");
 
 export const hostelNameSchema = z
   .string()

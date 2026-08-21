@@ -80,7 +80,7 @@ const inviteSchema = z.object({
   permissions: staffPermissionsSchema.optional(),
 });
 
-async function assertAdmin(supabase: any, userId: string, tenantId: string) {
+export async function assertAdmin(supabase: any, userId: string, tenantId: string) {
   const { data, error } = await supabase.rpc("has_tenant_role", {
     _user_id: userId,
     _tenant_id: tenantId,
