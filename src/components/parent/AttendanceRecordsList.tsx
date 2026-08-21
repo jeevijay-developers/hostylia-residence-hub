@@ -61,8 +61,8 @@ export function AttendanceRecordsList({ studentId }: { studentId: string }) {
     );
 
   return (
-    <Card className="overflow-hidden rounded-2xl">
-      <div className="hidden items-center gap-3 border-b border-border px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:flex">
+    <Card className="overflow-hidden rounded-2xl shadow-card-ambient">
+      <div className="hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:flex">
         <span className="flex-1">Date</span>
         <span className="w-24">Session</span>
         <span className="w-28 text-right">Status</span>
@@ -119,11 +119,15 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
   );
 
   if (!hasReasonField) {
-    return <div className="p-4">{row}</div>;
+    return <div className="p-4 transition-colors hover:bg-muted/30">{row}</div>;
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="p-4">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="p-4 transition-colors hover:bg-muted/30"
+    >
       {row}
       <CollapsibleContent className="pt-3">
         <div className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3">

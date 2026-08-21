@@ -137,30 +137,12 @@ export function MonthlyAttendanceReportCard({
   });
 
   return (
-    <Card className="rounded-2xl">
-      <CardContent className="space-y-5 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="font-display text-xl">Monthly attendance report</CardTitle>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="monthly-attendance-month" className="text-sm text-muted-foreground">
-              Month
-            </Label>
-            <div className="relative">
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="monthly-attendance-month"
-                type="month"
-                className="h-10 w-44 rounded-xl pl-9"
-                value={monthInput}
-                max={currentMonthValue()}
-                onChange={(e) => setMonthInput(e.target.value)}
-                aria-label={`Attendance month, currently ${monthLabel}`}
-              />
-            </div>
-          </div>
+    <Card className="overflow-hidden rounded-2xl">
+      <CardContent className="space-y-5 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <CardTitle className="font-display text-lg sm:text-xl">
+            Monthly attendance report
+          </CardTitle>
           {canExport && (
             <ExportButton
               filename={`attendance-${monthStart}`}
@@ -169,6 +151,24 @@ export function MonthlyAttendanceReportCard({
               columns={dailyCsv}
             />
           )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="monthly-attendance-month" className="text-sm text-muted-foreground">
+            Month
+          </Label>
+          <div className="relative">
+            <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="monthly-attendance-month"
+              type="month"
+              className="h-10 w-44 rounded-xl pl-9"
+              value={monthInput}
+              max={currentMonthValue()}
+              onChange={(e) => setMonthInput(e.target.value)}
+              aria-label={`Attendance month, currently ${monthLabel}`}
+            />
+          </div>
         </div>
 
         {s && s.marked_days > 0 && (
@@ -210,7 +210,9 @@ function Summary({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-2xl border border-border bg-card p-3.5", className)}>
+    <div
+      className={cn("rounded-2xl border border-border bg-card p-4 shadow-card-ambient", className)}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm text-muted-foreground">{label}</p>
         <div
@@ -219,7 +221,7 @@ function Summary({
           <Icon className="h-4 w-4" aria-hidden="true" />
         </div>
       </div>
-      <p className="mt-1 font-display text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1.5 font-display text-2xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }

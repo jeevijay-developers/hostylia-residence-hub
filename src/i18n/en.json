@@ -90,6 +90,8 @@
     },
     "attendance": {
       "title": "Attendance",
+      "recordsTitle": "Attendance records",
+      "monthlyReportPrompt": "Select a month to view the attendance report",
       "emptyTitle": "No attendance yet",
       "emptyBody": "Attendance tracking starts once your hostel activates it.",
       "noReasonRecorded": "No reason recorded"
