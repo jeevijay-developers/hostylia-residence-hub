@@ -1041,11 +1041,11 @@ function AdminStaffPage() {
                                 variant="ghost"
                                 title="Resend invitation"
                                 aria-label="Resend invitation"
-                                disabled={resend.isPending}
+                                disabled={resend.isPending && resend.variables === s.id}
                                 onClick={() => resend.mutate(s.id)}
                                 className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
                               >
-                                {resend.isPending ? (
+                                {resend.isPending && resend.variables === s.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin text-amber-700 dark:text-amber-400" />
                                 ) : (
                                   <Mail className="h-4 w-4" />

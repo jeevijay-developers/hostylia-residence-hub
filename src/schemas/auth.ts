@@ -123,9 +123,12 @@ export type SignupRole = z.infer<typeof signupRoleSchema>;
 
 /**
  * Step 2 — who you are. `hostelName` is required only for hostel owners;
- * `guardianName`/`guardianPhone` only for students (captured here so a
- * self-signed-up student's guardian record exists by the time an admin
- * confirms their admission, instead of relying on separate data entry).
+ * `guardianName`/`guardianPhone`/`propertySlug` only for students
+ * (`guardianName`/`guardianPhone` are captured here so a self-signed-up
+ * student's guardian record exists by the time an admin confirms their
+ * admission, instead of relying on separate data entry; `propertySlug` is
+ * the hostel they're applying to, submitted via the same
+ * `submitPublicAdmission` API the public /apply/$slug form uses).
  */
 export const signupIdentitySchema = z
   .object({
@@ -134,6 +137,7 @@ export const signupIdentitySchema = z
     hostelName: z.string().trim().max(120, "Name is too long").optional(),
     guardianName: z.string().trim().max(120, "Name is too long").optional(),
     guardianPhone: z.string().trim().optional(),
+    propertySlug: z.string().trim().optional(),
   })
   .refine((d) => d.role !== "HOSTEL_ADMIN" || (d.hostelName ?? "").trim().length >= 2, {
     message: "Enter your hostel / property name",
@@ -146,6 +150,10 @@ export const signupIdentitySchema = z
   .refine((d) => d.role !== "STUDENT" || indianMobileSchema.safeParse(d.guardianPhone).success, {
     message: "Enter a valid 10-digit Indian mobile number",
     path: ["guardianPhone"],
+  })
+  .refine((d) => d.role !== "STUDENT" || (d.propertySlug ?? "").trim().length > 0, {
+    message: "Select your hostel",
+    path: ["propertySlug"],
   });
 
 /** Step 3a — email + password credentials. */

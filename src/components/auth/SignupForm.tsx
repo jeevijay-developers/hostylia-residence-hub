@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +24,13 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   signupIdentitySchema,
   emailCredentialsSchema,
   phoneCredentialsSchema,
@@ -35,6 +44,8 @@ import {
 } from "@/schemas/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
+import { listPublicActiveProperties } from "@/lib/public-property.functions";
+import { submitPublicAdmission } from "@/lib/student.functions";
 
 type Mode = "phone" | "email";
 type Step = 0 | 1 | 2 | 3;
@@ -43,6 +54,7 @@ type IdentityValues = {
   hostelName?: string;
   guardianName?: string;
   guardianPhone?: string;
+  propertySlug?: string;
 };
 
 /**
@@ -253,6 +265,7 @@ function IdentityStep({
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<SignupIdentityInput>({
     resolver: zodResolver(signupIdentitySchema),
@@ -262,12 +275,25 @@ function IdentityStep({
       hostelName: initial?.hostelName ?? "",
       guardianName: initial?.guardianName ?? "",
       guardianPhone: initial?.guardianPhone ?? "",
+      propertySlug: initial?.propertySlug ?? "",
     },
     mode: "onChange",
   });
   const guardianPhoneField = register("guardianPhone");
   const guardianPhoneValid =
     !isStudent || indianMobileSchema.safeParse(watch("guardianPhone")).success;
+  const propertySlugValue = watch("propertySlug");
+
+  // Active hostels a self-registering student can pick from — same
+  // property-selection surface the public /apply/$slug admission form uses,
+  // just listing every ACTIVE property instead of resolving one by slug.
+  const listPropertiesFn = useServerFn(listPublicActiveProperties);
+  const propertiesQ = useQuery({
+    queryKey: ["signup-active-properties"],
+    queryFn: () => listPropertiesFn(),
+    enabled: isStudent,
+    staleTime: 60_000,
+  });
 
   return (
     <form
@@ -277,6 +303,7 @@ function IdentityStep({
           hostelName: values.hostelName,
           guardianName: values.guardianName,
           guardianPhone: values.guardianPhone,
+          propertySlug: values.propertySlug,
         }),
       )}
       className="space-y-4"
@@ -366,13 +393,48 @@ function IdentityStep({
               </p>
             ) : null}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="propertySlug">{t("auth.selectHostelLabel")}</Label>
+            <input type="hidden" {...register("propertySlug")} />
+            <Select
+              value={propertySlugValue || undefined}
+              onValueChange={(v) => setValue("propertySlug", v, { shouldValidate: true })}
+            >
+              <SelectTrigger id="propertySlug" className="min-h-11">
+                <SelectValue
+                  placeholder={
+                    propertiesQ.isLoading
+                      ? t("common.loading")
+                      : t("auth.selectHostelPlaceholder")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(propertiesQ.data ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.slug}>
+                    {p.name}
+                    {p.city ? ` — ${p.city}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.propertySlug ? (
+              <p className="text-sm text-destructive" role="alert">
+                {errors.propertySlug.message}
+              </p>
+            ) : null}
+          </div>
           <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
             {t("auth.studentJoinNote")}
           </p>
         </>
       ) : null}
 
-      <StepButtons onBack={onBack} nextLabel={t("auth.continue")} disabled={!guardianPhoneValid} />
+      <StepButtons
+        onBack={onBack}
+        nextLabel={t("auth.continue")}
+        disabled={!guardianPhoneValid || (isStudent && !propertySlugValue)}
+      />
     </form>
   );
 }
@@ -433,7 +495,46 @@ function signupMetadata(role: SignupRole, identity: IdentityValues) {
     ...(role === "STUDENT" && identity.guardianName && identity.guardianPhone
       ? { guardian_name: identity.guardianName, guardian_phone: identity.guardianPhone }
       : {}),
+    ...(role === "STUDENT" && identity.propertySlug ? { property_slug: identity.propertySlug } : {}),
   };
+}
+
+/**
+ * Submits the student's chosen hostel as a real admission application —
+ * reuses `submitPublicAdmission`/`publicAdmissionSchema`, the exact same
+ * API the public /apply/$slug form uses, so it lands in that hostel's
+ * existing Admin/Warden approval workflow (admin.students, APPLICANT
+ * status) instead of a signup that no one can ever confirm.
+ *
+ * `phone` is the applicant's own contact — email-mode signup never collects
+ * one, so it falls back to the guardian's number already captured in step 1
+ * (email is still the primary match key `confirmStudentAdmission` uses, so
+ * this fallback never affects account linking for email signups).
+ */
+async function submitStudentApplication(
+  submitFn: ReturnType<typeof useServerFn<typeof submitPublicAdmission>>,
+  identity: IdentityValues,
+  contact: { email?: string; phone?: string },
+) {
+  if (!identity.propertySlug || !identity.guardianName || !identity.guardianPhone) return;
+  try {
+    await submitFn({
+      data: {
+        property_slug: identity.propertySlug,
+        full_name: identity.fullName,
+        phone: normalizeIndianPhone(contact.phone ?? identity.guardianPhone),
+        email: contact.email ?? "",
+        guardian_name: identity.guardianName,
+        guardian_phone: identity.guardianPhone,
+        guardian_relationship: "Guardian",
+      },
+    });
+  } catch (e) {
+    // Account creation must never fail because the admission application
+    // couldn't be filed — same fire-and-forget stance as the staff invite
+    // notification path.
+    console.warn("submitStudentApplication failed (account was still created)", e);
+  }
 }
 
 function EmailCredentialsForm({
@@ -449,6 +550,7 @@ function EmailCredentialsForm({
 }) {
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
+  const submitApplicationFn = useServerFn(submitPublicAdmission);
   const {
     register,
     handleSubmit,
@@ -482,6 +584,9 @@ function EmailCredentialsForm({
       if (data.user && data.user.identities?.length === 0) {
         toast.error("This email is already registered. Please sign in instead.");
         return;
+      }
+      if (role === "STUDENT") {
+        await submitStudentApplication(submitApplicationFn, identity, { email: values.email });
       }
       onSignedUp(values.email);
     } catch (err) {
@@ -562,6 +667,7 @@ function PhoneCredentialsForm({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const submitApplicationFn = useServerFn(submitPublicAdmission);
   const {
     register,
     handleSubmit,
@@ -585,6 +691,9 @@ function PhoneCredentialsForm({
       if (!result.ok) {
         toast.error(result.message ?? "Could not send OTP. Please try again.");
         return;
+      }
+      if (role === "STUDENT") {
+        await submitStudentApplication(submitApplicationFn, identity, { phone });
       }
       navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {

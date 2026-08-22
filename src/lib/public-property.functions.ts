@@ -1,6 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+/**
+ * Public, unauthenticated listing of ACTIVE hostels — feeds the "Select
+ * Hostel" picker on student signup (SignupForm) so a self-registering
+ * student can pick which property their application (submitted via
+ * `submitPublicAdmission`, same as the /apply/$slug form) belongs to.
+ * Same public-safe-fields-only shape as `getPublicPropertyBySlug` below.
+ */
+export const listPublicActiveProperties = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("properties")
+    .select("id, slug, name, city")
+    .eq("status", "ACTIVE")
+    .is("deleted_at", null)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+});
+
 // Public, unauthenticated lookup for the admission page.
 // Uses service_role internally, but only returns a narrow set of
 // public-safe fields and only when the property is ACTIVE.

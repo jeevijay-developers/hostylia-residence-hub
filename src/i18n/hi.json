@@ -36,6 +36,8 @@
     "hostelNameHelp": "इसके बाद आप तुरंत कमरे, छात्र और स्टाफ जोड़ सकेंगे।",
     "guardianNameLabel": "अभिभावक का नाम",
     "guardianPhoneLabel": "अभिभावक का फ़ोन नंबर",
+    "selectHostelLabel": "हॉस्टल चुनें",
+    "selectHostelPlaceholder": "अपना हॉस्टल चुनें",
     "confirmPasswordLabel": "पासवर्ड की पुष्टि करें",
     "createAccount": "खाता बनाएँ",
     "noAccount": "खाता नहीं है?",

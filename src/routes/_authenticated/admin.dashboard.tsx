@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/components/warden/ActivityIcon";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RoomOccupancyChart } from "@/components/dashboard/RoomOccupancyChart";
+import { KycApprovalQueueCard } from "@/components/students/KycApprovalQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
@@ -217,6 +218,8 @@ function AdminDashboardPage() {
           </Card>
         </div>
       )}
+
+      {propertyId && <KycApprovalQueueCard />}
     </div>
   );
 }
