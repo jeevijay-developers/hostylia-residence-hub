@@ -13,15 +13,25 @@ const DATE_FORMAT = "d MMM yyyy, h:mm a";
 export function ComplaintCard({
   complaint,
   actions,
+  identityVisibility = "default",
 }: {
   complaint: ComplaintWithRelations;
   actions?: ReactNode;
+  /**
+   * "full" always reveals student identity + room/block, ignoring is_anonymous
+   * (Admin). "strict" hides student identity AND room/block when anonymous
+   * (Warden). "default" keeps the existing behavior: hide identity but still
+   * show room/block when anonymous.
+   */
+  identityVisibility?: "default" | "full" | "strict";
 }) {
   const avatarUrl = complaint.student_avatar_path
     ? supabase.storage.from("avatars").getPublicUrl(complaint.student_avatar_path).data.publicUrl
     : undefined;
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
   const resolvedByLabel = useResolvedByLabel(complaint.resolved_by);
+  const isAnonymous = identityVisibility === "full" ? false : complaint.is_anonymous;
+  const hideLocation = identityVisibility === "strict" && complaint.is_anonymous;
 
   return (
     <Card
@@ -50,7 +60,7 @@ export function ComplaintCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {complaint.is_anonymous ? (
+        {isAnonymous ? (
           <div className="flex items-center gap-2">
             <Avatar className="h-7 w-7">
               <AvatarFallback className="bg-muted text-xs text-muted-foreground">
@@ -59,8 +69,8 @@ export function ComplaintCard({
             </Avatar>
             <div className="min-w-0 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Anonymous student</span>
-              {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
-              {complaint.block_name ? ` · ${complaint.block_name}` : ""}
+              {!hideLocation && complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+              {!hideLocation && complaint.block_name ? ` · ${complaint.block_name}` : ""}
             </div>
           </div>
         ) : (

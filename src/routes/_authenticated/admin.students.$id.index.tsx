@@ -28,9 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
-import { GuardianCard, fetchStudentGuardians } from "@/components/students/GuardianCard";
-import { StudentPermissionCard } from "@/components/students/StudentPermissionCard";
-import { ParentPermissionCard } from "@/components/students/ParentPermissionCard";
+import { GuardianCard } from "@/components/students/GuardianCard";
 import { confirmStudentAdmission } from "@/lib/student.functions";
 import { formatInr } from "@/lib/finance";
 import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
@@ -68,11 +66,6 @@ function StudentDetailPage() {
       if (error) throw error;
       return data;
     },
-  });
-
-  const guardiansQ = useQuery({
-    queryKey: ["student-guardians", id],
-    queryFn: () => fetchStudentGuardians(id),
   });
 
   const confirmAdmission = useMutation({
@@ -301,7 +294,7 @@ function StudentDetailPage() {
               <CardTitle>KYC documents</CardTitle>
             </CardHeader>
             <CardContent>
-              <KycStatus studentId={s.id} />
+              <KycStatus studentId={s.id} canReview />
             </CardContent>
           </Card>
 
@@ -314,20 +307,6 @@ function StudentDetailPage() {
               <AgreementViewer studentId={s.id} readOnly />
             </CardContent>
           </Card>
-
-          <StudentPermissionCard tenantId={s.tenant_id} studentId={s.id} />
-
-          {(guardiansQ.data ?? []).map((row) =>
-            row.guardian ? (
-              <ParentPermissionCard
-                key={row.guardian_id}
-                tenantId={s.tenant_id}
-                studentId={s.id}
-                guardianId={row.guardian_id}
-                guardianName={row.guardian.full_name}
-              />
-            ) : null,
-          )}
         </div>
       </div>
     </div>
