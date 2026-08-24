@@ -442,6 +442,7 @@ function WardenGatePage() {
               onRetry={() => filteredApprovals.refetch()}
             />
           )}
+
           {!filteredApprovals.isLoading &&
             !filteredApprovals.error &&
             approvalsList.map((p) => (
