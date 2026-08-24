@@ -318,6 +318,7 @@ function AdminComplaintRow({
       )}
       <ComplaintCard
         complaint={complaint}
+        identityVisibility="full"
         actions={
           <>
             {canAssign && (

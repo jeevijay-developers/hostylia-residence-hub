@@ -94,12 +94,14 @@ export async function assertAdmin(supabase: any, userId: string, tenantId: strin
  * Best-effort invite/resend notification (IN_APP + email/SMS depending on
  * which contact channel the person was invited through). Shared by
  * `inviteStaff` and `resendStaffInvite` so there's one notification path,
- * not two.
+ * not two. Exported so `student.functions.ts` can reuse this exact
+ * invite + set-password mechanism for direct student onboarding (Admin →
+ * Add Student), instead of re-implementing an email/link flow.
  *
  * Enriches the notification with: invitee display name, hostel/org name,
  * invitation date, and a password-setup link generated via the admin API.
  */
-async function sendStaffInviteNotification(
+export async function sendStaffInviteNotification(
   supabase: any,
   args: {
     inviteeId: string;
@@ -195,7 +197,9 @@ async function sendStaffInviteNotificationInner(
         ? "Accountant"
         : args.role === "HOSTEL_ADMIN"
           ? "Hostel Admin"
-          : args.role;
+          : args.role === "STUDENT"
+            ? "Student"
+            : args.role;
 
   const inviteDate = new Date().toLocaleDateString("en-IN", {
     day: "numeric",
@@ -471,19 +475,24 @@ export const resendStaffInvite = createServerFn({ method: "POST" })
 
 export const listStaff = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { tenant_id: string }) => d)
+  .validator((d: { tenant_id: string; property_id?: string | null }) => d)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId, data.tenant_id);
     // Delegated staff only — HOSTEL_ADMIN is the account-owner/superset role,
     // not a "staff" member managed from this page (that assignment happens
     // via Super Admin → Tenants, a separate flow this list must not affect).
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from("role_assignments")
       .select("id,user_id,role,property_id,block_id,is_active,granted_at,revoked_at,permissions")
       .eq("tenant_id", data.tenant_id)
       .in("role", ["WARDEN", "ACCOUNTANT"])
       .order("granted_at", { ascending: false });
+    // Staff are always invited scoped to the property active at invite time
+    // (see inviteStaff's property_id), so filtering the list the same way
+    // keeps it in sync with the top-left property/group picker.
+    if (data.property_id) query = query.eq("property_id", data.property_id);
+    const { data: rows, error } = await query;
     if (error) throw error;
 
     // `profiles` RLS only lets a user read their own row (auth.uid() = id),

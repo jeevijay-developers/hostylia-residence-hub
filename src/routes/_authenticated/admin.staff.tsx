@@ -515,8 +515,8 @@ function AdminStaffPage() {
   const resendFn = useServerFn(resendStaffInvite);
 
   const staffQ = useQuery({
-    queryKey: ["staff", tenantId],
-    queryFn: () => listFn({ data: { tenant_id: tenantId! } }),
+    queryKey: ["staff", tenantId, propertyId],
+    queryFn: () => listFn({ data: { tenant_id: tenantId!, property_id: propertyId } }),
     enabled: !!tenantId,
   });
   const staff = useMemo(() => (staffQ.data ?? []) as StaffRow[], [staffQ.data]);

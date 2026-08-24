@@ -144,6 +144,7 @@ function WardenComplaintsPage() {
             <ComplaintCard
               key={c.id}
               complaint={c}
+              identityVisibility="strict"
               actions={
                 <Button size="sm" variant="outline" onClick={() => setActiveComplaint(c)}>
                   <Eye className="h-4 w-4" /> View Details
@@ -237,11 +238,7 @@ function ComplaintDetailsDialog({
           {complaint.is_anonymous ? (
             <div className="flex items-center gap-1.5 rounded-md border border-border bg-card p-3 text-xs">
               <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <p className="text-muted-foreground">
-                Anonymous student
-                {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
-                {complaint.block_name ? ` · ${complaint.block_name}` : ""}
-              </p>
+              <p className="text-muted-foreground">Anonymous student</p>
             </div>
           ) : (
             complaint.student_full_name && (

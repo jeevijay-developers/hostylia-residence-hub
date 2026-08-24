@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
+import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
@@ -240,13 +241,117 @@ const manualCreateSchema = manualStudentRowSchema.extend({
   property_id: z.string().uuid(),
 });
 
+/**
+ * Direct student portal onboarding (Admin → Add Student): provisions a real
+ * login-able account for the student right away instead of waiting for them
+ * to self-register and be matched later (the older `confirmStudentAdmission`
+ * path, which still exists unchanged for students who signed up on their
+ * own). Reuses the exact same invite + set-password mechanism as staff
+ * (`inviteStaff`'s create-user-if-missing + `sendStaffInviteNotification`,
+ * which emails a Supabase `recovery`-type link landing on /reset-password),
+ * just linked immediately (is_active: true) rather than left PENDING —
+ * there's no separate "accept" step for a student the Admin just created.
+ * Best-effort: the student record must exist regardless of whether the
+ * invite email/account provisioning succeeds (same philosophy as
+ * `inviteStaff`), so every failure here is swallowed and logged.
+ */
+async function provisionStudentPortalAccount(
+  supabase: ReturnType<typeof adminClient>,
+  granterId: string,
+  student: { id: string; tenant_id: string; property_id: string; full_name: string; email: string },
+) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let inviteeId: string | null = null;
+    const { data: existing } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", student.email)
+      .limit(1);
+    if (existing && existing.length) inviteeId = existing[0].id;
+
+    if (!inviteeId) {
+      const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
+        email: student.email,
+        email_confirm: false,
+        user_metadata: { full_name: student.full_name },
+      });
+      if (cErr) throw cErr;
+      inviteeId = created.user?.id ?? null;
+    }
+    if (!inviteeId) throw new Error("could not create student account");
+
+    const { data: already } = await supabase
+      .from("students")
+      .select("id")
+      .eq("profile_id", inviteeId)
+      .is("deleted_at", null)
+      .limit(1);
+    if (already && already.length) {
+      throw new Error("That email is already linked to another student record");
+    }
+
+    const { error: linkErr } = await supabase
+      .from("students")
+      .update({ profile_id: inviteeId, portal_access_enabled: true })
+      .eq("id", student.id);
+    if (linkErr) throw new Error(linkErr.message);
+
+    // tenant_memberships/role_assignments RLS only grants writes to
+    // HOSTEL_ADMIN, so a Warden's request-scoped client would be denied here
+    // even though createStudentManual itself allows Warden — same blind spot
+    // confirmStudentAdmission already works around with the service-role client.
+    const nowIso = new Date().toISOString();
+    const { error: mErr } = await supabaseAdmin.from("tenant_memberships").upsert(
+      { tenant_id: student.tenant_id, user_id: inviteeId, status: "ACTIVE", joined_at: nowIso },
+      { onConflict: "tenant_id,user_id" },
+    );
+    if (mErr) throw new Error(mErr.message);
+
+    const { error: rErr } = await supabaseAdmin.from("role_assignments").insert({
+      tenant_id: student.tenant_id,
+      user_id: inviteeId,
+      role: "STUDENT",
+      property_id: student.property_id,
+      is_active: true,
+      granted_by: granterId,
+      granted_at: nowIso,
+    });
+    if (rErr) throw new Error(rErr.message);
+
+    // Not awaited — the student record is already saved; the invite email
+    // sends in the background and can never fail or slow down this response.
+    void sendStaffInviteNotification(supabase, {
+      inviteeId,
+      email: student.email,
+      phone: null,
+      role: "STUDENT",
+      tenantId: student.tenant_id,
+      propertyId: student.property_id,
+      referenceId: student.id,
+    });
+  } catch (e) {
+    console.warn("provisionStudentPortalAccount failed (student record was still created)", e);
+  }
+}
+
 /** Single-student manual add for Admin/Warden — same insert path as bulk import, one row at a time. */
 export const createStudentManual = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => manualCreateSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const student = await insertStudentRow(supabase, data.tenant_id, data.property_id, data);
+    if (data.email && data.email.trim()) {
+      await provisionStudentPortalAccount(supabase, userId, {
+        id: student.id,
+        tenant_id: data.tenant_id,
+        property_id: data.property_id,
+        full_name: data.full_name,
+        email: data.email.trim(),
+      });
+    }
     return { id: student.id, admission_number: student.admission_number };
   });
 
@@ -565,8 +670,18 @@ export const acceptAgreementClickwrap = createServerFn({ method: "POST" })
       // recurring monthly cron (which deliberately excludes DEPOSIT and only
       // fires on an allocation's billing_cycle_day). Best-effort: a student
       // shouldn't be blocked from signing because invoicing hiccuped.
+      //
+      // Uses the service-role admin client, not the caller's own `supabase`:
+      // this handler runs as the student themselves (acceptAgreementClickwrap
+      // is student-invoked), but `fee_plan_components` has no student SELECT
+      // policy and `invoices` has no student INSERT policy (invoices_staff_insert
+      // requires can_create_invoices — staff-only). Under the student's own
+      // RLS, the components read silently comes back empty and the invoice
+      // insert is rejected by RLS; that rejection was being thrown here and
+      // then swallowed by this same try/catch, so no invoice was ever created
+      // and nothing surfaced the failure.
       try {
-        await generateFirstInvoiceForAllocation(supabase, agr.allocation_id);
+        await generateFirstInvoiceForAllocation(adminClient(), agr.allocation_id);
       } catch (e) {
         console.error("[acceptAgreementClickwrap] first invoice generation failed", e);
       }
