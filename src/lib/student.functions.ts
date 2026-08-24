@@ -81,7 +81,11 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     if (!props?.length) throw new Error("Property not found");
     if (props.length > 1) throw new Error("Property slug is ambiguous — contact the hostel");
     const property = props[0];
-    if (property.status !== "ACTIVE") throw new Error("Property is not accepting applications");
+    // Matches listPublicActiveProperties' eligibility (ACTIVE + DRAFT) — a
+    // property picked from the Select Hostel dropdown must always be
+    // submittable here, even before its Hostel Admin finishes activation.
+    if (!["ACTIVE", "DRAFT"].includes(property.status))
+      throw new Error("Property is not accepting applications");
 
     const dob = data.date_of_birth || null;
     const isMinor = dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false;
