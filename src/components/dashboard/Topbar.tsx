@@ -27,6 +27,7 @@ import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
 import { BrandLockup } from "@/components/BrandLockup";
 import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -53,6 +54,9 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   });
   const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
+  const avatarUrl = ownProfile?.avatar_path
+    ? supabase.storage.from("avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl
+    : undefined;
   const { data: resolved } = useResolvedRole();
   const isAccountant = resolved?.role === "ACCOUNTANT";
   const isAdmin = resolved?.role === "HOSTEL_ADMIN";
@@ -199,9 +203,13 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
         <Link
           to="/admin/profile"
           aria-label="My Profile"
-          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
+          className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
         >
-          {avatarInitial}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            avatarInitial
+          )}
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
         </Link>
       ) : (
