@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { BrandLockup } from "@/components/BrandLockup";
-import { SignOutDialog } from "./SignOutDialog";
 
 interface SidebarProps {
   items: NavItem[];
@@ -16,7 +15,6 @@ interface SidebarProps {
 
 export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [signOutOpen, setSignOutOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -79,22 +77,7 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
             </Link>
           );
         })}
-
-        <button
-          type="button"
-          onClick={() => setSignOutOpen(true)}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
-            collapsed && "justify-center px-2",
-          )}
-          title={collapsed ? "Sign out" : undefined}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span className="truncate">Sign out</span>}
-        </button>
       </nav>
-
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </aside>
   );
 }

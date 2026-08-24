@@ -25,8 +25,8 @@ export function MobileShell({ allow, navItems, centerElevated, children }: Mobil
       <div className="flex min-h-screen flex-col bg-background" lang={langAttr}>
         <ImpersonationBanner />
         <MobileHeader />
-        <main className={cn("flex-1 px-4 py-5 sm:px-6", navItems.length > 0 && "pb-24")}>
-          <div className="mx-auto w-full max-w-2xl">{children ?? <Outlet />}</div>
+        <main className={cn("flex-1 px-4 py-5 sm:px-6 lg:px-10", navItems.length > 0 && "pb-24")}>
+          <div className="mx-auto w-full max-w-2xl lg:max-w-6xl">{children ?? <Outlet />}</div>
         </main>
         <BottomNav items={navItems} centerElevated={centerElevated} />
       </div>

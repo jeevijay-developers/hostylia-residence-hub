@@ -27,7 +27,7 @@ export async function fetchOwnProfile() {
   if (!userId) throw new Error("Not signed in");
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, preferred_name, phone, email")
+    .select("id, full_name, preferred_name, phone, email, avatar_path")
     .eq("id", userId)
     .single();
   if (error) throw error;

@@ -130,7 +130,7 @@ function WardenBriefPage() {
     <div className="space-y-6">
       {/* <PageHeader title="Daily brief" description="Your day at a glance." /> */}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
         <KpiCard
           icon={Users}
           label="Total Students"
@@ -181,55 +181,59 @@ function WardenBriefPage() {
         />
       </div>
 
-      <Link
-        to="/warden/mess"
-        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 transition hover:bg-accent"
-      >
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-            <Utensils className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-medium">Manage Mess Menu</p>
-            <p className="text-xs text-muted-foreground">Publish or update today's mess menu</p>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-6 lg:col-span-2">
+          <Link
+            to="/warden/mess"
+            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 transition hover:bg-accent"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                <Utensils className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-medium">Manage Mess Menu</p>
+                <p className="text-xs text-muted-foreground">Publish or update today's mess menu</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Link>
+
+          <KycApprovalQueueCard />
         </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </Link>
 
-      <KycApprovalQueueCard />
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Recent Activity</CardTitle>
-          {recentActivity.length > 5 && (
-            <Button asChild variant="ghost" size="sm" className="-mr-2 text-primary">
-              <Link to="/warden/activity">
-                See all <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          <ol className="space-y-2 text-sm">
-            {recentActivity.slice(0, 5).map((item, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <ActivityIcon type={item.type} />
-                <div>
-                  <div className="font-medium">{item.type}</div>
-                  <div className="text-xs text-muted-foreground">{item.detail}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(item.at).toLocaleString()}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Recent Activity</CardTitle>
+            {recentActivity.length > 5 && (
+              <Button asChild variant="ghost" size="sm" className="-mr-2 text-primary">
+                <Link to="/warden/activity">
+                  See all <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <ol className="space-y-2 text-sm">
+              {recentActivity.slice(0, 5).map((item, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <ActivityIcon type={item.type} />
+                  <div>
+                    <div className="font-medium">{item.type}</div>
+                    <div className="text-xs text-muted-foreground">{item.detail}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(item.at).toLocaleString()}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-          {recentActivity.length === 0 && (
-            <p className="text-sm text-muted-foreground">No activity yet today.</p>
-          )}
-        </CardContent>
-      </Card>
+                </li>
+              ))}
+            </ol>
+            {recentActivity.length === 0 && (
+              <p className="text-sm text-muted-foreground">No activity yet today.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

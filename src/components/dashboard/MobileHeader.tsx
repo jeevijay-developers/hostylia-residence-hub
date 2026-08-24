@@ -29,6 +29,22 @@ export function MobileHeader() {
   const isStudent = resolved?.role === "STUDENT";
   const userId = resolved?.userId ?? null;
 
+  // Same key/select as warden.profile.index.tsx's "warden-profile" query — reuses its cache.
+  const wardenProfileQ = useQuery({
+    queryKey: ["warden-profile", userId],
+    enabled: isWarden && !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const wardenInitial = wardenProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
+
   // Same key/select as student.profile.tsx's "my-profile-record" query — reuses its cache.
   const studentProfileQ = useQuery({
     queryKey: ["my-profile-record", userId],
@@ -84,35 +100,16 @@ export function MobileHeader() {
             </Link>
           </Button>
         )}
-        {!isStudent && !isParent && <LanguageSwitcher />}
+        {!isStudent && !isParent && !isWarden && <LanguageSwitcher />}
         {isWarden ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="min-h-10">
-                <User className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/warden/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setSignOutOpen(true);
-                }}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link
+            to="/warden/profile"
+            aria-label="Profile"
+            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
+          >
+            {wardenInitial}
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
+          </Link>
         ) : isParent ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

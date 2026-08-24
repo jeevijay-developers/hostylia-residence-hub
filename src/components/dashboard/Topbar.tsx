@@ -23,7 +23,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
-import { ChangePasswordDialog } from "@/components/dashboard/ChangePasswordDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
 import { BrandLockup } from "@/components/BrandLockup";
@@ -45,7 +44,6 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -197,71 +195,67 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <ThemeToggle />
       <NotificationBell />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
+      {isAdmin ? (
+        <Link
+          to="/admin/profile"
+          aria-label="My Profile"
+          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
+        >
           {avatarInitial}
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel>Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {isAccountant ? (
-            <>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  My Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile/edit">
-                  <UserRoundPen className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile/change-password">
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Change Password
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          ) : isAdmin ? (
-            <>
+        </Link>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
+            {avatarInitial}
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {isAccountant ? (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link to="/accountant/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    My Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/accountant/profile/edit">
+                    <UserRoundPen className="mr-2 h-4 w-4" />
+                    Edit Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/accountant/profile/change-password">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Change Password
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : (
               <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
                 <UserRoundPen className="mr-2 h-4 w-4" />
-                Edit Profile
+                Edit profile
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
-                <KeyRound className="mr-2 h-4 w-4" />
-                Change Password
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          ) : (
-            <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
-              <UserRoundPen className="mr-2 h-4 w-4" />
-              Edit profile
+            )}
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setSignOutOpen(true);
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setSignOutOpen(true);
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {!isAccountant && (
-        <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-      {isAdmin && (
-        <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+
+      {!isAccountant && !isAdmin && (
+        <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
       )}
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </header>
