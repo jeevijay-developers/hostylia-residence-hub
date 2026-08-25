@@ -199,68 +199,79 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <ThemeToggle />
       <NotificationBell />
 
-      {isAdmin ? (
-        <Link
-          to="/admin/profile"
-          aria-label="My Profile"
-          className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
-        >
+      <DropdownMenu>
+        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
           {avatarUrl ? (
             <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             avatarInitial
           )}
           <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-        </Link>
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
-            {avatarInitial}
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {isAccountant ? (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link to="/accountant/profile">
-                    <User className="mr-2 h-4 w-4" />
-                    My Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/accountant/profile/edit">
-                    <UserRoundPen className="mr-2 h-4 w-4" />
-                    Edit Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/accountant/profile/change-password">
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Change Password
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            ) : (
-              <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
-                <UserRoundPen className="mr-2 h-4 w-4" />
-                Edit profile
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuLabel>Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {isAccountant ? (
+            <>
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  My Profile
+                </Link>
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setSignOutOpen(true);
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile/edit">
+                  <UserRoundPen className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/accountant/profile/change-password">
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Change Password
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : isAdmin ? (
+            <>
+              <DropdownMenuItem asChild>
+                <Link to="/admin/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  My Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/admin/profile/edit">
+                  <UserRoundPen className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/admin/profile/change-password">
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Change Password
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : (
+            <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
+              <UserRoundPen className="mr-2 h-4 w-4" />
+              Edit profile
             </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+          )}
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setSignOutOpen(true);
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {!isAccountant && !isAdmin && (
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />

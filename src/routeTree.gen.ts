@@ -98,6 +98,8 @@ import { Route as AuthenticatedAdminFinanceFeePlansRouteImport } from './routes/
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
 import { Route as AuthenticatedAdminFinancePaymentsRouteImport } from './routes/_authenticated/admin.finance.payments'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
+import { Route as AuthenticatedAdminProfileChangePasswordRouteImport } from './routes/_authenticated/admin.profile.change-password'
+import { Route as AuthenticatedAdminProfileEditRouteImport } from './routes/_authenticated/admin.profile.edit'
 import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/admin.students.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
@@ -615,6 +617,18 @@ const AuthenticatedAdminFinancePnlRoute =
     path: '/pnl',
     getParentRoute: () => AuthenticatedAdminFinanceRoute,
   } as any)
+const AuthenticatedAdminProfileChangePasswordRoute =
+  AuthenticatedAdminProfileChangePasswordRouteImport.update({
+    id: '/change-password',
+    path: '/change-password',
+    getParentRoute: () => AuthenticatedAdminProfileRoute,
+  } as any)
+const AuthenticatedAdminProfileEditRoute =
+  AuthenticatedAdminProfileEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthenticatedAdminProfileRoute,
+  } as any)
 const AuthenticatedAdminPropertiesIndexRoute =
   AuthenticatedAdminPropertiesIndexRouteImport.update({
     id: '/',
@@ -756,7 +770,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRouteWithChildren
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRoute
+  '/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -799,6 +813,8 @@ export interface FileRoutesByFullPath {
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
+  '/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
+  '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
@@ -861,7 +877,7 @@ export interface FileRoutesByTo {
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRoute
+  '/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -901,6 +917,8 @@ export interface FileRoutesByTo {
   '/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
+  '/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
+  '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
@@ -965,7 +983,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/finance': typeof AuthenticatedAdminFinanceRouteWithChildren
   '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRoute
+  '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/_authenticated/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -1008,6 +1026,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/invoices': typeof AuthenticatedAdminFinanceInvoicesRoute
   '/_authenticated/admin/finance/payments': typeof AuthenticatedAdminFinancePaymentsRoute
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
+  '/_authenticated/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
+  '/_authenticated/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/_authenticated/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
@@ -1116,6 +1136,8 @@ export interface FileRouteTypes {
     | '/admin/finance/invoices'
     | '/admin/finance/payments'
     | '/admin/finance/pnl'
+    | '/admin/profile/change-password'
+    | '/admin/profile/edit'
     | '/admin/students/$id'
     | '/admin/support/$id'
     | '/parent/profile/edit'
@@ -1218,6 +1240,8 @@ export interface FileRouteTypes {
     | '/admin/finance/invoices'
     | '/admin/finance/payments'
     | '/admin/finance/pnl'
+    | '/admin/profile/change-password'
+    | '/admin/profile/edit'
     | '/admin/support/$id'
     | '/parent/profile/edit'
     | '/warden/profile/change-password'
@@ -1324,6 +1348,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/invoices'
     | '/_authenticated/admin/finance/payments'
     | '/_authenticated/admin/finance/pnl'
+    | '/_authenticated/admin/profile/change-password'
+    | '/_authenticated/admin/profile/edit'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/support/$id'
     | '/_authenticated/parent/profile/edit'
@@ -1996,6 +2022,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFinancePnlRouteImport
       parentRoute: typeof AuthenticatedAdminFinanceRoute
     }
+    '/_authenticated/admin/profile/change-password': {
+      id: '/_authenticated/admin/profile/change-password'
+      path: '/change-password'
+      fullPath: '/admin/profile/change-password'
+      preLoaderRoute: typeof AuthenticatedAdminProfileChangePasswordRouteImport
+      parentRoute: typeof AuthenticatedAdminProfileRoute
+    }
+    '/_authenticated/admin/profile/edit': {
+      id: '/_authenticated/admin/profile/edit'
+      path: '/edit'
+      fullPath: '/admin/profile/edit'
+      preLoaderRoute: typeof AuthenticatedAdminProfileEditRouteImport
+      parentRoute: typeof AuthenticatedAdminProfileRoute
+    }
     '/_authenticated/admin/properties/': {
       id: '/_authenticated/admin/properties/'
       path: '/'
@@ -2175,6 +2215,23 @@ const AuthenticatedAdminFinanceRouteWithChildren =
     AuthenticatedAdminFinanceRouteChildren,
   )
 
+interface AuthenticatedAdminProfileRouteChildren {
+  AuthenticatedAdminProfileChangePasswordRoute: typeof AuthenticatedAdminProfileChangePasswordRoute
+  AuthenticatedAdminProfileEditRoute: typeof AuthenticatedAdminProfileEditRoute
+}
+
+const AuthenticatedAdminProfileRouteChildren: AuthenticatedAdminProfileRouteChildren =
+  {
+    AuthenticatedAdminProfileChangePasswordRoute:
+      AuthenticatedAdminProfileChangePasswordRoute,
+    AuthenticatedAdminProfileEditRoute: AuthenticatedAdminProfileEditRoute,
+  }
+
+const AuthenticatedAdminProfileRouteWithChildren =
+  AuthenticatedAdminProfileRoute._addFileChildren(
+    AuthenticatedAdminProfileRouteChildren,
+  )
+
 interface AuthenticatedAdminPropertiesRouteChildren {
   AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
   AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
@@ -2255,7 +2312,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminFinanceRoute: typeof AuthenticatedAdminFinanceRouteWithChildren
   AuthenticatedAdminNoticesRoute: typeof AuthenticatedAdminNoticesRoute
-  AuthenticatedAdminProfileRoute: typeof AuthenticatedAdminProfileRoute
+  AuthenticatedAdminProfileRoute: typeof AuthenticatedAdminProfileRouteWithChildren
   AuthenticatedAdminPropertiesRoute: typeof AuthenticatedAdminPropertiesRouteWithChildren
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -2271,7 +2328,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminFinanceRoute: AuthenticatedAdminFinanceRouteWithChildren,
   AuthenticatedAdminNoticesRoute: AuthenticatedAdminNoticesRoute,
-  AuthenticatedAdminProfileRoute: AuthenticatedAdminProfileRoute,
+  AuthenticatedAdminProfileRoute: AuthenticatedAdminProfileRouteWithChildren,
   AuthenticatedAdminPropertiesRoute:
     AuthenticatedAdminPropertiesRouteWithChildren,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
