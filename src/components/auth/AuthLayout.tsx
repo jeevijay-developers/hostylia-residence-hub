@@ -9,13 +9,19 @@ interface AuthLayoutProps {
   children: ReactNode;
   title: string;
   subtitle?: string;
+  hideLanguageSwitcher?: boolean;
 }
 
 /**
  * Shared shell for /login, /signup, /verify-otp, /access-pending, /403.
  * Mobile-first, centered card on larger screens. Supports light and dark mode.
  */
-export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+export function AuthLayout({
+  children,
+  title,
+  subtitle,
+  hideLanguageSwitcher,
+}: AuthLayoutProps) {
   const { t, i18n } = useTranslation();
   const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
   return (
@@ -29,7 +35,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         </Link>
         <div className="absolute right-3 top-6 flex items-center gap-1 sm:top-10">
           <ThemeToggle />
-          <LanguageSwitcher />
+          {!hideLanguageSwitcher && <LanguageSwitcher />}
         </div>
       </header>
 

@@ -125,6 +125,9 @@ function AdminAttendancePage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!propertyId) return;
+      if (date !== new Date().toISOString().slice(0, 10)) {
+        throw new Error("Attendance can only be marked for today.");
+      }
       const missingRemark = roster.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),

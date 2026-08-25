@@ -48,6 +48,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createAllocation, swapAllocationBed } from "@/lib/student.functions";
+import { listActiveFeePlansForAllocation } from "@/lib/finance.functions";
 import { usePropertyStore } from "@/stores/property-store";
 
 export const Route = createFileRoute("/_authenticated/admin/allocations")({
@@ -67,8 +68,23 @@ const OPEN_ALLOCATION_STATUSES = [
   "MOVE_OUT_INSPECTION",
 ];
 
-function AllocationBoard() {
-  const effectiveProp = usePropertyStore((s) => s.activePropertyId);
+/**
+ * Exported so warden.allocations.tsx can reuse this exact board (same
+ * queries, same bed-pick → student-pick → allocate flow) instead of
+ * duplicating it. Both optional props default to the original
+ * Admin-only behavior (activePropertyId from the property switcher, no
+ * pre-selected student) — Admin's own route below still renders
+ * `<AllocationBoard />` with no props, so nothing changes for Admin.
+ */
+export function AllocationBoard({
+  initialStudentId,
+  propertyIdOverride,
+}: {
+  initialStudentId?: string;
+  propertyIdOverride?: string | null;
+} = {}) {
+  const activePropertyId = usePropertyStore((s) => s.activePropertyId);
+  const effectiveProp = propertyIdOverride !== undefined ? propertyIdOverride : activePropertyId;
   const qc = useQueryClient();
 
   const bedsQ = useQuery({
@@ -149,10 +165,19 @@ function AllocationBoard() {
     },
   });
 
+  // Admin's own route (propertyIdOverride unset) keeps the original direct
+  // client query, unchanged. The Warden reuse path (propertyIdOverride set)
+  // goes through listActiveFeePlansForAllocation instead — same filters/
+  // shape, just not gated on the fee_plans_view finance permission Warden
+  // doesn't have by default (see that function's own comment).
+  const listFeePlansFn = useServerFn(listActiveFeePlansForAllocation);
   const feePlansQ = useQuery({
     queryKey: ["allocation-fee-plans", effectiveProp],
     enabled: !!effectiveProp,
     queryFn: async () => {
+      if (propertyIdOverride !== undefined) {
+        return listFeePlansFn({ data: { property_id: effectiveProp! } });
+      }
       const { data } = await supabase
         .from("fee_plans")
         .select("id, name, code")
@@ -165,7 +190,7 @@ function AllocationBoard() {
   });
 
   const [selectedBed, setSelectedBed] = useState<BedTile | null>(null);
-  const [studentId, setStudentId] = useState("");
+  const [studentId, setStudentId] = useState(initialStudentId ?? "");
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [feePlanId, setFeePlanId] = useState("");
   const [rent, setRent] = useState<number>(500000);

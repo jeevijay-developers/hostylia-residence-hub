@@ -197,6 +197,49 @@ export const deleteOrDeactivateFeePlan = createServerFn({ method: "POST" })
     return { mode: "deleted" as const, active_allocations: 0 };
   });
 
+const propertyIdSchema = z.object({ property_id: z.string().uuid() });
+
+/**
+ * Active fee plans for a property — same query/shape as Admin's own
+ * client-side fetch (admin.allocations.tsx's feePlansQ), so the Warden
+ * "Allocate Bed" flow (which reuses that same board) sees the identical
+ * plan list. Fee plans are otherwise a finance-permission-gated resource
+ * (fee_plans_view, default false for Warden) — allocation creation
+ * shouldn't depend on an Admin separately granting that finance
+ * permission just so a Warden can pick the plan required to complete an
+ * allocation they're already authorized to create. Authorization here is
+ * narrow: the caller must have an active staff assignment at this
+ * property (any role), not the fee_plans_view permission itself.
+ */
+export const listActiveFeePlansForAllocation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => propertyIdSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: assignment, error: aErr } = await supabase
+      .from("role_assignments")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .or(`property_id.eq.${data.property_id},property_id.is.null`)
+      .limit(1)
+      .maybeSingle();
+    if (aErr) throw new Error(aErr.message);
+    if (!assignment) throw new Error("Not staff at this property");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: plans, error } = await supabaseAdmin
+      .from("fee_plans")
+      .select("id, name, code")
+      .eq("property_id", data.property_id)
+      .eq("status", "ACTIVE")
+      .is("deleted_at", null)
+      .order("name");
+    if (error) throw new Error(error.message);
+    return plans ?? [];
+  });
+
 /**
  * Record a manual (cash/cheque/bank-transfer) payment against an invoice.
  * Payment CAPTURED, trigger recomputes invoice status.
