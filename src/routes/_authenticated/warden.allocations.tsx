@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 
-import { AllocationBoard } from "@/routes/_authenticated/admin.allocations";
+import { AllocationBoard } from "@/components/hostel/AllocationBoard";
 import { Button } from "@/components/ui/button";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty, useWardenPermissions } from "@/lib/staff-scope";
