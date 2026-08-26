@@ -1,17 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, MessageSquare, User } from "lucide-react";
+import { LogOut, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -64,8 +57,7 @@ export function MobileHeader() {
       return data;
     },
   });
-  const studentInitial =
-    studentProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
+  const studentInitial = studentProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
 
   const guardianProfileQ = useQuery({
     queryKey: ["my-guardian-name", userId],
@@ -81,8 +73,7 @@ export function MobileHeader() {
       return data;
     },
   });
-  const guardianInitial =
-    guardianProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
+  const guardianInitial = guardianProfileQ.data?.full_name?.trim().charAt(0).toUpperCase() ?? "?";
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border/80 bg-background/90 px-4 backdrop-blur-md">
@@ -101,57 +92,15 @@ export function MobileHeader() {
           </Button>
         )}
         {!isStudent && !isParent && !isWarden && <LanguageSwitcher />}
-        {isWarden ? (
-          <Link
-            to="/warden/profile"
-            aria-label="Profile"
-            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
-          >
-            {wardenInitial}
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-          </Link>
-        ) : isParent ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Profile"
-                className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
-              >
-                {guardianInitial}
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/parent/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setSignOutOpen(true);
-                }}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : isStudent ? (
-          <Link
-            to="/student/profile"
-            aria-label="Profile"
-            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60"
-          >
-            {studentInitial}
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-          </Link>
+        {isWarden || isParent || isStudent ? (
+          <ProfileAvatarMenu
+            avatarInitial={isWarden ? wardenInitial : isParent ? guardianInitial : studentInitial}
+            profileHref={
+              isWarden ? "/warden/profile" : isParent ? "/parent/profile" : "/student/profile"
+            }
+            onSignOut={() => setSignOutOpen(true)}
+            triggerClassName="h-8 w-8"
+          />
         ) : (
           <Button
             variant="ghost"

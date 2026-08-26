@@ -45,7 +45,7 @@ export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> =
   CLOSED: "Closed",
 };
 
-/** Hostel Admin's "raise a Hostylia Support ticket" form. */
+/** Hostel Admin's "raise a Support ticket" form. */
 export const createSupportTicketSchema = z.object({
   tenant_id: z.string().uuid(),
   subject: z.string().trim().min(3, "Enter a subject").max(200),

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { dispatchNotification } from "@/lib/dispatch-notification";
 
 const noticeSchema = z.object({
   tenant_id: z.string().uuid(),
@@ -102,9 +103,13 @@ export const publishNotice = createServerFn({ method: "POST" })
       }
     }
 
-    // Dispatch (dedup users)
+    // Dispatch (dedup users) — queued concurrently, not one-by-one, so
+    // broadcasting to a large audience doesn't block the caller for the
+    // sum of every recipient's round trip. Each dispatchNotification() call
+    // itself only waits for the notification job to be queued, never for
+    // actual provider delivery (see dispatch-notification.ts).
     const seen = new Set<string>();
-    let dispatched = 0;
+    const dispatches: Promise<unknown>[] = [];
     for (const r of recipients) {
       if (seen.has(r.user_id)) continue;
       seen.add(r.user_id);
@@ -119,8 +124,8 @@ export const publishNotice = createServerFn({ method: "POST" })
           recipient.email = r.email ?? undefined;
           if (!recipient.email) continue;
         }
-        await supabase.functions.invoke("send-notification", {
-          body: {
+        dispatches.push(
+          dispatchNotification(supabase, {
             channel: ch,
             templateKey: "notice_broadcast",
             recipient,
@@ -129,12 +134,12 @@ export const publishNotice = createServerFn({ method: "POST" })
             tenantId: data.tenant_id,
             propertyId: data.property_id,
             referenceId: notice.id,
-          },
-        });
-        dispatched++;
+          }),
+        );
       }
     }
-    return { notice_id: notice.id, dispatched };
+    await Promise.all(dispatches);
+    return { notice_id: notice.id, dispatched: dispatches.length };
   });
 
 const editNoticeSchema = z.object({

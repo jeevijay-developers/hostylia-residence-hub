@@ -56,7 +56,7 @@ import {
 } from "@/schemas/support-ticket";
 
 export const Route = createFileRoute("/_authenticated/admin/support")({
-  head: () => ({ meta: [{ title: "Hostylia Support — Hostylia" }] }),
+  head: () => ({ meta: [{ title: "Support — Hostylia" }] }),
   component: AdminSupportPage,
 });
 
@@ -343,7 +343,7 @@ function CreateTicketDialog({
     >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New Hostylia Support ticket</DialogTitle>
+          <DialogTitle>New Support ticket</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">

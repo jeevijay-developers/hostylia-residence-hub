@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -9,27 +8,35 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
-  FileText,
+  Droplet,
   GraduationCap,
+  KeyRound,
   Loader2,
+  Lock,
   LogOut,
   Mail,
+  MapPin,
   Phone,
-  Save,
-  Shield,
   ShieldCheck,
   User,
+  UserRoundPen,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
-import { FormSkeleton } from "@/components/dashboard/FormSkeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -37,15 +44,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
-import { KycUploadForm } from "@/components/students/KycUploadForm";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
+import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
-import { updateMyProfile } from "@/lib/student.functions";
+import { changePasswordSchema } from "@/schemas/auth";
 import { studentSelfProfileSchema } from "@/schemas/student";
 
 export const Route = createFileRoute("/_authenticated/student/profile")({
@@ -61,12 +67,160 @@ const OPEN_ALLOCATION_STATUSES = [
   "PENDING_PAYMENT",
 ];
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Mode = "view" | "edit";
+
+type KycDoc = { verification_status: string };
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+function FieldRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 py-2">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-3 w-3 shrink-0" />
+        {label}
+      </p>
+      <p className="text-sm font-medium text-foreground">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+function EditField({
+  label,
+  htmlFor,
+  error,
+  children,
+  className,
+}: {
+  label: string;
+  htmlFor: string;
+  error?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col gap-1 ${className ?? ""}`}>
+      <Label
+        htmlFor={htmlFor}
+        className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        {label}
+      </Label>
+      {children}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  tone,
+}: {
+  icon: LucideIcon;
+  title: string;
+  tone: "info" | "primary" | "warning" | "success";
+}) {
+  const toneClass = {
+    info: "bg-info/15 text-info",
+    primary: "bg-primary/15 text-primary",
+    warning: "bg-warning/15 text-warning",
+    success: "bg-success/15 text-success",
+  }[tone];
+  return (
+    <CardHeader className="flex-row items-center gap-2.5 space-y-0 px-5 pt-5">
+      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${toneClass}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+    </CardHeader>
+  );
+}
+
+function KycOverallBadge({ docs }: { docs: KycDoc[] }) {
+  if (docs.length === 0) return null;
+  const hasRejected = docs.some((d) => d.verification_status === "REJECTED");
+  const allVerified = docs.every((d) => d.verification_status === "VERIFIED");
+
+  if (hasRejected) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+        <AlertTriangle className="h-3 w-3" /> Rejected
+      </span>
+    );
+  }
+  if (allVerified) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+        <CheckCircle2 className="h-3 w-3" /> Verified
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 rounded-md bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+      <Clock className="h-3 w-3" /> Pending
+    </span>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 function StudentProfilePage() {
   const { data: resolved } = useResolvedRole();
   const userId = resolved?.userId ?? null;
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { can } = useStudentPermissions();
   const canEdit = can("profile", "edit");
+
+  // ── Page state ──
+  const [mode, setMode] = useState<Mode>("view");
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [kycDialogOpen, setKycDialogOpen] = useState(false);
+
+  // ── Edit form fields ──
+  const [uploading, setUploading] = useState(false);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+
+  // Student table fields
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+  const [academicInstitute, setAcademicInstitute] = useState("");
+  const [courseName, setCourseName] = useState("");
+  const [academicYear, setAcademicYear] = useState("");
+
+  // Profile table fields
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactNumber, setEmergencyContactNumber] = useState("");
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrPincode, setAddrPincode] = useState("");
+
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+
+  // ── Password fields ──
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
+
+  // ─── Data queries ─────────────────────────────────────────────────────────
 
   const studentQ = useQuery({
     queryKey: ["my-profile-record", userId],
@@ -75,7 +229,7 @@ function StudentProfilePage() {
       const { data, error } = await supabase
         .from("students")
         .select(
-          "id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year",
+          "id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year, photo_path, joined_at",
         )
         .eq("profile_id", userId!)
         .is("deleted_at", null)
@@ -84,6 +238,32 @@ function StudentProfilePage() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const profileQ = useQuery({
+    queryKey: ["student-profile-extra", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, blood_group, emergency_contact_name, emergency_contact_number, address, avatar_path, status",
+        )
+        .eq("id", userId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const authUserQ = useQuery({
+    queryKey: ["student-auth-user", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data.user;
     },
   });
 
@@ -99,6 +279,20 @@ function StudentProfilePage() {
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       return data ?? [];
+    },
+  });
+
+  const propertyQ = useQuery({
+    queryKey: ["student-property", studentQ.data?.property_id],
+    enabled: !!studentQ.data?.property_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("properties")
+        .select("name")
+        .eq("id", studentQ.data!.property_id)
+        .single();
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -121,94 +315,263 @@ function StudentProfilePage() {
     },
   });
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState<string>("");
-  const [institute, setInstitute] = useState("");
-  const [course, setCourse] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
-  const [kycDialogOpen, setKycDialogOpen] = useState(false);
-  const [signOutOpen, setSignOutOpen] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // ─── Sync edit form from fetched data ─────────────────────────────────────
 
   useEffect(() => {
-    if (!studentQ.data) return;
-    setFullName(studentQ.data.full_name ?? "");
-    setPhone(studentQ.data.phone ?? "");
-    setEmail(studentQ.data.email ?? "");
-    setDob(studentQ.data.date_of_birth ?? "");
-    setGender(studentQ.data.gender ?? "");
-    setInstitute(studentQ.data.academic_institute ?? "");
-    setCourse(studentQ.data.course_name ?? "");
-    setAcademicYear(studentQ.data.academic_year ?? "");
-  }, [studentQ.data]);
+    const s = studentQ.data;
+    const p = profileQ.data;
+    if (!s || !p) return;
 
-  const updateProfileFn = useServerFn(updateMyProfile);
+    setFullName(s.full_name ?? "");
+    setPhone(s.phone ?? "");
+    setEmail(s.email ?? "");
+    setDateOfBirth(s.date_of_birth ?? "");
+    setGender(s.gender ?? "");
+    setAcademicInstitute(s.academic_institute ?? "");
+    setCourseName(s.course_name ?? "");
+    setAcademicYear(s.academic_year ?? "");
+
+    setBloodGroup(p.blood_group ?? "");
+    setEmergencyContactName(p.emergency_contact_name ?? "");
+    setEmergencyContactNumber(p.emergency_contact_number ?? "");
+    setAvatarPath(s.photo_path || p.avatar_path);
+
+    const addr = (p.address ?? null) as {
+      line1?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    } | null;
+    setAddrLine1(addr?.line1 ?? "");
+    setAddrCity(addr?.city ?? "");
+    setAddrState(addr?.state ?? "");
+    setAddrPincode(addr?.pincode ?? "");
+  }, [studentQ.data, profileQ.data]);
+
+  // ─── Avatar upload ────────────────────────────────────────────────────────
+
+  async function handleAvatarUpload(file: File) {
+    if (!userId) return;
+    setUploading(true);
+    try {
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) throw error;
+      setAvatarPath(path);
+      toast.success("Photo uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not upload photo");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // ─── Save profile ─────────────────────────────────────────────────────────
+
   const save = useMutation({
     mutationFn: async () => {
+      const sId = studentQ.data?.id;
+      const pId = profileQ.data?.id;
+      if (!sId || !pId) throw new Error("Missing profile records");
+
       const parsed = studentSelfProfileSchema.safeParse({
-        full_name: fullName.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
-        date_of_birth: dob,
-        gender,
-        academic_institute: institute.trim(),
-        course_name: course.trim(),
-        academic_year: academicYear.trim(),
+        full_name: fullName,
+        phone,
+        email,
+        date_of_birth: dateOfBirth,
+        gender: gender || undefined,
+        academic_institute: academicInstitute,
+        course_name: courseName,
+        academic_year: academicYear,
+        blood_group: bloodGroup || undefined,
+        emergency_contact_name: emergencyContactName,
+        emergency_contact_number: emergencyContactNumber,
+        address: { line1: addrLine1, city: addrCity, state: addrState, pincode: addrPincode },
       });
+
       if (!parsed.success) {
-        const errs: Record<string, string> = {};
+        const fieldErrors: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
-          const key = issue.path[0];
-          if (typeof key === "string" && !errs[key]) errs[key] = issue.message;
+          fieldErrors[String(issue.path[0])] = issue.message;
         }
-        setFieldErrors(errs);
+        setEditErrors(fieldErrors);
         throw new Error("Please fix the highlighted fields");
       }
-      setFieldErrors({});
-      return updateProfileFn({ data: parsed.data });
+      setEditErrors({});
+      const d = parsed.data;
+
+      // Update students table
+      const { error: sErr } = await supabase
+        .from("students")
+        .update({
+          full_name: d.full_name,
+          phone: d.phone,
+          email: d.email || null,
+          date_of_birth: d.date_of_birth || null,
+          gender: d.gender || null,
+          academic_institute: d.academic_institute || null,
+          course_name: d.course_name || null,
+          academic_year: d.academic_year || null,
+          photo_path: avatarPath,
+        })
+        .eq("id", sId);
+      if (sErr) throw sErr;
+
+      // Update profiles table
+      const hasAddress = d.address && Object.values(d.address).some((v) => v);
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .update({
+          full_name: d.full_name, // keep synced
+          phone: d.phone,
+          email: d.email || null,
+          date_of_birth: d.date_of_birth || null,
+          gender: d.gender || null,
+          blood_group: d.blood_group || null,
+          emergency_contact_name: d.emergency_contact_name || null,
+          emergency_contact_number: d.emergency_contact_number || null,
+          address: hasAddress ? d.address : null,
+          avatar_path: avatarPath, // keep synced
+        })
+        .eq("id", pId);
+      if (pErr) throw pErr;
     },
     onSuccess: () => {
-      toast.success("Profile updated");
+      toast.success("Profile updated successfully");
       qc.invalidateQueries({ queryKey: ["my-profile-record", userId] });
+      qc.invalidateQueries({ queryKey: ["student-profile-extra", userId] });
+      qc.invalidateQueries({ queryKey: ["own-profile"] });
+      setMode("view");
+      setShowPasswordForm(false);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not update profile"),
+    onError: (e) => {
+      if (e instanceof Error && e.message !== "Please fix the highlighted fields") {
+        toast.error(e.message);
+      }
+    },
   });
 
-  if (studentQ.isLoading) {
+  // ─── Change password ──────────────────────────────────────────────────────
+
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      const parsed = changePasswordSchema.safeParse({
+        currentPassword,
+        password: newPassword,
+        confirmPassword,
+      });
+      if (!parsed.success) {
+        const fieldErrors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          fieldErrors[String(issue.path[0])] = issue.message;
+        }
+        setPwErrors(fieldErrors);
+        throw new Error("Please fix the highlighted fields");
+      }
+      setPwErrors({});
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userData.user?.email) {
+        throw new Error("Could not verify your account. Please sign in again.");
+      }
+
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: parsed.data.currentPassword,
+      });
+      if (signInErr) {
+        setPwErrors({ currentPassword: "Current password is incorrect" });
+        throw new Error("Current password is incorrect");
+      }
+
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: parsed.data.password,
+      });
+      if (updateErr) throw updateErr;
+    },
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPwErrors({});
+      setShowPasswordForm(false);
+    },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Could not change password";
+      if (msg !== "Please fix the highlighted fields") toast.error(msg);
+    },
+  });
+
+  // ─── Cancel edit ──────────────────────────────────────────────────────────
+
+  function cancelEdit() {
+    const s = studentQ.data;
+    const p = profileQ.data;
+    if (s && p) {
+      setFullName(s.full_name ?? "");
+      setPhone(s.phone ?? "");
+      setEmail(s.email ?? "");
+      setDateOfBirth(s.date_of_birth ?? "");
+      setGender(s.gender ?? "");
+      setAcademicInstitute(s.academic_institute ?? "");
+      setCourseName(s.course_name ?? "");
+      setAcademicYear(s.academic_year ?? "");
+
+      setBloodGroup(p.blood_group ?? "");
+      setEmergencyContactName(p.emergency_contact_name ?? "");
+      setEmergencyContactNumber(p.emergency_contact_number ?? "");
+      setAvatarPath(s.photo_path || p.avatar_path);
+
+      const addr = (p.address ?? null) as {
+        line1?: string; city?: string; state?: string; pincode?: string;
+      } | null;
+      setAddrLine1(addr?.line1 ?? "");
+      setAddrCity(addr?.city ?? "");
+      setAddrState(addr?.state ?? "");
+      setAddrPincode(addr?.pincode ?? "");
+    }
+    setEditErrors({});
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPwErrors({});
+    setShowPasswordForm(false);
+    setMode("view");
+  }
+
+  // ─── Guards ───────────────────────────────────────────────────────────────
+
+  if (studentQ.isLoading || profileQ.isLoading) {
     return (
       <StudentModuleGuard module="profile">
-        <div className="space-y-6">
-          <PageHeader title="My Profile" />
-          <FormSkeleton fields={5} />
+        <div className="max-w-4xl space-y-4">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
         </div>
       </StudentModuleGuard>
     );
   }
 
-  if (!studentQ.data) {
+  if (!studentQ.data || !profileQ.data) {
     return (
       <StudentModuleGuard module="profile">
-        <div className="space-y-6">
-          <PageHeader title="" />
-          <p className="text-sm text-muted-foreground">
-            No student record is linked to your account yet.
-          </p>
-        </div>
+        <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+          No student record is linked to your account yet.
+        </p>
       </StudentModuleGuard>
     );
   }
+
+  // ─── Derived values ───────────────────────────────────────────────────────
 
   const s = studentQ.data;
+  const prof = profileQ.data;
   const docs = docsQ.data ?? [];
-  // Mirrors KycUploadForm's own lock condition, so the collapsed summary and
-  // the form agree on when KYC counts as "done".
-  const kycSubmitted = docs.some(
-    (d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED",
-  );
-  const kycRejected = !kycSubmitted && docs.some((d) => d.verification_status === "REJECTED");
+  const authUser = authUserQ.data;
 
   const bed = allocQ.data?.bed as
     | {
@@ -219,298 +582,474 @@ function StudentProfilePage() {
       }
     | null
     | undefined;
-  const stayText = bed
-    ? [
-        bed.block?.name && `Block ${bed.block.name}`,
-        bed.floor?.name ??
-          (bed.floor?.floor_number != null ? `Floor ${bed.floor.floor_number}` : null),
-        bed.room?.room_number && `Room ${bed.room.room_number}`,
-        `Bed ${bed.code}`,
-      ]
-        .filter(Boolean)
-        .join(" • ")
-    : "Not allocated yet";
+
+  const propertyName = propertyQ.data?.name ?? "—";
+  const blockName = bed?.block?.name ?? "—";
+  const roomNumber = bed?.room?.room_number ?? "—";
+  const bedCode = bed?.code ?? "—";
+  const blockAndRoom = bed
+    ? `${blockName !== "—" ? blockName + " Block" : "—"} · ${roomNumber}`
+    : "Not allocated";
+
+  const isActive = s.status === "ACTIVE";
+  const initial = (mode === "edit" ? fullName : s.full_name).trim()[0]?.toUpperCase() ?? "S";
+  const displayAvatarUrl =
+    mode === "edit"
+      ? avatarPath
+        ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
+        : undefined
+      : s.photo_path
+        ? supabase.storage.from("avatars").getPublicUrl(s.photo_path).data.publicUrl
+        : prof.avatar_path
+          ? supabase.storage.from("avatars").getPublicUrl(prof.avatar_path).data.publicUrl
+          : undefined;
+
+  const isEmailVerified = !!authUser?.email_confirmed_at;
+  const lastLogin = authUser?.last_sign_in_at
+    ? new Date(authUser.last_sign_in_at).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+
+  const kycRejected = docs.some((d) => d.verification_status === "REJECTED");
+
+  const dobFormatted = s.date_of_birth
+    ? new Date(s.date_of_birth).toLocaleDateString(undefined, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : undefined;
+
+  const genderDisplay =
+    s.gender === "MALE" ? "Male"
+    : s.gender === "FEMALE" ? "Female"
+    : s.gender === "OTHER" ? "Other"
+    : (s.gender ?? undefined);
+
+  const joiningFormatted = s.joined_at
+    ? new Date(s.joined_at).toLocaleDateString(undefined, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : undefined;
+
+  const addrDisplay = (() => {
+    const addr = (prof.address ?? null) as {
+      line1?: string; city?: string; state?: string; pincode?: string;
+    } | null;
+    if (!addr) return null;
+    return [addr.line1, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ") || null;
+  })();
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <StudentModuleGuard module="profile">
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-          Admission #{s.admission_number}
-        </h1>
-        <StudentStatusBadge status={s.status} />
-      </div>
+      <div className="flex flex-col gap-4 pb-8 max-w-[1200px]">
 
-      <Card className="gap-3 border-primary/30 py-4">
-        <CardContent className="space-y-5 px-4 pt-4">
-          <SectionHeading icon={User} title="Personal Information" tone="info" />
-          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
-            <IconField icon={User} label="Full name" htmlFor="p-name" error={fieldErrors.full_name}>
-              <Input
-                id="p-name"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField icon={Phone} label="Phone" htmlFor="p-phone" trailingIcon={Phone} error={fieldErrors.phone}>
-              <Input
-                id="p-phone"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+919876543210"
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField icon={Mail} label="Email" htmlFor="p-email" trailingIcon={Mail} error={fieldErrors.email}>
-              <Input
-                id="p-email"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField
-              icon={CalendarDays}
-              label="Date of birth"
-              htmlFor="p-dob"
-              trailingIcon={CalendarDays}
-              error={fieldErrors.date_of_birth}
-            >
-              <Input
-                id="p-dob"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                type="date"
-                value={dob}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setDob(e.target.value)}
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField icon={User} label="Gender" htmlFor="p-gender">
-              <Select value={gender} onValueChange={setGender} disabled={!canEdit}>
-                <SelectTrigger
-                  id="p-gender"
-                  className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus:ring-0"
-                >
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </IconField>
-          </div>
+        {/* ══════════════════════════════════════════════════
+            PROFILE HEADER
+        ══════════════════════════════════════════════════ */}
+        <Card className="overflow-hidden rounded-2xl border-border/80 py-0 shadow-card-ambient">
+          <CardContent className="relative flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent"
+            />
 
-          <div className="border-t border-border" />
+            {/* Avatar + identity */}
+            <div className="relative flex min-w-0 items-center gap-4 sm:gap-5">
+              <div className="relative shrink-0">
+                <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
+                  <AvatarImage src={displayAvatarUrl} alt={s.full_name} />
+                  <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
 
-          <SectionHeading icon={GraduationCap} title="Academic Information" tone="primary" />
-          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-3">
-            <IconField icon={Building2} label="Institute" htmlFor="p-institute" trailingIcon={Building2}>
-              <Input
-                id="p-institute"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                value={institute}
-                onChange={(e) => setInstitute(e.target.value)}
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField icon={BookOpen} label="Course" htmlFor="p-course" trailingIcon={BookOpen}>
-              <Input
-                id="p-course"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                disabled={!canEdit}
-              />
-            </IconField>
-            <IconField icon={CalendarDays} label="Academic year" htmlFor="p-year" trailingIcon={CalendarDays}>
-              <Input
-                id="p-year"
-                className="h-auto border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-                placeholder="—"
-                disabled={!canEdit}
-              />
-            </IconField>
-          </div>
-
-          <div className="border-t border-border" />
-
-          <SectionHeading icon={Shield} title="KYC & Accommodation" tone="success" />
-          <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setKycDialogOpen(true)} className="w-full text-left">
-              <IconField icon={FileText} label="KYC documents" trailingSlot={<KycOverallBadge docs={docs} />}>
-                <span className="text-base text-foreground">
-                  {kycSubmitted ? "Submitted" : "Tap to complete"}
-                </span>
-              </IconField>
-            </button>
-            <IconField icon={BedDouble} label="Room / bed assigned" trailingIcon={BedDouble}>
-              <span className="text-base text-foreground">{stayText}</span>
-            </IconField>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 pt-1">
-            {canEdit && (
-              <Button
-                variant="outline"
-                className="min-h-10 border-primary/40 text-primary hover:text-primary"
-                disabled={save.isPending || !fullName.trim()}
-                onClick={() => save.mutate()}
-              >
-                {save.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
+                {mode === "edit" && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleAvatarUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Change profile photo"
+                      className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      {uploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      ) : (
+                        <Camera className="h-5 w-5 text-white" />
+                      )}
+                    </button>
+                  </>
                 )}
-                Save changes
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="min-h-10 text-muted-foreground hover:text-foreground"
-              onClick={() => setSignOutOpen(true)}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
 
-      <Dialog open={kycDialogOpen} onOpenChange={setKycDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>KYC documents</DialogTitle>
-          </DialogHeader>
-          {canEdit ? (
-            <>
-              {kycRejected && (
-                <p className="text-xs text-destructive">
-                  Your last submission was rejected — please upload again.
+              <div className="min-w-0">
+                <p className="truncate text-lg font-bold text-foreground sm:text-xl">
+                  {s.full_name}
                 </p>
+                <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  Student
+                  {isActive && (
+                    <Badge
+                      variant="outline"
+                      className="inline-flex items-center gap-1.5 rounded-full border-emerald-500/30 bg-emerald-500/10 px-2 py-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                      Active
+                    </Badge>
+                  )}
+                </p>
+                <div className="mt-0.5 space-y-0.5 text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5">
+                    <User className="h-3 w-3 shrink-0" />
+                    ID: <span className="font-medium text-foreground">{s.admission_number}</span>
+                  </p>
+                  {propertyName !== "—" && (
+                    <p className="flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="font-medium text-foreground">{propertyName}</span>
+                    </p>
+                  )}
+                  <p className="flex items-center gap-1.5">
+                    <BedDouble className="h-3 w-3 shrink-0" />
+                    <span className="font-medium text-foreground">{blockAndRoom}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Header buttons */}
+            <div className="relative flex shrink-0 gap-2">
+              {mode === "view" ? (
+                <Button
+                  size="sm"
+                  id="student-profile-edit-btn"
+                  onClick={() => setMode("edit")}
+                >
+                  <UserRoundPen className="h-4 w-4" />
+                  Edit Profile
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={cancelEdit}>
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    id="student-profile-save-btn"
+                    disabled={save.isPending}
+                    onClick={() => save.mutate()}
+                  >
+                    {save.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserRoundPen className="h-4 w-4" />
+                    )}
+                    Save Changes
+                  </Button>
+                </>
               )}
-              <KycUploadForm
-                tenantId={s.tenant_id}
-                propertyId={s.property_id}
-                studentId={s.id}
-                existingDocs={docs}
-                onUploaded={() => docsQ.refetch()}
-              />
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              You have read-only access to KYC documents.
-            </p>
-          )}
-        </DialogContent>
-      </Dialog>
+            </div>
+          </CardContent>
+        </Card>
 
-      <SignOutDialog
-        open={signOutOpen}
-        onOpenChange={setSignOutOpen}
-        title="Logout?"
-        confirmLabel="Logout"
-      />
-    </div>
-    </StudentModuleGuard>
-  );
-}
+        {/* ══════════════════════════════════════════════════
+            MULTI-COLUMN SECTION GRID
+        ══════════════════════════════════════════════════ */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
-const SECTION_TONE = {
-  info: "bg-info/15 text-info",
-  primary: "bg-primary/15 text-primary",
-  success: "bg-success/15 text-success",
-} as const;
+          {/* ── PERSONAL INFORMATION ── */}
+          <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
+            <SectionHeader icon={User} title="Personal Information" tone="info" />
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
+              {mode === "edit" ? (
+                <>
+                  <EditField label="Full Name" htmlFor="s-name" error={editErrors.full_name} className="py-1">
+                    <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <FieldRow icon={Lock} label="Student ID" value={s.admission_number} />
+                  
+                  <EditField label="Date of Birth" htmlFor="s-dob" error={editErrors.date_of_birth} className="py-1">
+                    <Input id="s-dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  
+                  <EditField label="Gender" htmlFor="s-gender" error={editErrors.gender} className="py-1">
+                    <Select value={gender} onValueChange={setGender}>
+                      <SelectTrigger id="s-gender" className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </EditField>
 
-function SectionHeading({
-  icon: Icon,
-  title,
-  tone = "primary",
-}: {
-  icon: LucideIcon;
-  title: string;
-  tone?: keyof typeof SECTION_TONE;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${SECTION_TONE[tone]}`}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="text-sm font-semibold text-foreground">{title}</span>
-    </div>
-  );
-}
+                  <EditField label="Mobile Number" htmlFor="s-phone" error={editErrors.phone} className="py-1">
+                    <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
 
-function IconField({
-  icon: Icon,
-  label,
-  htmlFor,
-  trailingIcon: TrailingIcon,
-  trailingSlot,
-  error,
-  children,
-}: {
-  icon: LucideIcon;
-  label: string;
-  htmlFor?: string;
-  trailingIcon?: LucideIcon;
-  trailingSlot?: ReactNode;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="rounded-md border border-input bg-muted/20 px-3 py-2">
-        <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Icon className="h-3.5 w-3.5 text-info" />
-          {label}
-        </Label>
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">{children}</div>
-          {TrailingIcon && <TrailingIcon className="h-4 w-4 shrink-0 text-muted-foreground" />}
-          {trailingSlot}
+                  <EditField label="Email" htmlFor="s-email" error={editErrors.email} className="py-1">
+                    <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+
+                  <EditField label="Blood Group" htmlFor="s-blood" error={editErrors.blood_group} className="py-1">
+                    <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                      <SelectTrigger id="s-blood" className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </EditField>
+                </>
+              ) : (
+                <>
+                  <FieldRow icon={UserRoundPen} label="Full Name" value={s.full_name} />
+                  <FieldRow icon={Lock} label="Student ID" value={s.admission_number} />
+                  <FieldRow icon={CalendarDays} label="Date of Birth" value={dobFormatted} />
+                  <FieldRow icon={User} label="Gender" value={genderDisplay} />
+                  <FieldRow icon={Phone} label="Mobile Number" value={s.phone} />
+                  <FieldRow icon={Mail} label="Email" value={s.email} />
+                  <FieldRow icon={Droplet} label="Blood Group" value={prof.blood_group} />
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── ACADEMIC INFORMATION ── */}
+          <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
+            <SectionHeader icon={GraduationCap} title="Academic Information" tone="success" />
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
+              {mode === "edit" ? (
+                <>
+                  <EditField label="Institute" htmlFor="s-inst" error={editErrors.academic_institute} className="py-1 col-span-1 sm:col-span-2">
+                    <Input id="s-inst" value={academicInstitute} onChange={(e) => setAcademicInstitute(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <EditField label="Course" htmlFor="s-course" error={editErrors.course_name} className="py-1">
+                    <Input id="s-course" value={courseName} onChange={(e) => setCourseName(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <EditField label="Academic Year / Batch" htmlFor="s-batch" error={editErrors.academic_year} className="py-1">
+                    <Input id="s-batch" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                </>
+              ) : (
+                <>
+                  <div className="col-span-1 sm:col-span-2">
+                    <FieldRow icon={Building2} label="Institute" value={s.academic_institute} />
+                  </div>
+                  <FieldRow icon={BookOpen} label="Course" value={s.course_name} />
+                  <FieldRow icon={CalendarDays} label="Academic Year / Batch" value={s.academic_year} />
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── PARENT/GUARDIAN & ADDRESS ── */}
+          <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
+            <SectionHeader icon={Phone} title="Emergency Contact & Address" tone="warning" />
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
+              {mode === "edit" ? (
+                <>
+                  <EditField label="Emergency Contact Name" htmlFor="s-ecname" error={editErrors.emergency_contact_name} className="py-1">
+                    <Input id="s-ecname" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <EditField label="Emergency Contact Phone" htmlFor="s-ecphone" error={editErrors.emergency_contact_number} className="py-1">
+                    <Input id="s-ecphone" value={emergencyContactNumber} onChange={(e) => setEmergencyContactNumber(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+
+                  <div className="col-span-1 sm:col-span-2">
+                    <EditField label="Address" htmlFor="s-addr1" className="py-1">
+                      <Input id="s-addr1" placeholder="Street address" value={addrLine1} onChange={(e) => setAddrLine1(e.target.value)} className="h-8 text-sm" />
+                    </EditField>
+                  </div>
+                  
+                  <EditField label="City" htmlFor="s-city" className="py-1">
+                    <Input id="s-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <EditField label="State" htmlFor="s-state" className="py-1">
+                    <Input id="s-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                  <EditField label="Pincode" htmlFor="s-pin" className="py-1">
+                    <Input id="s-pin" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="h-8 text-sm" />
+                  </EditField>
+                </>
+              ) : (
+                <>
+                  <FieldRow icon={User} label="Emergency Contact Name" value={prof.emergency_contact_name} />
+                  <FieldRow icon={Phone} label="Emergency Contact Phone" value={prof.emergency_contact_number} />
+                  <div className="col-span-1 sm:col-span-2">
+                    <FieldRow icon={MapPin} label="Address" value={addrDisplay} />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── ACCOUNT & SECURITY (INCLUDES KYC ROW) ── */}
+          <div className="flex flex-col gap-4">
+            <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
+              <SectionHeader icon={ShieldCheck} title="KYC Documents" tone="info" />
+              <CardContent className="px-5 pb-5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setKycDialogOpen(true)}
+                  className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50 mt-2"
+                >
+                  <span className="text-sm font-medium text-foreground">
+                    {docs.length === 0 ? "No documents submitted yet" : "View KYC documents"}
+                  </span>
+                  <KycOverallBadge docs={docs} />
+                </button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
+              <SectionHeader icon={ShieldCheck} title="Account & Security" tone="warning" />
+              <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
+
+                <div className="flex flex-col gap-0.5 py-2">
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    Auth Email
+                  </p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-foreground">
+                    {s.email ?? "—"}
+                    {isEmailVerified && (
+                      <Badge
+                        variant="outline"
+                        className="gap-1 rounded-full border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        Verified
+                      </Badge>
+                    )}
+                  </p>
+                </div>
+
+                <FieldRow icon={Clock} label="Last Login" value={lastLogin} />
+                <FieldRow icon={ShieldCheck} label="Account Status" value={<span className={isActive ? "font-semibold text-emerald-500" : "font-semibold text-muted-foreground"}>{isActive ? "Active" : s.status}</span>} />
+
+                {/* Password row */}
+                <div className="flex flex-col gap-0.5 py-2">
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <KeyRound className="h-3 w-3 shrink-0" />
+                    Password
+                  </p>
+                  <p className="text-sm font-medium tracking-widest text-foreground">••••••••</p>
+
+                  {mode === "view" ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Use Edit Profile to change password
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      id="student-profile-toggle-pw-btn"
+                      onClick={() => setShowPasswordForm((v) => !v)}
+                      className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                    >
+                      {showPasswordForm ? (
+                        <><ChevronUp className="h-3.5 w-3.5" /> Hide Password Form</>
+                      ) : (
+                        <><ChevronDown className="h-3.5 w-3.5" /> Change Password</>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* ── Inline Change Password form ── */}
+                {mode === "edit" && showPasswordForm && (
+                  <div className="flex flex-col gap-3 py-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <KeyRound className="h-3.5 w-3.5 text-warning" />
+                      Change Password
+                    </p>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="pw-current" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current Password</Label>
+                      <PasswordInput id="pw-current" autoComplete="current-password" placeholder="Enter current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="h-8 text-sm" />
+                      {pwErrors.currentPassword && <p className="text-xs text-destructive">{pwErrors.currentPassword}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="pw-new" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">New Password</Label>
+                      <PasswordInput id="pw-new" autoComplete="new-password" placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8 text-sm" />
+                      {pwErrors.password && <p className="text-xs text-destructive">{pwErrors.password}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="pw-confirm" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Confirm Password</Label>
+                      <PasswordInput id="pw-confirm" autoComplete="new-password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-8 text-sm" />
+                      {pwErrors.confirmPassword && <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPwErrors({}); setShowPasswordForm(false); }}>
+                        <X className="h-3.5 w-3.5" /> Cancel
+                      </Button>
+                      <Button size="sm" id="student-profile-update-password-btn" className="h-8 text-xs" disabled={changePassword.isPending || !currentPassword || !newPassword || !confirmPassword} onClick={() => changePassword.mutate()}>
+                        {changePassword.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Update Password
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
+
+        {/* ── Logout ── */}
+        <div className="flex justify-end mt-4">
+          <Button variant="ghost" onClick={() => setSignOutOpen(true)} className="text-muted-foreground hover:text-foreground">
+            <LogOut className="h-4 w-4" /> Logout
+          </Button>
+        </div>
+
+        <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} title="Logout?" confirmLabel="Logout" />
+
+        {/* ── KYC Dialog ─────────────────────────────────────────────────── */}
+        <Dialog open={kycDialogOpen} onOpenChange={setKycDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>KYC documents</DialogTitle>
+            </DialogHeader>
+            {canEdit ? (
+              <>
+                {kycRejected && (
+                  <p className="text-xs text-destructive">
+                    Your last submission was rejected — please upload again.
+                  </p>
+                )}
+                <KycUploadForm tenantId={s.tenant_id} propertyId={s.property_id} studentId={s.id} existingDocs={docs} onUploaded={() => docsQ.refetch()} />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You have read-only access to KYC documents.
+              </p>
+            )}
+          </DialogContent>
+        </Dialog>
+
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  );
-}
-
-type KycDoc = { verification_status: string };
-
-/** Mirrors the staff-side KycStatus widget's logic: complete only once the
- * warden has verified every uploaded document. */
-function KycOverallBadge({ docs }: { docs: KycDoc[] }) {
-  if (docs.length === 0) return null;
-  const hasRejected = docs.some((d) => d.verification_status === "REJECTED");
-  const allVerified = docs.every((d) => d.verification_status === "VERIFIED");
-
-  if (hasRejected) {
-    return (
-      <span className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-        <AlertTriangle className="h-3.5 w-3.5" /> Rejected
-      </span>
-    );
-  }
-  if (allVerified) {
-    return (
-      <span className="flex items-center gap-1.5 rounded-md bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-        <ShieldCheck className="h-3.5 w-3.5" /> Complete
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1.5 rounded-md bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
-      <Clock className="h-3.5 w-3.5" /> Awaiting warden review
-    </span>
+    </StudentModuleGuard>
   );
 }

@@ -178,7 +178,7 @@ function AdminSupportTicketDetailPage() {
           to="/admin/support"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Hostylia Support
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Support
         </Link>
       </div>
 
@@ -220,7 +220,7 @@ function AdminSupportTicketDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-muted-foreground">Resolved by</p>
-                <p className="font-medium">{ticket.resolved_by ? "Hostylia Support" : "—"}</p>
+                <p className="font-medium">{ticket.resolved_by ? "Support" : "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Resolved at</p>
@@ -247,7 +247,7 @@ function AdminSupportTicketDetailPage() {
               className={`rounded-lg border border-border p-3 text-sm ${mine ? "bg-primary/5" : "bg-muted/30"}`}
             >
               <p className="mb-1 text-xs font-medium text-muted-foreground">
-                {mine ? "You" : "Hostylia Support"} · {new Date(m.created_at).toLocaleString()}
+                {mine ? "You" : "Support"} · {new Date(m.created_at).toLocaleString()}
               </p>
               <p className="whitespace-pre-wrap">{m.message}</p>
               {atts.map((a) => (

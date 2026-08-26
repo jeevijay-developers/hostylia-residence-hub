@@ -197,38 +197,40 @@ function AdminAttendancePage() {
       <AttendanceReportPanel propertyId={propertyId} />
 
       {/* Controls Bar for Daily Attendance */}
-      <div className="flex items-center gap-2 sm:flex-wrap sm:gap-3 pt-4 border-t border-border/60 overflow-x-auto sm:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="relative shrink-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
+        <div className="relative w-full sm:w-auto sm:shrink-0">
           <Input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="bg-background/90 border-border text-foreground rounded-xl h-9 px-3 pl-9 text-xs w-36 sm:h-11 sm:px-3.5 sm:pl-10 sm:text-sm sm:font-medium sm:w-48"
+            className="bg-background/90 border-border text-foreground rounded-xl h-9 px-3 pl-9 text-xs w-full sm:h-11 sm:px-3.5 sm:pl-10 sm:text-sm sm:font-medium sm:w-48"
           />
           <CalendarIcon className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => setAllExcept("PRESENT")}
-          className="shrink-0 border-border bg-background/80 hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer"
-        >
-          <CheckCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Mark all Present</span>
-        </Button>
+        <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-none">
+          <Button
+            variant="outline"
+            onClick={() => setAllExcept("PRESENT")}
+            className="flex-1 sm:flex-none shrink-0 justify-center border-border bg-background/80 hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer"
+          >
+            <CheckCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Mark all Present</span>
+          </Button>
 
-        <Button
-          onClick={() => saveMut.mutate()}
-          disabled={saveMut.isPending}
-          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-1.5 sm:gap-2 cursor-pointer sm:ml-0"
-        >
-          {saveMut.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-primary-foreground dark:text-slate-950" />
-          ) : (
-            <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
-          )}
-          <span>{saveMut.isPending ? "Saving…" : "Save"}</span>
-        </Button>
+          <Button
+            onClick={() => saveMut.mutate()}
+            disabled={saveMut.isPending}
+            className="flex-1 sm:flex-none shrink-0 justify-center bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-1.5 sm:gap-2 cursor-pointer"
+          >
+            {saveMut.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-primary-foreground dark:text-slate-950" />
+            ) : (
+              <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
+            )}
+            <span>{saveMut.isPending ? "Saving…" : "Save"}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Daily Metrics Summary Row */}

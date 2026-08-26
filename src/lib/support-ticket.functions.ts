@@ -12,7 +12,7 @@ import {
 // -------- Hostel Admin --------
 
 /**
- * Creates a Hostylia Support ticket for the caller's own tenant. Deliberately
+ * Creates a Support ticket for the caller's own tenant. Deliberately
  * separate from `complaints` (student/operational) — this is the tenant
  * raising a platform issue with Hostylia itself. Gated by the
  * `support_tickets_insert_admin` RLS policy (HOSTEL_ADMIN of that tenant,

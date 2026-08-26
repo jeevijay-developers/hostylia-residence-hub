@@ -53,7 +53,6 @@ import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminFinanceRouteImport } from './routes/_authenticated/admin.finance'
 import { Route as AuthenticatedAdminNoticesRouteImport } from './routes/_authenticated/admin.notices'
-import { Route as AuthenticatedAdminProfileRouteImport } from './routes/_authenticated/admin.profile'
 import { Route as AuthenticatedAdminPropertiesRouteImport } from './routes/_authenticated/admin.properties'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -99,6 +98,7 @@ import { Route as AuthenticatedAdminFinanceFeePlansRouteImport } from './routes/
 import { Route as AuthenticatedAdminFinanceInvoicesRouteImport } from './routes/_authenticated/admin.finance.invoices'
 import { Route as AuthenticatedAdminFinancePaymentsRouteImport } from './routes/_authenticated/admin.finance.payments'
 import { Route as AuthenticatedAdminFinancePnlRouteImport } from './routes/_authenticated/admin.finance.pnl'
+import { Route as AuthenticatedAdminProfileIndexRouteImport } from './routes/_authenticated/admin.profile.index'
 import { Route as AuthenticatedAdminProfileChangePasswordRouteImport } from './routes/_authenticated/admin.profile.change-password'
 import { Route as AuthenticatedAdminProfileEditRouteImport } from './routes/_authenticated/admin.profile.edit'
 import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
@@ -106,7 +106,9 @@ import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminSupportIdRouteImport } from './routes/_authenticated/admin.support.$id'
 import { Route as AuthenticatedParentProfileIndexRouteImport } from './routes/_authenticated/parent.profile.index'
+import { Route as AuthenticatedParentProfileChangePasswordRouteImport } from './routes/_authenticated/parent.profile.change-password'
 import { Route as AuthenticatedParentProfileEditRouteImport } from './routes/_authenticated/parent.profile.edit'
+import { Route as AuthenticatedSuperAdminTenantsNewRouteImport } from './routes/_authenticated/super-admin.tenants.new'
 import { Route as AuthenticatedWardenProfileIndexRouteImport } from './routes/_authenticated/warden.profile.index'
 import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './routes/_authenticated/warden.profile.change-password'
 import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
@@ -349,12 +351,6 @@ const AuthenticatedAdminNoticesRoute =
   AuthenticatedAdminNoticesRouteImport.update({
     id: '/notices',
     path: '/notices',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminProfileRoute =
-  AuthenticatedAdminProfileRouteImport.update({
-    id: '/profile',
-    path: '/profile',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPropertiesRoute =
@@ -624,17 +620,23 @@ const AuthenticatedAdminFinancePnlRoute =
     path: '/pnl',
     getParentRoute: () => AuthenticatedAdminFinanceRoute,
   } as any)
+const AuthenticatedAdminProfileIndexRoute =
+  AuthenticatedAdminProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminProfileChangePasswordRoute =
   AuthenticatedAdminProfileChangePasswordRouteImport.update({
-    id: '/change-password',
-    path: '/change-password',
-    getParentRoute: () => AuthenticatedAdminProfileRoute,
+    id: '/profile/change-password',
+    path: '/profile/change-password',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminProfileEditRoute =
   AuthenticatedAdminProfileEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AuthenticatedAdminProfileRoute,
+    id: '/profile/edit',
+    path: '/profile/edit',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPropertiesIndexRoute =
   AuthenticatedAdminPropertiesIndexRouteImport.update({
@@ -666,11 +668,23 @@ const AuthenticatedParentProfileIndexRoute =
     path: '/profile/',
     getParentRoute: () => AuthenticatedParentRoute,
   } as any)
+const AuthenticatedParentProfileChangePasswordRoute =
+  AuthenticatedParentProfileChangePasswordRouteImport.update({
+    id: '/profile/change-password',
+    path: '/profile/change-password',
+    getParentRoute: () => AuthenticatedParentRoute,
+  } as any)
 const AuthenticatedParentProfileEditRoute =
   AuthenticatedParentProfileEditRouteImport.update({
     id: '/profile/edit',
     path: '/profile/edit',
     getParentRoute: () => AuthenticatedParentRoute,
+  } as any)
+const AuthenticatedSuperAdminTenantsNewRoute =
+  AuthenticatedSuperAdminTenantsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedSuperAdminTenantsRoute,
   } as any)
 const AuthenticatedWardenProfileIndexRoute =
   AuthenticatedWardenProfileIndexRouteImport.update({
@@ -777,7 +791,6 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRouteWithChildren
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -804,7 +817,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
   '/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
-  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
+  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRouteWithChildren
   '/warden/activity': typeof AuthenticatedWardenActivityRoute
   '/warden/allocations': typeof AuthenticatedWardenAllocationsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
@@ -825,12 +838,15 @@ export interface FileRoutesByFullPath {
   '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
+  '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
+  '/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
   '/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
   '/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/profile/': typeof AuthenticatedAdminProfileIndexRoute
   '/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
@@ -885,7 +901,6 @@ export interface FileRoutesByTo {
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -910,7 +925,7 @@ export interface FileRoutesByTo {
   '/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
   '/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
-  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
+  '/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRouteWithChildren
   '/warden/activity': typeof AuthenticatedWardenActivityRoute
   '/warden/allocations': typeof AuthenticatedWardenAllocationsRoute
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
@@ -929,12 +944,15 @@ export interface FileRoutesByTo {
   '/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
   '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
+  '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
+  '/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
   '/accountant/profile': typeof AuthenticatedAccountantProfileIndexRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceIndexRoute
+  '/admin/profile': typeof AuthenticatedAdminProfileIndexRoute
   '/admin/properties': typeof AuthenticatedAdminPropertiesIndexRoute
   '/admin/students': typeof AuthenticatedAdminStudentsIndexRoute
   '/parent/profile': typeof AuthenticatedParentProfileIndexRoute
@@ -992,7 +1010,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/finance': typeof AuthenticatedAdminFinanceRouteWithChildren
   '/_authenticated/admin/notices': typeof AuthenticatedAdminNoticesRoute
-  '/_authenticated/admin/profile': typeof AuthenticatedAdminProfileRouteWithChildren
   '/_authenticated/admin/properties': typeof AuthenticatedAdminPropertiesRouteWithChildren
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -1019,7 +1036,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/impersonation': typeof AuthenticatedSuperAdminImpersonationRoute
   '/_authenticated/super-admin/plans': typeof AuthenticatedSuperAdminPlansRoute
   '/_authenticated/super-admin/support-tickets': typeof AuthenticatedSuperAdminSupportTicketsRoute
-  '/_authenticated/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRoute
+  '/_authenticated/super-admin/tenants': typeof AuthenticatedSuperAdminTenantsRouteWithChildren
   '/_authenticated/warden/activity': typeof AuthenticatedWardenActivityRoute
   '/_authenticated/warden/allocations': typeof AuthenticatedWardenAllocationsRoute
   '/_authenticated/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
@@ -1040,12 +1057,15 @@ export interface FileRoutesById {
   '/_authenticated/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
+  '/_authenticated/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/_authenticated/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
+  '/_authenticated/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
   '/_authenticated/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/_authenticated/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/_authenticated/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
   '/_authenticated/accountant/profile/': typeof AuthenticatedAccountantProfileIndexRoute
   '/_authenticated/admin/finance/': typeof AuthenticatedAdminFinanceIndexRoute
+  '/_authenticated/admin/profile/': typeof AuthenticatedAdminProfileIndexRoute
   '/_authenticated/admin/properties/': typeof AuthenticatedAdminPropertiesIndexRoute
   '/_authenticated/admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/_authenticated/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
@@ -1103,7 +1123,6 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/finance'
     | '/admin/notices'
-    | '/admin/profile'
     | '/admin/properties'
     | '/admin/reports'
     | '/admin/settings'
@@ -1151,12 +1170,15 @@ export interface FileRouteTypes {
     | '/admin/profile/edit'
     | '/admin/students/$id'
     | '/admin/support/$id'
+    | '/parent/profile/change-password'
     | '/parent/profile/edit'
+    | '/super-admin/tenants/new'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/warden/students/$id'
     | '/accountant/profile/'
     | '/admin/finance/'
+    | '/admin/profile/'
     | '/admin/properties/'
     | '/admin/students/'
     | '/parent/profile/'
@@ -1211,7 +1233,6 @@ export interface FileRouteTypes {
     | '/admin/complaints'
     | '/admin/dashboard'
     | '/admin/notices'
-    | '/admin/profile'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
@@ -1255,12 +1276,15 @@ export interface FileRouteTypes {
     | '/admin/profile/change-password'
     | '/admin/profile/edit'
     | '/admin/support/$id'
+    | '/parent/profile/change-password'
     | '/parent/profile/edit'
+    | '/super-admin/tenants/new'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/warden/students/$id'
     | '/accountant/profile'
     | '/admin/finance'
+    | '/admin/profile'
     | '/admin/properties'
     | '/admin/students'
     | '/parent/profile'
@@ -1317,7 +1341,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/finance'
     | '/_authenticated/admin/notices'
-    | '/_authenticated/admin/profile'
     | '/_authenticated/admin/properties'
     | '/_authenticated/admin/reports'
     | '/_authenticated/admin/settings'
@@ -1365,12 +1388,15 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/profile/edit'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/support/$id'
+    | '/_authenticated/parent/profile/change-password'
     | '/_authenticated/parent/profile/edit'
+    | '/_authenticated/super-admin/tenants/new'
     | '/_authenticated/warden/profile/change-password'
     | '/_authenticated/warden/profile/edit'
     | '/_authenticated/warden/students/$id'
     | '/_authenticated/accountant/profile/'
     | '/_authenticated/admin/finance/'
+    | '/_authenticated/admin/profile/'
     | '/_authenticated/admin/properties/'
     | '/_authenticated/admin/students/'
     | '/_authenticated/parent/profile/'
@@ -1720,13 +1746,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNoticesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/profile': {
-      id: '/_authenticated/admin/profile'
-      path: '/profile'
-      fullPath: '/admin/profile'
-      preLoaderRoute: typeof AuthenticatedAdminProfileRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/properties': {
       id: '/_authenticated/admin/properties'
       path: '/properties'
@@ -2042,19 +2061,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFinancePnlRouteImport
       parentRoute: typeof AuthenticatedAdminFinanceRoute
     }
+    '/_authenticated/admin/profile/': {
+      id: '/_authenticated/admin/profile/'
+      path: '/profile'
+      fullPath: '/admin/profile/'
+      preLoaderRoute: typeof AuthenticatedAdminProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/profile/change-password': {
       id: '/_authenticated/admin/profile/change-password'
-      path: '/change-password'
+      path: '/profile/change-password'
       fullPath: '/admin/profile/change-password'
       preLoaderRoute: typeof AuthenticatedAdminProfileChangePasswordRouteImport
-      parentRoute: typeof AuthenticatedAdminProfileRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/profile/edit': {
       id: '/_authenticated/admin/profile/edit'
-      path: '/edit'
+      path: '/profile/edit'
       fullPath: '/admin/profile/edit'
       preLoaderRoute: typeof AuthenticatedAdminProfileEditRouteImport
-      parentRoute: typeof AuthenticatedAdminProfileRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/properties/': {
       id: '/_authenticated/admin/properties/'
@@ -2091,12 +2117,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedParentProfileIndexRouteImport
       parentRoute: typeof AuthenticatedParentRoute
     }
+    '/_authenticated/parent/profile/change-password': {
+      id: '/_authenticated/parent/profile/change-password'
+      path: '/profile/change-password'
+      fullPath: '/parent/profile/change-password'
+      preLoaderRoute: typeof AuthenticatedParentProfileChangePasswordRouteImport
+      parentRoute: typeof AuthenticatedParentRoute
+    }
     '/_authenticated/parent/profile/edit': {
       id: '/_authenticated/parent/profile/edit'
       path: '/profile/edit'
       fullPath: '/parent/profile/edit'
       preLoaderRoute: typeof AuthenticatedParentProfileEditRouteImport
       parentRoute: typeof AuthenticatedParentRoute
+    }
+    '/_authenticated/super-admin/tenants/new': {
+      id: '/_authenticated/super-admin/tenants/new'
+      path: '/new'
+      fullPath: '/super-admin/tenants/new'
+      preLoaderRoute: typeof AuthenticatedSuperAdminTenantsNewRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminTenantsRoute
     }
     '/_authenticated/warden/profile/': {
       id: '/_authenticated/warden/profile/'
@@ -2235,23 +2275,6 @@ const AuthenticatedAdminFinanceRouteWithChildren =
     AuthenticatedAdminFinanceRouteChildren,
   )
 
-interface AuthenticatedAdminProfileRouteChildren {
-  AuthenticatedAdminProfileChangePasswordRoute: typeof AuthenticatedAdminProfileChangePasswordRoute
-  AuthenticatedAdminProfileEditRoute: typeof AuthenticatedAdminProfileEditRoute
-}
-
-const AuthenticatedAdminProfileRouteChildren: AuthenticatedAdminProfileRouteChildren =
-  {
-    AuthenticatedAdminProfileChangePasswordRoute:
-      AuthenticatedAdminProfileChangePasswordRoute,
-    AuthenticatedAdminProfileEditRoute: AuthenticatedAdminProfileEditRoute,
-  }
-
-const AuthenticatedAdminProfileRouteWithChildren =
-  AuthenticatedAdminProfileRoute._addFileChildren(
-    AuthenticatedAdminProfileRouteChildren,
-  )
-
 interface AuthenticatedAdminPropertiesRouteChildren {
   AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
   AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
@@ -2332,13 +2355,15 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminFinanceRoute: typeof AuthenticatedAdminFinanceRouteWithChildren
   AuthenticatedAdminNoticesRoute: typeof AuthenticatedAdminNoticesRoute
-  AuthenticatedAdminProfileRoute: typeof AuthenticatedAdminProfileRouteWithChildren
   AuthenticatedAdminPropertiesRoute: typeof AuthenticatedAdminPropertiesRouteWithChildren
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRouteWithChildren
   AuthenticatedAdminSupportRoute: typeof AuthenticatedAdminSupportRouteWithChildren
+  AuthenticatedAdminProfileChangePasswordRoute: typeof AuthenticatedAdminProfileChangePasswordRoute
+  AuthenticatedAdminProfileEditRoute: typeof AuthenticatedAdminProfileEditRoute
+  AuthenticatedAdminProfileIndexRoute: typeof AuthenticatedAdminProfileIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -2348,7 +2373,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminFinanceRoute: AuthenticatedAdminFinanceRouteWithChildren,
   AuthenticatedAdminNoticesRoute: AuthenticatedAdminNoticesRoute,
-  AuthenticatedAdminProfileRoute: AuthenticatedAdminProfileRouteWithChildren,
   AuthenticatedAdminPropertiesRoute:
     AuthenticatedAdminPropertiesRouteWithChildren,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
@@ -2356,6 +2380,10 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRouteWithChildren,
   AuthenticatedAdminSupportRoute: AuthenticatedAdminSupportRouteWithChildren,
+  AuthenticatedAdminProfileChangePasswordRoute:
+    AuthenticatedAdminProfileChangePasswordRoute,
+  AuthenticatedAdminProfileEditRoute: AuthenticatedAdminProfileEditRoute,
+  AuthenticatedAdminProfileIndexRoute: AuthenticatedAdminProfileIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -2368,6 +2396,7 @@ interface AuthenticatedParentRouteChildren {
   AuthenticatedParentMessagesRoute: typeof AuthenticatedParentMessagesRoute
   AuthenticatedParentOverviewRoute: typeof AuthenticatedParentOverviewRoute
   AuthenticatedParentPaymentsRoute: typeof AuthenticatedParentPaymentsRoute
+  AuthenticatedParentProfileChangePasswordRoute: typeof AuthenticatedParentProfileChangePasswordRoute
   AuthenticatedParentProfileEditRoute: typeof AuthenticatedParentProfileEditRoute
   AuthenticatedParentProfileIndexRoute: typeof AuthenticatedParentProfileIndexRoute
 }
@@ -2379,6 +2408,8 @@ const AuthenticatedParentRouteChildren: AuthenticatedParentRouteChildren = {
   AuthenticatedParentMessagesRoute: AuthenticatedParentMessagesRoute,
   AuthenticatedParentOverviewRoute: AuthenticatedParentOverviewRoute,
   AuthenticatedParentPaymentsRoute: AuthenticatedParentPaymentsRoute,
+  AuthenticatedParentProfileChangePasswordRoute:
+    AuthenticatedParentProfileChangePasswordRoute,
   AuthenticatedParentProfileEditRoute: AuthenticatedParentProfileEditRoute,
   AuthenticatedParentProfileIndexRoute: AuthenticatedParentProfileIndexRoute,
 }
@@ -2411,6 +2442,21 @@ const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
 const AuthenticatedStudentRouteWithChildren =
   AuthenticatedStudentRoute._addFileChildren(AuthenticatedStudentRouteChildren)
 
+interface AuthenticatedSuperAdminTenantsRouteChildren {
+  AuthenticatedSuperAdminTenantsNewRoute: typeof AuthenticatedSuperAdminTenantsNewRoute
+}
+
+const AuthenticatedSuperAdminTenantsRouteChildren: AuthenticatedSuperAdminTenantsRouteChildren =
+  {
+    AuthenticatedSuperAdminTenantsNewRoute:
+      AuthenticatedSuperAdminTenantsNewRoute,
+  }
+
+const AuthenticatedSuperAdminTenantsRouteWithChildren =
+  AuthenticatedSuperAdminTenantsRoute._addFileChildren(
+    AuthenticatedSuperAdminTenantsRouteChildren,
+  )
+
 interface AuthenticatedSuperAdminRouteChildren {
   AuthenticatedSuperAdminBillingRoute: typeof AuthenticatedSuperAdminBillingRoute
   AuthenticatedSuperAdminDashboardRoute: typeof AuthenticatedSuperAdminDashboardRoute
@@ -2418,7 +2464,7 @@ interface AuthenticatedSuperAdminRouteChildren {
   AuthenticatedSuperAdminImpersonationRoute: typeof AuthenticatedSuperAdminImpersonationRoute
   AuthenticatedSuperAdminPlansRoute: typeof AuthenticatedSuperAdminPlansRoute
   AuthenticatedSuperAdminSupportTicketsRoute: typeof AuthenticatedSuperAdminSupportTicketsRoute
-  AuthenticatedSuperAdminTenantsRoute: typeof AuthenticatedSuperAdminTenantsRoute
+  AuthenticatedSuperAdminTenantsRoute: typeof AuthenticatedSuperAdminTenantsRouteWithChildren
 }
 
 const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren =
@@ -2433,7 +2479,8 @@ const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren
     AuthenticatedSuperAdminPlansRoute: AuthenticatedSuperAdminPlansRoute,
     AuthenticatedSuperAdminSupportTicketsRoute:
       AuthenticatedSuperAdminSupportTicketsRoute,
-    AuthenticatedSuperAdminTenantsRoute: AuthenticatedSuperAdminTenantsRoute,
+    AuthenticatedSuperAdminTenantsRoute:
+      AuthenticatedSuperAdminTenantsRouteWithChildren,
   }
 
 const AuthenticatedSuperAdminRouteWithChildren =

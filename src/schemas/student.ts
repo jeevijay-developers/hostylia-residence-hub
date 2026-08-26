@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { phoneSchema as authPhoneSchema, emailSchema } from "@/schemas/auth";
+import { addressSchema, bloodGroupSchema } from "@/schemas/profile";
 
 const phoneSchema = authPhoneSchema;
 
@@ -97,6 +98,8 @@ const MAX_STUDENT_AGE_YEARS = 100;
  * self-update RLS policy + guard trigger already let a student touch these
  * columns freely at the DB level — this is the only place format/sanity is
  * enforced, so a bad phone/email/DOB was previously saved as-is. */
+/** Student self-service profile edit (student.profile.tsx). Validates fields 
+ * that are split across the `students` and `profiles` tables. */
 export const studentSelfProfileSchema = z.object({
   full_name: z.string().trim().min(2).max(120),
   phone: phoneSchema,
@@ -120,6 +123,10 @@ export const studentSelfProfileSchema = z.object({
   academic_institute: z.string().trim().max(160).optional().or(z.literal("")),
   course_name: z.string().trim().max(160).optional().or(z.literal("")),
   academic_year: z.string().trim().max(40).optional().or(z.literal("")),
+  blood_group: bloodGroupSchema.optional().or(z.literal("")),
+  emergency_contact_name: z.string().trim().max(120).optional().or(z.literal("")),
+  emergency_contact_number: phoneSchema.optional().or(z.literal("")),
+  address: addressSchema.optional(),
 });
 export type StudentSelfProfileInput = z.infer<typeof studentSelfProfileSchema>;
 

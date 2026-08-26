@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarClock,
   FileText,
-  Sparkles,
   TrendingUp,
   UserCheck,
   Users,
@@ -396,10 +395,9 @@ export function AttendanceReportPanel({
     <section className="space-y-4 sm:space-y-6 max-w-6xl pb-4 overflow-x-hidden">
       {/* Top Controls Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Attendance summary</h1>
-          <Sparkles className="w-4 h-4 text-warning animate-pulse shrink-0" />
-        </div>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
+          Attendance summary
+        </h1>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground font-semibold">
