@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { dispatchNotification } from "@/lib/dispatch-notification";
 
 export async function assertSuper(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
@@ -311,27 +312,22 @@ export const startSupportSession = createServerFn({ method: "POST" })
       .single();
     if (error) throw error;
 
-    // Notify target (in-app banner + notification)
-    try {
-      await supabase.functions.invoke("send-notification", {
-        body: {
-          channel: "IN_APP",
-          templateKey: "support_session_started",
-          recipient: { userId: data.target_user_id },
-          variables: {
-            session_id: row.id,
-            expires_at: row.expires_at,
-            access_mode: data.access_mode,
-            reason: data.reason,
-          },
-          eventType: "SUPPORT_SESSION_STARTED",
-          tenantId: data.tenant_id,
-          referenceId: row.id,
-        },
-      });
-    } catch {
-      /* best-effort */
-    }
+    // Notify target (in-app banner + notification) — dispatchNotification
+    // never throws, so no try/catch needed to keep this best-effort.
+    await dispatchNotification(supabase, {
+      channel: "IN_APP",
+      templateKey: "support_session_started",
+      recipient: { userId: data.target_user_id },
+      variables: {
+        session_id: row.id,
+        expires_at: row.expires_at,
+        access_mode: data.access_mode,
+        reason: data.reason,
+      },
+      eventType: "SUPPORT_SESSION_STARTED",
+      tenantId: data.tenant_id,
+      referenceId: row.id,
+    });
 
     // Audit
     await supabase.from("audit_logs").insert({
@@ -360,21 +356,15 @@ export const endSupportSession = createServerFn({ method: "POST" })
     if (error) throw error;
 
     // Notify target of end
-    try {
-      await supabase.functions.invoke("send-notification", {
-        body: {
-          channel: "IN_APP",
-          templateKey: "support_session_ended",
-          recipient: { userId: (row as any).target_user_id },
-          variables: { session_id: data.session_id, reason: data.reason },
-          eventType: "SUPPORT_SESSION_ENDED",
-          tenantId: (row as any).tenant_id,
-          referenceId: data.session_id,
-        },
-      });
-    } catch {
-      /* best-effort */
-    }
+    await dispatchNotification(supabase, {
+      channel: "IN_APP",
+      templateKey: "support_session_ended",
+      recipient: { userId: (row as any).target_user_id },
+      variables: { session_id: data.session_id, reason: data.reason },
+      eventType: "SUPPORT_SESSION_ENDED",
+      tenantId: (row as any).tenant_id,
+      referenceId: data.session_id,
+    });
     return row;
   });
 
@@ -692,4 +682,157 @@ export const updatePlanTrialDays = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+export const createHostelSchema = z.object({
+  hostelName: z.string().min(1, "Required"),
+  slug: z.string().min(1, "Required"),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  contactPhone: z.string().optional(),
+  adminName: z.string().min(1, "Required"),
+  adminEmail: z.string().email("Invalid email"),
+  adminPhone: z.string().optional(),
+  planId: z.string().min(1, "Required"),
+  status: z.enum(["ACTIVE", "TRIAL"]).default("ACTIVE"),
+});
+
+export const createHostelWithAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: z.infer<typeof createHostelSchema>) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertSuper(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Create Tenant
+    const { data: tenant, error: tErr } = await supabase.from("tenants").insert({
+      display_name: data.hostelName,
+      slug: data.slug.toLowerCase(),
+      status: "ACTIVE",
+      onboarding_status: "COMPLETED",
+    }).select().single();
+    if (tErr) throw new Error("Could not create tenant: " + tErr.message);
+
+    // 2. Create Organization
+    const { data: org, error: orgErr } = await supabase.from("organizations").insert({
+      tenant_id: tenant.id,
+      name: data.hostelName,
+      billing_phone: data.contactPhone,
+      status: "ACTIVE",
+    }).select().single();
+    if (orgErr) throw new Error("Could not create organization: " + orgErr.message);
+
+    // 3. Create Property
+    const { error: pErr } = await supabase.from("properties").insert({
+      tenant_id: tenant.id,
+      organization_id: org.id,
+      name: data.hostelName,
+      slug: data.slug.toLowerCase(),
+      address_line_1: data.address || "",
+      city: data.city || "",
+      state: data.state || "",
+      phone: data.contactPhone,
+      postal_code: "",
+    });
+    if (pErr) throw new Error("Could not create property: " + pErr.message);
+
+    // 4. Assign Subscription
+    const planRes = await supabase.from("plans").select("trial_days").eq("id", data.planId).single();
+    const trialDays = planRes.data?.trial_days ?? 7;
+    const now = new Date();
+    const trialEnd = data.status === "TRIAL" ? new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000) : null;
+    
+    const { error: subErr } = await supabase.from("subscriptions").insert({
+      tenant_id: tenant.id,
+      plan_id: data.planId,
+      status: data.status,
+      starts_at: now.toISOString(),
+      current_period_start: now.toISOString(),
+      trial_ends_at: trialEnd ? trialEnd.toISOString() : null,
+      provider: "MANUAL",
+    });
+    if (subErr) throw new Error("Could not assign subscription: " + subErr.message);
+
+    // 5. Create Auth User Placeholder (No password, email_confirm: false)
+    const { data: createdUser, error: uErr } = await supabaseAdmin.auth.admin.createUser({
+      email: data.adminEmail,
+      phone: data.adminPhone || undefined,
+      email_confirm: false,
+      phone_confirm: false,
+      user_metadata: {
+        full_name: data.adminName,
+        invited_role: "HOSTEL_ADMIN",
+        invited_tenant: tenant.id,
+      }
+    });
+    if (uErr) throw new Error("Could not create admin user: " + uErr.message);
+
+    const inviteeId = createdUser.user?.id;
+    if (!inviteeId) throw new Error("Failed to create admin user");
+
+    // 6. Insert tenant membership as INVITED
+    const nowIso = now.toISOString();
+    const { error: mErr } = await supabaseAdmin.from("tenant_memberships").insert({
+      tenant_id: tenant.id,
+      user_id: inviteeId,
+      status: "INVITED",
+      invited_by: userId,
+      invited_at: nowIso,
+    });
+    if (mErr) throw new Error("Membership failed: " + mErr.message);
+
+    // 7. Insert role assignment as pending
+    const { error: rErr } = await supabaseAdmin.from("role_assignments").insert({
+      tenant_id: tenant.id,
+      user_id: inviteeId,
+      role: "HOSTEL_ADMIN",
+      is_active: false,
+      granted_by: userId,
+      granted_at: nowIso,
+      permissions: {},
+    });
+    if (rErr) throw new Error("Role assignment failed: " + rErr.message);
+
+    // 8. Generate Setup URL and Dispatch Notification
+    const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    let setupUrl = `${appUrl}/reset-password`;
+    try {
+      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: data.adminEmail,
+        options: { redirectTo: `${appUrl}/reset-password` },
+      });
+      const actionLink = (linkData as any)?.properties?.action_link;
+      if (actionLink) setupUrl = String(actionLink);
+    } catch (e) {
+      // Best effort
+    }
+
+    const inviteDate = now.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    const variables = {
+      role: "Hostel Admin",
+      invitee_name: data.adminName,
+      hostel_name: data.hostelName,
+      invite_date: inviteDate,
+      setup_url: setupUrl,
+      expiry_days: "7",
+      year: now.getFullYear().toString(),
+    };
+
+    const notifyRes = await dispatchNotification(supabase, {
+      channel: "EMAIL",
+      templateKey: "staff_invite",
+      recipient: { email: data.adminEmail },
+      variables,
+      eventType: "STAFF_INVITE",
+      tenantId: tenant.id,
+    });
+
+    if (!notifyRes.ok) {
+      console.warn("Email invite failed:", notifyRes.message);
+    }
+
+    return { ok: true, tenant_id: tenant.id };
   });

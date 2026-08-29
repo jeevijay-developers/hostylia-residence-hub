@@ -284,9 +284,9 @@ function IdentityStep({
     !isStudent || indianMobileSchema.safeParse(watch("guardianPhone")).success;
   const propertySlugValue = watch("propertySlug");
 
-  // Active hostels a self-registering student can pick from — same
-  // property-selection surface the public /apply/$slug admission form uses,
-  // just listing every ACTIVE property instead of resolving one by slug.
+  // Every currently registered hostel (ACTIVE or still-DRAFT) a
+  // self-registering student can pick from — always fresh, never a
+  // hardcoded/stale list; new properties appear as soon as they're created.
   const listPropertiesFn = useServerFn(listPublicActiveProperties);
   const propertiesQ = useQuery({
     queryKey: ["signup-active-properties"],

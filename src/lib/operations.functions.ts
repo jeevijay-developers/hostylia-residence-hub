@@ -2,6 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { dispatchNotification } from "@/lib/dispatch-notification";
 
 // --- token helpers (Web Crypto, Worker-safe) ---
 async function sha256Hex(input: string): Promise<string> {
@@ -289,17 +290,15 @@ export const scanGatePass = createServerFn({ method: "POST" })
         if (!g.can_view_gate_events) continue;
         const uid = (g as { guardians?: { profile_id?: string } }).guardians?.profile_id;
         if (!uid) continue;
-        await supabase.functions.invoke("send-notification", {
-          body: {
-            channel: "IN_APP",
-            templateKey: "gate_event",
-            recipient: { userId: uid },
-            variables: { direction: data.direction, pass_number: gp.pass_number },
-            eventType: "GATE_EVENT",
-            tenantId: gp.tenant_id,
-            propertyId: gp.property_id,
-            referenceId: `${gp.id}-${data.direction}-${bucket}`,
-          },
+        await dispatchNotification(supabase, {
+          channel: "IN_APP",
+          templateKey: "gate_event",
+          recipient: { userId: uid },
+          variables: { direction: data.direction, pass_number: gp.pass_number },
+          eventType: "GATE_EVENT",
+          tenantId: gp.tenant_id,
+          propertyId: gp.property_id,
+          referenceId: `${gp.id}-${data.direction}-${bucket}`,
         });
       }
 
@@ -314,17 +313,15 @@ export const scanGatePass = createServerFn({ method: "POST" })
           .limit(1)
           .maybeSingle();
         if (latestEvent?.is_late) {
-          await supabase.functions.invoke("send-notification", {
-            body: {
-              channel: "IN_APP",
-              templateKey: "late_entry",
-              recipient: { userId: gp.warden_approved_by },
-              variables: { pass_number: gp.pass_number },
-              eventType: "LATE_ENTRY",
-              tenantId: gp.tenant_id,
-              propertyId: gp.property_id,
-              referenceId: `${gp.id}-late-${bucket}`,
-            },
+          await dispatchNotification(supabase, {
+            channel: "IN_APP",
+            templateKey: "late_entry",
+            recipient: { userId: gp.warden_approved_by },
+            variables: { pass_number: gp.pass_number },
+            eventType: "LATE_ENTRY",
+            tenantId: gp.tenant_id,
+            propertyId: gp.property_id,
+            referenceId: `${gp.id}-late-${bucket}`,
           });
         }
       }
@@ -380,17 +377,15 @@ export const checkVisitor = createServerFn({ method: "POST" })
         .eq("id", v.host_student_id)
         .maybeSingle();
       if (st?.profile_id) {
-        await supabase.functions.invoke("send-notification", {
-          body: {
-            channel: "IN_APP",
-            templateKey: "visitor_gate",
-            recipient: { userId: st.profile_id },
-            variables: { name: v.name, direction: data.direction },
-            eventType: "VISITOR_GATE",
-            tenantId: v.tenant_id,
-            propertyId: v.property_id,
-            referenceId: `${v.id}-${data.direction}-${bucket}`,
-          },
+        await dispatchNotification(supabase, {
+          channel: "IN_APP",
+          templateKey: "visitor_gate",
+          recipient: { userId: st.profile_id },
+          variables: { name: v.name, direction: data.direction },
+          eventType: "VISITOR_GATE",
+          tenantId: v.tenant_id,
+          propertyId: v.property_id,
+          referenceId: `${v.id}-${data.direction}-${bucket}`,
         });
       }
     } catch {

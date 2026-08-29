@@ -26,7 +26,7 @@ export function useReceiptDownload() {
       setDownloadingId(paymentId);
       const { data: doc, error } = await supabase
         .from("documents")
-        .select("storage_bucket, storage_path")
+        .select("storage_bucket, storage_path, original_filename")
         .eq("owner_type", "RECEIPT")
         .eq("owner_id", paymentId)
         .maybeSingle();
@@ -36,10 +36,22 @@ export function useReceiptDownload() {
         .from(doc.storage_bucket)
         .createSignedUrl(doc.storage_path, 60);
       if (sErr || !signed) throw new Error(sErr?.message ?? "Could not sign receipt URL");
-      return signed.signedUrl;
+      const res = await fetch(signed.signedUrl);
+      if (!res.ok) throw new Error("Could not download receipt");
+      const blob = await res.blob();
+      return { blob, filename: doc.original_filename ?? "receipt" };
     },
-    onSuccess: (url) => window.open(url, "_blank", "noopener"),
-    onError: (e) => toast.error(getErrorMessage(e, "Could not open receipt")),
+    onSuccess: ({ blob, filename }) => {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "Could not download receipt")),
     onSettled: () => setDownloadingId(null),
   });
   return { downloadingId, download };

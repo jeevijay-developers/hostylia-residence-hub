@@ -7,7 +7,16 @@
 //  3) IN_APP → mark SENT+DELIVERED immediately (client Realtime picks it up).
 //  4) SMS/WHATSAPP/EMAIL → check provider secrets; if missing return structured
 //     { ok:false, error_code:"PROVIDER_NOT_CONFIGURED" } and log a FAILED attempt.
-//     If configured — call provider, log STARTED then ACCEPTED/FAILED.
+//     If configured — insert a PENDING notification + STARTED attempt row, respond
+//     to the caller immediately, and run the actual provider call (Resend/Twilio)
+//     in the background via EdgeRuntime.waitUntil so the HTTP response never waits
+//     on SMTP/API latency. The attempt/notification rows are updated to
+//     ACCEPTED/SENT or FAILED once the background call settles.
+//
+// Retry mode: pass { notificationId, retry: true } instead of the normal fields
+// to re-dispatch an existing FAILED notification (used by
+// fn_retry_failed_notifications via pg_cron). Skips idempotency-key computation
+// entirely and reuses the existing notifications row.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type Channel = "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL";
@@ -22,7 +31,11 @@ interface Body {
   propertyId?: string;
   referenceId?: string;
   locale?: string;
+  /** Retry mode: re-dispatch this existing notification id instead of creating a new one. */
+  notificationId?: string;
 }
+
+const MAX_ATTEMPTS = 5;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -33,13 +46,55 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
     const b = (await req.json()) as Body;
-    if (!b?.channel || !b?.templateKey || !b?.eventType || !b?.tenantId) {
-      return json({ ok: false, error_code: "BAD_REQUEST", error: "missing fields" }, 400);
-    }
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ─── Retry mode: re-dispatch an existing notification row ────────────────
+    if (b.notificationId) {
+      const { data: notif, error: notifErr } = await admin
+        .from("notifications")
+        .select("*")
+        .eq("id", b.notificationId)
+        .single();
+      if (notifErr || !notif) {
+        return json({ ok: false, error_code: "NOT_FOUND", error: "notification not found" }, 404);
+      }
+      if (notif.channel === "IN_APP") {
+        return json({ ok: true, notification_id: notif.id, deduped: true });
+      }
+
+      const { count } = await admin
+        .from("notification_attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("notification_id", notif.id);
+      const nextAttemptNumber = (count ?? 0) + 1;
+      if (nextAttemptNumber > MAX_ATTEMPTS) {
+        return json({ ok: false, notification_id: notif.id, error_code: "MAX_ATTEMPTS_EXCEEDED" });
+      }
+
+      await admin.from("notifications").update({ status: "PENDING" }).eq("id", notif.id);
+
+      return dispatchAndRespond(admin, {
+        notifId: notif.id,
+        channel: notif.channel as Channel,
+        templateKey: notif.template_key,
+        variables: (notif.payload ?? {}) as Record<string, unknown>,
+        recipient: {
+          userId: notif.recipient_user_id ?? undefined,
+          phone: notif.recipient_phone ?? undefined,
+          email: notif.recipient_email ?? undefined,
+        },
+        attemptNumber: nextAttemptNumber,
+      });
+    }
+
+    // ─── Normal mode: create/find a notification row, then dispatch ──────────
+    if (!b?.channel || !b?.templateKey || !b?.eventType || !b?.tenantId) {
+      return json({ ok: false, error_code: "BAD_REQUEST", error: "missing fields" }, 400);
+    }
 
     const recipientIdent =
       b.recipient?.userId ?? b.recipient?.phone ?? b.recipient?.email ?? "unknown";
@@ -98,70 +153,110 @@ Deno.serve(async (req) => {
       return json({ ok: true, notification_id: notifId, status: "DELIVERED" });
     }
 
-    // External channels — check provider config
-    const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const twilioTok = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER");
-    const twilioWaFrom = Deno.env.get("TWILIO_WHATSAPP_FROM");
-    const resendKey = Deno.env.get("RESEND_API_KEY");
+    return dispatchAndRespond(admin, {
+      notifId,
+      channel: b.channel,
+      templateKey: b.templateKey,
+      variables: b.variables ?? {},
+      recipient: b.recipient,
+      attemptNumber: 1,
+    });
+  } catch (e) {
+    return json(
+      { ok: false, error_code: "INTERNAL", error: e instanceof Error ? e.message : "err" },
+      500,
+    );
+  }
+});
 
-    let provider = "none";
-    let configured = false;
-    if (b.channel === "SMS") {
-      provider = "twilio";
-      configured = !!(twilioSid && twilioTok && twilioFrom);
-    }
-    if (b.channel === "WHATSAPP") {
-      provider = "twilio";
-      configured = !!(twilioSid && twilioTok && twilioWaFrom);
-    }
-    if (b.channel === "EMAIL") {
-      provider = "resend";
-      configured = !!resendKey;
-    }
+// ---------------------------------------------------------------------------
+// Shared dispatch core — used by both normal and retry paths.
+// Creates the STARTED attempt row, responds to the caller immediately with
+// { ok:true, status:"PENDING" }, and runs the actual provider call in the
+// background via EdgeRuntime.waitUntil so the HTTP response never waits on
+// SMTP/API latency (unless the provider isn't configured at all, in which
+// case there is nothing to wait for and the failure is reported synchronously).
+// ---------------------------------------------------------------------------
+async function dispatchAndRespond(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  args: {
+    notifId: string;
+    channel: Channel;
+    templateKey: string;
+    variables: Record<string, unknown>;
+    recipient: { userId?: string; phone?: string; email?: string };
+    attemptNumber: number;
+  },
+) {
+  const { notifId, channel, templateKey, variables, recipient, attemptNumber } = args;
 
-    const attempt = {
+  const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const twilioTok = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER");
+  const twilioWaFrom = Deno.env.get("TWILIO_WHATSAPP_FROM");
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+
+  let provider = "none";
+  let configured = false;
+  if (channel === "SMS") {
+    provider = "twilio";
+    configured = !!(twilioSid && twilioTok && twilioFrom);
+  }
+  if (channel === "WHATSAPP") {
+    provider = "twilio";
+    configured = !!(twilioSid && twilioTok && twilioWaFrom);
+  }
+  if (channel === "EMAIL") {
+    provider = "resend";
+    configured = !!resendKey;
+  }
+
+  const { data: attemptRow } = await admin
+    .from("notification_attempts")
+    .insert({
       notification_id: notifId,
-      attempt_number: 1,
+      attempt_number: attemptNumber,
       provider,
-      status: "STARTED" as const,
+      status: "STARTED",
       attempted_at: new Date().toISOString(),
-    };
-    const { data: attemptRow } = await admin
+    })
+    .select("id")
+    .single();
+
+  if (!configured) {
+    await admin
       .from("notification_attempts")
-      .insert(attempt)
-      .select("id")
-      .single();
+      .update({
+        status: "FAILED",
+        error_code: "PROVIDER_NOT_CONFIGURED",
+        error_message: `Provider ${provider} for channel ${channel} has no credentials configured.`,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", attemptRow!.id);
+    await admin
+      .from("notifications")
+      .update({ status: "FAILED", scheduled_for: nextRetryAt(attemptNumber) })
+      .eq("id", notifId);
+    return json(
+      {
+        ok: false,
+        notification_id: notifId,
+        error_code: "PROVIDER_NOT_CONFIGURED",
+        message: `${channel} not configured — add ${channel === "EMAIL" ? "RESEND_API_KEY" : "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_" + (channel === "WHATSAPP" ? "WHATSAPP_FROM" : "FROM_NUMBER")}.`,
+      },
+      200,
+    );
+  }
 
-    if (!configured) {
-      await admin
-        .from("notification_attempts")
-        .update({
-          status: "FAILED",
-          error_code: "PROVIDER_NOT_CONFIGURED",
-          error_message: `Provider ${provider} for channel ${b.channel} has no credentials configured.`,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", attemptRow!.id);
-      await admin.from("notifications").update({ status: "FAILED" }).eq("id", notifId);
-      return json(
-        {
-          ok: false,
-          notification_id: notifId,
-          error_code: "PROVIDER_NOT_CONFIGURED",
-          message: `${b.channel} not configured — add ${b.channel === "EMAIL" ? "RESEND_API_KEY" : "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_" + (b.channel === "WHATSAPP" ? "WHATSAPP_FROM" : "FROM_NUMBER")}.`,
-        },
-        200,
-      );
-    }
-
-    // Configured path — Twilio/Resend calls
+  // Configured path — respond immediately, deliver in the background.
+  const deliver = async () => {
     try {
       let providerRef: string | null = null;
-      if (b.channel === "SMS" || b.channel === "WHATSAPP") {
-        const to = b.channel === "WHATSAPP" ? `whatsapp:${b.recipient.phone}` : b.recipient.phone!;
-        const from = b.channel === "WHATSAPP" ? `whatsapp:${twilioWaFrom}` : twilioFrom!;
-        const body = renderTemplate(b.templateKey, b.variables ?? {});
+      if (channel === "SMS" || channel === "WHATSAPP") {
+        const to = channel === "WHATSAPP" ? `whatsapp:${recipient.phone}` : recipient.phone!;
+        const from = channel === "WHATSAPP" ? `whatsapp:${twilioWaFrom}` : twilioFrom!;
+        const body = renderTemplate(templateKey, variables);
         const res = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
           {
@@ -176,19 +271,14 @@ Deno.serve(async (req) => {
         const j = await res.json();
         if (!res.ok) throw new Error(j?.message ?? "twilio_error");
         providerRef = j.sid ?? null;
-      } else if (b.channel === "EMAIL") {
-        const vars = b.variables ?? {};
-        const textBody = renderTemplate(b.templateKey, vars);
-        const htmlBody = renderHtmlTemplate(b.templateKey, vars);
-        const subject = renderTemplate(b.templateKey + "_subject", vars);
+      } else if (channel === "EMAIL") {
+        const textBody = renderTemplate(templateKey, variables);
+        const htmlBody = renderHtmlTemplate(templateKey, variables);
+        const subject = renderTemplate(templateKey + "_subject", variables);
 
         const emailPayload: Record<string, unknown> = {
-          // Staff Invitation (this Resend-based pipeline) intentionally keeps
-          // its own sender identity, separate from Supabase Auth SMTP's
-          // team@hostylia.com (Reset Password / Forgot Password) — the two
-          // are deliberately distinct delivery systems with distinct senders.
           from: Deno.env.get("RESEND_FROM") ?? "noreply@hostylia.com",
-          to: b.recipient.email,
+          to: recipient.email,
           subject,
           text: textBody,
         };
@@ -213,12 +303,8 @@ Deno.serve(async (req) => {
         .eq("id", attemptRow!.id);
       await admin
         .from("notifications")
-        .update({
-          status: "SENT",
-          sent_at: new Date().toISOString(),
-        })
+        .update({ status: "SENT", sent_at: new Date().toISOString() })
         .eq("id", notifId);
-      return json({ ok: true, notification_id: notifId, provider_message_ref: providerRef });
     } catch (err) {
       const msg = err instanceof Error ? err.message.slice(0, 500) : "unknown";
       await admin
@@ -230,19 +316,30 @@ Deno.serve(async (req) => {
           completed_at: new Date().toISOString(),
         })
         .eq("id", attemptRow!.id);
-      await admin.from("notifications").update({ status: "FAILED" }).eq("id", notifId);
-      return json(
-        { ok: false, notification_id: notifId, error_code: "PROVIDER_ERROR", message: msg },
-        200,
-      );
+      await admin
+        .from("notifications")
+        .update({ status: "FAILED", scheduled_for: nextRetryAt(attemptNumber) })
+        .eq("id", notifId);
     }
-  } catch (e) {
-    return json(
-      { ok: false, error_code: "INTERNAL", error: e instanceof Error ? e.message : "err" },
-      500,
-    );
+  };
+
+  // deno-lint-ignore no-explicit-any
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(deliver());
+  } else {
+    // Local/dev fallback (no EdgeRuntime global) — deliver inline.
+    await deliver();
   }
-});
+
+  return json({ ok: true, notification_id: notifId, status: "PENDING" });
+}
+
+/** Exponential backoff for the next retry attempt: 2, 4, 8, 16, 32 minutes (capped). */
+function nextRetryAt(attemptNumber: number): string {
+  const minutes = Math.min(2 ** attemptNumber, 60);
+  return new Date(Date.now() + minutes * 60_000).toISOString();
+}
 
 // ---------------------------------------------------------------------------
 // Plain-text templates (SMS / WhatsApp / email fallback)

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -70,7 +70,17 @@ function SuperTenantsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tenants" description="All hostels on the platform." />
+      <PageHeader
+        title="Tenants"
+        description="All hostels on the platform."
+        actions={
+          <Button asChild className="gap-1 bg-primary text-primary-foreground">
+            <Link to="/super-admin/tenants/new">
+              <span className="font-semibold">+ Add Hostel</span>
+            </Link>
+          </Button>
+        }
+      />
       <div className="rounded-lg border border-border bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">

@@ -81,7 +81,11 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     if (!props?.length) throw new Error("Property not found");
     if (props.length > 1) throw new Error("Property slug is ambiguous — contact the hostel");
     const property = props[0];
-    if (property.status !== "ACTIVE") throw new Error("Property is not accepting applications");
+    // Matches listPublicActiveProperties' eligibility (ACTIVE + DRAFT) — a
+    // property picked from the Select Hostel dropdown must always be
+    // submittable here, even before its Hostel Admin finishes activation.
+    if (!["ACTIVE", "DRAFT"].includes(property.status))
+      throw new Error("Property is not accepting applications");
 
     const dob = data.date_of_birth || null;
     const isMinor = dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false;
@@ -320,9 +324,12 @@ async function provisionStudentPortalAccount(
     });
     if (rErr) throw new Error(rErr.message);
 
-    // Not awaited — the student record is already saved; the invite email
-    // sends in the background and can never fail or slow down this response.
-    void sendStaffInviteNotification(supabase, {
+    // Awaited, but never blocks meaningfully — the student record is already
+    // saved; this only waits for the invite notification job to be queued,
+    // not for actual delivery (see the matching comment in
+    // admin-staff.functions.ts for why `void` fire-and-forget is unsafe on
+    // Cloudflare Workers).
+    await sendStaffInviteNotification(supabase, {
       inviteeId,
       email: student.email,
       phone: null,

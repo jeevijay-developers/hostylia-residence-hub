@@ -48,14 +48,40 @@ export const wardenProfileEditSchema = z.object({
 export type WardenProfileEditInput = z.infer<typeof wardenProfileEditSchema>;
 
 /**
- * Accountant self-service "Edit Profile" — deliberately minimal (finance/
- * staff account, not a full HR profile). Email is intentionally absent:
- * it's tied to auth and rendered read-only, never submitted here. Role,
- * tenant, property assignment and permissions are never editable.
+ * Accountant self-service "Edit Profile" — expanded to cover all profile
+ * fields visible on the unified My Profile page. Email is read-only (auth-
+ * controlled) and intentionally absent. Role, tenant, property assignment
+ * and permissions are never editable by the account owner.
  */
 export const accountantProfileEditSchema = z.object({
   fullName: fullNameSchema,
-  phone: phoneSchema,
+  phone: phoneSchema.optional().or(z.literal("")),
+  alternatePhone: phoneSchema.optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  gender: genderSchema.optional(),
+  bloodGroup: bloodGroupSchema.optional(),
+  emergencyContactName: z.string().trim().max(120).optional().or(z.literal("")),
+  emergencyContactNumber: phoneSchema.optional().or(z.literal("")),
+  address: addressSchema.optional(),
 });
 
 export type AccountantProfileEditInput = z.infer<typeof accountantProfileEditSchema>;
+
+/**
+ * Admin self-service "Edit Profile" — covers all fields that the Admin
+ * profile view page displays and that the admin may update on their own
+ * `profiles` row. Employee ID, role, assigned property and account status
+ * are intentionally absent (never editable by the account owner).
+ */
+export const adminProfileEditSchema = z.object({
+  fullName: fullNameSchema,
+  phone: phoneSchema.optional().or(z.literal("")),
+  alternatePhone: phoneSchema.optional().or(z.literal("")),
+  dateOfBirth: z.string().optional().or(z.literal("")),
+  gender: genderSchema.optional(),
+  bloodGroup: bloodGroupSchema.optional(),
+  emergencyContactName: z.string().trim().max(120).optional().or(z.literal("")),
+  emergencyContactNumber: phoneSchema.optional().or(z.literal("")),
+});
+
+export type AdminProfileEditInput = z.infer<typeof adminProfileEditSchema>;

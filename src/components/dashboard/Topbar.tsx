@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, LogOut, Menu, Search, User, UserRoundPen } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import {
   CommandDialog,
   CommandEmpty,
@@ -23,11 +16,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
-import { ChangePasswordDialog } from "@/components/dashboard/ChangePasswordDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
 import { BrandLockup } from "@/components/BrandLockup";
 import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
+import { SidebarSignOut } from "@/components/dashboard/SidebarSignOut";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -45,7 +39,6 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -55,6 +48,9 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   });
   const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
+  const avatarUrl = ownProfile?.avatar_path
+    ? supabase.storage.from("avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl
+    : undefined;
   const { data: resolved } = useResolvedRole();
   const isAccountant = resolved?.role === "ACCOUNTANT";
   const isAdmin = resolved?.role === "HOSTEL_ADMIN";
@@ -115,16 +111,27 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
                 );
               })}
             </nav>
+            <SidebarSignOut />
           </SheetContent>
         </Sheet>
       )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => {
+            // Every authenticated route's first URL segment is just the
+            // current role (admin/accountant/warden/…) — redundant noise in
+            // the breadcrumb since the sidebar/role are already obvious from
+            // context. Drop it from the visible trail (URLs/routing/active
+            // sidebar highlighting are untouched — this only skips rendering
+            // this one <li>), as long as there's a more specific page after
+            // it to show instead of leaving the breadcrumb empty.
+            if (i === 0 && crumbs.length > 1) return null;
+
             const path = "/" + crumbs.slice(0, i + 1).join("/");
             const isLast = i === crumbs.length - 1;
             const isId = UUID_RE.test(c) || /^\d+$/.test(c);
             const label = isId ? c : c.replace(/-/g, " ");
+            const isFirstVisible = i === 1 || crumbs.length === 1;
             const crumbClasses = cn(
               "min-w-0 truncate",
               isId
@@ -142,7 +149,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
                   !isLast && "hidden sm:flex",
                 )}
               >
-                {i > 0 && (
+                {!isFirstVisible && (
                   <span className="hidden shrink-0 text-muted-foreground/50 sm:inline">/</span>
                 )}
                 {isLast ? (
@@ -150,7 +157,11 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
                     {label}
                   </span>
                 ) : (
-                  <Link to={path} className={cn(crumbClasses, "hover:text-foreground")} title={label}>
+                  <Link
+                    to={path}
+                    className={cn(crumbClasses, "hover:text-foreground")}
+                    title={label}
+                  >
                     {label}
                   </Link>
                 )}
@@ -197,71 +208,16 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <ThemeToggle />
       <NotificationBell />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 transition hover:ring-primary/60">
-          {avatarInitial}
-          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-success" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel>Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {isAccountant ? (
-            <>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  My Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile/edit">
-                  <UserRoundPen className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/accountant/profile/change-password">
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Change Password
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          ) : isAdmin ? (
-            <>
-              <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
-                <UserRoundPen className="mr-2 h-4 w-4" />
-                Edit Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
-                <KeyRound className="mr-2 h-4 w-4" />
-                Change Password
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          ) : (
-            <DropdownMenuItem onSelect={() => setEditProfileOpen(true)}>
-              <UserRoundPen className="mr-2 h-4 w-4" />
-              Edit profile
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setSignOutOpen(true);
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ProfileAvatarMenu
+        avatarUrl={avatarUrl}
+        avatarInitial={avatarInitial}
+        profileHref={isAdmin ? "/admin/profile" : isAccountant ? "/accountant/profile" : undefined}
+        onProfileSelect={!isAdmin && !isAccountant ? () => setEditProfileOpen(true) : undefined}
+        onSignOut={() => setSignOutOpen(true)}
+      />
 
-      {!isAccountant && (
+      {!isAccountant && !isAdmin && (
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
-      )}
-      {isAdmin && (
-        <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
       )}
       <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
     </header>

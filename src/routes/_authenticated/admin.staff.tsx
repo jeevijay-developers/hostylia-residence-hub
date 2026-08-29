@@ -603,8 +603,8 @@ function AdminStaffPage() {
       } else {
         toast.success(
           addMode === "phone"
-            ? "Invitation sent — they'll get access once they sign in with this phone number."
-            : "Invitation sent — they'll get access once they set up sign-in via the invite email.",
+            ? "Invitation queued — they'll get access once they sign in with this phone number."
+            : "Invitation queued — they'll get access once they set up sign-in via the invite email.",
         );
       }
       setAddOpen(false);

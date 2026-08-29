@@ -60,7 +60,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Attendance", to: "/admin/attendance", icon: CalendarCheck },
     { label: "Finance", to: "/admin/finance", icon: Wallet },
     { label: "Complaints", to: "/admin/complaints", icon: MessageSquareWarning },
-    { label: "Hostylia Support", to: "/admin/support", icon: LifeBuoy },
+    { label: "Support", to: "/admin/support", icon: LifeBuoy },
     { label: "Notices", to: "/admin/notices", icon: BellRing },
     { label: "Staff", to: "/admin/staff", icon: UserCog },
     { label: "Reports", to: "/admin/reports", icon: FileBarChart },
@@ -75,6 +75,27 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Refunds", to: "/accountant/refunds", icon: Receipt },
     { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart },
+  ],
+  WARDEN: [
+    { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
+    { label: "Students", to: "/warden/students", icon: Users },
+    { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
+    { label: "Complaints", to: "/warden/complaints", icon: MessageSquareWarning },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen },
+  ],
+  STUDENT: [
+    { label: "Home", to: "/student/home", icon: Home },
+    { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
+    { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
+    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
+    { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning, module: "complaints" },
+  ],
+  PARENT: [
+    { label: "Home", to: "/parent/overview", icon: Home },
+    { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
+    { label: "Gate Pass", to: "/parent/gate-pass", icon: Ticket },
+    { label: "Payments", to: "/parent/payments", icon: Receipt },
+    { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
   ],
 };
 

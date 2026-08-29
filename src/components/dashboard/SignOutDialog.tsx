@@ -20,8 +20,8 @@ interface SignOutDialogProps {
 export function SignOutDialog({
   open,
   onOpenChange,
-  title = "Sign out?",
-  confirmLabel = "Sign out",
+  title = "Logout?",
+  confirmLabel = "Logout",
 }: SignOutDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

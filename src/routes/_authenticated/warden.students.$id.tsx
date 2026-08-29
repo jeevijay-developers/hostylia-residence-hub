@@ -195,6 +195,13 @@ function WardenStudentDetailPage() {
                 onOpenChange={setStayOpen}
               />
             )}
+            {!currentAllocation && can("allocations_create") && (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/warden/allocations" search={{ student: id }}>
+                  <BedDouble className="h-4 w-4" /> Allocate Bed
+                </Link>
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {allocationsQ.isLoading ? (

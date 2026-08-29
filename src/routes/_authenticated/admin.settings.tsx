@@ -192,9 +192,8 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
                 type="time"
                 value={curfewTime}
                 onChange={(e) => setCurfewTime(e.target.value)}
-                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 px-3.5 pr-10 text-sm font-medium"
+                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
               />
-              <Clock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
             <p className="text-xs text-muted-foreground">
               Gate entries after this time flag as late.

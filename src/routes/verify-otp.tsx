@@ -61,6 +61,9 @@ function VerifyOtpPage() {
       // unchanged. See dev-auth.functions.ts for the env gate.
       if (import.meta.env.DEV) {
         const bypass = await devParentTestLogin({ data: { phone, otp: value } });
+        if (!bypass.ok) {
+          console.warn("devParentTestLogin bypass did not match:", bypass.message);
+        }
         if (bypass.ok && bypass.session) {
           const { error: setSessionErr } = await supabase.auth.setSession(bypass.session);
           if (setSessionErr) {

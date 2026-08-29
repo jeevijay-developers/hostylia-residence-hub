@@ -45,6 +45,8 @@ export type GuardianStaffEditInput = z.infer<typeof guardianStaffEditSchema>;
 export const guardianSelfEditSchema = z.object({
   fullName: fullNameSchema,
   email: emailSchema.optional().or(z.literal("")),
+  occupation: z.string().trim().max(120).optional().or(z.literal("")),
+  address: addressSchema.optional(),
 });
 
 export type GuardianSelfEditInput = z.infer<typeof guardianSelfEditSchema>;

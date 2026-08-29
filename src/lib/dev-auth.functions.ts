@@ -20,21 +20,25 @@ import type { Database } from "@/integrations/supabase/types";
  *
  * Required env vars to use this locally:
  *   DEV_TEST_LOGIN_ENABLED=true
- *   DEV_TEST_PARENT_PHONE=+91XXXXXXXXXX   (E.164, reserved test number)
+ *   DEV_TEST_PARENT_PHONE=+91XXXXXXXXXX   (E.164 with leading "+", must match
+ *                                          the normalized form the login form
+ *                                          sends — a bare 10-digit number here
+ *                                          will never match)
  *   DEV_TEST_PARENT_OTP=123456            (any fixed 6-digit code)
  *   DEV_TEST_PARENT_PASSWORD=<any local-only secret>
  */
 
 function devTestLoginEnabled() {
-  return process.env.NODE_ENV !== "production" && !!process.env.VITE_DEV_PARENT_PHONE;
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEV_TEST_LOGIN_ENABLED === "true" &&
+    !!process.env.DEV_TEST_PARENT_PHONE
+  );
 }
 
 /** Used by sendPhoneOtp to skip the real signInWithOtp call for the test phone. */
 export function isDevTestParentPhone(phone: string): boolean {
-  return (
-    devTestLoginEnabled() &&
-    phone === process.env.VITE_DEV_PARENT_PHONE
-  );
+  return devTestLoginEnabled() && phone === process.env.DEV_TEST_PARENT_PHONE;
 }
 
 const bypassSchema = z.object({
@@ -60,9 +64,9 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
     if (!devTestLoginEnabled()) {
       return { ok: false as const, message: "Test login is not available." };
     }
-    const testPhone = process.env.VITE_DEV_PARENT_PHONE;
-    const testOtp = process.env.VITE_DEV_PARENT_OTP;
-    const testPassword = "DevTestPassword123!"; // Managed internally, not required in env
+    const testPhone = process.env.DEV_TEST_PARENT_PHONE;
+    const testOtp = process.env.DEV_TEST_PARENT_OTP;
+    const testPassword = process.env.DEV_TEST_PARENT_PASSWORD || "DevTestPassword123!";
     if (!testPhone || !testOtp) {
       return { ok: false as const, message: "Test login is not configured." };
     }
@@ -76,12 +80,21 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
+    // Sign-in below uses email+password, not phone+password — the Supabase
+    // project's Phone auth provider is disabled (pending DLT approval), which
+    // rejects any phone-based sign-in including password grants keyed by
+    // phone. Email stays fixed/synthetic; testPhone is only used to find/link
+    // the guardian row so the dashboard resolves the right student.
+    const testEmail = "dev-test-parent@hostylia.local";
+
     try {
       let user = await findUserByPhone(admin, testPhone);
       if (!user) {
         const { data: created, error: createErr } = await admin.auth.admin.createUser({
+          email: testEmail,
           phone: testPhone,
           password: testPassword,
+          email_confirm: true,
           phone_confirm: true,
           user_metadata: { full_name: "Dev Test Parent", dev_test_account: true },
         });
@@ -93,9 +106,11 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
         }
         user = created.user;
       } else {
-        // Keep the account's password/confirmation in sync
+        // Keep the account's password/confirmation/email in sync
         await admin.auth.admin.updateUserById(user.id, {
+          email: testEmail,
           password: testPassword,
+          email_confirm: true,
           phone_confirm: true,
         });
       }
@@ -149,7 +164,7 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
         { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
       );
       const { data: signInData, error: signInErr } = await anon.auth.signInWithPassword({
-        phone: testPhone,
+        email: testEmail,
         password: testPassword,
       });
       if (signInErr || !signInData.session) {

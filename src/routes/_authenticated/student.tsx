@@ -2,8 +2,8 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-import { MobileShell } from "@/components/dashboard/MobileShell";
-import { BOTTOM_NAV, type NavItem } from "@/lib/dashboard-nav";
+import { DesktopShell } from "@/components/dashboard/DesktopShell";
+import { SIDEBAR_NAV, type NavItem } from "@/lib/dashboard-nav";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -54,12 +54,12 @@ function StudentLayout() {
   const pending = gateQ.data?.pending ?? false;
   const navItems: NavItem[] = pending
     ? []
-    : (BOTTOM_NAV.STUDENT ?? []).filter(
+    : (SIDEBAR_NAV.STUDENT ?? []).filter(
         (item) => !item.module || canModule(item.module as StudentModule, "view"),
       );
 
   return (
-    <MobileShell allow={["STUDENT"]} navItems={navItems}>
+    <DesktopShell allow={["STUDENT"]} navItems={navItems}>
       {gateQ.isLoading ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -79,6 +79,6 @@ function StudentLayout() {
       ) : (
         <Outlet />
       )}
-    </MobileShell>
+    </DesktopShell>
   );
 }

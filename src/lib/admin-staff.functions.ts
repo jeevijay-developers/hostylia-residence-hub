@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
+import { dispatchNotification } from "@/lib/dispatch-notification";
 
 // The independently-RLS'd finance resources an Accountant has by default and
 // a Warden can be individually granted (see can_manage_*() in
@@ -225,32 +226,24 @@ async function sendStaffInviteNotificationInner(
     if (ch === "EMAIL") recipient.email = args.email ?? undefined;
     if (ch === "SMS") recipient.phone = args.phone ?? undefined;
     if (!recipient.userId && !recipient.email && !recipient.phone) continue;
-    try {
-      // supabase.functions.invoke only rejects/sets `error` on a non-2xx HTTP
-      // response — send-notification always answers 200 and reports real
-      // provider failures (e.g. Resend rejecting the API key) in the JSON
-      // body instead. Reading `data.ok` here is required, not optional —
-      // without it a failed send looks identical to a successful one.
-      const { data, error } = await supabase.functions.invoke("send-notification", {
-        body: {
-          channel: ch,
-          templateKey: "staff_invite",
-          recipient,
-          variables,
-          eventType: "STAFF_INVITE",
-          tenantId: args.tenantId,
-          propertyId: args.propertyId ?? undefined,
-          referenceId: args.referenceId,
-        },
-      });
-      const body = data as { ok?: boolean; message?: string; error_code?: string } | null;
-      if (ch === "EMAIL" && (error || body?.ok === false)) {
-        emailFailure = body?.message || error?.message || "Email provider rejected the request";
-      }
-    } catch (e) {
-      // IN_APP/SMS stay best-effort (unchanged); EMAIL failures are surfaced
-      // so callers can decide whether to report or swallow them.
-      if (ch === "EMAIL") emailFailure = e instanceof Error ? e.message : "Email send failed";
+    // dispatchNotification never throws — it reports provider rejections
+    // (e.g. Resend rejecting the API key) via `ok:false` in its return value
+    // instead. Reading `.ok` here is required, not optional — without it a
+    // failed send looks identical to a successful one.
+    const result = await dispatchNotification(supabase, {
+      channel: ch,
+      templateKey: "staff_invite",
+      recipient,
+      variables,
+      eventType: "STAFF_INVITE",
+      tenantId: args.tenantId,
+      propertyId: args.propertyId ?? undefined,
+      referenceId: args.referenceId,
+    });
+    // IN_APP/SMS stay best-effort (unchanged); EMAIL failures are surfaced
+    // so callers can decide whether to report or swallow them.
+    if (ch === "EMAIL" && !result.ok) {
+      emailFailure = result.message || "Email provider rejected the request";
     }
   }
   if (emailFailure) throw new Error(emailFailure);
@@ -337,9 +330,14 @@ export const inviteStaff = createServerFn({ method: "POST" })
         throw new Error("This person already has active access for this role.");
       }
       if (existing && !existing.is_active) {
-        // Not awaited — the invite/resend response must not wait on email
-        // delivery; sendStaffInviteNotification never throws (see above).
-        void sendStaffInviteNotification(supabase, {
+        // Awaited, but never blocks meaningfully — sendStaffInviteNotification
+        // (and the send-notification edge function it calls) only waits for
+        // the notification job to be queued, never for actual email/SMS
+        // delivery, and never throws. Awaiting (rather than a bare `void`
+        // fire-and-forget) matters specifically because this app runs on
+        // Cloudflare Workers: an un-awaited promise can be killed the moment
+        // the response is sent, silently dropping the invite notification.
+        await sendStaffInviteNotification(supabase, {
           inviteeId,
           email: data.email ?? null,
           phone,
@@ -404,10 +402,11 @@ export const inviteStaff = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw rErr;
 
-    // Not awaited — staff is already saved (tenant_membership + role_assignment
-    // above are committed); the invite email sends in the background and can
-    // never fail or slow down this response.
-    void sendStaffInviteNotification(supabase, {
+    // Awaited (see the matching comment above) — staff is already saved
+    // (tenant_membership + role_assignment above are committed); this only
+    // waits for the invite notification job to be queued, not for it to be
+    // delivered, and can never fail or meaningfully slow down this response.
+    await sendStaffInviteNotification(supabase, {
       inviteeId,
       email: data.email ?? null,
       phone,
