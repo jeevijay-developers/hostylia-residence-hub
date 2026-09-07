@@ -121,7 +121,6 @@ function BriefKpiTile({
           </p>
         )}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
     </div>
   );
 }
