@@ -21,7 +21,7 @@ secrets = "env(SEND_SMS_HOOK_SECRET)"
 # email ever embeds a localhost link. localhost:8080 kept in
 # additional_redirect_urls only so `bun run dev` still works for local testing.
 site_url = "https://hostylia-residence-hub.vercel.app"
-additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "http://localhost:8080"]
+additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "http://localhost:8080/**"]
 
 [auth.mfa.totp]
 enroll_enabled = true
