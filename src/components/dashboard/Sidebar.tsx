@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { BrandLockup } from "@/components/BrandLockup";
-import { SidebarSignOut } from "./SidebarSignOut";
 
 interface SidebarProps {
   items: NavItem[];
@@ -79,8 +78,6 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
           );
         })}
       </nav>
-
-      <SidebarSignOut collapsed={collapsed} />
     </aside>
   );
 }

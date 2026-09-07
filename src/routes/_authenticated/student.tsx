@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { DesktopShell } from "@/components/dashboard/DesktopShell";
-import { SIDEBAR_NAV, type NavItem } from "@/lib/dashboard-nav";
+import { StudentBottomNav } from "@/components/dashboard/StudentBottomNav";
+import { SIDEBAR_NAV, BOTTOM_NAV, MORE_NAV, CENTER_NAV, type NavItem } from "@/lib/dashboard-nav";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -52,14 +53,24 @@ function StudentLayout() {
   });
 
   const pending = gateQ.data?.pending ?? false;
-  const navItems: NavItem[] = pending
-    ? []
-    : (SIDEBAR_NAV.STUDENT ?? []).filter(
-        (item) => !item.module || canModule(item.module as StudentModule, "view"),
-      );
+  const moduleFilter = (item: NavItem) =>
+    !item.module || canModule(item.module as StudentModule, "view");
+  const navItems: NavItem[] = pending ? [] : (SIDEBAR_NAV.STUDENT ?? []).filter(moduleFilter);
+  const bottomItems: NavItem[] = pending ? [] : (BOTTOM_NAV.STUDENT ?? []).filter(moduleFilter);
+  const moreItems: NavItem[] = pending ? [] : (MORE_NAV.STUDENT ?? []).filter(moduleFilter);
+  const rawCenter = CENTER_NAV.STUDENT;
+  const centerItem: NavItem | undefined =
+    pending || !rawCenter || (rawCenter.module && !canModule(rawCenter.module as StudentModule, "view"))
+      ? undefined
+      : rawCenter;
 
   return (
-    <DesktopShell allow={["STUDENT"]} navItems={navItems}>
+    <DesktopShell
+      allow={["STUDENT"]}
+      navItems={navItems}
+      hideMobileNavTrigger
+      mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={moreItems} />}
+    >
       {gateQ.isLoading ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />

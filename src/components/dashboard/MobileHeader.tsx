@@ -92,26 +92,34 @@ export function MobileHeader() {
           </Button>
         )}
         {!isStudent && !isParent && !isWarden && <LanguageSwitcher />}
-        {isWarden || isParent || isStudent ? (
-          <ProfileAvatarMenu
-            avatarInitial={isWarden ? wardenInitial : isParent ? guardianInitial : studentInitial}
-            profileHref={
-              isWarden ? "/warden/profile" : isParent ? "/parent/profile" : "/student/profile"
-            }
-            onSignOut={() => setSignOutOpen(true)}
-            triggerClassName="h-8 w-8"
-          />
-        ) : (
+        {resolved?.role === "SUPER_ADMIN" && (
           <Button
             variant="ghost"
-            size="sm"
-            className="min-h-10"
+            size="icon"
+            className="min-h-10 min-w-10 text-muted-foreground hover:text-destructive"
             onClick={() => setSignOutOpen(true)}
           >
-            <LogOut className="mr-1.5 h-4 w-4" />
-            Logout
+            <LogOut className="h-4 w-4" />
           </Button>
         )}
+        <ProfileAvatarMenu
+          avatarInitial={isWarden ? wardenInitial : isParent ? guardianInitial : isStudent ? studentInitial : "?"}
+          profileHref={
+            isWarden
+              ? "/warden/profile"
+              : isParent
+                ? "/parent/profile"
+                : isStudent
+                  ? "/student/profile"
+                  : resolved?.role === "HOSTEL_ADMIN"
+                    ? "/admin/profile"
+                    : resolved?.role === "ACCOUNTANT"
+                      ? "/accountant/profile"
+                      : undefined
+          }
+          onProfileSelect={resolved?.role === "SUPER_ADMIN" ? undefined : undefined} // SuperAdmin actually doesn't use ProfileAvatarMenu on mobile?
+          triggerClassName="h-8 w-8"
+        />
       </div>
       <SignOutDialog
         open={signOutOpen}

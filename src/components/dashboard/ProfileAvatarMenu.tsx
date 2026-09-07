@@ -1,13 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, LogOut, User } from "lucide-react";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface ProfileAvatarMenuProps {
@@ -17,9 +8,15 @@ interface ProfileAvatarMenuProps {
   profileHref?: string;
   /** Runs custom behavior instead of navigating (e.g. Super Admin's Edit Profile dialog). */
   onProfileSelect?: () => void;
-  onSignOut: () => void;
   /** Trigger avatar circle size — defaults to the desktop topbar's h-9 w-9. */
   triggerClassName?: string;
+  /**
+   * When true, the avatar itself is a direct link to `profileHref` — no
+   * dropdown, no "My Profile" item. Sign Out is expected to live elsewhere
+   * (e.g. somewhere else in the layout) since this mode has no menu to host
+   * it. Requires `profileHref`.
+   */
+  asLink?: boolean;
 }
 
 /**
@@ -32,67 +29,38 @@ export function ProfileAvatarMenu({
   avatarInitial,
   profileHref,
   onProfileSelect,
-  onSignOut,
   triggerClassName,
+  asLink,
 }: ProfileAvatarMenuProps) {
+  const triggerContent = avatarUrl ? (
+    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+  ) : (
+    avatarInitial
+  );
+  const triggerVisualClassName = cn(
+    "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
+    triggerClassName,
+  );
+
+  if (profileHref) {
+    return (
+      <Link to={profileHref} aria-label="My Profile" className={triggerVisualClassName}>
+        {triggerContent}
+      </Link>
+    );
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60 data-[state=open]:ring-primary/70",
-          triggerClassName,
-        )}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          avatarInitial
-        )}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        sideOffset={10}
-        collisionPadding={12}
-        className="w-[200px] rounded-[10px] border-border/70 p-1.5 shadow-xl duration-150"
-      >
-        <DropdownMenuItem
-          asChild={!!profileHref}
-          className="cursor-pointer rounded-lg px-2.5 py-2 focus:bg-muted"
-          onSelect={
-            !profileHref
-              ? (e) => {
-                  e.preventDefault();
-                  onProfileSelect?.();
-                }
-              : undefined
-          }
-        >
-          {profileHref ? (
-            <Link to={profileHref} className="flex items-center gap-2.5">
-              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1 text-sm font-medium text-foreground">My Profile</span>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            </Link>
-          ) : (
-            <>
-              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1 text-sm font-medium text-foreground">My Profile</span>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            </>
-          )}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1" />
-        <DropdownMenuItem
-          className="cursor-pointer rounded-lg px-2.5 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-          onSelect={(e) => {
-            e.preventDefault();
-            onSignOut();
-          }}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-medium">Sign Out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        onProfileSelect?.();
+      }}
+      aria-label="My Profile"
+      className={triggerVisualClassName}
+    >
+      {triggerContent}
+    </button>
   );
 }
