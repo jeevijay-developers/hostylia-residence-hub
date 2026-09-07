@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, LogOut } from "lucide-react";
+import { Menu, Search, LogOut, User } from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import {
@@ -12,6 +12,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -224,18 +230,60 @@ export function Topbar({
             <LogOut className="h-4 w-4" />
           </button>
         )}
-        <ProfileAvatarMenu
-          avatarUrl={avatarUrl}
-          avatarInitial={avatarInitial}
-          profileHref={profileHref}
-          onProfileSelect={isSuperAdmin ? () => setEditProfileOpen(true) : undefined}
-        />
+        {isAdmin || isWarden ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Account menu"
+                className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  avatarInitial
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[190px] p-2">
+              <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
+                <Link to={isAdmin ? "/admin/profile" : "/warden/profile"}>
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                    <User className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium text-foreground">Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setSignOutOpen(true)}
+                className="gap-3 rounded-lg px-2 py-2"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground">
+                  <LogOut className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium text-destructive">Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <ProfileAvatarMenu
+            avatarUrl={avatarUrl}
+            avatarInitial={avatarInitial}
+            profileHref={profileHref}
+            onProfileSelect={isSuperAdmin ? () => setEditProfileOpen(true) : undefined}
+          />
+        )}
       </div>
 
       {isSuperAdmin && (
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
       )}
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        title={isAdmin || isWarden ? "Sign out?" : undefined}
+        confirmLabel={isAdmin || isWarden ? "Sign out" : undefined}
+      />
     </header>
   );
 }

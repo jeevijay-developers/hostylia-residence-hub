@@ -364,9 +364,12 @@ function currentMonthValue(): string {
 export function AttendanceReportPanel({
   propertyId,
   showExport = true,
+  totalStudentsTile = false,
 }: {
   propertyId: string;
   showExport?: boolean;
+  /** Swap the first KPI tile from "Students marked" to "Total Students". */
+  totalStudentsTile?: boolean;
 }) {
   const [monthInput, setMonthInput] = useState(currentMonthValue());
   const month = `${monthInput}-01`;
@@ -380,6 +383,7 @@ export function AttendanceReportPanel({
 
   const summary = useMemo(() => {
     const studentsMarked = rows.filter((r) => r.marked_days > 0).length;
+    const totalStudents = rows.length;
     const present = rows.reduce((s, r) => s + r.present_days, 0);
     const absent = rows.reduce((s, r) => s + r.absent_days, 0);
     const withPct = rows.filter((r) => r.attendance_pct !== null);
@@ -388,7 +392,7 @@ export function AttendanceReportPanel({
           (withPct.reduce((s, r) => s + (r.attendance_pct ?? 0), 0) / withPct.length) * 10,
         ) / 10
       : null;
-    return { studentsMarked, present, absent, avgPct };
+    return { studentsMarked, totalStudents, present, absent, avgPct };
   }, [rows]);
 
   return (
@@ -433,8 +437,12 @@ export function AttendanceReportPanel({
             <Users className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Students marked</p>
-            <p className="mt-1 text-xl font-bold text-neutral-accent sm:text-3xl">{summary.studentsMarked}</p>
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">
+              {totalStudentsTile ? "Total Students" : "Students marked"}
+            </p>
+            <p className="mt-1 text-xl font-bold text-neutral-accent sm:text-3xl">
+              {totalStudentsTile ? summary.totalStudents : summary.studentsMarked}
+            </p>
           </div>
         </div>
 

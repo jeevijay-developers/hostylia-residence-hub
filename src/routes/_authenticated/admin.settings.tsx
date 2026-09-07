@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Bell,
@@ -140,6 +140,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
       return data;
     },
   });
+  const curfewInputRef = useRef<HTMLInputElement>(null);
   const [curfewTime, setCurfewTime] = useState("21:00");
   const [timezone, setTimezone] = useState("Asia/Kolkata");
   const [notifyPref, setNotifyPref] = useState("IN_APP");
@@ -189,11 +190,20 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
             <Label className="text-foreground text-sm font-semibold">Curfew time</Label>
             <div className="relative sm:max-w-sm">
               <Input
+                ref={curfewInputRef}
                 type="time"
                 value={curfewTime}
                 onChange={(e) => setCurfewTime(e.target.value)}
-                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium"
+                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 pl-3.5 pr-8 text-sm font-medium [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
               />
+              <button
+                type="button"
+                onClick={() => curfewInputRef.current?.showPicker?.()}
+                aria-label="Open time picker"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+              >
+                <Clock className="h-4 w-4" />
+              </button>
             </div>
             <p className="text-xs text-muted-foreground">
               Gate entries after this time flag as late.

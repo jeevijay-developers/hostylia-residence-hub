@@ -2,7 +2,19 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Clock, MessageCircle, Pencil, Send, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  List,
+  MessageCircle,
+  Pencil,
+  Save,
+  Send,
+  Tag,
+  Trash2,
+  Utensils,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +34,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -45,7 +58,7 @@ import {
 } from "@/lib/ops";
 import { supabase } from "@/integrations/supabase/client";
 import { messMenuFormSchema } from "@/schemas/mess";
-import { getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/mess")({
   component: WardenMessPage,
@@ -82,6 +95,23 @@ function itemsToText(items: MessMenuItemRow[] | undefined): string {
     .sort((a, b) => a.display_order - b.display_order)
     .map((i) => i.item_name)
     .join("\n");
+}
+
+/** Decorative leading-icon segment for the Edit Menu dialog's fields — a
+ * bordered box flush with the control's left edge, matching that field's
+ * type at a glance. Purely presentational; doesn't affect the control's
+ * value or behavior. */
+function FieldIcon({ icon: Icon, alignTop }: { icon: LucideIcon; alignTop?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "pointer-events-none absolute left-0 z-10 flex w-9 items-center justify-center rounded-l-md border-r border-input bg-muted/40 text-muted-foreground",
+        alignTop ? "top-0 h-9" : "inset-y-0",
+      )}
+    >
+      <Icon className="h-4 w-4" />
+    </span>
+  );
 }
 
 const DUPLICATE_MENU_MESSAGE =
@@ -213,13 +243,16 @@ function WardenMessPage() {
               onChange={(e) => setTitle(e.target.value)}
               className="flex-1 min-w-[10rem]"
             />
-            <Input
-              type="time"
-              value={serveTime}
-              onChange={(e) => setServeTime(e.target.value)}
-              className="w-32"
-              aria-label={`${meal.charAt(0)}${meal.slice(1).toLowerCase()} time`}
-            />
+            <div className="relative w-32">
+              <Clock className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="time"
+                value={serveTime}
+                onChange={(e) => setServeTime(e.target.value)}
+                className="w-32 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                aria-label={`${meal.charAt(0)}${meal.slice(1).toLowerCase()} time`}
+              />
+            </div>
           </div>
           <Textarea
             placeholder="One item per line"
@@ -602,55 +635,89 @@ function EditMenuDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Menu</DialogTitle>
+        <DialogHeader className="flex-row items-center gap-3 space-y-0">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warning text-warning-foreground">
+            <Utensils className="h-5 w-5" />
+          </span>
+          <div>
+            <DialogTitle>Edit Menu</DialogTitle>
+            <DialogDescription>Update the details for today's menu</DialogDescription>
+          </div>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Meal Type</Label>
-              <Select value={meal} onValueChange={(v) => setMeal(v as typeof meal)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MEALS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <FieldIcon icon={Utensils} />
+                <Select value={meal} onValueChange={(v) => setMeal(v as typeof meal)}>
+                  <SelectTrigger className="w-full pl-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEALS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
-              <Input
-                type="date"
-                className="w-40"
-                value={menuDate}
-                onChange={(e) => setMenuDate(e.target.value)}
-              />
+              <div className="relative">
+                <FieldIcon icon={CalendarDays} />
+                <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="date"
+                  className="w-full pl-11 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  value={menuDate}
+                  onChange={(e) => setMenuDate(e.target.value)}
+                />
+              </div>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">
                 {meal.charAt(0)}
                 {meal.slice(1).toLowerCase()} Time
               </Label>
-              <Input
-                type="time"
-                className="w-32"
-                value={serveTime}
-                onChange={(e) => setServeTime(e.target.value)}
-              />
+              <div className="relative">
+                <FieldIcon icon={Clock} />
+                <Clock className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="time"
+                  className="w-full pl-11 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  value={serveTime}
+                  onChange={(e) => setServeTime(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Title (optional)</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            <div className="relative">
+              <FieldIcon icon={Tag} />
+              <Input
+                className="pl-11"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Menu Items (one per line)</Label>
-            <Textarea rows={4} value={items} onChange={(e) => setItems(e.target.value)} />
+            <div className="relative">
+              <FieldIcon icon={List} alignTop />
+              <Textarea
+                rows={4}
+                className="pl-11"
+                value={items}
+                onChange={(e) => setItems(e.target.value)}
+              />
+            </div>
             {errors.items ? <p className="text-xs text-destructive">{errors.items}</p> : null}
           </div>
         </div>
@@ -659,6 +726,7 @@ function EditMenuDialog({
             Cancel
           </Button>
           <Button disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
+            <Save className="h-4 w-4" />
             Save changes
           </Button>
         </DialogFooter>

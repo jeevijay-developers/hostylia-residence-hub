@@ -114,6 +114,7 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
     { label: "Students", to: "/warden/students", icon: Users },
     { label: "Complaints", to: "/warden/complaints", icon: MessageSquareWarning },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen },
   ],
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },

@@ -194,7 +194,7 @@ function AdminAttendancePage() {
   return (
     <div className="space-y-6 sm:space-y-8 max-w-6xl pb-10 overflow-x-hidden">
       {/* Monthly Attendance Summary Panel */}
-      <AttendanceReportPanel propertyId={propertyId} />
+      <AttendanceReportPanel propertyId={propertyId} totalStudentsTile />
 
       {/* Controls Bar for Daily Attendance */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
