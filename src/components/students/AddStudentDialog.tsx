@@ -63,6 +63,9 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
       }),
     onSuccess: (r) => {
       toast.success(`Student added — admission #${r.admission_number}`);
+      if (r.portalWarning) {
+        toast.warning(`Portal invite not sent: ${r.portalWarning}`);
+      }
       onDone();
       onOpenChange(false);
       setFullName("");

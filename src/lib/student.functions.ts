@@ -257,13 +257,15 @@ const manualCreateSchema = manualStudentRowSchema.extend({
  * there's no separate "accept" step for a student the Admin just created.
  * Best-effort: the student record must exist regardless of whether the
  * invite email/account provisioning succeeds (same philosophy as
- * `inviteStaff`), so every failure here is swallowed and logged.
+ * `inviteStaff`), so every failure here is swallowed and logged — but the
+ * reason is returned so the caller can still surface it to the admin (the
+ * student record is fine either way, only the portal invite didn't go out).
  */
 async function provisionStudentPortalAccount(
   supabase: ReturnType<typeof adminClient>,
   granterId: string,
   student: { id: string; tenant_id: string; property_id: string; full_name: string; email: string },
-) {
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -338,8 +340,10 @@ async function provisionStudentPortalAccount(
       propertyId: student.property_id,
       referenceId: student.id,
     });
+    return { ok: true };
   } catch (e) {
     console.warn("provisionStudentPortalAccount failed (student record was still created)", e);
+    return { ok: false, reason: e instanceof Error ? e.message : "Could not set up portal access" };
   }
 }
 
@@ -350,16 +354,18 @@ export const createStudentManual = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const student = await insertStudentRow(supabase, data.tenant_id, data.property_id, data);
+    let portalWarning: string | undefined;
     if (data.email && data.email.trim()) {
-      await provisionStudentPortalAccount(supabase, userId, {
+      const result = await provisionStudentPortalAccount(supabase, userId, {
         id: student.id,
         tenant_id: data.tenant_id,
         property_id: data.property_id,
         full_name: data.full_name,
         email: data.email.trim(),
       });
+      if (!result.ok) portalWarning = result.reason;
     }
-    return { id: student.id, admission_number: student.admission_number };
+    return { id: student.id, admission_number: student.admission_number, portalWarning };
   });
 
 const confirmAdmissionSchema = z.object({

@@ -1157,8 +1157,14 @@ function AdminStaffPage() {
           property_id: propertyId,
           block_id: addRole === "WARDEN" && addBlockId !== "ALL" ? addBlockId : null,
           full_name: staffName || null,
-          phone: addMode === "phone" ? phone || null : null,
-          email: addMode === "email" ? email || null : null,
+          // Phone (login/OTP option) and email (invitation channel) are two
+          // independent fields shown side by side — send whichever are
+          // actually filled in, not just the one matching `addMode` (that
+          // gate only decides which one is *required*, not which is sent;
+          // gating the payload on it silently dropped a typed email
+          // whenever `addMode` stayed on "phone", the default).
+          phone: phone.trim() || null,
+          email: email.trim() || null,
           role: addRole!,
           permissions: addCustomizePerms ? addPermissions : undefined,
         },
