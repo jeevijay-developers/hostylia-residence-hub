@@ -31,6 +31,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -142,12 +149,17 @@ function AccountantProfilePage() {
 
   // ── UI state ──
   const [mode, setMode] = useState<Mode>("view");
+  /** True when edit mode was entered via the photo menu's "Edit" item — only
+   * the photo is editable then; every other field stays read-only. */
+  const [photoOnlyEdit, setPhotoOnlyEdit] = useState(false);
+  const fieldsEditable = mode === "edit" && !photoOnlyEdit;
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   // ── Edit form fields ──
   const [uploading, setUploading] = useState(false);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [alternatePhone, setAlternatePhone] = useState("");
@@ -261,6 +273,25 @@ function AccountantProfilePage() {
     }
   }
 
+  // ─── Remove photo (persists immediately) ─────────────────────────────────
+
+  const removePhoto = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_path: null })
+        .eq("id", userId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setAvatarPath(null);
+      toast.success("Photo removed");
+      qc.invalidateQueries({ queryKey: ["accountant-profile", userId] });
+      qc.invalidateQueries({ queryKey: ["own-profile"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not remove photo"),
+  });
+
   // ─── Save profile ─────────────────────────────────────────────────────────
 
   const save = useMutation({
@@ -309,6 +340,7 @@ function AccountantProfilePage() {
       qc.invalidateQueries({ queryKey: ["accountant-profile", userId] });
       qc.invalidateQueries({ queryKey: ["own-profile"] });
       setMode("view");
+      setPhotoOnlyEdit(false);
       setShowPasswordForm(false);
     },
     onError: (e) => {
@@ -399,6 +431,7 @@ function AccountantProfilePage() {
     setPwErrors({});
     setShowPasswordForm(false);
     setMode("view");
+    setPhotoOnlyEdit(false);
   }
 
   // ─── Guards ───────────────────────────────────────────────────────────────
@@ -473,41 +506,65 @@ function AccountantProfilePage() {
           {/* Avatar + identity */}
           <div className="relative flex min-w-0 items-center gap-4 sm:gap-5">
             <div className="relative shrink-0">
-              <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
-                <AvatarImage src={displayAvatarUrl} alt={p.full_name} />
-                <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
-
-              {mode === "edit" && (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleAvatarUpload(file);
-                      e.target.value = "";
-                    }}
-                  />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Change profile photo"
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+                    aria-label="Profile photo options"
+                    className="group relative block rounded-full outline-none"
                   >
-                    {uploading ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-white" />
-                    ) : (
-                      <Camera className="h-5 w-5 text-white" />
-                    )}
+                    <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
+                      <AvatarImage src={displayAvatarUrl} alt={p.full_name} />
+                      <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                      {uploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      ) : (
+                        <Camera className="h-5 w-5 text-white" />
+                      )}
+                    </span>
                   </button>
-                </>
-              )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    disabled={!displayAvatarUrl}
+                    onSelect={() => setPhotoViewOpen(true)}
+                  >
+                    View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setMode("edit");
+                      setPhotoOnlyEdit(true);
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!displayAvatarUrl || removePhoto.isPending}
+                    onSelect={() => removePhoto.mutate()}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Remove
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="min-w-0">
@@ -536,7 +593,10 @@ function AccountantProfilePage() {
               <Button
                 size="sm"
                 id="accountant-profile-edit-btn"
-                onClick={() => setMode("edit")}
+                onClick={() => {
+                  setMode("edit");
+                  setPhotoOnlyEdit(false);
+                }}
               >
                 <UserRoundPen className="h-4 w-4" />
                 Edit Profile
@@ -575,7 +635,7 @@ function AccountantProfilePage() {
         <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
           <SectionHeader icon={User} title="Contact & Identity" tone="info" />
           <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
-            {mode === "edit" ? (
+            {fieldsEditable ? (
               <>
                 <EditField label="Full Name" htmlFor="ac-name" error={editErrors.fullName} className="py-2">
                   <Input
@@ -621,7 +681,7 @@ function AccountantProfilePage() {
         <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
           <SectionHeader icon={FileText} title="Additional Details" tone="primary" />
           <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
-            {mode === "edit" ? (
+            {fieldsEditable ? (
               <>
                 <EditField label="Alternate Phone" htmlFor="ac-altphone" error={editErrors.alternatePhone} className="py-2">
                   <Input
@@ -795,7 +855,7 @@ function AccountantProfilePage() {
               </p>
               <p className="text-sm font-medium tracking-widest text-foreground">••••••••</p>
 
-              {mode === "view" ? (
+              {!fieldsEditable ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Use Edit Profile to change password
                 </p>
@@ -816,7 +876,7 @@ function AccountantProfilePage() {
             </div>
 
             {/* ── Inline Change Password form ── */}
-            {mode === "edit" && showPasswordForm && (
+            {fieldsEditable && showPasswordForm && (
               <div className="flex flex-col gap-3 py-3">
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   <KeyRound className="h-3.5 w-3.5 text-warning" />
@@ -934,6 +994,22 @@ function AccountantProfilePage() {
         title="Logout?"
         confirmLabel="Logout"
       />
+
+      {/* ── View Photo dialog ── */}
+      <Dialog open={photoViewOpen} onOpenChange={setPhotoViewOpen}>
+        <DialogContent className="flex flex-col items-center gap-4">
+          <DialogHeader>
+            <DialogTitle>Profile photo</DialogTitle>
+          </DialogHeader>
+          {displayAvatarUrl && (
+            <img
+              src={displayAvatarUrl}
+              alt={p.full_name}
+              className="max-h-[60vh] w-full rounded-xl object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

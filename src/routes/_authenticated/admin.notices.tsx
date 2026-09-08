@@ -34,9 +34,6 @@ function AdminNoticesPage() {
         </span>
         <div className="min-w-0">
           <p className="font-display text-lg font-semibold text-foreground sm:text-2xl">Notices</p>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Manage and publish announcements across channels
-          </p>
         </div>
       </div>
 

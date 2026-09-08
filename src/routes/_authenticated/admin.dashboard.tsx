@@ -124,7 +124,7 @@ function AdminDashboardPage() {
 
   return (
     <div className="max-w-6xl space-y-6 sm:space-y-8">
-      <PageHeader title="Dashboard" description="Live snapshot of this property" />
+      <PageHeader title="Dashboard" />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties
@@ -164,7 +164,7 @@ function AdminDashboardPage() {
             value={kpis.data?.activeStudents ?? 0}
             loading={kpis.isLoading}
             tone="success"
-            onNavigate={() => navigate({ to: "/admin/students" })}
+            onNavigate={() => navigate({ to: "/admin/students", search: { status: "ACTIVE" } })}
           />
         </div>
       )}
@@ -182,13 +182,16 @@ function AdminDashboardPage() {
 
       {propertyId && (
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <RoomOccupancyChart
-            totalBeds={kpis.data?.totalBeds ?? 0}
-            occupiedBeds={kpis.data?.occupiedBeds ?? 0}
-            vacantBeds={kpis.data?.vacantBeds ?? 0}
-            occupancyPct={kpis.data?.occupancyPct ?? 0}
-            loading={kpis.isLoading}
-          />
+          <div className="space-y-4 sm:space-y-6">
+            <RoomOccupancyChart
+              totalBeds={kpis.data?.totalBeds ?? 0}
+              occupiedBeds={kpis.data?.occupiedBeds ?? 0}
+              vacantBeds={kpis.data?.vacantBeds ?? 0}
+              occupancyPct={kpis.data?.occupancyPct ?? 0}
+              loading={kpis.isLoading}
+            />
+            <KycApprovalQueueCard />
+          </div>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Recent Activity</CardTitle>
@@ -218,8 +221,6 @@ function AdminDashboardPage() {
           </Card>
         </div>
       )}
-
-      {propertyId && <KycApprovalQueueCard />}
     </div>
   );
 }

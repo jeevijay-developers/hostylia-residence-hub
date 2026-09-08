@@ -60,7 +60,6 @@ function FinanceIndex() {
               <p className="font-display text-base font-semibold text-foreground sm:text-lg">
                 {l.label}
               </p>
-              <p className="mt-0.5 text-sm text-muted-foreground">{l.desc}</p>
             </div>
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">
               <ChevronRight className="h-4 w-4" />

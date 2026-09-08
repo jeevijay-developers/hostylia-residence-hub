@@ -88,7 +88,12 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
     { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
     { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
-    { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning, module: "complaints" },
+    {
+      label: "Complaints",
+      to: "/student/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
@@ -100,10 +105,14 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
 };
 
 export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
+  ACCOUNTANT: [
+    { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
+    { label: "Payments", to: "/accountant/payments", icon: CreditCard },
+    { label: "Students", to: "/accountant/students", icon: Users },
+  ],
   WARDEN: [
     { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
     { label: "Students", to: "/warden/students", icon: Users },
-    { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
     { label: "Complaints", to: "/warden/complaints", icon: MessageSquareWarning },
     { label: "Gate", to: "/warden/gate", icon: DoorOpen },
   ],
@@ -111,8 +120,6 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Home", to: "/student/home", icon: Home },
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
     { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
-    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
-    { label: "Complaints", to: "/student/complaints", icon: MessageSquareWarning, module: "complaints" },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
@@ -121,6 +128,47 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Payments", to: "/parent/payments", icon: Receipt },
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
   ],
+};
+
+/**
+ * Secondary features surfaced inside the mobile "More" sheet — routes that
+ * exist and are role-accessible but don't fit in the 5-item bottom bar.
+ * Used by ACCOUNTANT, STUDENT and WARDEN today.
+ */
+export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
+  ACCOUNTANT: [
+    { label: "Fee Plans", to: "/accountant/fee-plans", icon: ClipboardList },
+    { label: "Refunds", to: "/accountant/refunds", icon: Receipt },
+    { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
+    { label: "Reports", to: "/accountant/reports", icon: FileBarChart },
+  ],
+  WARDEN: [
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen },
+    { label: "Mess", to: "/warden/mess", icon: Utensils },
+    { label: "Notices", to: "/warden/notices", icon: BellRing },
+    { label: "Allocations", to: "/warden/allocations", icon: CalendarCheck },
+    { label: "Reports", to: "/warden/reports", icon: FileBarChart },
+  ],
+  STUDENT: [
+    {
+      label: "Complaints",
+      to: "/student/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
+    { label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" },
+    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
+  ],
+};
+
+/**
+ * The single center-action item for Student's floating bottom-nav button.
+ * Module-filtering is applied the same way as BOTTOM_NAV items in student.tsx.
+ */
+export const CENTER_NAV: Partial<Record<NonNullable<AppRole>, NavItem>> = {
+  ACCOUNTANT: { label: "Invoices", to: "/accountant/invoices", icon: FileText },
+  WARDEN: { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
+  STUDENT: { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
 };
 
 export const NOTIFICATION_ICON = BellRing;

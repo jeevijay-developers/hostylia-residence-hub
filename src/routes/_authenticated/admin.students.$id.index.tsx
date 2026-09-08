@@ -24,6 +24,7 @@ import { DetailPageSkeleton } from "@/components/dashboard/DetailPageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { KycStatus } from "@/components/students/KycStatus";
@@ -137,23 +138,23 @@ function StudentDetailPage() {
         </Link>
       </Button>
 
-      <Card className="overflow-hidden rounded-2xl">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <div className="flex min-w-0 items-center gap-4">
+      <Card className="overflow-hidden rounded-2xl lg:bg-gradient-to-br lg:from-primary/[0.06] lg:to-transparent">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:p-7">
+          <div className="flex min-w-0 items-center gap-4 lg:gap-5">
             <div
-              className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-1 ring-primary/20"
+              className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-1 ring-primary/20 lg:h-16 lg:w-16 lg:bg-gradient-to-br lg:from-primary lg:to-info lg:text-xl lg:text-primary-foreground lg:ring-2 lg:ring-primary/25"
               aria-hidden="true"
             >
               {initialsOf(s.full_name)}
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                <h1 className="truncate font-display text-xl font-semibold text-foreground sm:text-2xl lg:text-3xl">
                   {s.full_name}
                 </h1>
                 <StudentStatusBadge status={s.status} />
               </div>
-              <p className="mt-1 truncate text-sm text-muted-foreground">
+              <p className="mt-1 truncate text-sm text-muted-foreground lg:mt-1.5 lg:text-[0.925rem]">
                 Admission #{s.admission_number} • {s.phone ?? "no phone"}
               </p>
             </div>
@@ -164,6 +165,7 @@ function StudentDetailPage() {
                 variant="outline"
                 disabled={confirmAdmission.isPending}
                 onClick={() => confirmAdmission.mutate()}
+                className="lg:h-10 lg:px-4"
               >
                 {confirmAdmission.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,7 +176,7 @@ function StudentDetailPage() {
               </Button>
             )}
             {(s.status === "ACTIVE" || s.status === "NOTICE_GIVEN") && (
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="lg:h-10 lg:px-4">
                 <Link to="/admin/students/$id/move-out" params={{ id }}>
                   <DoorOpen className="h-4 w-4" /> Move out
                 </Link>
@@ -190,7 +192,7 @@ function StudentDetailPage() {
             <SectionIcon icon={UserRound} tone="primary" />
             <CardTitle>Profile</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-x-4 gap-y-5 text-sm sm:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-x-4 gap-y-5 text-sm sm:grid-cols-2 lg:gap-y-6">
             <Info icon={Mail} label="Email" value={s.email ?? "—"} />
             <Info icon={GraduationCap} label="Institute" value={s.academic_institute ?? "—"} />
             <Info icon={Cake} label="Date of birth" value={s.date_of_birth ?? "—"} />
@@ -205,111 +207,189 @@ function StudentDetailPage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        {/* Guardian / KYC / Agreement / Allocation history — stacked on mobile & tablet (unchanged), tabbed on desktop */}
+        <div className="space-y-6 lg:hidden">
           <GuardianCard studentId={id} canEdit />
+          <AllocationHistoryCard allocQ={allocQ} feePlanById={feePlanById} />
+          <KycCard studentId={s.id} />
+          <AgreementCard studentId={s.id} />
+        </div>
 
-          <Card className="overflow-hidden rounded-2xl">
-            <CardHeader className="flex-row items-center gap-3 space-y-0">
-              <SectionIcon icon={Building2} tone="info" />
-              <CardTitle>Allocation history</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {allocQ.isError ? (
-                <p className="text-sm text-destructive">
-                  Couldn't load allocations:{" "}
-                  {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
-                </p>
-              ) : (allocQ.data ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No allocations yet. Assign a bed from Allocations.
-                </p>
-              ) : (
-                <ul className="space-y-3 text-sm">
-                  {(allocQ.data ?? []).map((a) => {
-                    const bed = a.bed as {
-                      code: string;
-                      room: { room_number: string } | null;
-                      floor: { name: string; floor_number: number | null } | null;
-                      block: { name: string } | null;
-                    } | null;
-                    const feePlan = a.fee_plan_id ? (feePlanById.get(a.fee_plan_id) ?? null) : null;
-                    return (
-                      <li
-                        key={a.id}
-                        className="space-y-2 rounded-xl border border-border bg-muted/20 p-3.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-foreground">
-                            {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {bed
-                            ? [
-                                bed.block?.name && `Block ${bed.block.name}`,
-                                bed.floor?.name ??
-                                  (bed.floor?.floor_number != null
-                                    ? `Floor ${bed.floor.floor_number}`
-                                    : null),
-                                bed.room?.room_number && `Room ${bed.room.room_number}`,
-                                `Bed ${bed.code}`,
-                              ]
-                                .filter(Boolean)
-                                .join(" • ")
-                            : "Bed details unavailable"}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/80 pt-2 text-xs text-muted-foreground">
-                          <span>
-                            Fee plan:{" "}
-                            <span className="font-medium text-foreground">
-                              {feePlan
-                                ? `${feePlan.name} (${feePlan.code})`
-                                : "No fee plan assigned"}
-                            </span>
-                          </span>
-                          <span>
-                            Rent:{" "}
-                            <span className="font-medium text-foreground">
-                              {formatInr(a.rent_snapshot_paise)}
-                            </span>
-                          </span>
-                          <span>
-                            Deposit:{" "}
-                            <span className="font-medium text-foreground">
-                              {formatInr(a.deposit_snapshot_paise)}
-                            </span>
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden rounded-2xl">
-            <CardHeader className="flex-row items-center gap-3 space-y-0">
-              <SectionIcon icon={ShieldCheck} tone="success" />
-              <CardTitle>KYC documents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <KycStatus studentId={s.id} canReview />
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden rounded-2xl">
-            <CardHeader className="flex-row items-center gap-3 space-y-0">
-              <SectionIcon icon={UserRoundCheck} tone="primary" />
-              <CardTitle>Boarding agreement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AgreementViewer studentId={s.id} readOnly />
-            </CardContent>
-          </Card>
+        <div className="hidden lg:block">
+          <Tabs defaultValue="guardian">
+            <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-none border-0 bg-transparent p-0">
+              <TabsTrigger
+                value="guardian"
+                className="min-w-0 gap-1.5 whitespace-normal rounded-xl border border-border/70 bg-card px-2 py-2.5 text-center text-xs leading-tight text-muted-foreground shadow-none data-[state=active]:border-amber-500/60 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-600 data-[state=active]:shadow-none dark:data-[state=active]:text-amber-400"
+              >
+                <Users className="h-4 w-4 shrink-0" />{" "}
+                <span className="truncate">Guardian / Parent</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="kyc"
+                className="min-w-0 gap-1.5 whitespace-normal rounded-xl border border-border/70 bg-card px-2 py-2.5 text-center text-xs leading-tight text-muted-foreground shadow-none data-[state=active]:border-amber-500/60 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-600 data-[state=active]:shadow-none dark:data-[state=active]:text-amber-400"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />{" "}
+                <span className="truncate">KYC documents</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="agreement"
+                className="min-w-0 gap-1.5 whitespace-normal rounded-xl border border-border/70 bg-card px-2 py-2.5 text-center text-xs leading-tight text-muted-foreground shadow-none data-[state=active]:border-amber-500/60 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-600 data-[state=active]:shadow-none dark:data-[state=active]:text-amber-400"
+              >
+                <UserRoundCheck className="h-4 w-4 shrink-0" />{" "}
+                <span className="truncate">Boarding agreement</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="allocations"
+                className="min-w-0 gap-1.5 whitespace-normal rounded-xl border border-border/70 bg-card px-2 py-2.5 text-center text-xs leading-tight text-muted-foreground shadow-none data-[state=active]:border-amber-500/60 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-600 data-[state=active]:shadow-none dark:data-[state=active]:text-amber-400"
+              >
+                <Building2 className="h-4 w-4 shrink-0" />{" "}
+                <span className="truncate">Allocation history</span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="guardian" className="mt-4">
+              <GuardianCard studentId={id} canEdit />
+            </TabsContent>
+            <TabsContent value="kyc" className="mt-4">
+              <KycCard studentId={s.id} />
+            </TabsContent>
+            <TabsContent value="agreement" className="mt-4">
+              <AgreementCard studentId={s.id} />
+            </TabsContent>
+            <TabsContent value="allocations" className="mt-4">
+              <AllocationHistoryCard allocQ={allocQ} feePlanById={feePlanById} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+type AllocationRow = {
+  id: string;
+  start_date: string;
+  expected_end_date: string | null;
+  actual_end_date: string | null;
+  fee_plan_id: string | null;
+  rent_snapshot_paise: number;
+  deposit_snapshot_paise: number;
+  bed: unknown;
+};
+
+function AllocationHistoryCard({
+  allocQ,
+  feePlanById,
+}: {
+  allocQ: { isError: boolean; error: unknown; data: AllocationRow[] | undefined };
+  feePlanById: Map<string, { name: string; code: string }>;
+}) {
+  return (
+    <Card className="overflow-hidden rounded-2xl">
+      <CardHeader className="flex-row items-center gap-3 space-y-0">
+        <SectionIcon icon={Building2} tone="info" />
+        <CardTitle>Allocation history</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {allocQ.isError ? (
+          <p className="text-sm text-destructive">
+            Couldn't load allocations:{" "}
+            {allocQ.error instanceof Error ? allocQ.error.message : "unknown error"}
+          </p>
+        ) : (allocQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No allocations yet. Assign a bed from Allocations.
+          </p>
+        ) : (
+          <ul className="space-y-3 text-sm">
+            {(allocQ.data ?? []).map((a) => {
+              const bed = a.bed as {
+                code: string;
+                room: { room_number: string } | null;
+                floor: { name: string; floor_number: number | null } | null;
+                block: { name: string } | null;
+              } | null;
+              const feePlan = a.fee_plan_id ? (feePlanById.get(a.fee_plan_id) ?? null) : null;
+              return (
+                <li
+                  key={a.id}
+                  className="space-y-2 rounded-xl border border-border bg-muted/20 p-3.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-foreground">
+                      {a.start_date} → {a.actual_end_date ?? a.expected_end_date ?? "open"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {bed
+                      ? [
+                          bed.block?.name && `Block ${bed.block.name}`,
+                          bed.floor?.name ??
+                            (bed.floor?.floor_number != null
+                              ? `Floor ${bed.floor.floor_number}`
+                              : null),
+                          bed.room?.room_number && `Room ${bed.room.room_number}`,
+                          `Bed ${bed.code}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")
+                      : "Bed details unavailable"}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/80 pt-2 text-xs text-muted-foreground">
+                    <span>
+                      Fee plan:{" "}
+                      <span className="font-medium text-foreground">
+                        {feePlan ? `${feePlan.name} (${feePlan.code})` : "No fee plan assigned"}
+                      </span>
+                    </span>
+                    <span>
+                      Rent:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatInr(a.rent_snapshot_paise)}
+                      </span>
+                    </span>
+                    <span>
+                      Deposit:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatInr(a.deposit_snapshot_paise)}
+                      </span>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function KycCard({ studentId }: { studentId: string }) {
+  return (
+    <Card className="overflow-hidden rounded-2xl">
+      <CardHeader className="flex-row items-center gap-3 space-y-0">
+        <SectionIcon icon={ShieldCheck} tone="success" />
+        <CardTitle>KYC documents</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <KycStatus studentId={studentId} canReview />
+      </CardContent>
+    </Card>
+  );
+}
+
+function AgreementCard({ studentId }: { studentId: string }) {
+  return (
+    <Card className="overflow-hidden rounded-2xl">
+      <CardHeader className="flex-row items-center gap-3 space-y-0">
+        <SectionIcon icon={UserRoundCheck} tone="primary" />
+        <CardTitle>Boarding agreement</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <AgreementViewer studentId={studentId} readOnly />
+      </CardContent>
+    </Card>
   );
 }
 

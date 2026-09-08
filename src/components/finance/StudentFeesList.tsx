@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle2, ChevronRight, FileText } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, CreditCard, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,17 +67,19 @@ export function StudentFeesList({
       {rows.map((i) => {
         const StatusIcon = INVOICE_STATUS_ICON[i.status as InvoiceStatus];
         return (
-          <div key={i.id} className="rounded-xl border border-border bg-card p-4">
+          <div key={i.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-info/15 text-info">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info/15 text-info">
                   <FileText className="h-5 w-5" />
                 </span>
-                <div>
-                  <Badge variant="secondary" className="mb-1 text-[11px] font-normal">
+                <div className="min-w-0">
+                  <Badge variant="info" className="mb-1 text-[11px] font-medium">
                     Invoice
                   </Badge>
-                  <p className="font-mono text-sm font-semibold text-foreground">{i.invoice_number}</p>
+                  <p className="truncate font-mono text-base font-bold text-foreground">
+                    {i.invoice_number}
+                  </p>
                   <p className="text-sm text-muted-foreground">Due {i.due_date}</p>
                 </div>
               </div>
@@ -86,24 +88,28 @@ export function StudentFeesList({
               </span>
             </div>
 
-            <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="mt-2 flex justify-end">
+              <div className="text-right">
+                <p className="text-2xl font-bold text-foreground">{formatInr(i.balance_paise)}</p>
+                <p className="text-xs text-muted-foreground">of {formatInr(i.total_paise)}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 border-t border-border/60 pt-3">
               <Badge className={`gap-1 ${INVOICE_STATUS_TONE[i.status as InvoiceStatus] ?? ""}`}>
                 {StatusIcon && <StatusIcon className="h-3.5 w-3.5" />}
                 {i.status}
               </Badge>
-              <div className="text-right">
-                <p className="text-xl font-semibold">{formatInr(i.balance_paise)}</p>
-                <p className="text-xs text-muted-foreground">of {formatInr(i.total_paise)}</p>
-              </div>
             </div>
 
             {canPay && i.balance_paise > 0 && i.status !== "VOID" && (
               <Button
                 size="sm"
-                className="mt-3 w-full"
+                className="mt-3"
                 onClick={() => pay.mutate(i.id)}
                 disabled={!kycComplete || pay.isPending}
               >
+                <CreditCard className="h-4 w-4" />
                 {pay.isPending ? "Opening…" : "Pay now"}
               </Button>
             )}

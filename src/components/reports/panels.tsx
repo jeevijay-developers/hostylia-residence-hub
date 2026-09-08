@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarClock,
+  CalendarDays,
   FileText,
   TrendingUp,
   UserCheck,
@@ -364,9 +365,12 @@ function currentMonthValue(): string {
 export function AttendanceReportPanel({
   propertyId,
   showExport = true,
+  totalStudentsTile = false,
 }: {
   propertyId: string;
   showExport?: boolean;
+  /** Swap the first KPI tile from "Students marked" to "Total Students". */
+  totalStudentsTile?: boolean;
 }) {
   const [monthInput, setMonthInput] = useState(currentMonthValue());
   const month = `${monthInput}-01`;
@@ -380,6 +384,7 @@ export function AttendanceReportPanel({
 
   const summary = useMemo(() => {
     const studentsMarked = rows.filter((r) => r.marked_days > 0).length;
+    const totalStudents = rows.length;
     const present = rows.reduce((s, r) => s + r.present_days, 0);
     const absent = rows.reduce((s, r) => s + r.absent_days, 0);
     const withPct = rows.filter((r) => r.attendance_pct !== null);
@@ -388,7 +393,7 @@ export function AttendanceReportPanel({
           (withPct.reduce((s, r) => s + (r.attendance_pct ?? 0), 0) / withPct.length) * 10,
         ) / 10
       : null;
-    return { studentsMarked, present, absent, avgPct };
+    return { studentsMarked, totalStudents, present, absent, avgPct };
   }, [rows]);
 
   return (
@@ -403,14 +408,17 @@ export function AttendanceReportPanel({
             <Label htmlFor="attendance-report-month" className="text-xs text-muted-foreground font-semibold">
               Month
             </Label>
-            <Input
-              id="attendance-report-month"
-              type="month"
-              className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl text-xs sm:text-sm"
-              value={monthInput}
-              max={currentMonthValue()}
-              onChange={(e) => setMonthInput(e.target.value)}
-            />
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="attendance-report-month"
+                type="month"
+                className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl pr-8 text-xs sm:text-sm [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                value={monthInput}
+                max={currentMonthValue()}
+                onChange={(e) => setMonthInput(e.target.value)}
+              />
+            </div>
           </div>
           {showExport && (
             <ExportButton
@@ -433,8 +441,12 @@ export function AttendanceReportPanel({
             <Users className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">Students marked</p>
-            <p className="mt-1 text-xl font-bold text-neutral-accent sm:text-3xl">{summary.studentsMarked}</p>
+            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-sm">
+              {totalStudentsTile ? "Total Students" : "Students marked"}
+            </p>
+            <p className="mt-1 text-xl font-bold text-neutral-accent sm:text-3xl">
+              {totalStudentsTile ? summary.totalStudents : summary.studentsMarked}
+            </p>
           </div>
         </div>
 

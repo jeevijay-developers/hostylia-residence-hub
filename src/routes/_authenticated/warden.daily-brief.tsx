@@ -5,8 +5,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowRight,
   CalendarCheck,
   ChevronRight,
+  Clock,
   DoorOpen,
   MessageSquareWarning,
   UserCheck,
@@ -16,10 +18,9 @@ import {
   Utensils,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KycApprovalQueueCard } from "@/components/students/KycApprovalQueue";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
@@ -69,6 +70,60 @@ const PRIORITY_DOT_CLASSES: Record<SemanticTone, string> = {
   info: "bg-info",
   muted: "bg-muted-foreground",
 };
+
+/** Solid, high-contrast icon-badge fills for the brief's KPI tiles — a
+ * bolder look than the app's usual light-tint `toneClasses` badges. */
+const SOLID_TONE_CLASSES: Record<SemanticTone, string> = {
+  primary: "bg-primary text-primary-foreground",
+  success: "bg-success text-success-foreground",
+  destructive: "bg-destructive text-destructive-foreground",
+  warning: "bg-warning text-warning-foreground",
+  info: "bg-info text-info-foreground",
+  muted: "bg-muted text-muted-foreground",
+};
+
+/** KPI tile for the brief's top summary row — icon badge, label, big value,
+ * and a small caption line underneath. */
+function BriefKpiTile({
+  icon: Icon,
+  label,
+  value,
+  caption,
+  tone,
+  loading,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+  caption: string;
+  tone: SemanticTone;
+  loading?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
+            SOLID_TONE_CLASSES[tone],
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <p className="min-w-0 truncate text-sm font-medium text-foreground">{label}</p>
+      </div>
+      <div className="mt-3">
+        {loading ? (
+          <Skeleton className="h-8 w-16" />
+        ) : (
+          <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
+            {value}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function WardenBriefPage() {
   const role = useResolvedRole();
@@ -128,56 +183,54 @@ function WardenBriefPage() {
 
   return (
     <div className="space-y-6">
-      {/* <PageHeader title="Daily brief" description="Your day at a glance." /> */}
-
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-        <KpiCard
+        <BriefKpiTile
           icon={Users}
           label="Total Students"
           value={studentsQ.data?.length ?? 0}
+          caption="Registered"
           loading={studentsQ.isLoading}
-          tone="muted"
-          bareIcon
+          tone="info"
         />
-        <KpiCard
+        <BriefKpiTile
           icon={UserCheck}
           label="Present"
           value={attendanceCounts.PRESENT}
+          caption="Today"
           loading={studentsQ.isLoading}
           tone="success"
-          bareIcon
         />
-        <KpiCard
+        <BriefKpiTile
           icon={UserX}
           label="Absent"
           value={attendanceCounts.ABSENT}
+          caption="Today"
           loading={attendanceQ.isLoading}
           tone="destructive"
-          bareIcon
         />
-        <KpiCard
+        <BriefKpiTile
           icon={MessageSquareWarning}
           label="Pending Complaints"
           value={pendingComplaints.length}
+          caption="To be resolved"
           loading={complaintsQ.isLoading}
           tone="warning"
-          bareIcon
         />
-        <KpiCard
+        <BriefKpiTile
           icon={DoorOpen}
           label="Pending Gate Pass"
           value={gatePassesQ.data?.length ?? 0}
+          caption="Awaiting approval"
           loading={gatePassesQ.isLoading}
-          tone="warning"
-          bareIcon
+          tone="primary"
         />
-        <KpiCard
+        <BriefKpiTile
           icon={UserPlus}
           label="Visitors Today"
           value={visitorsToday.length}
+          caption="Checked in"
           loading={visitorsQ.isLoading}
           tone="info"
-          bareIcon
         />
       </div>
 
@@ -185,11 +238,16 @@ function WardenBriefPage() {
         <div className="space-y-6 lg:col-span-2">
           <Link
             to="/warden/mess"
-            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 transition hover:bg-accent"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:bg-accent"
           >
             <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <Utensils className="h-4 w-4" />
+              <span
+                className={cn(
+                  "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
+                  SOLID_TONE_CLASSES.warning,
+                )}
+              >
+                <Utensils className="h-5 w-5" />
               </span>
               <div>
                 <p className="text-sm font-medium">Manage Mess Menu</p>
@@ -204,11 +262,14 @@ function WardenBriefPage() {
 
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Recent Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Recent Activity
+            </CardTitle>
             {recentActivity.length > 5 && (
               <Button asChild variant="ghost" size="sm" className="-mr-2 text-primary">
                 <Link to="/warden/activity">
-                  See all <ChevronRight className="h-4 w-4" />
+                  View all <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             )}

@@ -9,10 +9,14 @@ import { StudentsListPage } from "@/components/students/StudentsListPage";
 
 export const Route = createFileRoute("/_authenticated/admin/students/")({
   head: () => ({ meta: [{ title: "Students — Hostylia" }] }),
+  validateSearch: (search: Record<string, unknown>): { status?: string } => ({
+    status: typeof search.status === "string" ? search.status : undefined,
+  }),
   component: AdminStudentsRoute,
 });
 
 function AdminStudentsRoute() {
+  const { status } = Route.useSearch();
   const { data: resolved } = useResolvedRole();
   const tenantId = resolved?.tenantId ?? null;
 
@@ -45,6 +49,7 @@ function AdminStudentsRoute() {
       onPropertyChange={setLocalPropertyId}
       canCreate
       canDelete
+      initialStatusFilter={status}
     />
   );
 }

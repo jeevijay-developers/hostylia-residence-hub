@@ -188,7 +188,7 @@ export function NoticeComposer({ propertyId }: Props) {
             <Label htmlFor="notice-body">Body</Label>
             <Textarea
               id="notice-body"
-              className="mt-1.5"
+              className="mt-1.5 resize-none"
               placeholder="Write your notice here…"
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -454,6 +454,7 @@ export function NoticeComposer({ propertyId }: Props) {
               <Label htmlFor="edit-notice-body">Body</Label>
               <Textarea
                 id="edit-notice-body"
+                className="resize-none"
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
                 rows={5}

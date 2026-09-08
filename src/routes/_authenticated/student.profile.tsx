@@ -34,6 +34,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -185,9 +191,14 @@ function StudentProfilePage() {
 
   // ── Page state ──
   const [mode, setMode] = useState<Mode>("view");
+  /** True when edit mode was entered via the photo menu's "Edit" item — only
+   * the photo is editable then; every other field stays read-only. */
+  const [photoOnlyEdit, setPhotoOnlyEdit] = useState(false);
+  const fieldsEditable = mode === "edit" && !photoOnlyEdit;
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
+  const [photoViewOpen, setPhotoViewOpen] = useState(false);
 
   // ── Edit form fields ──
   const [uploading, setUploading] = useState(false);
@@ -369,6 +380,34 @@ function StudentProfilePage() {
     }
   }
 
+  // ─── Remove photo (persists immediately) ─────────────────────────────────
+
+  const removePhoto = useMutation({
+    mutationFn: async () => {
+      const sId = studentQ.data?.id;
+      const pId = profileQ.data?.id;
+      if (!sId || !pId) throw new Error("Missing profile records");
+      const { error: sErr } = await supabase
+        .from("students")
+        .update({ photo_path: null })
+        .eq("id", sId);
+      if (sErr) throw sErr;
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .update({ avatar_path: null })
+        .eq("id", pId);
+      if (pErr) throw pErr;
+    },
+    onSuccess: () => {
+      setAvatarPath(null);
+      toast.success("Photo removed");
+      qc.invalidateQueries({ queryKey: ["my-profile-record", userId] });
+      qc.invalidateQueries({ queryKey: ["student-profile-extra", userId] });
+      qc.invalidateQueries({ queryKey: ["own-profile"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not remove photo"),
+  });
+
   // ─── Save profile ─────────────────────────────────────────────────────────
 
   const save = useMutation({
@@ -445,6 +484,7 @@ function StudentProfilePage() {
       qc.invalidateQueries({ queryKey: ["student-profile-extra", userId] });
       qc.invalidateQueries({ queryKey: ["own-profile"] });
       setMode("view");
+      setPhotoOnlyEdit(false);
       setShowPasswordForm(false);
     },
     onError: (e) => {
@@ -541,6 +581,7 @@ function StudentProfilePage() {
     setPwErrors({});
     setShowPasswordForm(false);
     setMode("view");
+    setPhotoOnlyEdit(false);
   }
 
   // ─── Guards ───────────────────────────────────────────────────────────────
@@ -663,41 +704,65 @@ function StudentProfilePage() {
             {/* Avatar + identity */}
             <div className="relative flex min-w-0 items-center gap-4 sm:gap-5">
               <div className="relative shrink-0">
-                <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
-                  <AvatarImage src={displayAvatarUrl} alt={s.full_name} />
-                  <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-
-                {mode === "edit" && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void handleAvatarUpload(file);
-                        e.target.value = "";
-                      }}
-                    />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleAvatarUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
                       disabled={uploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      aria-label="Change profile photo"
-                      className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+                      aria-label="Profile photo options"
+                      className="group relative block rounded-full outline-none"
                     >
-                      {uploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                      ) : (
-                        <Camera className="h-5 w-5 text-white" />
-                      )}
+                      <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
+                        <AvatarImage src={displayAvatarUrl} alt={s.full_name} />
+                        <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
+                          {initial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                        {uploading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        ) : (
+                          <Camera className="h-5 w-5 text-white" />
+                        )}
+                      </span>
                     </button>
-                  </>
-                )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem
+                      disabled={!displayAvatarUrl}
+                      onSelect={() => setPhotoViewOpen(true)}
+                    >
+                      View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setMode("edit");
+                        setPhotoOnlyEdit(true);
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!displayAvatarUrl || removePhoto.isPending}
+                      onSelect={() => removePhoto.mutate()}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="min-w-0">
@@ -741,7 +806,10 @@ function StudentProfilePage() {
                 <Button
                   size="sm"
                   id="student-profile-edit-btn"
-                  onClick={() => setMode("edit")}
+                  onClick={() => {
+                    setMode("edit");
+                    setPhotoOnlyEdit(false);
+                  }}
                 >
                   <UserRoundPen className="h-4 w-4" />
                   Edit Profile
@@ -780,7 +848,7 @@ function StudentProfilePage() {
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
             <SectionHeader icon={User} title="Personal Information" tone="info" />
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
-              {mode === "edit" ? (
+              {fieldsEditable ? (
                 <>
                   <EditField label="Full Name" htmlFor="s-name" error={editErrors.full_name} className="py-1">
                     <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8 text-sm" />
@@ -839,7 +907,7 @@ function StudentProfilePage() {
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
             <SectionHeader icon={GraduationCap} title="Academic Information" tone="success" />
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
-              {mode === "edit" ? (
+              {fieldsEditable ? (
                 <>
                   <EditField label="Institute" htmlFor="s-inst" error={editErrors.academic_institute} className="py-1 col-span-1 sm:col-span-2">
                     <Input id="s-inst" value={academicInstitute} onChange={(e) => setAcademicInstitute(e.target.value)} className="h-8 text-sm" />
@@ -867,7 +935,7 @@ function StudentProfilePage() {
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
             <SectionHeader icon={Phone} title="Emergency Contact & Address" tone="warning" />
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
-              {mode === "edit" ? (
+              {fieldsEditable ? (
                 <>
                   <EditField label="Emergency Contact Name" htmlFor="s-ecname" error={editErrors.emergency_contact_name} className="py-1">
                     <Input id="s-ecname" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} className="h-8 text-sm" />
@@ -956,7 +1024,7 @@ function StudentProfilePage() {
                   </p>
                   <p className="text-sm font-medium tracking-widest text-foreground">••••••••</p>
 
-                  {mode === "view" ? (
+                  {!fieldsEditable ? (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       Use Edit Profile to change password
                     </p>
@@ -977,7 +1045,7 @@ function StudentProfilePage() {
                 </div>
 
                 {/* ── Inline Change Password form ── */}
-                {mode === "edit" && showPasswordForm && (
+                {fieldsEditable && showPasswordForm && (
                   <div className="flex flex-col gap-3 py-3">
                     <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <KeyRound className="h-3.5 w-3.5 text-warning" />
@@ -1045,6 +1113,22 @@ function StudentProfilePage() {
               <p className="text-sm text-muted-foreground">
                 You have read-only access to KYC documents.
               </p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* ── View Photo dialog ── */}
+        <Dialog open={photoViewOpen} onOpenChange={setPhotoViewOpen}>
+          <DialogContent className="flex flex-col items-center gap-4">
+            <DialogHeader>
+              <DialogTitle>Profile photo</DialogTitle>
+            </DialogHeader>
+            {displayAvatarUrl && (
+              <img
+                src={displayAvatarUrl}
+                alt={s.full_name}
+                className="max-h-[60vh] w-full rounded-xl object-contain"
+              />
             )}
           </DialogContent>
         </Dialog>

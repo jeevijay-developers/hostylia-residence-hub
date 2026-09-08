@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, LogOut, User } from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import {
@@ -12,6 +12,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -20,7 +26,6 @@ import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
 import { BrandLockup } from "@/components/BrandLockup";
 import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
-import { SidebarSignOut } from "@/components/dashboard/SidebarSignOut";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
@@ -29,11 +34,18 @@ interface TopbarProps {
   navItems?: NavItem[];
   showPropertySwitcher?: boolean;
   tenantId?: string | null;
+  /** Hides the mobile hamburger/Sheet nav trigger — used when a role-specific mobile bottom nav replaces it. */
+  hideMobileNavTrigger?: boolean;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: TopbarProps) {
+export function Topbar({
+  navItems = [],
+  showPropertySwitcher,
+  tenantId,
+  hideMobileNavTrigger,
+}: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
   const navigate = useNavigate();
@@ -55,6 +67,18 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
   const isAccountant = resolved?.role === "ACCOUNTANT";
   const isAdmin = resolved?.role === "HOSTEL_ADMIN";
 
+  const isWarden = resolved?.role === "WARDEN";
+  const isStudent = resolved?.role === "STUDENT";
+  const isParent = resolved?.role === "PARENT";
+  const isSuperAdmin = resolved?.role === "SUPER_ADMIN";
+
+  let profileHref: string | undefined = undefined;
+  if (isAdmin) profileHref = "/admin/profile";
+  else if (isAccountant) profileHref = "/accountant/profile";
+  else if (isWarden) profileHref = "/warden/profile";
+  else if (isStudent) profileHref = "/student/profile";
+  else if (isParent) profileHref = "/parent/profile";
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -68,7 +92,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
-      {navItems.length > 0 && (
+      {navItems.length > 0 && !hideMobileNavTrigger && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
             <button
@@ -111,20 +135,12 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
                 );
               })}
             </nav>
-            <SidebarSignOut />
           </SheetContent>
         </Sheet>
       )}
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => {
-            // Every authenticated route's first URL segment is just the
-            // current role (admin/accountant/warden/…) — redundant noise in
-            // the breadcrumb since the sidebar/role are already obvious from
-            // context. Drop it from the visible trail (URLs/routing/active
-            // sidebar highlighting are untouched — this only skips rendering
-            // this one <li>), as long as there's a more specific page after
-            // it to show instead of leaving the breadcrumb empty.
             if (i === 0 && crumbs.length > 1) return null;
 
             const path = "/" + crumbs.slice(0, i + 1).join("/");
@@ -142,12 +158,7 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
             return (
               <li
                 key={path}
-                className={cn(
-                  "flex min-w-0 items-center gap-1.5",
-                  // Intermediate crumbs are hidden on narrow screens to avoid
-                  // crowding — only the current page stays visible there.
-                  !isLast && "hidden sm:flex",
-                )}
+                className={cn("flex min-w-0 items-center gap-1.5", !isLast && "hidden sm:flex")}
               >
                 {!isFirstVisible && (
                   <span className="hidden shrink-0 text-muted-foreground/50 sm:inline">/</span>
@@ -208,18 +219,81 @@ export function Topbar({ navItems = [], showPropertySwitcher, tenantId }: Topbar
       <ThemeToggle />
       <NotificationBell />
 
-      <ProfileAvatarMenu
-        avatarUrl={avatarUrl}
-        avatarInitial={avatarInitial}
-        profileHref={isAdmin ? "/admin/profile" : isAccountant ? "/accountant/profile" : undefined}
-        onProfileSelect={!isAdmin && !isAccountant ? () => setEditProfileOpen(true) : undefined}
-        onSignOut={() => setSignOutOpen(true)}
-      />
+      <div className="flex items-center gap-2">
+        {isSuperAdmin && (
+          <button
+            type="button"
+            aria-label="Log out"
+            onClick={() => setSignOutOpen(true)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
+        {isAdmin || isWarden || isStudent || isAccountant ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Account menu"
+                className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  avatarInitial
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[190px] p-2">
+              <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
+                <Link
+                  to={
+                    isAdmin
+                      ? "/admin/profile"
+                      : isWarden
+                        ? "/warden/profile"
+                        : isAccountant
+                          ? "/accountant/profile"
+                          : "/student/profile"
+                  }
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                    <User className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium text-foreground">Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setSignOutOpen(true)}
+                className="gap-3 rounded-lg px-2 py-2"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground">
+                  <LogOut className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium text-destructive">Sign out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <ProfileAvatarMenu
+            avatarUrl={avatarUrl}
+            avatarInitial={avatarInitial}
+            profileHref={profileHref}
+            onProfileSelect={isSuperAdmin ? () => setEditProfileOpen(true) : undefined}
+          />
+        )}
+      </div>
 
-      {!isAccountant && !isAdmin && (
+      {isSuperAdmin && (
         <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
       )}
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} />
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        title={isAdmin || isWarden || isStudent || isAccountant ? "Sign out?" : undefined}
+        confirmLabel={isAdmin || isWarden || isStudent || isAccountant ? "Sign out" : undefined}
+      />
     </header>
   );
 }

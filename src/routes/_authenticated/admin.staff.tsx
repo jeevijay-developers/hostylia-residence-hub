@@ -2,13 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Activity,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Key,
   Loader2,
   Mail,
   Pencil,
+  Phone,
   Send,
   Settings,
   Shield,
@@ -26,14 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -484,6 +483,573 @@ function PermissionGrid({
   );
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Feature Access panel — read-only display of existing permissions
+   grouped into recognisable categories matching the reference UI.
+   Zero logic/data changes — purely presentational.
+───────────────────────────────────────────────────────────── */
+
+type PermCategory = {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  entries: { label: string; granted: boolean }[];
+};
+
+function buildPermissionCategories(row: StaffRow): PermCategory[] {
+  const p = row.permissions ?? {};
+  const role = row.role as "WARDEN" | "ACCOUNTANT";
+
+  const has = (key: PermissionKey) => p[key] ?? false;
+  const anyHas = (keys: PermissionKey[]) => keys.some((k) => p[k] !== undefined);
+
+  const cats: PermCategory[] = [];
+
+  // --- Notices ---
+  const noticeKeys: PermissionKey[] = ["notices"];
+  if (role === "WARDEN" || anyHas(noticeKeys)) {
+    cats.push({
+      id: "notices",
+      label: "Notices",
+      icon: <span className="text-blue-500 dark:text-blue-400">📋</span>,
+      entries: [
+        { label: "Manage Notices", granted: has("notices") },
+        { label: "View Notices", granted: has("notices") },
+      ],
+    });
+  }
+
+  // --- Complaints ---
+  const complaintKeys: PermissionKey[] = ["complaints"];
+  if (role === "WARDEN" || anyHas(complaintKeys)) {
+    cats.push({
+      id: "complaints",
+      label: "Complaints",
+      icon: <span className="text-rose-500 dark:text-rose-400">🔔</span>,
+      entries: [
+        { label: "Manage Complaints", granted: has("complaints") },
+        { label: "Reports Read", granted: has("reports_view") },
+        { label: "View Complaints", granted: has("complaints") },
+      ],
+    });
+  }
+
+  // --- Invoices & Payments ---
+  const financeKeys: PermissionKey[] = [
+    "invoices_view", "invoices_create", "invoices_edit", "invoices_delete",
+    "payments_view", "payments_create", "payments_edit", "payments_delete",
+  ];
+  if (role === "ACCOUNTANT" || anyHas(financeKeys)) {
+    cats.push({
+      id: "finance",
+      label: "Invoices & Payments",
+      icon: <span className="text-amber-500 dark:text-amber-400">📄</span>,
+      entries: [
+        { label: "Edit Invoices", granted: has("invoices_edit") },
+        { label: "View Invoices", granted: has("invoices_view") },
+        { label: "Edit Payments", granted: has("payments_edit") },
+        { label: "View Payments", granted: has("payments_view") },
+        { label: "Record Cash/Cheque Payments", granted: has("payments_create") },
+        { label: "Delete Invoices", granted: has("invoices_delete") },
+        { label: "Delete Payments", granted: has("payments_delete") },
+        { label: "Create Invoices", granted: has("invoices_create") },
+      ],
+    });
+  }
+
+  // --- Attendance ---
+  const attendanceKeys: PermissionKey[] = [
+    "attendance_view", "attendance_create", "attendance_edit", "attendance_delete",
+  ];
+  if (role === "WARDEN" || anyHas(attendanceKeys)) {
+    cats.push({
+      id: "attendance",
+      label: "Attendance",
+      icon: <span className="text-emerald-500 dark:text-emerald-400">📅</span>,
+      entries: [
+        { label: "Manage Attendance", granted: has("attendance_create") || has("attendance_edit") },
+        { label: "View Attendance", granted: has("attendance_view") },
+        { label: "Edit Fee Plans", granted: has("fee_plans_edit") },
+        { label: "View Fee Plans", granted: has("fee_plans_view") },
+      ],
+    });
+  }
+
+  // --- Students ---
+  const studentKeys: PermissionKey[] = [
+    "students_view", "students_create", "students_edit", "students_delete",
+  ];
+  if (role === "WARDEN" || anyHas(studentKeys)) {
+    cats.push({
+      id: "students",
+      label: "Students",
+      icon: <span className="text-indigo-500 dark:text-indigo-400">👤</span>,
+      entries: [
+        { label: "Manage Students", granted: has("students_edit") || has("students_create") },
+        { label: "Students Read", granted: has("students_view") },
+      ],
+    });
+  }
+
+  // --- Visitors ---
+  const visitorKeys: PermissionKey[] = [
+    "visitors_view", "visitors_create", "visitors_edit", "visitors_delete",
+  ];
+  if (role === "WARDEN" || anyHas(visitorKeys)) {
+    cats.push({
+      id: "visitors",
+      label: "Visitors",
+      icon: <span className="text-violet-500 dark:text-violet-400">🛡️</span>,
+      entries: [
+        { label: "Manage Visitors", granted: has("visitors_create") || has("visitors_edit") },
+        { label: "Visitors Read", granted: has("visitors_view") },
+      ],
+    });
+  }
+
+  // --- Rooms & Beds ---
+  const roomsKeys: PermissionKey[] = [
+    "rooms_beds_view", "rooms_beds_edit", "rooms_beds_create", "rooms_beds_delete",
+  ];
+  if (role === "WARDEN" || anyHas(roomsKeys)) {
+    cats.push({
+      id: "rooms",
+      label: "Rooms & Beds",
+      icon: <span className="text-purple-500 dark:text-purple-400">🛏️</span>,
+      entries: [
+        { label: "Rooms / Beds Update", granted: has("rooms_beds_edit") },
+        { label: "Rooms / Beds Read", granted: has("rooms_beds_view") },
+      ],
+    });
+  }
+
+  return cats;
+}
+
+function FeatureAccessPanel({ row }: { row: StaffRow }) {
+  const cats = buildPermissionCategories(row);
+  if (cats.length === 0) {
+    return (
+      <div className="px-5 pb-5">
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+          No custom permissions configured — using role defaults.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 pb-5">
+      <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {cats.map((cat) => (
+            <div key={cat.id} className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base leading-none">{cat.icon}</span>
+                <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wide">
+                  {cat.label}
+                </span>
+              </div>
+              <div className="space-y-1.5 pl-1">
+                {cat.entries.map((entry) => (
+                  <div key={entry.label} className="flex items-center gap-2">
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${
+                        entry.granted
+                          ? "bg-primary/20 border-primary/40 text-primary"
+                          : "bg-muted/30 border-border/50 text-muted-foreground/30"
+                      }`}
+                    >
+                      {entry.granted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                    </div>
+                    <span
+                      className={`text-xs leading-tight ${
+                        entry.granted ? "text-foreground/90" : "text-muted-foreground/50"
+                      }`}
+                    >
+                      {entry.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   StaffCard — one card per staff row with collapsible Feature Access
+───────────────────────────────────────────────────────────── */
+
+function StaffCard({
+  s,
+  resend,
+  setPendingRevoke,
+  setPendingDelete,
+  setEditRow,
+  setEditName,
+  setEditPhone,
+  setEditBlockId,
+  setEditCustomizePerms,
+  setEditPermissions,
+}: {
+  s: StaffRow;
+  resend: { isPending: boolean; variables?: string; mutate: (id: string) => void };
+  setPendingRevoke: (r: StaffRow) => void;
+  setPendingDelete: (r: StaffRow) => void;
+  setEditRow: (r: StaffRow) => void;
+  setEditName: (v: string) => void;
+  setEditPhone: (v: string) => void;
+  setEditBlockId: (v: string) => void;
+  setEditCustomizePerms: (v: boolean) => void;
+  setEditPermissions: (v: StaffPermissions) => void;
+}) {
+  const [featureOpen, setFeatureOpen] = useState(false);
+
+  const isOwner = s.role === "HOSTEL_ADMIN";
+  const isRevoked = !!s.revoked_at;
+  const isPending = !s.is_active && !isRevoked;
+  const fullName = s.profile?.full_name ?? "—";
+  const initial = fullName !== "—" ? fullName.trim()[0]?.toUpperCase() ?? "?" : "?";
+  const avatarStyle = getAvatarStyle(fullName);
+  const contact =
+    s.profile?.email ??
+    (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
+    "—";
+
+  const canExpandFeatures = !isOwner && (s.role === "WARDEN" || s.role === "ACCOUNTANT");
+
+  return (
+    <div
+      className={`border-b border-border/60 last:border-b-0 transition-colors ${
+        featureOpen ? "bg-accent/10" : "hover:bg-accent/20"
+      }`}
+    >
+      {/* Main row */}
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-4 min-w-0">
+        {/* Avatar */}
+        <div
+          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${avatarStyle.bg} ${avatarStyle.text} border ${avatarStyle.border} shrink-0 shadow-sm`}
+        >
+          {initial}
+        </div>
+
+        {/* Name + contact */}
+        <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 gap-y-1 items-center">
+          {/* Name */}
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-foreground truncate">{fullName}</p>
+            {/* Contact shown inline on mobile only */}
+            <p className="text-xs text-muted-foreground truncate sm:hidden">{contact}</p>
+          </div>
+
+          {/* Contact — desktop */}
+          <p className="hidden sm:block text-sm text-muted-foreground truncate font-medium">
+            {contact}
+          </p>
+
+          {/* Role badge */}
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap"
+            >
+              <Shield className="w-3 h-3 mr-1 inline" />
+              {ROLE_LABEL[s.role] ?? s.role}
+            </Badge>
+          </div>
+
+          {/* Status badge */}
+          <div>
+            <StaffStatusBadge row={s} />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            {isOwner ? (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled
+                  className="w-8 h-8 rounded-lg border border-border/40 text-muted-foreground/30 opacity-40 cursor-not-allowed"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled
+                  className="w-8 h-8 rounded-lg border border-border/40 text-muted-foreground/30 opacity-40 cursor-not-allowed"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                {isPending && (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Resend invitation"
+                      aria-label="Resend invitation"
+                      disabled={resend.isPending && resend.variables === s.id}
+                      onClick={() => resend.mutate(s.id)}
+                      className="w-8 h-8 rounded-lg border border-border/80 bg-background/80 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
+                    >
+                      {resend.isPending && resend.variables === s.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-700 dark:text-amber-400" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Cancel invitation"
+                      aria-label="Cancel invitation"
+                      onClick={() => setPendingRevoke(s)}
+                      className="w-8 h-8 rounded-lg border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
+                    >
+                      <UserX className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                {!isPending && !isRevoked && (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Edit"
+                      aria-label="Edit"
+                      onClick={() => {
+                        setEditRow(s);
+                        setEditName(s.profile?.full_name ?? "");
+                        setEditPhone(
+                          s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
+                        );
+                        setEditBlockId(s.block_id ?? "ALL");
+                        const role = s.role as "WARDEN" | "ACCOUNTANT";
+                        const flatKeys = permissionItemsForRole(role).flatMap(
+                          (item) => item.keys,
+                        );
+                        const allKeys =
+                          role === "WARDEN" ? [...WARDEN_GRID_KEYS, ...flatKeys] : flatKeys;
+                        const hasOverride = allKeys.some(
+                          (key) => s.permissions?.[key] !== undefined,
+                        );
+                        setEditCustomizePerms(hasOverride);
+                        const defaults = defaultPermissions(role);
+                        setEditPermissions(
+                          Object.fromEntries(
+                            allKeys.map((key) => [key, s.permissions?.[key] ?? defaults[key]]),
+                          ),
+                        );
+                      }}
+                      className="w-8 h-8 rounded-lg border border-border/80 bg-background/80 text-muted-foreground hover:text-blue-700 dark:hover:text-blue-400 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Revoke access"
+                      aria-label="Revoke access"
+                      onClick={() => setPendingRevoke(s)}
+                      className="w-8 h-8 rounded-lg border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
+                    >
+                      <UserX className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  title="Delete"
+                  aria-label="Delete"
+                  onClick={() => setPendingDelete(s)}
+                  className="w-8 h-8 rounded-lg border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-500 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+                {canExpandFeatures && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title={featureOpen ? "Hide feature access" : "Show feature access"}
+                    aria-label={featureOpen ? "Hide feature access" : "Show feature access"}
+                    onClick={() => setFeatureOpen((v) => !v)}
+                    className={`w-8 h-8 rounded-lg border transition-all ${
+                      featureOpen
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border/80 bg-background/80 text-muted-foreground hover:text-foreground hover:border-border hover:bg-accent/40"
+                    }`}
+                  >
+                    {featureOpen ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Feature Access collapsible panel */}
+      {canExpandFeatures && featureOpen && (
+        <div className="border-t border-border/40 bg-muted/5">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-5 py-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                <Key className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Feature Access</p>
+                <p className="text-xs text-muted-foreground">Manage what this user can access</p>
+              </div>
+            </div>
+          </div>
+          <FeatureAccessPanel row={s} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   StaffCardList — the full list section with header row and cards
+───────────────────────────────────────────────────────────── */
+
+function StaffCardList({
+  staffQ,
+  staff,
+  resend,
+  setPendingRevoke,
+  setPendingDelete,
+  setEditRow,
+  setEditName,
+  setEditPhone,
+  setEditBlockId,
+  setEditCustomizePerms,
+  setEditPermissions,
+}: {
+  staffQ: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => void };
+  staff: StaffRow[];
+  resend: { isPending: boolean; variables?: string; mutate: (id: string) => void };
+  setPendingRevoke: (r: StaffRow) => void;
+  setPendingDelete: (r: StaffRow) => void;
+  setEditRow: (r: StaffRow) => void;
+  setEditName: (v: string) => void;
+  setEditPhone: (v: string) => void;
+  setEditBlockId: (v: string) => void;
+  setEditCustomizePerms: (v: boolean) => void;
+  setEditPermissions: (v: StaffPermissions) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/80 bg-card shadow-xl overflow-hidden">
+      {/* Column header bar */}
+      <div className="hidden sm:grid grid-cols-[1fr_1fr_auto_auto_auto] gap-x-4 items-center px-6 py-3 border-b border-border/70 bg-background/50">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          <User className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+          Name
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          <Mail className="w-3 h-3 text-sky-500 dark:text-sky-400" />
+          Contact
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 pr-2">
+          <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+          Role
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70 pr-2">
+          <Activity className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+          Status
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          <Settings className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+          Actions
+        </div>
+      </div>
+
+      {/* Body */}
+      {staffQ.isLoading ? (
+        <div className="divide-y divide-border/60">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-6 py-4">
+              <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-40 rounded-lg" />
+                <Skeleton className="h-3 w-56 rounded-lg" />
+              </div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <div className="flex gap-1.5">
+                <Skeleton className="w-8 h-8 rounded-lg" />
+                <Skeleton className="w-8 h-8 rounded-lg" />
+                <Skeleton className="w-8 h-8 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : staffQ.isError ? (
+        <div className="py-12 text-center px-6">
+          <p className="text-sm text-muted-foreground mb-3">
+            {errorMessage(staffQ.error, "Could not load staff.")}
+          </p>
+          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => staffQ.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : staff.length === 0 ? (
+        <div className="py-14 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-center mx-auto mb-4">
+            <Users className="w-6 h-6 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">No staff yet</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Invite your first Warden or Accountant above.
+          </p>
+        </div>
+      ) : (
+        <div>
+          {staff.map((s) => (
+            <StaffCard
+              key={s.id}
+              s={s}
+              resend={resend}
+              setPendingRevoke={setPendingRevoke}
+              setPendingDelete={setPendingDelete}
+              setEditRow={setEditRow}
+              setEditName={setEditName}
+              setEditPhone={setEditPhone}
+              setEditBlockId={setEditBlockId}
+              setEditCustomizePerms={setEditCustomizePerms}
+              setEditPermissions={setEditPermissions}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Footer count */}
+      {!staffQ.isLoading && !staffQ.isError && staff.length > 0 && (
+        <div className="flex items-center justify-between px-6 py-3 border-t border-border/60 bg-background/30">
+          <p className="text-xs text-muted-foreground">
+            Showing {staff.length} {staff.length === 1 ? "user" : "users"}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function useBlocks(propertyId: string | null | undefined) {
   return useQuery({
     queryKey: ["blocks-lookup", propertyId],
@@ -591,8 +1157,14 @@ function AdminStaffPage() {
           property_id: propertyId,
           block_id: addRole === "WARDEN" && addBlockId !== "ALL" ? addBlockId : null,
           full_name: staffName || null,
-          phone: addMode === "phone" ? phone || null : null,
-          email: addMode === "email" ? email || null : null,
+          // Phone (login/OTP option) and email (invitation channel) are two
+          // independent fields shown side by side — send whichever are
+          // actually filled in, not just the one matching `addMode` (that
+          // gate only decides which one is *required*, not which is sent;
+          // gating the payload on it silently dropped a typed email
+          // whenever `addMode` stayed on "phone", the default).
+          phone: phone.trim() || null,
+          email: email.trim() || null,
           role: addRole!,
           permissions: addCustomizePerms ? addPermissions : undefined,
         },
@@ -730,13 +1302,33 @@ function AdminStaffPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md bg-card border-border rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Add {addRole ? STAFF_ROLE_LABEL[addRole] : "staff"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="add-staff-role" className="text-foreground">Role</Label>
+        <DialogContent className="sm:max-w-lg p-0 gap-0 bg-card border border-border/60 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          {/* ── Modal Header ── */}
+          <div className="shrink-0 flex items-start gap-4 px-6 pt-6 pb-5 border-b border-border/50">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
+              <UserPlus className="w-7 h-7 text-amber-500 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <DialogTitle className="text-xl font-bold text-foreground leading-tight">
+                Add Staff
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Create a new user and assign their access
+              </p>
+            </div>
+          </div>
+
+          {/* ── Modal Body ── */}
+          <div className="px-6 py-5 space-y-5 flex-1 min-h-0 overflow-y-auto">
+
+            {/* Role */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-muted-foreground" />
+                <label htmlFor="add-staff-role" className="text-sm font-semibold text-foreground">
+                  Role
+                </label>
+              </div>
               <Select
                 value={addRole ?? undefined}
                 onValueChange={(v) => {
@@ -745,26 +1337,36 @@ function AdminStaffPage() {
                   if (addCustomizePerms) setAddPermissions(defaultPermissions(role));
                 }}
               >
-                <SelectTrigger id="add-staff-role" className="bg-background border-border text-foreground rounded-xl">
+                <SelectTrigger
+                  id="add-staff-role"
+                  className="w-full h-11 bg-background/60 border border-border/70 text-foreground rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                >
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-border text-foreground">
+                <SelectContent className="bg-card border-border text-foreground rounded-xl shadow-xl">
                   <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
                   <SelectItem value="WARDEN">Warden</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Block access (Warden only) */}
             {addRole === "WARDEN" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="add-staff-block" className="text-foreground">Block access</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-muted-foreground" />
+                  <label htmlFor="add-staff-block" className="text-sm font-semibold text-foreground">
+                    Block access
+                  </label>
+                </div>
                 <Select value={addBlockId} onValueChange={setAddBlockId}>
                   <SelectTrigger
                     id="add-staff-block"
-                    className="bg-background border-border text-foreground rounded-xl"
+                    className="w-full h-11 bg-background/60 border border-border/70 text-foreground rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                   >
                     <SelectValue placeholder="All blocks" />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border text-foreground">
+                  <SelectContent className="bg-card border-border text-foreground rounded-xl shadow-xl">
                     <SelectItem value="ALL">All blocks (property-wide)</SelectItem>
                     {blocks.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
@@ -773,32 +1375,42 @@ function AdminStaffPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Property access is the property currently selected at the top of the app. Block
-                  access narrows write actions (Attendance, Gate Pass, Rooms/Beds edits, etc.) to
-                  just this block — leave as "All blocks" for property-wide access.
+                  access narrows write actions to just this block — leave as "All blocks" for
+                  property-wide access.
                 </p>
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label htmlFor="add-staff-name" className="text-foreground">Name</Label>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <label htmlFor="add-staff-name" className="text-sm font-semibold text-foreground">
+                  Name
+                </label>
+              </div>
               <Input
                 id="add-staff-name"
                 autoComplete="off"
                 value={staffName}
                 onChange={(e) => setStaffName(e.target.value)}
                 placeholder="Full name"
-                className="bg-background border-border text-foreground rounded-xl"
+                className="h-11 bg-background/60 border border-border/70 text-foreground rounded-xl px-4 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all"
               />
             </div>
 
-            <Tabs value={addMode} onValueChange={(v) => setAddMode(v as "phone" | "email")}>
-              <TabsList className="grid w-full grid-cols-2 bg-background border border-border rounded-xl">
-                <TabsTrigger value="phone" className="rounded-lg">Phone</TabsTrigger>
-                <TabsTrigger value="email" className="rounded-lg">Email</TabsTrigger>
-              </TabsList>
-              <TabsContent value="phone" className="space-y-1.5 pt-3">
-                <Label htmlFor="add-staff-phone" className="text-foreground">Phone</Label>
+            {/* Phone + Email side-by-side */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Phone */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <label htmlFor="add-staff-phone" className="text-sm font-semibold text-foreground">
+                    Phone
+                  </label>
+                </div>
                 <Input
                   id="add-staff-phone"
                   type="tel"
@@ -807,45 +1419,62 @@ function AdminStaffPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 98765 43210"
-                  className="bg-background border-border text-foreground rounded-xl"
+                  className="h-11 bg-background/60 border border-border/70 text-foreground rounded-xl px-4 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all"
                 />
-                <p className="text-xs text-muted-foreground">
-                  They sign in with this phone number and a one-time code — no password.
-                </p>
-              </TabsContent>
-              <TabsContent value="email" className="space-y-1.5 pt-3">
-                <Label htmlFor="add-staff-email" className="text-foreground">Email</Label>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <label htmlFor="add-staff-email" className="text-sm font-semibold text-foreground">
+                    Email
+                  </label>
+                </div>
                 <Input
                   id="add-staff-email"
                   type="email"
                   autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="staff@example.com"
-                  className="bg-background border-border text-foreground rounded-xl"
+                  placeholder="Email address"
+                  className="h-11 bg-background/60 border border-border/70 text-foreground rounded-xl px-4 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all"
                 />
-                <p className="text-xs text-muted-foreground">
-                  They'll get an invite email — ask them to use "Forgot password" on first sign-in
-                  to set one.
-                </p>
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
 
-            {duplicateContact && <p className="text-sm text-destructive">{duplicateContact}</p>}
+            {/* Helper text for phone/email */}
+            {addMode === "phone" && phone.trim() && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                They sign in with this phone number and a one-time code — no password.
+              </p>
+            )}
+            {addMode === "email" && email.trim() && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                They'll get an invite email — ask them to use "Forgot password" on first sign-in to set one.
+              </p>
+            )}
 
-            <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-3.5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Label htmlFor="add-customize-perms" className="text-sm text-foreground">
-                    Customize Permissions
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {addRole === "WARDEN"
-                      ? "Fine-tune what this Warden can Read/Create/Update/Delete per module below — unchecking revokes access they'd otherwise have by default."
-                      : addRole
-                        ? `By default an ${STAFF_ROLE_LABEL[addRole]} does not have ${otherRoleLabel(addRole)} permissions — grant specific ones below.`
-                        : ""}
-                  </p>
+            {/* Duplicate contact warning */}
+            {duplicateContact && (
+              <p className="text-sm text-destructive font-medium">{duplicateContact}</p>
+            )}
+
+            {/* Customize Permissions */}
+            <div className="rounded-xl border border-border/60 bg-background/40 overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Settings className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground leading-tight">
+                      Customize Permissions
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Allow this user to access specific features
+                    </p>
+                  </div>
                 </div>
                 <Switch
                   id="add-customize-perms"
@@ -856,280 +1485,89 @@ function AdminStaffPage() {
                   }}
                 />
               </div>
-              {addCustomizePerms && addRole && (
-                <div className="space-y-3 pt-1">
-                  {addRole === "WARDEN" && (
-                    <PermissionGrid
+
+              {/* Info note or expanded permissions */}
+              {!addCustomizePerms ? (
+                <div className="mx-4 mb-4 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                  <Info className="w-4 h-4 text-primary/70 shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    You can customize feature access for this user after creating the account.
+                  </p>
+                </div>
+              ) : (
+                addRole && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
+                    <p className="text-xs text-muted-foreground">
+                      {addRole === "WARDEN"
+                        ? "Fine-tune what this Warden can Read/Create/Update/Delete per module below — unchecking revokes access they'd otherwise have by default."
+                        : `By default an ${STAFF_ROLE_LABEL[addRole]} does not have ${otherRoleLabel(addRole)} permissions — grant specific ones below.`}
+                    </p>
+                    {addRole === "WARDEN" && (
+                      <PermissionGrid
+                        values={addPermissions}
+                        onChange={(key, checked) =>
+                          setAddPermissions((prev) => ({ ...prev, [key]: checked }))
+                        }
+                      />
+                    )}
+                    <PermissionChecklist
+                      items={permissionItemsForRole(addRole)}
                       values={addPermissions}
-                      onChange={(key, checked) =>
-                        setAddPermissions((prev) => ({ ...prev, [key]: checked }))
+                      onChange={(keys, checked) =>
+                        setAddPermissions((prev) => {
+                          const next = { ...prev };
+                          keys.forEach((k) => {
+                            next[k] = checked;
+                          });
+                          return next;
+                        })
                       }
                     />
-                  )}
-                  <PermissionChecklist
-                    items={permissionItemsForRole(addRole)}
-                    values={addPermissions}
-                    onChange={(keys, checked) =>
-                      setAddPermissions((prev) => {
-                        const next = { ...prev };
-                        keys.forEach((k) => {
-                          next[k] = checked;
-                        });
-                        return next;
-                      })
-                    }
-                  />
-                </div>
+                  </div>
+                )
               )}
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setAddOpen(false)} className="rounded-xl">
+
+          {/* ── Modal Footer ── */}
+          <div className="shrink-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50 bg-background/20">
+            <Button
+              variant="outline"
+              onClick={() => setAddOpen(false)}
+              className="h-11 px-6 rounded-xl font-semibold border border-border/70 bg-background/40 text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all"
+            >
               Cancel
             </Button>
             <Button
               disabled={!canInvite}
               onClick={() => invite.mutate()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
+              className="h-11 px-6 rounded-xl font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-slate-950 shadow-lg shadow-amber-500/25 flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
               {invite.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 text-primary-foreground dark:text-slate-950" />
+                <Send className="h-4 w-4" />
               )}
               {invite.isPending ? "Adding…" : "Add"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Main Users Table Card */}
-      <section className="rounded-2xl border border-border/80 bg-card shadow-2xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-border/80 bg-background/40 hover:bg-transparent">
-              <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 inline mr-1.5" />
-                NAME
-              </TableHead>
-              <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <Mail className="w-3.5 h-3.5 text-sky-400 inline mr-1.5" />
-                CONTACT
-              </TableHead>
-              <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <Shield className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 inline mr-1.5" />
-                ROLE
-              </TableHead>
-              <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4">
-                <Activity className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 inline mr-1.5" />
-                STATUS
-              </TableHead>
-              <TableHead className="text-xs uppercase tracking-wider font-bold text-muted-foreground/80 py-4 px-4 text-right">
-                <Settings className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 inline mr-1.5" />
-                ACTIONS
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staffQ.isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={5} className="py-4">
-                    <Skeleton className="h-8 w-full rounded-xl" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : staffQ.isError ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {errorMessage(staffQ.error, "Could not load staff.")}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 rounded-xl"
-                    onClick={() => staffQ.refetch()}
-                  >
-                    Try again
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ) : staff.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                  No staff yet — invite your first Warden or Accountant above.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staff.map((s) => {
-                const isOwner = s.role === "HOSTEL_ADMIN";
-                const isRevoked = !!s.revoked_at;
-                const isPending = !s.is_active && !isRevoked;
-                const fullName = s.profile?.full_name ?? "—";
-                const initial = fullName !== "—" ? fullName.trim()[0]?.toUpperCase() ?? "?" : "?";
-                const avatarStyle = getAvatarStyle(fullName);
-
-                return (
-                  <TableRow key={s.id} className="border-b border-border/60 hover:bg-accent/30 transition-colors">
-                    <TableCell className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${avatarStyle.bg} ${avatarStyle.text} border ${avatarStyle.border} shrink-0 shadow-sm`}>
-                          {initial}
-                        </div>
-                        <span className="font-semibold text-foreground text-sm">{fullName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 px-4 text-muted-foreground text-sm font-medium">
-                      {s.profile?.email ??
-                        (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
-                        "—"}
-                    </TableCell>
-                    <TableCell className="py-4 px-4">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-foreground font-semibold text-sm">{ROLE_LABEL[s.role] ?? s.role}</span>
-                        {s.role !== "HOSTEL_ADMIN" &&
-                          Object.entries(s.permissions ?? {}).map(([key, granted]) => (
-                            <Badge
-                              key={key}
-                              variant="outline"
-                              className={
-                                granted
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] px-2 py-0.5"
-                                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5"
-                              }
-                            >
-                              {granted ? "+" : "−"} {permissionKeyLabel(key as PermissionKey)}
-                            </Badge>
-                          ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 px-4">
-                      <StaffStatusBadge row={s} />
-                    </TableCell>
-                    <TableCell className="py-4 px-4 text-right">
-                      {isOwner ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-xs text-muted-foreground italic mr-2">
-                            Account owner — cannot be revoked
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              disabled
-                              className="w-9 h-9 rounded-xl border border-border/40 text-muted-foreground/30 opacity-40 cursor-not-allowed"
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              disabled
-                              className="w-9 h-9 rounded-xl border border-border/40 text-muted-foreground/30 opacity-40 cursor-not-allowed"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1.5">
-                          {isPending && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Resend invitation"
-                                aria-label="Resend invitation"
-                                disabled={resend.isPending && resend.variables === s.id}
-                                onClick={() => resend.mutate(s.id)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
-                              >
-                                {resend.isPending && resend.variables === s.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-amber-700 dark:text-amber-400" />
-                                ) : (
-                                  <Mail className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Cancel invitation"
-                                aria-label="Cancel invitation"
-                                onClick={() => setPendingRevoke(s)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
-                              >
-                                <UserX className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          {!isPending && !isRevoked && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Edit"
-                                aria-label="Edit"
-                                onClick={() => {
-                                  setEditRow(s);
-                                  setEditName(s.profile?.full_name ?? "");
-                                  setEditPhone(
-                                    s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
-                                  );
-                                  setEditBlockId(s.block_id ?? "ALL");
-                                  const role = s.role as "WARDEN" | "ACCOUNTANT";
-                                  const flatKeys = permissionItemsForRole(role).flatMap(
-                                    (item) => item.keys,
-                                  );
-                                  const allKeys =
-                                    role === "WARDEN" ? [...WARDEN_GRID_KEYS, ...flatKeys] : flatKeys;
-                                  const hasOverride = allKeys.some(
-                                    (key) => s.permissions?.[key] !== undefined,
-                                  );
-                                  setEditCustomizePerms(hasOverride);
-                                  const defaults = defaultPermissions(role);
-                                  setEditPermissions(
-                                    Object.fromEntries(
-                                      allKeys.map((key) => [key, s.permissions?.[key] ?? defaults[key]]),
-                                    ),
-                                  );
-                                }}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-blue-700 dark:hover:text-blue-400 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Revoke access"
-                                aria-label="Revoke access"
-                                onClick={() => setPendingRevoke(s)}
-                                className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-700 dark:hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
-                              >
-                                <UserX className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title="Delete"
-                            aria-label="Delete"
-                            onClick={() => setPendingDelete(s)}
-                            className="w-9 h-9 rounded-xl border border-border/80 bg-background/80 text-muted-foreground hover:text-rose-500 hover:border-rose-500/40 hover:bg-rose-500/10 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </section>
+      {/* Main Users Card List */}
+      <StaffCardList
+        staffQ={staffQ}
+        staff={staff}
+        resend={resend}
+        setPendingRevoke={setPendingRevoke}
+        setPendingDelete={setPendingDelete}
+        setEditRow={setEditRow}
+        setEditName={setEditName}
+        setEditPhone={setEditPhone}
+        setEditBlockId={setEditBlockId}
+        setEditCustomizePerms={setEditCustomizePerms}
+        setEditPermissions={setEditPermissions}
+      />
 
       {/* Revoke Alert Dialog */}
       <AlertDialog open={!!pendingRevoke} onOpenChange={(open) => !open && setPendingRevoke(null)}>
