@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { useServerFn } from "@tanstack/react-start";
-import { Key, Loader2, ListChecks, Send, Shield, SquarePen } from "lucide-react";
+import { CalendarDays, Clock, Key, Loader2, ListChecks, Send, Shield, SquarePen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,10 @@ function StudentGatePassPage() {
   const [outTime, setOutTime] = useState("");
   const [inDate, setInDate] = useState("");
   const [inTime, setInTime] = useState("");
+  const outDateInputRef = useRef<HTMLInputElement>(null);
+  const inDateInputRef = useRef<HTMLInputElement>(null);
+  const outTimeInputRef = useRef<HTMLInputElement>(null);
+  const inTimeInputRef = useRef<HTMLInputElement>(null);
   const outAt = outDate && outTime ? `${outDate}T${outTime}` : "";
   const inAt = inDate && inTime ? `${inDate}T${inTime}` : "";
   const { complete: kycComplete } = useKycComplete(studentQ.data?.id);
@@ -113,19 +117,83 @@ function StudentGatePassPage() {
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Going out — date</label>
-                  <Input type="date" value={outDate} onChange={(e) => setOutDate(e.target.value)} />
+                  <div className="relative">
+                    <Input
+                      ref={outDateInputRef}
+                      type="date"
+                      value={outDate}
+                      onChange={(e) => setOutDate(e.target.value)}
+                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => outDateInputRef.current?.showPicker?.()}
+                      aria-label="Open date picker"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Going out — time</label>
-                  <Input type="time" value={outTime} onChange={(e) => setOutTime(e.target.value)} />
+                  <div className="relative">
+                    <Input
+                      ref={outTimeInputRef}
+                      type="time"
+                      value={outTime}
+                      onChange={(e) => setOutTime(e.target.value)}
+                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => outTimeInputRef.current?.showPicker?.()}
+                      aria-label="Open time picker"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <Clock className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Expected back — date</label>
-                  <Input type="date" value={inDate} onChange={(e) => setInDate(e.target.value)} />
+                  <div className="relative">
+                    <Input
+                      ref={inDateInputRef}
+                      type="date"
+                      value={inDate}
+                      onChange={(e) => setInDate(e.target.value)}
+                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => inDateInputRef.current?.showPicker?.()}
+                      aria-label="Open date picker"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Expected back — time</label>
-                  <Input type="time" value={inTime} onChange={(e) => setInTime(e.target.value)} />
+                  <div className="relative">
+                    <Input
+                      ref={inTimeInputRef}
+                      type="time"
+                      value={inTime}
+                      onChange={(e) => setInTime(e.target.value)}
+                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => inTimeInputRef.current?.showPicker?.()}
+                      aria-label="Open time picker"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <Clock className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
               {(!reason || !outAt || !inAt) && (

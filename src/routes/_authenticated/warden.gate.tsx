@@ -176,6 +176,10 @@ function WardenGatePage() {
   const [visitorSearch, setVisitorSearch] = useState("");
   const [feedSearch, setFeedSearch] = useState("");
   const [feedFilter, setFeedFilter] = useState<"all" | "entry" | "exit" | "alerts">("all");
+  // Set only when the feed is opened from the "Today's Entries"/"Today's
+  // Exits" KPI cards, so those scope strictly to today without changing the
+  // Entry/Exit/Alerts toggle buttons' existing all-time behavior.
+  const [feedTodayOnly, setFeedTodayOnly] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
 
   const decideMut = useMutation({
@@ -262,6 +266,10 @@ function WardenGatePage() {
   const [visitorView, setVisitorView] = useState<"all" | "expected" | "inside" | "checked_out">(
     "all",
   );
+  // Set only when the visitors tab is opened from the "Visitors Today" KPI
+  // card, so the "All" view scopes to today without changing the All/Expected
+  // Today/Inside/Checked Out toggle buttons' own existing behavior.
+  const [visitorTodayOnly, setVisitorTodayOnly] = useState(false);
   const visitorsCheckedOut = useMemo(
     () =>
       ((visitors.data as VisitorWithRelations[]) ?? []).filter((v) => v.status === "CHECKED_OUT"),
@@ -275,8 +283,18 @@ function WardenGatePage() {
           ? visitorsInside
           : visitorView === "checked_out"
             ? visitorsCheckedOut
-            : ((visitors.data as VisitorWithRelations[]) ?? []),
-    [visitorView, visitorsToday, visitorsInside, visitorsCheckedOut, visitors.data],
+            : visitorTodayOnly
+              ? validVisitorsToday
+              : ((visitors.data as VisitorWithRelations[]) ?? []),
+    [
+      visitorView,
+      visitorsToday,
+      visitorsInside,
+      visitorsCheckedOut,
+      visitorTodayOnly,
+      validVisitorsToday,
+      visitors.data,
+    ],
   );
   const visibleVisitors = useMemo(() => {
     const q = visitorSearch.trim().toLowerCase();
@@ -307,13 +325,14 @@ function WardenGatePage() {
     if (feedFilter === "entry") list = list.filter((e) => e.direction === "IN");
     else if (feedFilter === "exit") list = list.filter((e) => e.direction === "OUT");
     else if (feedFilter === "alerts") list = list.filter((e) => e.is_late);
+    if (feedTodayOnly) list = list.filter((e) => e.event_at.slice(0, 10) === today);
     const q = feedSearch.trim().toLowerCase();
     if (q)
       list = list.filter((e) =>
         (e.students?.full_name ?? e.visitors?.name ?? "").toLowerCase().includes(q),
       );
     return list;
-  }, [events.data, feedFilter, feedSearch]);
+  }, [events.data, feedFilter, feedTodayOnly, today, feedSearch]);
 
   return (
     <div className="space-y-4">
@@ -337,7 +356,11 @@ function WardenGatePage() {
           caption="New visitors"
           loading={visitors.isLoading}
           tone="info"
-          onNavigate={() => setTab("visitors")}
+          onNavigate={() => {
+            setVisitorView("all");
+            setVisitorTodayOnly(true);
+            setTab("visitors");
+          }}
         />
         <KpiSummaryCard
           icon={Users}
@@ -360,6 +383,7 @@ function WardenGatePage() {
           tone="primary"
           onNavigate={() => {
             setFeedFilter("entry");
+            setFeedTodayOnly(true);
             setTab("feed");
           }}
         />
@@ -373,6 +397,7 @@ function WardenGatePage() {
             tone="muted"
             onNavigate={() => {
               setFeedFilter("exit");
+              setFeedTodayOnly(true);
               setTab("feed");
             }}
           />
@@ -634,7 +659,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={visitorView === "all" ? "default" : "outline"}
-              onClick={() => setVisitorView("all")}
+              onClick={() => {
+                setVisitorView("all");
+                setVisitorTodayOnly(false);
+              }}
             >
               All
             </Button>
@@ -642,7 +670,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={visitorView === "expected" ? "default" : "outline"}
-              onClick={() => setVisitorView("expected")}
+              onClick={() => {
+                setVisitorView("expected");
+                setVisitorTodayOnly(false);
+              }}
             >
               Expected Today
             </Button>
@@ -650,7 +681,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={visitorView === "inside" ? "default" : "outline"}
-              onClick={() => setVisitorView("inside")}
+              onClick={() => {
+                setVisitorView("inside");
+                setVisitorTodayOnly(false);
+              }}
             >
               Inside
             </Button>
@@ -658,7 +692,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={visitorView === "checked_out" ? "default" : "outline"}
-              onClick={() => setVisitorView("checked_out")}
+              onClick={() => {
+                setVisitorView("checked_out");
+                setVisitorTodayOnly(false);
+              }}
             >
               Checked Out
             </Button>
@@ -709,12 +746,13 @@ function WardenGatePage() {
           {!visitors.isLoading &&
             !visitors.error &&
             visibleVisitors.length > 0 &&
-            (visitorView !== "all" || visitorSearch.trim()) && (
+            (visitorView !== "all" || visitorTodayOnly || visitorSearch.trim()) && (
               <button
                 type="button"
                 className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
                 onClick={() => {
                   setVisitorView("all");
+                  setVisitorTodayOnly(false);
                   setVisitorSearch("");
                 }}
               >
@@ -729,7 +767,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={feedFilter === "all" ? "default" : "outline"}
-              onClick={() => setFeedFilter("all")}
+              onClick={() => {
+                setFeedFilter("all");
+                setFeedTodayOnly(false);
+              }}
             >
               All
             </Button>
@@ -737,7 +778,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={feedFilter === "entry" ? "default" : "outline"}
-              onClick={() => setFeedFilter("entry")}
+              onClick={() => {
+                setFeedFilter("entry");
+                setFeedTodayOnly(false);
+              }}
             >
               Entry
             </Button>
@@ -745,7 +789,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={feedFilter === "exit" ? "default" : "outline"}
-              onClick={() => setFeedFilter("exit")}
+              onClick={() => {
+                setFeedFilter("exit");
+                setFeedTodayOnly(false);
+              }}
             >
               Exit
             </Button>
@@ -753,7 +800,10 @@ function WardenGatePage() {
               size="sm"
               className="shrink-0"
               variant={feedFilter === "alerts" ? "default" : "outline"}
-              onClick={() => setFeedFilter("alerts")}
+              onClick={() => {
+                setFeedFilter("alerts");
+                setFeedTodayOnly(false);
+              }}
             >
               Alerts
             </Button>
@@ -792,6 +842,7 @@ function WardenGatePage() {
                 className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
                 onClick={() => {
                   setFeedFilter("all");
+                  setFeedTodayOnly(false);
                   setFeedSearch("");
                 }}
               >

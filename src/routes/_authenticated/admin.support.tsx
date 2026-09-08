@@ -117,7 +117,6 @@ function AdminSupportPage() {
             <p className="font-display text-xl font-semibold text-foreground sm:text-2xl">
               Tickets
             </p>
-            <p className="text-sm text-muted-foreground">Manage and track all support tickets</p>
           </div>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="shrink-0">

@@ -230,7 +230,7 @@ export function Topbar({
             <LogOut className="h-4 w-4" />
           </button>
         )}
-        {isAdmin || isWarden ? (
+        {isAdmin || isWarden || isStudent || isAccountant ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -247,7 +247,17 @@ export function Topbar({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[190px] p-2">
               <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
-                <Link to={isAdmin ? "/admin/profile" : "/warden/profile"}>
+                <Link
+                  to={
+                    isAdmin
+                      ? "/admin/profile"
+                      : isWarden
+                        ? "/warden/profile"
+                        : isAccountant
+                          ? "/accountant/profile"
+                          : "/student/profile"
+                  }
+                >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
                     <User className="h-4 w-4" />
                   </span>
@@ -281,8 +291,8 @@ export function Topbar({
       <SignOutDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title={isAdmin || isWarden ? "Sign out?" : undefined}
-        confirmLabel={isAdmin || isWarden ? "Sign out" : undefined}
+        title={isAdmin || isWarden || isStudent || isAccountant ? "Sign out?" : undefined}
+        confirmLabel={isAdmin || isWarden || isStudent || isAccountant ? "Sign out" : undefined}
       />
     </header>
   );

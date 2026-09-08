@@ -187,6 +187,7 @@ function AccountantDashboardPage() {
           value={agingQ.data ? formatInr(agingQ.data.total_outstanding_paise) : "—"}
           loading={loading}
           tone="info"
+          to="/accountant/invoices"
         />
         <FinanceKpiCard
           icon={Wallet}
@@ -194,6 +195,7 @@ function AccountantDashboardPage() {
           value={collectionsQ.data ? formatInr(collectionsQ.data.today) : "—"}
           loading={collectionsLoading}
           tone="success"
+          to="/accountant/payments"
         />
         <FinanceKpiCard
           icon={Clock}
@@ -201,6 +203,8 @@ function AccountantDashboardPage() {
           value={pendingCount}
           loading={loading}
           tone={pendingCount > 0 ? "warning" : "muted"}
+          to="/accountant/invoices"
+          search={{ status: "ISSUED" }}
         />
         <FinanceKpiCard
           icon={AlertCircle}
@@ -208,6 +212,8 @@ function AccountantDashboardPage() {
           value={overdueCount}
           loading={loading}
           tone={overdueCount > 0 ? "destructive" : "muted"}
+          to="/accountant/invoices"
+          search={{ status: "OVERDUE" }}
         />
       </div>
 
@@ -339,21 +345,26 @@ function FinanceKpiCard({
   value,
   loading,
   tone,
+  to,
+  search,
 }: {
   icon: LucideIcon;
   label: string;
   value: string | number;
   loading?: boolean;
   tone: keyof typeof FINANCE_TONE;
+  /** Navigates to the card's relevant page when provided — the card renders
+   * as a plain (non-interactive) div otherwise, unchanged from before. */
+  to?: string;
+  search?: Record<string, string>;
 }) {
   const t = FINANCE_TONE[tone];
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift sm:gap-4 sm:p-5",
-        t.border,
-      )}
-    >
+  const className = cn(
+    "flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift sm:gap-4 sm:p-5",
+    t.border,
+  );
+  const content = (
+    <>
       <span
         className={cn(
           "grid h-11 w-11 shrink-0 place-items-center rounded-xl shadow-tone-glow sm:h-12 sm:w-12",
@@ -368,13 +379,21 @@ function FinanceKpiCard({
         {loading ? (
           <Skeleton className="mt-1.5 h-8 w-20" />
         ) : (
-          <p className="mt-0.5 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <p className="mt-0.5 break-words font-display text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
             {value}
           </p>
         )}
       </div>
-    </div>
+    </>
   );
+  if (to) {
+    return (
+      <Link to={to} search={search} className={className}>
+        {content}
+      </Link>
+    );
+  }
+  return <div className={className}>{content}</div>;
 }
 
 const AGING_BUCKET_LABELS: Array<[keyof ReturnType<typeof rebucketAging>, string]> = [

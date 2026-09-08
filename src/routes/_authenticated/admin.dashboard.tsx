@@ -124,7 +124,7 @@ function AdminDashboardPage() {
 
   return (
     <div className="max-w-6xl space-y-6 sm:space-y-8">
-      <PageHeader title="Dashboard" description="Live snapshot of this property" />
+      <PageHeader title="Dashboard" />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties
@@ -164,7 +164,7 @@ function AdminDashboardPage() {
             value={kpis.data?.activeStudents ?? 0}
             loading={kpis.isLoading}
             tone="success"
-            onNavigate={() => navigate({ to: "/admin/students" })}
+            onNavigate={() => navigate({ to: "/admin/students", search: { status: "ACTIVE" } })}
           />
         </div>
       )}

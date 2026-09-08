@@ -138,6 +138,9 @@ export interface StudentsListPageProps {
   /** Gates the per-row Delete action. View is always available once this
    * page is reachable at all (list read access is enforced upstream). */
   canDelete: boolean;
+  /** Preselects the status filter (e.g. deep-linking from a dashboard KPI
+   * card) — defaults to "ALL" (today's unchanged behavior) when omitted. */
+  initialStatusFilter?: string;
 }
 
 /**
@@ -156,9 +159,10 @@ export function StudentsListPage({
   onPropertyChange,
   canCreate,
   canDelete,
+  initialStatusFilter,
 }: StudentsListPageProps) {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);

@@ -22,6 +22,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const INVOICES_PAGE_SIZE = 20;
 
 export const Route = createFileRoute("/_authenticated/accountant/invoices")({
+  validateSearch: (search: Record<string, unknown>): { status?: string } => ({
+    status: typeof search.status === "string" ? search.status : undefined,
+  }),
   component: AccInvoicesPage,
 });
 
@@ -38,10 +41,11 @@ const STATUS_OPTIONS = [
 ];
 
 function AccInvoicesPage() {
+  const { status: initialStatus } = Route.useSearch();
   const { propertyId, isLoading: propertyLoading } = useAccountantProperty();
   const fn = useServerFn(listPropertyInvoices);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
+  const [status, setStatus] = useState(initialStatus ?? "ALL");
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
