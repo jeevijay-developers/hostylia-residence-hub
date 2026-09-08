@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
 import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
+import { dispatchNotification } from "@/lib/dispatch-notification";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
@@ -388,7 +389,7 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
 
     const { data: student, error: sErr } = await supabase
       .from("students")
-      .select("id, tenant_id, property_id, phone, email, profile_id")
+      .select("id, tenant_id, property_id, phone, email, profile_id, full_name, admission_number")
       .eq("id", data.student_id)
       .single();
     if (sErr || !student) throw new Error("Student not found");
@@ -545,6 +546,33 @@ export const confirmStudentAdmission = createServerFn({ method: "POST" })
           is_emergency_contact: true,
         });
       }
+    }
+
+    try {
+      const phone = student.phone?.trim();
+      if (phone) {
+        const { data: property } = await supabase
+          .from("properties")
+          .select("name")
+          .eq("id", student.property_id)
+          .maybeSingle();
+        await dispatchNotification(supabase, {
+          channel: "SMS",
+          templateKey: "admission_approved",
+          recipient: { phone },
+          variables: {
+            name: student.full_name ?? "Student",
+            admission_id: student.admission_number ?? student.id.slice(0, 8),
+            hostel: property?.name ?? "hostel",
+          },
+          eventType: "ADMISSION_APPROVED",
+          tenantId: student.tenant_id,
+          propertyId: student.property_id,
+          referenceId: student.id,
+        });
+      }
+    } catch (e) {
+      console.warn("[confirmStudentAdmission] SMS notify failed", e);
     }
 
     return { ok: true as const, linked_profile_id: matchedId };

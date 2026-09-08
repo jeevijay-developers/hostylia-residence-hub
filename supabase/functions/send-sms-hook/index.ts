@@ -1,25 +1,22 @@
-// Supabase Auth "Send SMS" hook — delivers phone-login OTPs via MSG91 instead
-// of a natively supported provider. Configured in supabase/config.toml under
-// [auth.hook.send_sms]; Supabase Auth POSTs here whenever it needs to send an
-// OTP SMS (phone login, phone MFA challenge, etc).
+// Supabase Auth "Send SMS" hook — delivers phone-login OTPs via MSG91 Flow.
+// Configured in supabase/config.toml under [auth.hook.send_sms].
 //
 // Payload (Standard Webhooks signed): { user: { phone }, sms: { otp } }
 // Expected response: {} with HTTP 200 on success; { error: { http_code, message } } otherwise.
 //
-// Requires secrets:
-//   SEND_SMS_HOOK_SECRET — shared HMAC secret, format "v1,whsec_<base64>",
-//     must match the `secrets` value configured for this hook in config.toml.
-//   MSG91_AUTH_KEY        — MSG91 account auth key.
-//   MSG91_TEMPLATE_ID     — DLT-approved MSG91 Flow template id containing an
-//     OTP variable placeholder.
-//   MSG91_OTP_VAR         — optional, name of the template variable that holds
-//     the OTP (defaults to "OTP", MSG91's own default variable name).
-//   DEV_TEST_PHONES        — optional, comma-separated E.164 phone numbers (no
-//     leading "+", matching how GoTrue passes user.phone) allowed to bypass
-//     MSG91 while it's unconfigured (DLT approval pending). ONLY these numbers
-//     get a logged OTP + fake success; every other number still fails closed
-//     with 503 so real users never get a false "OTP sent" with no delivery.
+// Secrets:
+//   SEND_SMS_HOOK_SECRET — HMAC secret (v1,whsec_…)
+//   MSG91_AUTH_KEY       — MSG91 auth key
+//   MSG91_TEMPLATE_ID    — optional; defaults to AUTH_LOGIN_OTP Flow id
+//   MSG91_OTP_VAR        — optional; default "otp" (matches ##otp##)
+//   MSG91_OTP_MINUTES    — optional; default "10" (matches ##minutes##)
+//   DEV_TEST_PHONES      — optional allowlist when MSG91 unset
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+import {
+  MSG91_SMS_TEMPLATES,
+  normalizeMsg91Mobile,
+  sendMsg91Flow,
+} from "../_shared/msg91.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -53,14 +50,13 @@ Deno.serve(async (req) => {
   }
 
   const AUTH_KEY = Deno.env.get("MSG91_AUTH_KEY");
-  const TEMPLATE_ID = Deno.env.get("MSG91_TEMPLATE_ID");
-  const OTP_VAR = Deno.env.get("MSG91_OTP_VAR") || "OTP";
-  if (!AUTH_KEY || !TEMPLATE_ID) {
-    // TEMPORARY (DLT approval pending): MSG91 isn't configured yet, so real SMS
-    // can't go out. For real users this must still fail closed (503) — a fake
-    // "success" with no delivery would strand them on the OTP screen with no
-    // way to get a code. Only an explicit allowlist of test numbers gets a
-    // logged OTP + fake success, so login can be smoke-tested without MSG91.
+  const TEMPLATE_ID =
+    Deno.env.get("MSG91_TEMPLATE_ID")?.trim() ||
+    MSG91_SMS_TEMPLATES.AUTH_LOGIN_OTP.templateId;
+  const OTP_VAR = Deno.env.get("MSG91_OTP_VAR")?.trim() || "otp";
+  const MINUTES = Deno.env.get("MSG91_OTP_MINUTES")?.trim() || "10";
+
+  if (!AUTH_KEY) {
     const testPhones = (Deno.env.get("DEV_TEST_PHONES") || "")
       .split(",")
       .map((p) => p.trim())
@@ -73,56 +69,32 @@ Deno.serve(async (req) => {
       {
         error: {
           http_code: 503,
-          message: "MSG91 is not configured — add MSG91_AUTH_KEY and MSG91_TEMPLATE_ID.",
+          message: "MSG91 is not configured — add MSG91_AUTH_KEY.",
         },
       },
       503,
     );
   }
 
-  const mobile = phone.replace(/^\+/, "");
+  const result = await sendMsg91Flow({
+    templateId: TEMPLATE_ID,
+    mobiles: normalizeMsg91Mobile(phone),
+    variables: {
+      [OTP_VAR]: otp,
+      minutes: MINUTES,
+      // Also set MSG91 default OTP var name if custom override is used
+      ...(OTP_VAR !== "otp" ? { otp } : {}),
+    },
+  });
 
-  try {
-    const res = await fetch("https://control.msg91.com/api/v5/flow", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        authkey: AUTH_KEY,
-      },
-      body: JSON.stringify({
-        template_id: TEMPLATE_ID,
-        short_url: "0",
-        recipients: [
-          {
-            mobiles: mobile,
-            [OTP_VAR]: otp,
-          },
-        ],
-      }),
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok || body?.type === "error") {
-      return json(
-        {
-          error: { http_code: res.status, message: `MSG91 error: ${body?.message ?? "unknown"}` },
-        },
-        res.status || 502,
-      );
-    }
-
-    return json({}, 200);
-  } catch (e) {
+  if (!result.ok) {
     return json(
-      {
-        error: {
-          http_code: 500,
-          message: e instanceof Error ? e.message : "Failed to reach MSG91.",
-        },
-      },
-      500,
+      { error: { http_code: 502, message: result.error } },
+      502,
     );
   }
+
+  return json({}, 200);
 });
 
 function json(body: unknown, status = 200) {

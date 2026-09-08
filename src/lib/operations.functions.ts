@@ -216,6 +216,43 @@ export const decideGatePass = createServerFn({ method: "POST" })
       reason: data.reason ?? null,
     });
 
+    if (data.decision === "APPROVED" && data.role !== "PARENT") {
+      try {
+        const { data: student } = await supabase
+          .from("students")
+          .select("full_name, phone")
+          .eq("id", gp.student_id)
+          .maybeSingle();
+        const phone = student?.phone?.trim();
+        if (phone) {
+          const returnBy = gp.expected_return_at
+            ? new Date(gp.expected_return_at).toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-";
+          await dispatchNotification(supabase, {
+            channel: "SMS",
+            templateKey: "gate_pass_approved",
+            recipient: { phone },
+            variables: {
+              name: student?.full_name ?? "Student",
+              pass_id: gp.pass_number ?? gp.id.slice(0, 8),
+              return_by: returnBy,
+            },
+            eventType: "GATE_PASS_APPROVED",
+            tenantId: gp.tenant_id,
+            propertyId: gp.property_id,
+            referenceId: gp.id,
+          });
+        }
+      } catch (e) {
+        console.warn("[decideGatePass] SMS notify failed", e);
+      }
+    }
+
     return { pass: updated };
   });
 
@@ -313,16 +350,56 @@ export const scanGatePass = createServerFn({ method: "POST" })
           .limit(1)
           .maybeSingle();
         if (latestEvent?.is_late) {
+          const { data: student } = await supabase
+            .from("students")
+            .select("full_name, phone")
+            .eq("id", gp.student_id)
+            .maybeSingle();
+          const { data: property } = await supabase
+            .from("properties")
+            .select("name")
+            .eq("id", gp.property_id)
+            .maybeSingle();
+          const time = new Date().toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const lateVars = {
+            name: student?.full_name ?? "Student",
+            property: property?.name ?? "hostel",
+            time,
+            pass_number: gp.pass_number,
+          };
           await dispatchNotification(supabase, {
             channel: "IN_APP",
             templateKey: "late_entry",
             recipient: { userId: gp.warden_approved_by },
-            variables: { pass_number: gp.pass_number },
+            variables: lateVars,
             eventType: "LATE_ENTRY",
             tenantId: gp.tenant_id,
             propertyId: gp.property_id,
             referenceId: `${gp.id}-late-${bucket}`,
           });
+          const { data: guardianRows } = await supabase
+            .from("student_guardians")
+            .select("can_view_gate_events, guardians(phone)")
+            .eq("student_id", gp.student_id)
+            .is("unlinked_at", null);
+          for (const row of guardianRows ?? []) {
+            if (!row.can_view_gate_events) continue;
+            const phone = (row as { guardians?: { phone?: string | null } }).guardians?.phone?.trim();
+            if (!phone) continue;
+            await dispatchNotification(supabase, {
+              channel: "SMS",
+              templateKey: "late_entry",
+              recipient: { phone },
+              variables: lateVars,
+              eventType: "LATE_ENTRY",
+              tenantId: gp.tenant_id,
+              propertyId: gp.property_id,
+              referenceId: `${gp.id}-late-sms-${phone.slice(-4)}-${bucket}`,
+            });
+          }
         }
       }
     } catch (e) {

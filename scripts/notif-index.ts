@@ -19,7 +19,7 @@ import {
   msg91AuthKey,
   NOTIFICATION_TEMPLATE_TO_MSG91,
   sendMsg91TemplateSms,
-} from "../_shared/msg91.ts";
+} from "./_shared/msg91.ts";
 
 type Channel = "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL";
 

@@ -514,12 +514,58 @@ export const revokeStaff = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId, data.tenant_id);
+
+    const { data: ra, error: raFetchErr } = await supabase
+      .from("role_assignments")
+      .select("id, user_id, property_id")
+      .eq("id", data.role_assignment_id)
+      .eq("tenant_id", data.tenant_id)
+      .maybeSingle();
+    if (raFetchErr || !ra) throw new Error("Staff assignment not found");
+
     const { error } = await supabase
       .from("role_assignments")
       .update({ is_active: false, revoked_by: userId, revoked_at: new Date().toISOString() })
       .eq("id", data.role_assignment_id)
       .eq("tenant_id", data.tenant_id);
     if (error) throw error;
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", ra.user_id)
+        .maybeSingle();
+      const phone = profile?.phone?.trim();
+      let propertyName = "property";
+      if (ra.property_id) {
+        const { data: prop } = await supabase
+          .from("properties")
+          .select("name")
+          .eq("id", ra.property_id)
+          .maybeSingle();
+        if (prop?.name) propertyName = prop.name;
+      }
+      if (phone) {
+        await dispatchNotification(supabase, {
+          channel: "SMS",
+          templateKey: "staff_access_revoked",
+          recipient: { phone },
+          variables: {
+            name: profile?.full_name ?? "Staff",
+            property: propertyName,
+          },
+          eventType: "STAFF_ACCESS_REVOKED",
+          tenantId: data.tenant_id,
+          propertyId: ra.property_id,
+          referenceId: ra.id,
+        });
+      }
+    } catch (e) {
+      console.warn("[revokeStaff] SMS notify failed", e);
+    }
+
     return { ok: true };
   });
 
