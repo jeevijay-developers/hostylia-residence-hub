@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenantNotices } from "@/lib/notifications";
 import { useKycComplete } from "@/lib/kyc";
 import { useStudentSelf } from "@/lib/complaint";
-import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { formatInr } from "@/lib/finance";
 
@@ -26,39 +25,12 @@ const OPEN_ALLOCATION_STATUSES = [
   "PENDING_PAYMENT",
 ];
 
-function getGreeting(hour: number): string {
-  if (hour >= 5 && hour < 12) return "Good Morning";
-  if (hour >= 12 && hour < 17) return "Good Afternoon";
-  if (hour >= 17 && hour < 21) return "Good Evening";
-  return "Good Night";
-}
-
 function StudentHomePage() {
-  const role = useResolvedRole();
-  const userId = role.data?.userId ?? null;
   const student = useStudentSelf();
   const studentId = student.data?.id ?? null;
   const propertyId = student.data?.property_id ?? null;
   const { complete: kycComplete, isLoading: kycLoading } = useKycComplete(studentId);
   const { can } = useStudentPermissions();
-
-  // Provides the visible student name in the greeting header.
-  const profileQ = useQuery({
-    queryKey: ["my-profile-record", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("students")
-        .select("full_name")
-        .eq("profile_id", userId!)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const allocQ = useQuery({
     queryKey: ["my-current-allocation", studentId],
@@ -86,25 +58,9 @@ function StudentHomePage() {
 
   const bed = allocQ.data?.bed as
     { code: string; room: { room_number: string } | null } | null | undefined;
-  const firstName = profileQ.data?.full_name?.trim().split(" ")[0];
-  const greeting = getGreeting(new Date().getHours());
-
-  const roomBedLabel =
-    bed?.room?.room_number && bed?.code ? `${bed.room.room_number} · Bed ${bed.code}` : null;
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 pr-16 sm:pr-20">
-          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Today</p>
-          <h1 className="mt-1 font-serif text-4xl font-bold leading-none tracking-tight text-foreground sm:text-5xl">
-            {greeting}
-            {firstName ? `, ${firstName}` : ""}
-          </h1>
-          {roomBedLabel && <p className="mt-2 text-base text-muted-foreground sm:text-lg">{roomBedLabel}</p>}
-        </div>
-      </div>
-
       {!kycLoading && !kycComplete && (
         <KycGateNotice message="Complete your KYC to unlock fees, gate pass, mess and complaints." />
       )}
