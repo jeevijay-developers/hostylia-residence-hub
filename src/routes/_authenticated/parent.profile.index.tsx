@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   BedDouble,
   Building2,
+  Camera,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -13,7 +14,6 @@ import {
   KeyRound,
   Loader2,
   Lock,
-  LogOut,
   Mail,
   MapPin,
   Phone,
@@ -25,15 +25,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
+import { fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { displayIndianPhone } from "@/schemas/auth";
@@ -141,11 +148,18 @@ function ParentProfilePage() {
   const { data: resolved } = useResolvedRole();
   const userId = resolved?.userId ?? null;
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Page state ──
   const [mode, setMode] = useState<Mode>("view");
-  const [signOutOpen, setSignOutOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  // ── Photo menu state ── (avatar_path lives on `profiles`, not
+  // `guardians`, so this persists immediately rather than waiting for the
+  // guardian-details "Save changes" button.)
+  const [uploading, setUploading] = useState(false);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [photoViewOpen, setPhotoViewOpen] = useState(false);
 
   // ── Edit form fields ──
   const [fullName, setFullName] = useState("");
@@ -180,6 +194,14 @@ function ParentProfilePage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Same query the Topbar already uses for every role's avatar — `guardians`
+  // has no avatar_path column, so the photo lives on `profiles` instead.
+  const ownProfileQ = useQuery({
+    queryKey: ["own-profile"],
+    queryFn: fetchOwnProfile,
+    enabled: !!userId,
   });
 
   const relationsQ = useQuery({
@@ -222,6 +244,10 @@ function ParentProfilePage() {
   // ─── Sync edit form from fetched data ─────────────────────────────────────
 
   useEffect(() => {
+    setAvatarPath(ownProfileQ.data?.avatar_path ?? null);
+  }, [ownProfileQ.data]);
+
+  useEffect(() => {
     const g = guardianQ.data;
     if (!g) return;
 
@@ -240,6 +266,50 @@ function ParentProfilePage() {
     setAddrState(addr?.state ?? "");
     setAddrPincode(addr?.pincode ?? "");
   }, [guardianQ.data]);
+
+  // ─── Avatar upload/remove (persists immediately to `profiles`) ────────────
+
+  async function handleAvatarUpload(file: File) {
+    if (!userId) return;
+    setUploading(true);
+    try {
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (uploadErr) throw uploadErr;
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({ avatar_path: path })
+        .eq("id", userId);
+      if (updateErr) throw updateErr;
+      setAvatarPath(path);
+      toast.success("Photo uploaded");
+      qc.invalidateQueries({ queryKey: ["own-profile"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not upload photo");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const removePhoto = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Not signed in");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_path: null })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setAvatarPath(null);
+      toast.success("Photo removed");
+      qc.invalidateQueries({ queryKey: ["own-profile"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not remove photo"),
+  });
 
   // ─── Save profile ─────────────────────────────────────────────────────────
 
@@ -397,6 +467,9 @@ function ParentProfilePage() {
   const authUser = authUserQ.data;
 
   const initial = (mode === "edit" ? fullName : g.full_name).trim()[0]?.toUpperCase() ?? "P";
+  const displayAvatarUrl = avatarPath
+    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
+    : undefined;
   const isActive = g.portal_access_enabled && g.status !== "INACTIVE";
 
   const isEmailVerified = !!authUser?.email_confirmed_at;
@@ -435,11 +508,61 @@ function ParentProfilePage() {
 
           {/* Avatar + identity */}
           <div className="relative flex min-w-0 items-center gap-4 sm:gap-5">
-            <Avatar className="h-16 w-16 shrink-0 ring-2 ring-primary/30 sm:h-20 sm:w-20">
-              <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    aria-label="Profile photo options"
+                    className="group relative block rounded-full outline-none"
+                  >
+                    <Avatar className="h-16 w-16 ring-2 ring-primary/30 sm:h-20 sm:w-20">
+                      <AvatarImage src={displayAvatarUrl} alt={g.full_name} />
+                      <AvatarFallback className="bg-primary/15 text-xl font-bold text-primary sm:text-2xl">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                      {uploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      ) : (
+                        <Camera className="h-5 w-5 text-white" />
+                      )}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    disabled={!displayAvatarUrl}
+                    onSelect={() => setPhotoViewOpen(true)}
+                  >
+                    View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!displayAvatarUrl || removePhoto.isPending}
+                    onSelect={() => removePhoto.mutate()}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Remove
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <div className="min-w-0">
               <p className="truncate text-lg font-bold text-foreground sm:text-xl">
@@ -702,14 +825,21 @@ function ParentProfilePage() {
         </div>
       </div>
 
-      {/* ── Logout ── */}
-      <div className="flex justify-end mt-2">
-        <Button variant="ghost" onClick={() => setSignOutOpen(true)} className="text-muted-foreground hover:text-foreground">
-          <LogOut className="h-4 w-4" /> Logout
-        </Button>
-      </div>
-
-      <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} title="Logout?" confirmLabel="Logout" />
+      {/* ── View Photo dialog ── */}
+      <Dialog open={photoViewOpen} onOpenChange={setPhotoViewOpen}>
+        <DialogContent className="flex flex-col items-center gap-4">
+          <DialogHeader>
+            <DialogTitle>Profile photo</DialogTitle>
+          </DialogHeader>
+          {displayAvatarUrl && (
+            <img
+              src={displayAvatarUrl}
+              alt={g.full_name}
+              className="max-h-[60vh] w-full rounded-xl object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

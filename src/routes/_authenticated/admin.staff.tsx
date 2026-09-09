@@ -61,7 +61,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
-import { displayIndianPhone, normalizeIndianPhone } from "@/schemas/auth";
+import { displayIndianPhone, normalizeIndianPhone, indianMobileSchema } from "@/schemas/auth";
 import {
   deleteStaff,
   inviteStaff,
@@ -1243,9 +1243,18 @@ function AdminStaffPage() {
 
   const canUpdate = !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
 
+  // Phone is sent whenever filled in regardless of addMode (see the invite
+  // mutation below), so this validates on presence, not on which mode is
+  // currently selected.
+  const phoneError =
+    phone.trim() && !indianMobileSchema.safeParse(phone.trim()).success
+      ? "Enter a valid 10-digit Indian mobile number"
+      : null;
+
   const canInvite =
     !invite.isPending &&
     !duplicateContact &&
+    !phoneError &&
     !!addRole &&
     staffName.trim().length >= 2 &&
     (addMode === "phone" ? phone.trim() !== "" : email.trim() !== "");
@@ -1454,6 +1463,9 @@ function AdminStaffPage() {
                 They'll get an invite email — ask them to use "Forgot password" on first sign-in to set one.
               </p>
             )}
+
+            {/* Phone format error */}
+            {phoneError && <p className="text-sm text-destructive font-medium">{phoneError}</p>}
 
             {/* Duplicate contact warning */}
             {duplicateContact && (

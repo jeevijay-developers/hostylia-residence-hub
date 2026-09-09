@@ -123,7 +123,6 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
-    { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
     { label: "Gate Pass", to: "/parent/gate-pass", icon: Ticket },
     { label: "Payments", to: "/parent/payments", icon: Receipt },
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
@@ -169,6 +168,7 @@ export const CENTER_NAV: Partial<Record<NonNullable<AppRole>, NavItem>> = {
   ACCOUNTANT: { label: "Invoices", to: "/accountant/invoices", icon: FileText },
   WARDEN: { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
   STUDENT: { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
+  PARENT: { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
 };
 
 export const NOTIFICATION_ICON = BellRing;

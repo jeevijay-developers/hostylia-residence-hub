@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, LogOut, User } from "lucide-react";
+import { Menu, Search, LogOut, User, MessageSquare } from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import { MessagesPanel } from "@/components/warden/MessagesPanel";
+import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
   CommandEmpty,
@@ -22,6 +23,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useThemeStore } from "@/stores/theme-store";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
@@ -72,6 +74,10 @@ export function Topbar({
   const isStudent = resolved?.role === "STUDENT";
   const isParent = resolved?.role === "PARENT";
   const isSuperAdmin = resolved?.role === "SUPER_ADMIN";
+  // These 5 roles no longer get a manual theme toggle — their theme always
+  // follows the OS/browser color-scheme preference (Super Admin and the
+  // marketing site keep the existing manual toggle, untouched).
+  const isAutoThemeRole = isAdmin || isAccountant || isWarden || isStudent || isParent;
 
   let profileHref: string | undefined = undefined;
   if (isAdmin) profileHref = "/admin/profile";
@@ -90,6 +96,20 @@ export function Topbar({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
+
+  // Keeps stores/theme-store.ts's reactive `theme` (which BrandLockup's logo
+  // asset swap reads) matching the OS preference for these 5 roles — the
+  // pre-hydration THEME_INIT_SCRIPT in __root.tsx already applied the class
+  // for first paint, this just syncs the store and reacts to a live OS
+  // theme change while the app stays open.
+  useEffect(() => {
+    if (!isAutoThemeRole || typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => useThemeStore.getState().setTheme(mql.matches ? "dark" : "light");
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, [isAutoThemeRole]);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
@@ -217,9 +237,16 @@ export function Topbar({
         </CommandList>
       </CommandDialog>
 
-      <ThemeToggle />
+      {!isAutoThemeRole && <ThemeToggle />}
       <NotificationBell />
       {isWarden && <MessagesPanel />}
+      {isParent && (
+        <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
+          <Link to="/parent/messages" aria-label="Messages">
+            <MessageSquare className="h-4 w-4" />
+          </Link>
+        </Button>
+      )}
 
       <div className="flex items-center gap-2">
         {isSuperAdmin && (
@@ -232,7 +259,7 @@ export function Topbar({
             <LogOut className="h-4 w-4" />
           </button>
         )}
-        {isAdmin || isWarden || isStudent || isAccountant ? (
+        {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -257,7 +284,9 @@ export function Topbar({
                         ? "/warden/profile"
                         : isAccountant
                           ? "/accountant/profile"
-                          : "/student/profile"
+                          : isParent
+                            ? "/parent/profile"
+                            : "/student/profile"
                   }
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -293,8 +322,10 @@ export function Topbar({
       <SignOutDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title={isAdmin || isWarden || isStudent || isAccountant ? "Sign out?" : undefined}
-        confirmLabel={isAdmin || isWarden || isStudent || isAccountant ? "Sign out" : undefined}
+        title={isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out?" : undefined}
+        confirmLabel={
+          isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out" : undefined
+        }
       />
     </header>
   );

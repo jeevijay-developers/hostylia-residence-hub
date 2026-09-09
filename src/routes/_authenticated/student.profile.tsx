@@ -18,7 +18,6 @@ import {
   KeyRound,
   Loader2,
   Lock,
-  LogOut,
   Mail,
   MapPin,
   Phone,
@@ -51,7 +50,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -195,7 +193,6 @@ function StudentProfilePage() {
    * the photo is editable then; every other field stays read-only. */
   const [photoOnlyEdit, setPhotoOnlyEdit] = useState(false);
   const fieldsEditable = mode === "edit" && !photoOnlyEdit;
-  const [signOutOpen, setSignOutOpen] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
@@ -1084,15 +1081,6 @@ function StudentProfilePage() {
             </Card>
           </div>
         </div>
-
-        {/* ── Logout ── */}
-        <div className="flex justify-end mt-4">
-          <Button variant="ghost" onClick={() => setSignOutOpen(true)} className="text-muted-foreground hover:text-foreground">
-            <LogOut className="h-4 w-4" /> Logout
-          </Button>
-        </div>
-
-        <SignOutDialog open={signOutOpen} onOpenChange={setSignOutOpen} title="Logout?" confirmLabel="Logout" />
 
         {/* ── KYC Dialog ─────────────────────────────────────────────────── */}
         <Dialog open={kycDialogOpen} onOpenChange={setKycDialogOpen}>

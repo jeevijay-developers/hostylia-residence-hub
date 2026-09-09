@@ -134,9 +134,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 // Default is "dark" (matches stores/theme-store.ts) so a first-time visitor
 // with no saved preference still sees the same navy/gold palette as the
 // marketing site, not a flash of the old light theme.
+//
+// Admin/Accountant/Warden/Student/Parent no longer have a manual toggle —
+// their theme always follows the OS/browser color-scheme preference instead
+// (see AUTO_THEME_ROUTE_PREFIXES below and Topbar's matching effect, which
+// keeps stores/theme-store.ts's reactive `theme` value — read by
+// BrandLockup's logo-asset swap — in sync after hydration). Super Admin and
+// the marketing site are unaffected and keep the existing manual
+// toggle/localStorage behavior.
+const AUTO_THEME_ROUTE_PREFIXES = ["/admin", "/accountant", "/warden", "/student", "/parent"];
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
+    var path = window.location.pathname;
+    var autoPrefixes = ${JSON.stringify(AUTO_THEME_ROUTE_PREFIXES)};
+    var isAutoThemeRoute = autoPrefixes.some(function (p) {
+      return path === p || path.indexOf(p + "/") === 0;
+    });
+    if (isAutoThemeRoute) {
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDark) document.documentElement.classList.add("dark");
+      return;
+    }
     var raw = localStorage.getItem("hostylia_theme");
     var theme = raw ? JSON.parse(raw).state.theme : "dark";
     if (theme === "dark") document.documentElement.classList.add("dark");
