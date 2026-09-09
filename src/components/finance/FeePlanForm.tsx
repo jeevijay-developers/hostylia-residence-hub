@@ -157,7 +157,12 @@ export function FeePlanForm({
           />
         </FormField>
         <FormField icon={Calendar} label="Effective from" htmlFor="fee-plan-effective-from">
-          <Input id="fee-plan-effective-from" type="date" {...form.register("effective_from")} />
+          <Input
+            id="fee-plan-effective-from"
+            type="date"
+            className="[color-scheme:dark]"
+            {...form.register("effective_from")}
+          />
         </FormField>
         <FormField icon={ShieldCheck} label="Status">
           <Select

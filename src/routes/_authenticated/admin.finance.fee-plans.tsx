@@ -1,5 +1,4 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { FeePlansPanel } from "@/components/finance/FeePlansPanel";
 import { usePropertyStore } from "@/stores/property-store";
 
@@ -18,7 +17,6 @@ function FeePlansPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fee plans" />
       <FeePlansPanel propertyId={propertyId} />
     </div>
   );

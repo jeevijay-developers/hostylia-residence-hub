@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, LogOut, User } from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
+import { MessagesPanel } from "@/components/warden/MessagesPanel";
 import {
   CommandDialog,
   CommandEmpty,
@@ -218,6 +219,7 @@ export function Topbar({
 
       <ThemeToggle />
       <NotificationBell />
+      {isWarden && <MessagesPanel />}
 
       <div className="flex items-center gap-2">
         {isSuperAdmin && (

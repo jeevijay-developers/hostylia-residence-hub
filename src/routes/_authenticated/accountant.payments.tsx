@@ -4,10 +4,14 @@ import { PaymentHistoryPanel } from "@/components/finance/PaymentHistoryPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/accountant/payments")({
+  validateSearch: (search: Record<string, unknown>): { paidToday?: string } => ({
+    paidToday: typeof search.paidToday === "string" ? search.paidToday : undefined,
+  }),
   component: AccPaymentsPage,
 });
 
 function AccPaymentsPage() {
+  const { paidToday } = Route.useSearch();
   const { propertyId, isLoading: propertyLoading } = useAccountantProperty();
   if (propertyLoading) return null;
   if (!propertyId)
@@ -17,9 +21,9 @@ function AccPaymentsPage() {
       </p>
     );
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
       <PaymentEntryForm propertyId={propertyId} />
-      <PaymentHistoryPanel propertyId={propertyId} />
+      <PaymentHistoryPanel propertyId={propertyId} onlyCapturedToday={paidToday === "1"} />
     </div>
   );
 }

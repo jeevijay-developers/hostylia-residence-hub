@@ -61,12 +61,23 @@ export function useReceiptDownload() {
  * Read-only payment history for a property — separate from PaymentEntryForm
  * (which only records new payments and had no way to see past ones).
  */
-export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
+export function PaymentHistoryPanel({
+  propertyId,
+  /** Pre-scopes the list to today's successful/captured payments only —
+   * used when arriving from the Dashboard's "Today's Collection" tile, to
+   * match that card's own CAPTURED + paid_at-since-local-midnight
+   * definition. Leaves default behavior (all payments, no filter)
+   * unchanged when omitted. */
+  onlyCapturedToday,
+}: {
+  propertyId: string;
+  onlyCapturedToday?: boolean;
+}) {
   const [page, setPage] = useState(0);
   const q = useQuery({
-    queryKey: ["payments", propertyId, page],
+    queryKey: ["payments", propertyId, page, onlyCapturedToday],
     queryFn: async () => {
-      const { data, error, count } = await supabase
+      let query = supabase
         .from("payments")
         .select(
           "id, payment_number, mode, amount_paise, status, paid_at, students(full_name), invoices(invoice_number)",
@@ -75,6 +86,12 @@ export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
         .eq("property_id", propertyId)
         .order("created_at", { ascending: false })
         .range(page * PAYMENTS_PAGE_SIZE, page * PAYMENTS_PAGE_SIZE + PAYMENTS_PAGE_SIZE - 1);
+      if (onlyCapturedToday) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        query = query.eq("status", "CAPTURED").gte("paid_at", startOfToday.toISOString());
+      }
+      const { data, error, count } = await query;
       if (error) throw new Error(error.message);
       return { rows: data ?? [], total: count ?? 0 };
     },
@@ -110,7 +127,7 @@ export function PaymentHistoryPanel({ propertyId }: { propertyId: string }) {
               className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/20 p-3 text-sm"
             >
               <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">
+                <p className="break-words font-medium text-foreground sm:truncate">
                   {p.payment_number} · {p.students?.full_name ?? "—"}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">

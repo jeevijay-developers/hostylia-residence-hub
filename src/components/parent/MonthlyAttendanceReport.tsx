@@ -142,7 +142,7 @@ export function MonthlyAttendanceReport({
             <Input
               id="monthly-attendance-month"
               type="month"
-              className="h-9 w-40"
+              className="h-9 w-40 [color-scheme:dark]"
               value={monthInput}
               max={currentMonthValue()}
               onChange={(e) => setMonthInput(e.target.value)}

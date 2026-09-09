@@ -6,7 +6,6 @@ import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/components/warden/ActivityIcon";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RoomOccupancyChart } from "@/components/dashboard/RoomOccupancyChart";
 import { KycApprovalQueueCard } from "@/components/students/KycApprovalQueue";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,20 +13,11 @@ import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { formatInr } from "@/lib/finance";
 import { useAdminRecentActivity } from "@/lib/admin-activity";
+import { OPEN_COMPLAINT_STATUSES } from "@/lib/complaint";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
 });
-
-// Same "open" set fn_scan_complaint_sla_breaches uses (everything except
-// RESOLVED/CLOSED/CANCELLED).
-const OPEN_COMPLAINT_STATUSES = [
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "WAITING_FOR_STUDENT",
-  "REOPENED",
-];
 
 function currentMonthRange() {
   const now = new Date();
@@ -124,7 +114,6 @@ function AdminDashboardPage() {
 
   return (
     <div className="max-w-6xl space-y-6 sm:space-y-8">
-      <PageHeader title="Dashboard" />
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties
@@ -148,7 +137,7 @@ function AdminDashboardPage() {
             value={formatInr(kpis.data?.collectionsPaise ?? 0)}
             loading={kpis.isLoading}
             tone="info"
-            onNavigate={() => navigate({ to: "/admin/finance" })}
+            onNavigate={() => navigate({ to: "/admin/finance/pnl" })}
           />
           <KpiSummaryCard
             icon={MessageSquareWarning}
@@ -156,7 +145,7 @@ function AdminDashboardPage() {
             value={kpis.data?.openComplaints ?? 0}
             loading={kpis.isLoading}
             tone="destructive"
-            onNavigate={() => navigate({ to: "/admin/complaints" })}
+            onNavigate={() => navigate({ to: "/admin/complaints", search: { status: "OPEN" } })}
           />
           <KpiSummaryCard
             icon={Users}

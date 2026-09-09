@@ -280,7 +280,7 @@ export function NoticeComposer({ propertyId }: Props) {
             <Label htmlFor="notice-schedule">Schedule (optional)</Label>
             <Input
               id="notice-schedule"
-              className="mt-1.5"
+              className="mt-1.5 [color-scheme:dark]"
               type="datetime-local"
               value={publishAt}
               onChange={(e) =>

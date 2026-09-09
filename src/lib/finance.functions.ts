@@ -447,7 +447,40 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
       .is("deleted_at", null)
       .order("issue_date", { ascending: false })
       .range(data.page * data.pageSize, data.page * data.pageSize + data.pageSize - 1);
-    if (data.status) q = q.eq("status", data.status);
+    // "OVERDUE" matches v_invoice_aging's live definition (balance still due
+    // past due_date), not the stored status column — invoices.status only
+    // flips to 'OVERDUE' via fn_recalc_invoice_status, which runs off
+    // payment inserts/updates, so a never-paid invoice past its due date
+    // stays 'ISSUED' forever and would otherwise never match here even
+    // though the Dashboard's aging view already counts it as overdue.
+    if (data.status === "OVERDUE") {
+      const today = new Date().toISOString().slice(0, 10);
+      q = q
+        .lt("due_date", today)
+        .gt("balance_paise", 0)
+        .not("status", "in", "(PAID,VOID,REFUNDED)");
+    } else if (data.status === "ISSUED") {
+      // Dashboard's "Pending Payments" count is v_invoice_aging's "current"
+      // bucket: balance still due, not yet past due_date, excluding
+      // PAID/VOID/REFUNDED — not a literal status='ISSUED' match (a
+      // not-yet-due PARTIALLY_PAID invoice is "pending" too, and a
+      // never-repaid invoice whose status is still stuck at 'ISSUED' past
+      // its due_date is actually overdue, not pending). Matching that
+      // definition here keeps this filter consistent with the Dashboard tile
+      // it's linked from.
+      const today = new Date().toISOString().slice(0, 10);
+      q = q
+        .gte("due_date", today)
+        .gt("balance_paise", 0)
+        .not("status", "in", "(PAID,VOID,REFUNDED)");
+    } else if (data.status === "OUTSTANDING") {
+      // Matches v_invoice_aging's total_outstanding_paise: any invoice still
+      // carrying a balance that hasn't reached a terminal status, regardless
+      // of due date (so both not-yet-due and overdue balances are included).
+      q = q.gt("balance_paise", 0).not("status", "in", "(PAID,VOID,REFUNDED)");
+    } else if (data.status) {
+      q = q.eq("status", data.status);
+    }
     if (data.search) {
       const idList = studentIds.length
         ? studentIds.join(",")

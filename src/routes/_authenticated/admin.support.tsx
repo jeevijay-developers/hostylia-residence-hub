@@ -108,17 +108,7 @@ function AdminSupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-warning/10 text-warning">
-            <Ticket className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-              Tickets
-            </p>
-          </div>
-        </div>
+      <div className="flex flex-col items-start justify-end gap-4 sm:flex-row sm:items-center">
         <Button onClick={() => setCreateOpen(true)} className="shrink-0">
           <Plus className="h-4 w-4" />
           New ticket
