@@ -1,23 +1,12 @@
-import type { ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bed,
-  Building2,
-  CalendarCheck,
-  ChevronRight,
-  DoorOpen,
-  Ticket,
-  Utensils,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { Bed, Bell, ChevronRight, DoorOpen, IndianRupee, Utensils, type LucideIcon } from "lucide-react";
 
 import { KycGateNotice } from "@/components/students/KycGateNotice";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
+import { useTenantNotices } from "@/lib/notifications";
 import { useKycComplete } from "@/lib/kyc";
 import { useStudentSelf } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
@@ -93,80 +82,47 @@ function StudentHomePage() {
     },
   });
 
-  const propertyQ = useQuery({
-    queryKey: ["property-name", propertyId],
-    enabled: !!propertyId,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("properties")
-        .select("name")
-        .eq("id", propertyId!)
-        .maybeSingle();
-      return data?.name ?? null;
-    },
+  // Same query the Topbar already uses for every role's avatar.
+  const ownProfileQ = useQuery({
+    queryKey: ["own-profile"],
+    queryFn: fetchOwnProfile,
+    enabled: !!userId,
   });
+  const avatarUrl = ownProfileQ.data?.avatar_path
+    ? supabase.storage.from("avatars").getPublicUrl(ownProfileQ.data.avatar_path).data.publicUrl
+    : undefined;
+
+  const noticesQ = useTenantNotices(student.data?.tenant_id, propertyId);
+  const notices = (noticesQ.data ?? []).filter(
+    (n) => n.audience_type === "ALL" || n.audience_type === "STUDENTS",
+  );
 
   const bed = allocQ.data?.bed as
     { code: string; room: { room_number: string } | null } | null | undefined;
   const firstName = profileQ.data?.full_name?.trim().split(" ")[0];
   const greeting = getGreeting(new Date().getHours());
 
+  const roomBedLabel =
+    bed?.room?.room_number && bed?.code ? `${bed.room.room_number} · Bed ${bed.code}` : null;
+
   return (
     <div className="space-y-6">
-      <div>
-        <div>
-          <h1 className="font-display text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Today</p>
+          <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
             {greeting}
-            {firstName ? (
-              <>
-                ,<br />
-                <span className="text-primary">{firstName}</span> 👋
-              </>
-            ) : (
-              " 👋"
-            )}
+            {firstName ? `, ${firstName}` : ""}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Stay updated. Stay ahead.</p>
+          {roomBedLabel && <p className="mt-1 text-sm text-muted-foreground">{roomBedLabel}</p>}
         </div>
-
-        {(bed || propertyQ.data) && (
-          <div className="mt-4 flex items-stretch divide-x divide-border rounded-xl border border-border bg-card p-2">
-            {bed?.room?.room_number && (
-              <div className="flex flex-1 items-center gap-2 px-2 py-1">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground">
-                  <DoorOpen className="h-4 w-4" />
-                </span>
-                <span>
-                  <span className="block text-[11px] text-muted-foreground">Room</span>
-                  <span className="block text-sm font-semibold text-foreground">{bed.room.room_number}</span>
-                </span>
-              </div>
-            )}
-            {bed && (
-              <div className="flex flex-1 items-center gap-2 px-2 py-1">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-info text-info-foreground">
-                  <Bed className="h-4 w-4" />
-                </span>
-                <span>
-                  <span className="block text-[11px] text-muted-foreground">Bed</span>
-                  <span className="block text-sm font-semibold text-foreground">{bed.code}</span>
-                </span>
-              </div>
-            )}
-            {propertyQ.data && (
-              <div className="flex flex-1 items-center gap-2 px-2 py-1">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-success text-success-foreground">
-                  <Building2 className="h-4 w-4" />
-                </span>
-                <span>
-                  <span className="block text-[11px] text-muted-foreground">Hostel</span>
-                  <span className="block truncate text-sm font-semibold text-foreground">{propertyQ.data}</span>
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            (firstName?.[0] ?? "?").toUpperCase()
+          )}
+        </span>
       </div>
 
       {!kycLoading && !kycComplete && (
@@ -182,122 +138,96 @@ function StudentHomePage() {
       )}
 
       {studentId && (
-        <div className="space-y-3">
-          {(can("attendance", "view") || can("finance", "view")) && (
-            <div className="grid grid-cols-2 gap-3">
-              {can("attendance", "view") && <AttendanceSection studentId={studentId} />}
-              {can("finance", "view") && <FeesSection studentId={studentId} />}
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          {bed && (
+            <HomeStatCard
+              icon={Bed}
+              label="Room / Bed"
+              value={`${bed.room?.room_number ?? "—"} / ${bed.code}`}
+              caption="Your allocation"
+            />
           )}
-          {can("gate_passes", "view") && <GatePassSection studentId={studentId} />}
-          {can("mess", "view") && <MessSection propertyId={propertyId} />}
+          {can("finance", "view") && <FeesCard studentId={studentId} />}
+          {can("gate_passes", "view") && <GatePassCard studentId={studentId} />}
+          {can("mess", "view") && <MessCard propertyId={propertyId} />}
         </div>
       )}
+
+      <div>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-bold text-foreground">Notice board</h2>
+          <Link to="/student/notices" className="text-sm font-medium text-primary">
+            See all
+          </Link>
+        </div>
+        <div className="mt-3 divide-y divide-border rounded-2xl border border-border bg-card">
+          {noticesQ.isLoading ? (
+            <div className="space-y-3 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : notices.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No notices posted yet.</p>
+          ) : (
+            notices.slice(0, 4).map((n) => (
+              <Link
+                key={n.id}
+                to="/student/notices"
+                className="flex items-center gap-3 p-4 first:rounded-t-2xl last:rounded-b-2xl hover:bg-accent/40"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-warning">
+                  <Bell className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-foreground">
+                    {n.title}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">{n.body}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-const TONE_STYLES = {
-  success: { border: "border-success/40", iconBg: "bg-success", iconText: "text-success-foreground" },
-  info: { border: "border-info/40", iconBg: "bg-info", iconText: "text-info-foreground" },
-  primary: { border: "border-primary/40", iconBg: "bg-primary", iconText: "text-primary-foreground" },
-  warning: { border: "border-warning/40", iconBg: "bg-warning", iconText: "text-warning-foreground" },
-} as const;
-
-function HomeSectionCard({
+function HomeStatCard({
   icon: Icon,
-  title,
-  children,
-  action,
-  tone = "primary",
+  label,
+  value,
+  caption,
   to,
 }: {
   icon: LucideIcon;
-  title: string;
-  children: ReactNode;
-  action: ReactNode;
-  tone?: keyof typeof TONE_STYLES;
+  label: string;
+  value: string;
+  caption: string;
   to?: string;
 }) {
-  const styles = TONE_STYLES[tone];
-  return (
-    <Card className={styles.border}>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${styles.iconBg} ${styles.iconText}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-semibold text-foreground">{title}</span>
-          </div>
-          {to && (
-            <Link to={to} className="text-muted-foreground">
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-        {children}
-        {action}
-      </CardContent>
-    </Card>
+  const content = (
+    <>
+      <Icon className="h-6 w-6 text-warning" />
+      <span className="mt-3 block text-xs text-muted-foreground">{label}</span>
+      <span className="mt-0.5 block truncate text-xl font-bold text-foreground">{value}</span>
+      <span className="mt-0.5 block text-xs text-muted-foreground">{caption}</span>
+    </>
   );
-}
-
-// Shares the "parent-attendance" query key/shape with AttendanceHistoryList
-// (used on /student/attendance) so both views agree and reuse one cache entry.
-function AttendanceSection({ studentId }: { studentId: string }) {
-  const q = useQuery({
-    queryKey: ["parent-attendance", studentId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("student_id", studentId)
-        .order("attendance_date", { ascending: false })
-        .limit(30);
-      return data ?? [];
-    },
-  });
-
-  const rows = q.data ?? [];
-  const present = rows.filter((r) => r.status === "PRESENT").length;
-  const absent = rows.filter((r) => r.status === "ABSENT").length;
-  const marked = present + absent;
-  const pct = marked > 0 ? Math.round((present / marked) * 100) : 0;
-
-  return (
-    <HomeSectionCard
-      icon={CalendarCheck}
-      title="Attendance"
-      tone="success"
-      to="/student/attendance"
-      action={
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link to="/student/attendance">
-            View Attendance <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      }
-    >
-      {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
-      ) : marked === 0 ? (
-        <p className="text-xs text-muted-foreground">No attendance recorded yet.</p>
-      ) : (
-        <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-semibold tracking-tight">{pct}%</span>
-          <span className="text-xs text-muted-foreground">
-            {present} present · {absent} absent
-          </span>
-        </div>
-      )}
-    </HomeSectionCard>
+  const className = "block rounded-2xl border border-border bg-card p-4";
+  return to ? (
+    <Link to={to} className={className}>
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 
 // Same select shape/key as StudentFeesList so this stays consistent with
 // /student/fees and shares its cache entry.
-function FeesSection({ studentId }: { studentId: string }) {
+function FeesCard({ studentId }: { studentId: string }) {
   const q = useQuery({
     queryKey: ["student-invoices", studentId],
     queryFn: async () => {
@@ -314,49 +244,22 @@ function FeesSection({ studentId }: { studentId: string }) {
 
   const outstanding = (q.data ?? []).filter((i) => i.balance_paise > 0 && i.status !== "VOID");
   const totalOutstanding = outstanding.reduce((sum, i) => sum + i.balance_paise, 0);
-  const nextDue = outstanding
-    .slice()
-    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
   return (
-    <HomeSectionCard
-      icon={Wallet}
-      title="Fees"
-      tone="info"
+    <HomeStatCard
+      icon={IndianRupee}
+      label="Fees due"
+      value={q.isLoading ? "…" : formatInr(totalOutstanding)}
+      caption={totalOutstanding === 0 ? "No dues" : "Outstanding"}
       to="/student/fees"
-      action={
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link to="/student/fees">
-            View Fees <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      }
-    >
-      {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
-      ) : totalOutstanding === 0 ? (
-        <p className="text-sm text-success">No outstanding dues.</p>
-      ) : (
-        <div>
-          <span className="text-2xl font-semibold tracking-tight">
-            {formatInr(totalOutstanding)}
-          </span>
-          {nextDue && (
-            <p className="text-xs text-muted-foreground">
-              Due {new Date(nextDue.due_date).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-      )}
-    </HomeSectionCard>
+    />
   );
 }
 
 const GATE_PASS_PENDING = ["PENDING_WARDEN", "PENDING_PARENT"];
-const GATE_PASS_OPEN = ["APPROVED", "ACTIVE"];
 
 // Same select shape/key as /student/gate-pass so this shares its cache entry.
-function GatePassSection({ studentId }: { studentId: string }) {
+function GatePassCard({ studentId }: { studentId: string }) {
   const q = useQuery({
     queryKey: ["my-passes", studentId],
     queryFn: async () => {
@@ -374,41 +277,20 @@ function GatePassSection({ studentId }: { studentId: string }) {
   const current = (q.data ?? [])[0] ?? null;
   const status = current?.status ?? null;
   const isPending = status ? GATE_PASS_PENDING.includes(status) : false;
-  const isOpen = status ? GATE_PASS_OPEN.includes(status) : false;
 
   return (
-    <HomeSectionCard
-      icon={Ticket}
-      title="Gate Pass"
-      tone="primary"
+    <HomeStatCard
+      icon={DoorOpen}
+      label="Gate pass"
+      value={q.isLoading ? "…" : status ? (isPending ? "PENDING" : status) : "—"}
+      caption="Latest status"
       to="/student/gate-pass"
-      action={
-        isPending ? (
-          <Button variant="outline" size="sm" className="w-full" disabled>
-            Pending
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link to="/student/gate-pass">
-              {isOpen ? "View QR" : "Request Pass"} <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        )
-      }
-    >
-      {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
-      ) : status ? (
-        <Badge variant="secondary">{isPending ? "Pending" : status}</Badge>
-      ) : (
-        <p className="text-xs text-muted-foreground">No gate pass yet.</p>
-      )}
-    </HomeSectionCard>
+    />
   );
 }
 
 // Same select shape/key as /student/mess so this shares its cache entry.
-function MessSection({ propertyId }: { propertyId: string | null }) {
+function MessCard({ propertyId }: { propertyId: string | null }) {
   const today = new Date().toISOString().slice(0, 10);
   const q = useQuery({
     queryKey: ["student-mess-menus", propertyId, today],
@@ -428,41 +310,12 @@ function MessSection({ propertyId }: { propertyId: string | null }) {
   const menus = q.data ?? [];
 
   return (
-    <HomeSectionCard
+    <HomeStatCard
       icon={Utensils}
-      title="Today's Mess"
-      tone="warning"
+      label="Today's mess"
+      value={q.isLoading ? "…" : `${menus.length} meal${menus.length === 1 ? "" : "s"}`}
+      caption={menus.length === 0 ? "No menu published" : "Meals published"}
       to="/student/mess"
-      action={
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link to="/student/mess">
-            View Menu <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      }
-    >
-      {q.isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
-      ) : menus.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No menu published for today.</p>
-      ) : (
-        <div className="grid grid-cols-3 divide-x divide-border">
-          {menus.map((m) => (
-            <div key={m.id} className="px-2 first:pl-0">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{m.meal}</p>
-              {m.title && <p className="text-sm font-medium text-foreground">{m.title}</p>}
-              {(m.mess_menu_items ?? []).length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {(m.mess_menu_items ?? [])
-                    .map((i: { item_name: string }) => i.item_name)
-                    .slice(0, 3)
-                    .join(", ")}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </HomeSectionCard>
+    />
   );
 }

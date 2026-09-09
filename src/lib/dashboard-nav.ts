@@ -119,7 +119,13 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
-    { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
+    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
+    {
+      label: "Complaints",
+      to: "/student/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
@@ -149,14 +155,8 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Reports", to: "/warden/reports", icon: FileBarChart },
   ],
   STUDENT: [
-    {
-      label: "Complaints",
-      to: "/student/complaints",
-      icon: MessageSquareWarning,
-      module: "complaints",
-    },
+    { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
     { label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" },
-    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
   ],
 };
 
@@ -167,7 +167,7 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
 export const CENTER_NAV: Partial<Record<NonNullable<AppRole>, NavItem>> = {
   ACCOUNTANT: { label: "Invoices", to: "/accountant/invoices", icon: FileText },
   WARDEN: { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
-  STUDENT: { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
+  STUDENT: { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
   PARENT: { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
 };
 
