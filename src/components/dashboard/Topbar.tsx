@@ -72,6 +72,7 @@ export function Topbar({
 
   const isWarden = resolved?.role === "WARDEN";
   const isStudent = resolved?.role === "STUDENT";
+  const isStudentHome = isStudent && pathname === "/student/home";
   const isParent = resolved?.role === "PARENT";
   const isSuperAdmin = resolved?.role === "SUPER_ADMIN";
   // These 5 roles no longer get a manual theme toggle — their theme always
@@ -112,7 +113,14 @@ export function Topbar({
   }, [isAutoThemeRole]);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
+    <header
+      className={cn(
+        "sticky top-0 z-20 flex items-center gap-4 backdrop-blur-md",
+        isStudentHome
+          ? "h-0 border-0 bg-transparent px-0"
+          : "h-16 border-b border-border/80 bg-background/90 px-4 sm:px-6",
+      )}
+    >
       {navItems.length > 0 && !hideMobileNavTrigger && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
@@ -159,7 +167,7 @@ export function Topbar({
           </SheetContent>
         </Sheet>
       )}
-      <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
+      {!isStudentHome && <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => {
             if (i === 0 && crumbs.length > 1) return null;
@@ -201,9 +209,9 @@ export function Topbar({
             );
           })}
         </ol>
-      </nav>
+      </nav>}
 
-      <button
+      {!isStudentHome && <button
         type="button"
         onClick={() => setSearchOpen(true)}
         className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
@@ -213,7 +221,7 @@ export function Topbar({
         <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
           Ctrl K
         </kbd>
-      </button>
+      </button>}
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search pages…" />
@@ -238,7 +246,7 @@ export function Topbar({
       </CommandDialog>
 
       {!isAutoThemeRole && <ThemeToggle />}
-      <NotificationBell />
+      {!isStudent && <NotificationBell />}
       {isWarden && <MessagesPanel />}
       {isParent && (
         <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
@@ -248,7 +256,12 @@ export function Topbar({
         </Button>
       )}
 
-      <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          isStudentHome && "absolute right-4 top-[calc(100%+2.5rem)] sm:right-6",
+        )}
+      >
         {isSuperAdmin && (
           <button
             type="button"
@@ -265,7 +278,10 @@ export function Topbar({
               <button
                 type="button"
                 aria-label="Account menu"
-                className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60"
+                className={cn(
+                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
+                  isStudentHome && "h-12 w-12 ring-0 hover:ring-0",
+                )}
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="h-full w-full object-cover" />

@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 import { DesktopShell } from "@/components/dashboard/DesktopShell";
 import { StudentBottomNav } from "@/components/dashboard/StudentBottomNav";
-import { SIDEBAR_NAV, BOTTOM_NAV, MORE_NAV, CENTER_NAV, type NavItem } from "@/lib/dashboard-nav";
+import { SIDEBAR_NAV, BOTTOM_NAV, CENTER_NAV, type NavItem } from "@/lib/dashboard-nav";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -57,7 +57,6 @@ function StudentLayout() {
     !item.module || canModule(item.module as StudentModule, "view");
   const navItems: NavItem[] = pending ? [] : (SIDEBAR_NAV.STUDENT ?? []).filter(moduleFilter);
   const bottomItems: NavItem[] = pending ? [] : (BOTTOM_NAV.STUDENT ?? []).filter(moduleFilter);
-  const moreItems: NavItem[] = pending ? [] : (MORE_NAV.STUDENT ?? []).filter(moduleFilter);
   const rawCenter = CENTER_NAV.STUDENT;
   const centerItem: NavItem | undefined =
     pending || !rawCenter || (rawCenter.module && !canModule(rawCenter.module as StudentModule, "view"))
@@ -69,7 +68,7 @@ function StudentLayout() {
       allow={["STUDENT"]}
       navItems={navItems}
       hideMobileNavTrigger
-      mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={moreItems} />}
+      mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} />}
     >
       {gateQ.isLoading ? (
         <div className="flex justify-center py-10">

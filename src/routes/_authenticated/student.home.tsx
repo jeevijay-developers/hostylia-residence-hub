@@ -5,7 +5,6 @@ import { Bed, Bell, ChevronRight, DoorOpen, IndianRupee, Utensils, type LucideIc
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { useTenantNotices } from "@/lib/notifications";
 import { useKycComplete } from "@/lib/kyc";
 import { useStudentSelf } from "@/lib/complaint";
@@ -43,16 +42,14 @@ function StudentHomePage() {
   const { complete: kycComplete, isLoading: kycLoading } = useKycComplete(studentId);
   const { can } = useStudentPermissions();
 
-  // Same key/select as student.profile.tsx's "my-profile-record" query.
+  // Provides the visible student name in the greeting header.
   const profileQ = useQuery({
     queryKey: ["my-profile-record", userId],
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("students")
-        .select(
-          "id, tenant_id, property_id, admission_number, status, full_name, phone, email, date_of_birth, gender, academic_institute, course_name, academic_year",
-        )
+        .select("full_name")
         .eq("profile_id", userId!)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -82,16 +79,6 @@ function StudentHomePage() {
     },
   });
 
-  // Same query the Topbar already uses for every role's avatar.
-  const ownProfileQ = useQuery({
-    queryKey: ["own-profile"],
-    queryFn: fetchOwnProfile,
-    enabled: !!userId,
-  });
-  const avatarUrl = ownProfileQ.data?.avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(ownProfileQ.data.avatar_path).data.publicUrl
-    : undefined;
-
   const noticesQ = useTenantNotices(student.data?.tenant_id, propertyId);
   const notices = (noticesQ.data ?? []).filter(
     (n) => n.audience_type === "ALL" || n.audience_type === "STUDENTS",
@@ -106,23 +93,16 @@ function StudentHomePage() {
     bed?.room?.room_number && bed?.code ? `${bed.room.room_number} · Bed ${bed.code}` : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Today</p>
-          <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+        <div className="min-w-0 pr-16 sm:pr-20">
+          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Today</p>
+          <h1 className="mt-1 font-serif text-4xl font-bold leading-none tracking-tight text-foreground sm:text-5xl">
             {greeting}
             {firstName ? `, ${firstName}` : ""}
           </h1>
-          {roomBedLabel && <p className="mt-1 text-sm text-muted-foreground">{roomBedLabel}</p>}
+          {roomBedLabel && <p className="mt-2 text-base text-muted-foreground sm:text-lg">{roomBedLabel}</p>}
         </div>
-        <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            (firstName?.[0] ?? "?").toUpperCase()
-          )}
-        </span>
       </div>
 
       {!kycLoading && !kycComplete && (
