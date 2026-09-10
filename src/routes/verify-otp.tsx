@@ -137,6 +137,7 @@ function VerifyOtpPage() {
     <AuthLayout
       title="Enter verification code"
       subtitle={`We sent a 6-digit code to ${maskPhone(displayIndianPhone(phone))}.`}
+      hideLanguageSwitcher
     >
       <div className="space-y-6">
         <OtpInput

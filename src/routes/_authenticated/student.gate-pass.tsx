@@ -100,12 +100,6 @@ function StudentGatePassPage() {
   return (
     <StudentModuleGuard module="gate_passes">
       <div className="space-y-4 p-4">
-        <div className="pr-16 sm:pr-20">
-          <h1 className="font-serif text-3xl font-bold leading-none tracking-tight text-foreground sm:text-4xl">
-            Gate Pass
-          </h1>
-        </div>
-
         {canWrite && (
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <h2 className="border-b border-border/60 pb-3 text-sm font-semibold text-foreground">

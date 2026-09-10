@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem } from "@/lib/dashboard-nav";
 
 interface StudentBottomNavProps {
@@ -15,6 +18,12 @@ interface StudentBottomNavProps {
    * slot is hidden and items fill the bar normally.
    */
   centerItem?: NavItem;
+  /**
+   * Extra routes that don't fit the 5-slot bar — surfaced behind a trailing
+   * "More" tab that opens a sheet listing them. Omitted/empty hides the tab
+   * entirely (e.g. Warden, which fits everything in the 5 direct slots).
+   */
+  moreItems?: NavItem[];
 }
 
 /**
@@ -30,8 +39,9 @@ interface StudentBottomNavProps {
  *
  * Hidden at `lg` and above — desktop keeps the sidebar untouched.
  */
-export function StudentBottomNav({ items, centerItem }: StudentBottomNavProps) {
+export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentBottomNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Split primary items around the center slot
   const half = Math.ceil(items.length / 2);
@@ -41,6 +51,10 @@ export function StudentBottomNav({ items, centerItem }: StudentBottomNavProps) {
   const isCenterActive =
     !!centerItem &&
     (pathname === centerItem.to || pathname.startsWith(`${centerItem.to}/`));
+
+  const isMoreActive = moreItems.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
 
   return (
     <>
@@ -108,6 +122,61 @@ export function StudentBottomNav({ items, centerItem }: StudentBottomNavProps) {
             <NavTab key={item.to} item={item} pathname={pathname} />
           ))}
 
+          {/* ── More slot ── */}
+          {moreItems.length > 0 && (
+            <li className="flex flex-1 min-w-0">
+              <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More"
+                    className={cn(
+                      "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-1",
+                      "text-sm font-semibold transition-colors",
+                      isMoreActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span className="relative">
+                      <MoreHorizontal className="h-5 w-5 shrink-0" />
+                      {isMoreActive && (
+                        <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary shadow-tone-glow" />
+                      )}
+                    </span>
+                    <span className="w-full truncate text-center">More</span>
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="rounded-t-3xl p-0">
+                  <SheetHeader className="border-b border-border p-4 text-left">
+                    <SheetTitle>More</SheetTitle>
+                  </SheetHeader>
+                  <nav className="space-y-1 p-3">
+                    {moreItems.map((item) => {
+                      const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMoreOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                            active
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </li>
+          )}
         </ul>
       </nav>
     </>

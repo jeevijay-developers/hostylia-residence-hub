@@ -202,7 +202,7 @@ export function Topbar({
       ) : (
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          {crumbs.map((c, i) => {
+          {!isParent && !isWarden && !isAccountant && crumbs.map((c, i) => {
             if (i === 0 && crumbs.length > 1) return null;
 
             const path = "/" + crumbs.slice(0, i + 1).join("/");
@@ -280,7 +280,11 @@ export function Topbar({
       </CommandDialog>
 
       {!isAutoThemeRole && <ThemeToggle />}
-      {!isStudent && <NotificationBell />}
+      {!isStudent && (
+        <NotificationBell
+          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
+        />
+      )}
       {isWarden && <MessagesPanel />}
       {isParent && (
         <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
