@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { BrandLockup } from "@/components/BrandLockup";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAutoTheme } from "@/stores/theme-store";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -24,6 +24,7 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   const { t, i18n } = useTranslation();
   const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
+  useAutoTheme();
   return (
     <div
       className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground"
@@ -34,7 +35,6 @@ export function AuthLayout({
           <BrandLockup variant="lockup" className="h-7 sm:h-8" />
         </Link>
         <div className="absolute right-3 top-6 flex items-center gap-1 sm:top-10">
-          <ThemeToggle />
           {!hideLanguageSwitcher && <LanguageSwitcher />}
         </div>
       </header>

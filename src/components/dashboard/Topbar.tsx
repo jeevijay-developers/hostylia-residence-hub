@@ -23,7 +23,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useThemeStore } from "@/stores/theme-store";
+import { useThemeStore, useAutoTheme } from "@/stores/theme-store";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
@@ -126,18 +126,16 @@ export function Topbar({
   // pre-hydration THEME_INIT_SCRIPT in __root.tsx already applied the class
   // for first paint, this just syncs the store and reacts to a live OS
   // theme change while the app stays open.
-  useEffect(() => {
-    if (!isAutoThemeRole || typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => useThemeStore.getState().setTheme(mql.matches ? "dark" : "light");
-    apply();
-    mql.addEventListener("change", apply);
-    return () => mql.removeEventListener("change", apply);
-  }, [isAutoThemeRole]);
+  useAutoTheme(isAutoThemeRole);
+
+  const isStudentFees = isStudent && pathname === "/student/fees";
 
   return (
     <header
-      className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6"
+      className={cn(
+        "sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 px-4 backdrop-blur-md sm:px-6",
+        isStudentFees ? "bg-card/90" : "bg-background/90",
+      )}
     >
       {navItems.length > 0 && !hideMobileNavTrigger && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>

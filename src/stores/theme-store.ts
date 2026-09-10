@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -23,8 +24,10 @@ function applyThemeClass(theme: Theme) {
  * navy/gold palette (see styles.css) specifically so the authenticated app
  * — including the Super Admin console — reads as the same product as the
  * public site by default, not just when a user happens to toggle dark.
- * Light mode (the original teal palette) is still fully supported and one
- * click away via ThemeToggle.
+ * Light mode (the original teal palette) is still fully supported — every
+ * surface but Super Admin picks it up automatically via useAutoTheme() below
+ * (OS/browser color-scheme preference); Super Admin keeps the manual
+ * ThemeToggle.
  */
 export const useThemeStore = create<ThemeState>()(
   persist(
@@ -48,3 +51,20 @@ export const useThemeStore = create<ThemeState>()(
     },
   ),
 );
+
+/**
+ * Keeps `theme` in sync with the OS/browser `prefers-color-scheme` while
+ * `enabled` is true — applies it immediately and reacts to a live OS theme
+ * change. Used by every surface that no longer offers a manual toggle
+ * (dashboards, auth pages, the marketing site).
+ */
+export function useAutoTheme(enabled = true) {
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => useThemeStore.getState().setTheme(mql.matches ? "dark" : "light");
+    apply();
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, [enabled]);
+}

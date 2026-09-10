@@ -7,7 +7,7 @@ import { MegaMenuSolutions } from "./MegaMenuSolutions";
 import { MegaMenuFeatures } from "./MegaMenuFeatures";
 import { MobileNav } from "./MobileNav";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAutoTheme } from "@/stores/theme-store";
 
 type NavItem = { label: string; to: string; mega?: "solutions" | "features" };
 
@@ -25,6 +25,7 @@ export function SiteHeader() {
   const [openMega, setOpenMega] = useState<null | "solutions" | "features">(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  useAutoTheme();
   // click par khula/band toggle
   const toggleMenu = (mega: "solutions" | "features") => {
     setOpenMega((cur) => (cur === mega ? null : mega));
@@ -91,7 +92,6 @@ export function SiteHeader() {
             <LogIn size={16} />
             Sign In
           </Link>
-          <ThemeToggle className="border border-dark-border text-foreground hover:bg-foreground/10" />
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <button
