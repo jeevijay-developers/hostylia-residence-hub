@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -59,6 +59,7 @@ const STATUSES = Object.keys(STATUS_LABEL) as Status[];
 function AdminAttendancePage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const studentsQ = useStudentsInProperty(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
@@ -200,12 +201,21 @@ function AdminAttendancePage() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
         <div className="relative w-full sm:w-auto sm:shrink-0">
           <Input
+            ref={dateInputRef}
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="bg-background/90 border-border text-foreground rounded-xl h-9 px-3 pl-9 text-xs w-full sm:h-11 sm:px-3.5 sm:pl-10 sm:text-sm sm:font-medium sm:w-48"
+            onClick={(e) => e.preventDefault()}
+            className="bg-background/90 border-border text-foreground rounded-xl h-9 px-3 pl-9 text-xs w-full sm:h-11 sm:px-3.5 sm:pl-10 sm:text-sm sm:font-medium sm:w-48 [&::-webkit-calendar-picker-indicator]:hidden"
           />
-          <CalendarIcon className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground pointer-events-none" />
+          <button
+            type="button"
+            onClick={() => dateInputRef.current?.showPicker?.()}
+            aria-label="Open date picker"
+            className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-none">

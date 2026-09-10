@@ -350,7 +350,23 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
     const { data: out, error } = await supabase.functions.invoke("razorpay-create-order", {
       body: { invoice_id: data.invoice_id },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // supabase-js's FunctionsHttpError.message is always the generic
+      // "Edge Function returned a non-2xx status code" — the actual reason
+      // (e.g. missing Razorpay keys, invoice already paid) is in the
+      // response body on error.context, which is still unread here.
+      let message = error.message;
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // Body wasn't JSON — fall back to the generic SDK message.
+        }
+      }
+      throw new Error(message);
+    }
     return out as {
       order_id: string;
       key_id: string;
