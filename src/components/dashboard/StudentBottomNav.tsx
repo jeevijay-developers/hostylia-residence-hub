@@ -108,7 +108,7 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
               {/* Label rendered inside the bar, below the disc */}
               <span
                 className={cn(
-                  "absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-semibold leading-none",
+                  "absolute bottom-2 left-1/2 w-16 -translate-x-1/2 truncate text-center text-[11px] sm:text-sm font-semibold leading-none",
                   isCenterActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
@@ -131,8 +131,8 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
                     type="button"
                     aria-label="More"
                     className={cn(
-                      "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-1",
-                      "text-sm font-semibold transition-colors",
+                      "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
+                      "text-[11px] sm:text-sm font-semibold transition-colors",
                       isMoreActive
                         ? "text-primary"
                         : "text-muted-foreground hover:text-foreground",
@@ -194,8 +194,8 @@ function NavTab({ item, pathname }: { item: NavItem; pathname: string }) {
         to={item.to}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-1",
-          "text-sm font-semibold transition-colors",
+          "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
+          "text-[11px] sm:text-sm font-semibold transition-colors",
           active
             ? "text-primary"
             : "text-muted-foreground hover:text-foreground",
