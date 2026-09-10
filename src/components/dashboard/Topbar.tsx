@@ -128,13 +128,19 @@ export function Topbar({
   // theme change while the app stays open.
   useAutoTheme(isAutoThemeRole);
 
-  const isStudentFees = isStudent && pathname === "/student/fees";
+  const isStudentBrightHeader =
+    isStudent &&
+    (pathname === "/student/fees" ||
+      pathname === "/student/home" ||
+      pathname === "/student/gate-pass" ||
+      pathname === "/student/mess" ||
+      pathname === "/student/complaints");
 
   return (
     <header
       className={cn(
         "sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 px-4 backdrop-blur-md sm:px-6",
-        isStudentFees ? "bg-card/90" : "bg-background/90",
+        isStudentBrightHeader ? "bg-card/90" : "bg-background/90",
       )}
     >
       {navItems.length > 0 && !hideMobileNavTrigger && (

@@ -47,8 +47,8 @@ export function StudentBottomNav({ items, centerItem }: StudentBottomNavProps) {
       {/* ── Bottom bar ── */}
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 shadow-card-ambient backdrop-blur-md lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-3 bottom-3 z-30 rounded-[32px] border border-border/80 bg-card/95 shadow-card-ambient backdrop-blur-md lg:hidden"
+        style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
         {/* overflow-visible so the raised center button can escape upward */}
         <ul
