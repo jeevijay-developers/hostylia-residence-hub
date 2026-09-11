@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bell } from "lucide-react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import {
   DropdownMenu,
@@ -19,11 +19,14 @@ import { formatDistanceToNow } from "date-fns";
 export function NotificationBell({ className }: { className?: string }) {
   const { data = [] } = useMyNotifications();
   const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
   const unread = useMemo(() => data.filter((n) => !n.read_at), [data]);
+  const visible = showAll ? data : data.slice(0, 20);
 
   const onOpenChange = async (v: boolean) => {
     setOpen(v);
+    if (!v) setShowAll(false);
     if (v && unread.length) await markAllRead(unread.map((n) => n.id));
   };
 
@@ -61,7 +64,7 @@ export function NotificationBell({ className }: { className?: string }) {
             <div className="p-4 text-sm text-muted-foreground">No notifications yet.</div>
           ) : (
             <ul className="divide-y divide-border">
-              {data.slice(0, 20).map((n) => {
+              {visible.map((n) => {
                 const p = (n.payload ?? {}) as Record<string, unknown>;
                 const title = String(p.title ?? n.event_type.replaceAll("_", " "));
                 const body = String(p.body ?? p.invoice_number ?? p.complaint_number ?? "");
@@ -96,11 +99,17 @@ export function NotificationBell({ className }: { className?: string }) {
             </ul>
           )}
         </div>
-        <div className="border-t border-border px-3 py-2">
-          <Link to="/student/notices" className="text-xs text-primary hover:underline">
-            View all notices
-          </Link>
-        </div>
+        {!showAll && data.length > visible.length && (
+          <div className="border-t border-border px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              View all notifications
+            </button>
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
