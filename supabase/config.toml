@@ -11,6 +11,22 @@ enabled = true
 uri = "https://umznrrdqduynifpatslb.supabase.co/functions/v1/send-sms-hook"
 secrets = "env(SEND_SMS_HOOK_SECRET)"
 
+[auth.sms]
+# enable_signup enables the entire Phone provider (login + signup), not only
+# new registrations. OTP delivery uses [auth.hook.send_sms] → MSG91 Edge fn.
+enable_signup = true
+enable_confirmations = true
+max_frequency = "1m0s"
+
+# Placeholder Twilio block so GoTrue/CLI mark Phone as enabled. Actual OTP
+# delivery is overridden by [auth.hook.send_sms] (MSG91). Do not use real
+# Twilio credentials here.
+[auth.sms.twilio]
+enabled = true
+account_sid = "AC00000000000000000000000000000000"
+message_service_sid = "MG00000000000000000000000000000000"
+auth_token = "placeholder_not_used_when_sms_hook_enabled"
+
 # Everything below restores the project's pre-existing values, which an
 # unscoped `supabase config push` would otherwise silently reset to the
 # CLI's local-dev template defaults.
@@ -21,7 +37,7 @@ secrets = "env(SEND_SMS_HOOK_SECRET)"
 # email ever embeds a localhost link. localhost:8080 kept in
 # additional_redirect_urls only so `bun run dev` still works for local testing.
 site_url = "https://hostylia-residence-hub.vercel.app"
-additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "http://localhost:8080/**"]
+additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "https://hostylia.com/**", "https://www.hostylia.com/**", "http://localhost:8080/**"]
 
 [auth.mfa.totp]
 enroll_enabled = true

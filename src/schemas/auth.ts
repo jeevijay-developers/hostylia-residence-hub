@@ -62,6 +62,16 @@ export function normalizeIndianPhone(phone: string): string {
   return digits.length === 10 ? `+91${digits}` : `+${digits}`;
 }
 
+/** Country-code-agnostic match for auth.users.phone vs guardians/students.phone. */
+export function phoneNumbersMatch(a: string, b: string): boolean {
+  const da = a.replace(/\D/g, "");
+  const db = b.replace(/\D/g, "");
+  if (!da || !db) return false;
+  if (da === db) return true;
+  if (da.length >= 10 && db.length >= 10) return da.slice(-10) === db.slice(-10);
+  return false;
+}
+
 /**
  * Inverse of the above, for display only — stored/sent values must stay
  * E.164 (normalizeIndianPhone), this just hides the +91/91 country code

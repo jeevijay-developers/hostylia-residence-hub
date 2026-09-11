@@ -42,17 +42,26 @@ async function fetchResolvedRole(): Promise<ResolvedRole> {
     return { role: (role as AppRole) ?? null, tenantId, userId: user.id };
   }
 
-  // Parent fallback
-  if (user.phone) {
-    const normalized = user.phone.startsWith("+") ? user.phone : `+${user.phone}`;
-    const { data: guardianRows } = await supabase
-      .from("guardians")
-      .select("id")
-      .eq("phone", normalized)
-      .limit(1);
-    if (guardianRows && guardianRows.length > 0) {
-      return { role: "PARENT", tenantId: null, userId: user.id };
-    }
+  // Parent fallback — guardians are only readable once profile_id is linked
+  // (RLS blocks phone-only lookups). Same for students below.
+  const { data: guardianRows } = await supabase
+    .from("guardians")
+    .select("id")
+    .eq("profile_id", user.id)
+    .is("deleted_at", null)
+    .limit(1);
+  if (guardianRows && guardianRows.length > 0) {
+    return { role: "PARENT", tenantId: null, userId: user.id };
+  }
+
+  const { data: studentRows } = await supabase
+    .from("students")
+    .select("id")
+    .eq("profile_id", user.id)
+    .is("deleted_at", null)
+    .limit(1);
+  if (studentRows && studentRows.length > 0) {
+    return { role: "STUDENT", tenantId: null, userId: user.id };
   }
 
   return { role: null, tenantId: null, userId: user.id };

@@ -21,6 +21,7 @@ dist-ssr
 .env.old
 .env.*
 !.env.example
+supabase/functions/.env
 
 # Wrangler / Cloudflare
 .wrangler/

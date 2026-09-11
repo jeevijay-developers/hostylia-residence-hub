@@ -17,7 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   msg91AuthKey,
-  NOTIFICATION_TEMPLATE_TO_MSG91,
+  resolveMsg91TemplateId,
   sendMsg91TemplateSms,
 } from "../_shared/msg91.ts";
 
@@ -199,7 +199,7 @@ async function dispatchAndRespond(
   const twilioWaFrom = Deno.env.get("TWILIO_WHATSAPP_FROM");
   const resendKey = Deno.env.get("RESEND_API_KEY");
   const hasMsg91 = !!msg91AuthKey();
-  const msg91Mapped = !!NOTIFICATION_TEMPLATE_TO_MSG91[templateKey];
+  const msg91Mapped = !!resolveMsg91TemplateId(templateKey);
 
   let provider = "none";
   let configured = false;

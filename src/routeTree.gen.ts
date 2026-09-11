@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyOtpRouteImport } from './routes/verify-otp'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -28,6 +27,7 @@ import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BookDemoRouteImport } from './routes/book-demo'
 import { Route as AiSuiteRouteImport } from './routes/ai-suite'
+import { Route as AccountDeletionRouteImport } from './routes/account-deletion'
 import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as R403RouteImport } from './routes/403'
@@ -136,11 +136,6 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AccountDeletionRoute = AccountDeletionRouteImport.update({
-  id: '/account-deletion',
-  path: '/account-deletion',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SolutionsRoute = SolutionsRouteImport.update({
   id: '/solutions',
   path: '/solutions',
@@ -214,6 +209,11 @@ const BookDemoRoute = BookDemoRouteImport.update({
 const AiSuiteRoute = AiSuiteRouteImport.update({
   id: '/ai-suite',
   path: '/ai-suite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountDeletionRoute = AccountDeletionRouteImport.update({
+  id: '/account-deletion',
+  path: '/account-deletion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccessPendingRoute = AccessPendingRouteImport.update({
@@ -758,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
+  '/account-deletion': typeof AccountDeletionRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
@@ -774,7 +775,6 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
-  '/account-deletion': typeof AccountDeletionRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/accountant': typeof AuthenticatedAccountantRouteWithChildren
@@ -870,6 +870,7 @@ export interface FileRoutesByTo {
   '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
+  '/account-deletion': typeof AccountDeletionRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
@@ -886,7 +887,6 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
-  '/account-deletion': typeof AccountDeletionRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/accountant': typeof AuthenticatedAccountantRouteWithChildren
@@ -979,6 +979,7 @@ export interface FileRoutesById {
   '/403': typeof R403Route
   '/about': typeof AboutRoute
   '/access-pending': typeof AccessPendingRoute
+  '/account-deletion': typeof AccountDeletionRoute
   '/ai-suite': typeof AiSuiteRoute
   '/book-demo': typeof BookDemoRoute
   '/contact': typeof ContactRoute
@@ -995,7 +996,6 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/solutions': typeof SolutionsRoute
   '/terms': typeof TermsRoute
-  '/account-deletion': typeof AccountDeletionRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-otp': typeof VerifyOtpRoute
   '/_authenticated/accountant': typeof AuthenticatedAccountantRouteWithChildren
@@ -1093,6 +1093,7 @@ export interface FileRouteTypes {
     | '/403'
     | '/about'
     | '/access-pending'
+    | '/account-deletion'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
@@ -1109,7 +1110,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
-    | '/account-deletion'
     | '/verify-email'
     | '/verify-otp'
     | '/accountant'
@@ -1205,6 +1205,7 @@ export interface FileRouteTypes {
     | '/403'
     | '/about'
     | '/access-pending'
+    | '/account-deletion'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
@@ -1221,7 +1222,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
-    | '/account-deletion'
     | '/verify-email'
     | '/verify-otp'
     | '/accountant'
@@ -1313,6 +1313,7 @@ export interface FileRouteTypes {
     | '/403'
     | '/about'
     | '/access-pending'
+    | '/account-deletion'
     | '/ai-suite'
     | '/book-demo'
     | '/contact'
@@ -1329,7 +1330,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/solutions'
     | '/terms'
-    | '/account-deletion'
     | '/verify-email'
     | '/verify-otp'
     | '/_authenticated/accountant'
@@ -1427,6 +1427,7 @@ export interface RootRouteChildren {
   R403Route: typeof R403Route
   AboutRoute: typeof AboutRoute
   AccessPendingRoute: typeof AccessPendingRoute
+  AccountDeletionRoute: typeof AccountDeletionRoute
   AiSuiteRoute: typeof AiSuiteRoute
   BookDemoRoute: typeof BookDemoRoute
   ContactRoute: typeof ContactRoute
@@ -1443,7 +1444,6 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SolutionsRoute: typeof SolutionsRoute
   TermsRoute: typeof TermsRoute
-  AccountDeletionRoute: typeof AccountDeletionRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   VerifyOtpRoute: typeof VerifyOtpRoute
   ApplyPropertySlugRoute: typeof ApplyPropertySlugRoute
@@ -1470,13 +1470,6 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account-deletion': {
-      id: '/account-deletion'
-      path: '/account-deletion'
-      fullPath: '/account-deletion'
-      preLoaderRoute: typeof AccountDeletionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/solutions': {
@@ -1582,6 +1575,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-suite'
       fullPath: '/ai-suite'
       preLoaderRoute: typeof AiSuiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account-deletion': {
+      id: '/account-deletion'
+      path: '/account-deletion'
+      fullPath: '/account-deletion'
+      preLoaderRoute: typeof AccountDeletionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/access-pending': {
@@ -2589,6 +2589,7 @@ const rootRouteChildren: RootRouteChildren = {
   R403Route: R403Route,
   AboutRoute: AboutRoute,
   AccessPendingRoute: AccessPendingRoute,
+  AccountDeletionRoute: AccountDeletionRoute,
   AiSuiteRoute: AiSuiteRoute,
   BookDemoRoute: BookDemoRoute,
   ContactRoute: ContactRoute,
@@ -2605,7 +2606,6 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SolutionsRoute: SolutionsRoute,
   TermsRoute: TermsRoute,
-  AccountDeletionRoute: AccountDeletionRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   VerifyOtpRoute: VerifyOtpRoute,
   ApplyPropertySlugRoute: ApplyPropertySlugRoute,

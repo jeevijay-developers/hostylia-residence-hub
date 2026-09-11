@@ -203,4 +203,15 @@ Update Sec. 3, Sec. 5 and Sec. 6 of this file as each lands.
 
 ---
 
+### 2026-09-11 — Web launch + MSG91/Razorpay TEST config
+
+- Added `docs/WEB-LAUNCH-CHECKLIST.md` (honest score; no secret values) and `.env.example` (names only).
+- MSG91: Auth hook + `send-notification` already used Flow API. Template ids are **env-overridable** (`MSG91_TEMPLATE_*`, `MSG91_DLT_TE_ID`, `MSG91_SENDER_ID`). **Awaiting JIO DLT / MSG91 approved template list from operator** — did not invent DLT TE ids. Unmapped SMS types (notice, gate event, visitor, payment_receipt, staff_invite, support session) get env-only slots.
+- Razorpay: TEST Key ID/secret stored only in gitignored hub `.env` / `.env.supabase-secrets`. Web Checkout already uses Edge-returned `key_id`. Mobile gitignored `.env` has public Key ID only. **No live keys.** `RAZORPAY_WEBHOOK_SECRET` still missing until a TEST webhook is created in the Razorpay dashboard.
+- This CLI user cannot `supabase secrets set` or `functions deploy` (403 Access Control). Owner must apply Edge secrets + deploy `send-sms-hook`, `send-notification`, `razorpay-create-order`.
+- Auth `additional_redirect_urls` now includes `https://hostylia.com` / `www`; Site URL is still the Vercel app URL until custom-domain cutover.
+- Leftover remote function `create-razorpay-order` is a 501 stub (`verify_jwt` false) — disable before launch.
+- `check_rate_limit` EXECUTE is granted to `anon` (the 2026-07 “phone OTP dead” grant issue is fixed in prod DB). Phone OTP still depends on Auth hook + MSG91 template + Phone provider in Dashboard.
+- No secrets committed. Did not spam MSG91.
+
 _End of Memory.md_

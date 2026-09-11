@@ -6,15 +6,16 @@
 //
 // Secrets:
 //   SEND_SMS_HOOK_SECRET — HMAC secret (v1,whsec_…)
-//   MSG91_AUTH_KEY       — MSG91 auth key
-//   MSG91_TEMPLATE_ID    — optional; defaults to AUTH_LOGIN_OTP Flow id
+//   MSG91_AUTH_KEY       — MSG91 auth key (never VITE_/client)
+//   MSG91_TEMPLATE_ID / MSG91_TEMPLATE_AUTH_LOGIN_OTP — Flow id; DLT TE ids stay in MSG91 dashboard
+//   MSG91_SENDER_ID      — optional DLT sender (e.g. JEEVJY)
 //   MSG91_OTP_VAR        — optional; default "otp" (matches ##otp##)
 //   MSG91_OTP_MINUTES    — optional; default "10" (matches ##minutes##)
 //   DEV_TEST_PHONES      — optional allowlist when MSG91 unset
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 import {
-  MSG91_SMS_TEMPLATES,
   normalizeMsg91Mobile,
+  resolveMsg91TemplateId,
   sendMsg91Flow,
 } from "../_shared/msg91.ts";
 
@@ -50,9 +51,7 @@ Deno.serve(async (req) => {
   }
 
   const AUTH_KEY = Deno.env.get("MSG91_AUTH_KEY");
-  const TEMPLATE_ID =
-    Deno.env.get("MSG91_TEMPLATE_ID")?.trim() ||
-    MSG91_SMS_TEMPLATES.AUTH_LOGIN_OTP.templateId;
+  const TEMPLATE_ID = resolveMsg91TemplateId("auth_login_otp");
   const OTP_VAR = Deno.env.get("MSG91_OTP_VAR")?.trim() || "otp";
   const MINUTES = Deno.env.get("MSG91_OTP_MINUTES")?.trim() || "10";
 
@@ -70,6 +69,18 @@ Deno.serve(async (req) => {
         error: {
           http_code: 503,
           message: "MSG91 is not configured — add MSG91_AUTH_KEY.",
+        },
+      },
+      503,
+    );
+  }
+
+  if (!TEMPLATE_ID) {
+    return json(
+      {
+        error: {
+          http_code: 503,
+          message: "MSG91 OTP template is not configured — set MSG91_TEMPLATE_AUTH_LOGIN_OTP or MSG91_TEMPLATE_ID.",
         },
       },
       503,

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normalizeIndianPhone, phoneNumbersMatch } from "@/schemas/auth";
 
 /**
  * After a phone-OTP verify, backfill `guardians.profile_id` for any guardian
@@ -17,20 +18,24 @@ export const linkGuardianProfileOnLogin = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: userRes, error: uErr } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (uErr || !userRes.user) return { linked: 0 };
+    if (uErr || !userRes.user?.phone) return { linked: 0 };
 
-    const raw = userRes.user.phone;
-    if (!raw) return { linked: 0 };
-    const normalized = raw.startsWith("+") ? raw : `+${raw}`;
-
-    const { data: rows, error: gErr } = await supabaseAdmin
+    const authPhone = normalizeIndianPhone(userRes.user.phone);
+    const { data: candidates, error: listErr } = await supabaseAdmin
       .from("guardians")
-      .update({ profile_id: userId })
-      .eq("phone", normalized)
+      .select("id, phone")
       .is("profile_id", null)
-      .is("deleted_at", null)
-      .select("id");
-    if (gErr) throw new Error(gErr.message);
+      .is("deleted_at", null);
+    if (listErr) throw new Error(listErr.message);
 
-    return { linked: rows?.length ?? 0 };
+    const matches = (candidates ?? []).filter((row) => phoneNumbersMatch(authPhone, row.phone ?? ""));
+    for (const row of matches) {
+      const { error } = await supabaseAdmin
+        .from("guardians")
+        .update({ profile_id: userId, portal_access_enabled: true })
+        .eq("id", row.id);
+      if (error) throw new Error(error.message);
+    }
+
+    return { linked: matches.length };
   });
