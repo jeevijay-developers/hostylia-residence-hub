@@ -64,7 +64,7 @@ function AdminSettingsPage() {
     <div className="space-y-6 max-w-4xl pb-10 lg:max-w-6xl">
       {/* Tabs Container */}
       <Tabs defaultValue="property" className="space-y-6">
-        <TabsList className="bg-card/80 border border-border/80 p-1.5 rounded-xl h-auto inline-flex w-full sm:w-auto gap-1">
+        <TabsList className="bg-card/80 border border-border/80 p-1.5 rounded-xl h-auto inline-flex w-full sm:w-auto gap-1 overflow-x-auto">
           <TabsTrigger
             value="property"
             className="flex-1 sm:flex-initial data-[state=active]:bg-background data-[state=active]:text-amber-700 dark:text-amber-400 data-[state=active]:border-amber-500/80 data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10 border border-transparent text-muted-foreground font-semibold px-6 py-2.5 rounded-lg text-sm transition-all"
