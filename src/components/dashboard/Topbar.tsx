@@ -279,20 +279,13 @@ export function Topbar({
       {!isAutoThemeRole && <ThemeToggle />}
       {!isStudent && (
         <NotificationBell
-          className={cn((isWarden || isParent || isAccountant || isAdmin) && "-order-1 lg:order-none")}
+          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
         />
       )}
       {isWarden && <MessagesPanel />}
       {isParent && (
         <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
           <Link to="/parent/messages" aria-label="Messages">
-            <MessageSquare className="h-4 w-4" />
-          </Link>
-        </Button>
-      )}
-      {isAdmin && (
-        <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
-          <Link to="/admin/support" aria-label="Messages">
             <MessageSquare className="h-4 w-4" />
           </Link>
         </Button>
