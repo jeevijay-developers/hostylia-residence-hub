@@ -194,4 +194,13 @@ Update Sec. 3, Sec. 5 and Sec. 6 of this file as each lands.
 
 ---
 
+### 2026-09-11 — Android launch support (web + Edge)
+
+- Public `/account-deletion` (Play account-deletion URL), footer + sitemap + privacy “your rights” link.
+- `razorpay-create-order`: authorize student self or guardian `can_pay_fees`; reuse PENDING Razorpay orders for the same invoice/balance (duplicate-tap protection). Webhook HMAC + `webhook_events` idempotency already existed.
+- MSG91 OTP remains Edge `send-sms-hook` (not the mobile binary). Confirm production secrets `MSG91_AUTH_KEY`, `RAZORPAY_KEY_ID`/`SECRET`, `RAZORPAY_WEBHOOK_SECRET` in Supabase Dashboard before Play release.
+- In-product refunds (maker-checker) exist; there is still no Razorpay Refunds API call.
+
+---
+
 _End of Memory.md_

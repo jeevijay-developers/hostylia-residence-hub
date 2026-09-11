@@ -48,7 +48,64 @@ Deno.serve(async (req) => {
     if (iErr || !inv) return json({ error: "Invoice not found" }, 404, cors);
     if (inv.balance_paise <= 0) return json({ error: "Invoice already paid" }, 400, cors);
 
-    const idempotencyKey = `inv:${invoice_id}:${Date.now()}`;
+    const { data: studentRow } = await admin
+      .from("students")
+      .select("id, profile_id")
+      .eq("id", inv.student_id)
+      .maybeSingle();
+    if (!studentRow) return json({ error: "Invoice not found" }, 404, cors);
+
+    let allowed = studentRow.profile_id === userId;
+    if (!allowed) {
+      const { data: guardian } = await admin
+        .from("guardians")
+        .select("id")
+        .eq("profile_id", userId)
+        .maybeSingle();
+      if (guardian) {
+        const { data: link } = await admin
+          .from("student_guardians")
+          .select("can_pay_fees, portal_access_enabled, unlinked_at")
+          .eq("guardian_id", guardian.id)
+          .eq("student_id", inv.student_id)
+          .maybeSingle();
+        allowed = Boolean(
+          link &&
+            link.portal_access_enabled &&
+            link.unlinked_at == null &&
+            link.can_pay_fees,
+        );
+      }
+    }
+    if (!allowed) return json({ error: "Forbidden" }, 403, cors);
+
+    const idempotencyKey = `inv:${invoice_id}:balance:${inv.balance_paise}`;
+
+    const { data: existingPo } = await admin
+      .from("payment_orders")
+      .select("id, provider_order_ref")
+      .eq("invoice_id", inv.id)
+      .eq("provider", "razorpay")
+      .eq("status", "PENDING")
+      .eq("amount_paise", inv.balance_paise)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPo?.provider_order_ref) {
+      return json(
+        {
+          order_id: existingPo.provider_order_ref,
+          key_id: KEY_ID,
+          amount_paise: inv.balance_paise,
+          currency: inv.currency,
+          payment_order_id: existingPo.id,
+        },
+        200,
+        cors,
+      );
+    }
+
     const basic = btoa(`${KEY_ID}:${KEY_SECRET}`);
     const rzp = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",

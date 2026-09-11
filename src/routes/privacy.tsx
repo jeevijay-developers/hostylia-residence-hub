@@ -216,7 +216,13 @@ function PrivacyPage() {
                 <ul className="list-inside list-disc space-y-2">
                   <li>Access the personal information we hold about you.</li>
                   <li>Request correction of inaccurate information.</li>
-                  <li>Request deletion of your personal information.</li>
+                  <li>
+                    Request deletion of your personal information. Account holders can use the{" "}
+                    <a href="/account-deletion" className="text-soft-teal hover:underline">
+                      account deletion
+                    </a>{" "}
+                    page or email team@hostylia.com.
+                  </li>
                   <li>Object to or restrict certain processing.</li>
                   <li>Request a portable copy of your information.</li>
                   <li>Withdraw consent at any time, without affecting prior processing.</li>
