@@ -128,7 +128,7 @@ export function Topbar({
   // theme change while the app stays open.
   useAutoTheme(isAutoThemeRole);
 
-  const isBrightHeaderRole = isStudent || isParent || isAccountant || isWarden;
+  const isBrightHeaderRole = isStudent || isParent || isAccountant || isWarden || isAdmin;
 
   return (
     <header
@@ -199,7 +199,7 @@ export function Topbar({
       ) : (
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          {!isParent && !isWarden && !isAccountant && crumbs.map((c, i) => {
+          {!isParent && !isWarden && !isAccountant && !isAdmin && crumbs.map((c, i) => {
             if (i === 0 && crumbs.length > 1) return null;
 
             const path = "/" + crumbs.slice(0, i + 1).join("/");
@@ -279,13 +279,20 @@ export function Topbar({
       {!isAutoThemeRole && <ThemeToggle />}
       {!isStudent && (
         <NotificationBell
-          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
+          className={cn((isWarden || isParent || isAccountant || isAdmin) && "-order-1 lg:order-none")}
         />
       )}
       {isWarden && <MessagesPanel />}
       {isParent && (
         <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
           <Link to="/parent/messages" aria-label="Messages">
+            <MessageSquare className="h-4 w-4" />
+          </Link>
+        </Button>
+      )}
+      {isAdmin && (
+        <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
+          <Link to="/admin/support" aria-label="Messages">
             <MessageSquare className="h-4 w-4" />
           </Link>
         </Button>
