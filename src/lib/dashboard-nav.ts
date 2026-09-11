@@ -107,8 +107,8 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
 export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   ACCOUNTANT: [
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
-    { label: "Payments", to: "/accountant/payments", icon: CreditCard },
     { label: "Students", to: "/accountant/students", icon: Users },
+    { label: "Invoices", to: "/accountant/invoices", icon: FileText },
   ],
   WARDEN: [
     { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
@@ -119,11 +119,16 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
-    { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
+    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
+    {
+      label: "Complaints",
+      to: "/student/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
   ],
   PARENT: [
     { label: "Home", to: "/parent/overview", icon: Home },
-    { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
     { label: "Gate Pass", to: "/parent/gate-pass", icon: Ticket },
     { label: "Payments", to: "/parent/payments", icon: Receipt },
     { label: "Complaints", to: "/parent/complaints", icon: MessageSquareWarning },
@@ -150,14 +155,8 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Reports", to: "/warden/reports", icon: FileBarChart },
   ],
   STUDENT: [
-    {
-      label: "Complaints",
-      to: "/student/complaints",
-      icon: MessageSquareWarning,
-      module: "complaints",
-    },
+    { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
     { label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" },
-    { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
   ],
 };
 
@@ -166,9 +165,10 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
  * Module-filtering is applied the same way as BOTTOM_NAV items in student.tsx.
  */
 export const CENTER_NAV: Partial<Record<NonNullable<AppRole>, NavItem>> = {
-  ACCOUNTANT: { label: "Invoices", to: "/accountant/invoices", icon: FileText },
+  ACCOUNTANT: { label: "Payments", to: "/accountant/payments", icon: CreditCard },
   WARDEN: { label: "Attendance", to: "/warden/attendance", icon: CalendarCheck },
-  STUDENT: { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
+  STUDENT: { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
+  PARENT: { label: "Attendance", to: "/parent/attendance", icon: CalendarCheck },
 };
 
 export const NOTIFICATION_ICON = BellRing;

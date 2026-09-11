@@ -62,11 +62,6 @@ function AdminSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-4xl pb-10 lg:max-w-6xl">
-      {/* Page Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-      </div>
-
       {/* Tabs Container */}
       <Tabs defaultValue="property" className="space-y-6">
         <TabsList className="bg-card/80 border border-border/80 p-1.5 rounded-xl h-auto inline-flex w-full sm:w-auto gap-1">

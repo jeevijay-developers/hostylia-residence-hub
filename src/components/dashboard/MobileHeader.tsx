@@ -83,7 +83,7 @@ export function MobileHeader() {
       <div className="flex items-center gap-1">
         {isWarden && <MessagesPanel />}
         {isWarden && <ThemeToggle />}
-        <NotificationBell />
+        {!isStudent && <NotificationBell />}
         {isParent && (
           <Button variant="ghost" size="icon" className="min-h-10 min-w-10" asChild>
             <Link to="/parent/messages" aria-label="Messages">

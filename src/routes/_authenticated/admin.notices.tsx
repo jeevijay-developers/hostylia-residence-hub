@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Megaphone } from "lucide-react";
 import { useEffect } from "react";
 
 import { NoticeComposer } from "@/components/notifications/NoticeComposer";
@@ -28,15 +27,6 @@ function AdminNoticesPage() {
 
   return (
     <div className="w-full max-w-full space-y-6 overflow-x-hidden">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-warning/10 text-warning sm:h-14 sm:w-14">
-          <Megaphone className="h-5 w-5 sm:h-6 sm:w-6" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-display text-lg font-semibold text-foreground sm:text-2xl">Notices</p>
-        </div>
-      </div>
-
       {propertyId ? (
         <NoticeComposer propertyId={propertyId} />
       ) : (

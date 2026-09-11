@@ -188,6 +188,7 @@ function AccountantDashboardPage() {
           loading={loading}
           tone="info"
           to="/accountant/invoices"
+          search={{ status: "OUTSTANDING" }}
         />
         <FinanceKpiCard
           icon={Wallet}
@@ -196,6 +197,7 @@ function AccountantDashboardPage() {
           loading={collectionsLoading}
           tone="success"
           to="/accountant/payments"
+          search={{ paidToday: "1" }}
         />
         <FinanceKpiCard
           icon={Clock}
@@ -459,7 +461,7 @@ function RecentPaymentsCard({
           />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/80">
-            <table className="w-full text-sm">
+            <table className="w-full max-sm:min-w-[640px] text-sm">
               <thead className="border-b border-border/80 bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5">Student</th>
@@ -473,20 +475,20 @@ function RecentPaymentsCard({
               <tbody className="divide-y divide-border/60">
                 {rows.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-3 py-2.5 font-medium text-foreground">
+                    <td className="px-3 py-2.5 font-medium text-foreground max-sm:whitespace-nowrap">
                       {p.students?.full_name ?? "—"}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
+                    <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground max-sm:whitespace-nowrap">
                       {p.invoices?.invoice_number ?? "—"}
                     </td>
-                    <td className="px-3 py-2.5 text-right font-semibold text-foreground">
+                    <td className="px-3 py-2.5 text-right font-semibold text-foreground max-sm:whitespace-nowrap">
                       {formatInr(p.amount_paise)}
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{p.mode}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
+                    <td className="px-3 py-2.5 text-muted-foreground max-sm:whitespace-nowrap">{p.mode}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground max-sm:whitespace-nowrap">
                       {new Date(p.paid_at ?? p.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 max-sm:whitespace-nowrap">
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",

@@ -81,7 +81,7 @@ function MonthlyAttendanceReportGate({ studentId }: { studentId: string }) {
         <Input
           id="attendance-report-month"
           type="month"
-          className="h-10 w-full max-w-44 rounded-xl"
+          className="h-10 w-full max-w-44 rounded-xl [color-scheme:dark]"
           max={currentMonthValue()}
           onChange={(e) => setSelectedMonth(e.target.value)}
         />

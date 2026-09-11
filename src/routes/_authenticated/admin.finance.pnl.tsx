@@ -22,7 +22,6 @@ function RevenueCollectionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Revenue & Collections Summary"
         actions={
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-sm">
             <Download className="h-4 w-4" aria-hidden="true" />

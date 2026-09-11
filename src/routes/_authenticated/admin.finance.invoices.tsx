@@ -168,7 +168,6 @@ function AdminInvoicesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Invoices"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button

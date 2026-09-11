@@ -4,11 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarDays, Clock, Key, Loader2, ListChecks, Send, Shield, SquarePen } from "lucide-react";
+import { CalendarDays, Clock, Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
@@ -100,23 +99,34 @@ function StudentGatePassPage() {
 
   return (
     <StudentModuleGuard module="gate_passes">
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         {canWrite && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <SquarePen className="h-4 w-4" />
-                </span>
-                New Request
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-              <Input placeholder="Destination" value={destination} onChange={(e) => setDestination(e.target.value)} />
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Going out — date</label>
+          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <h2 className="border-b border-border/60 pb-3 text-sm font-semibold text-foreground">
+              New Request
+            </h2>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-1.5">
+                <label className="text-sm text-foreground">
+                  Reason <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="Enter a reason to continue"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm text-foreground">Destination (optional)</label>
+                <Input
+                  placeholder="e.g. Home, Market"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm text-foreground">Going out — date</label>
                   <div className="relative">
                     <Input
                       ref={outDateInputRef}
@@ -135,8 +145,8 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Going out — time</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm text-foreground">Going out — time</label>
                   <div className="relative">
                     <Input
                       ref={outTimeInputRef}
@@ -155,8 +165,8 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Expected back — date</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm text-foreground">Expected back — date</label>
                   <div className="relative">
                     <Input
                       ref={inDateInputRef}
@@ -175,8 +185,8 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Expected back — time</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm text-foreground">Expected back — time</label>
                   <div className="relative">
                     <Input
                       ref={inTimeInputRef}
@@ -205,24 +215,20 @@ function StudentGatePassPage() {
               )}
               {!kycComplete && <KycGateNotice message="Complete your KYC to request a gate pass." />}
               <Button
-                className="rounded-full"
+                className="w-full rounded-full"
+                size="lg"
                 onClick={() => createMut.mutate()}
                 disabled={!kycComplete || createMut.isPending || !reason || !outAt || !inAt}
               >
                 {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Request
+                Request Pass
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <ListChecks className="h-4 w-4" />
-            </span>
-            My Passes
-          </div>
+          <h2 className="text-lg font-bold text-foreground">My Passes</h2>
           {(passesQ.data ?? []).map((p) => <PassCard key={p.id} pass={p} canWrite={canWrite} />)}
           {passesQ.data?.length === 0 && <div className="text-sm text-muted-foreground p-4 text-center">No passes yet.</div>}
         </div>
@@ -241,7 +247,15 @@ function PassCard({
   pass,
   canWrite,
 }: {
-  pass: { id: string; pass_number: string; status: string; reason: string; out_at: string; expected_in_at: string };
+  pass: {
+    id: string;
+    pass_number: string;
+    status: string;
+    reason: string;
+    destination: string | null;
+    out_at: string;
+    expected_in_at: string;
+  };
   canWrite: boolean;
 }) {
   const reissue = useServerFn(reissueGatePassQrToken);
@@ -266,16 +280,24 @@ function PassCard({
   });
 
   return (
-    <Card className="overflow-hidden"><CardContent className="p-4 space-y-3">
+    <div className="space-y-3 rounded-3xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <div className="font-semibold text-foreground">{pass.pass_number}</div>
-          <div className="text-xs text-muted-foreground">{pass.reason} · {new Date(pass.out_at).toLocaleString()} → {new Date(pass.expected_in_at).toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">{pass.reason}</div>
         </div>
         <Badge className={PASS_STATUS_TONE[pass.status] ?? ""} variant={PASS_STATUS_TONE[pass.status] ? undefined : "secondary"}>
           {PENDING_STATUSES.includes(pass.status) ? "Pending" : pass.status}
         </Badge>
       </div>
+
+      <div className="space-y-0.5 border-t border-border/60 pt-3 text-sm text-muted-foreground">
+        <p>
+          Out: {new Date(pass.out_at).toLocaleString()} → In: {new Date(pass.expected_in_at).toLocaleString()}
+        </p>
+        {pass.destination && <p>To: {pass.destination}</p>}
+      </div>
+
       {scannable && qrQ.isLoading && (
         <p className="text-xs text-muted-foreground">Preparing QR…</p>
       )}
@@ -286,20 +308,13 @@ function PassCard({
         </div>
       )}
       {qrQ.data && (
-        <div className="flex items-start gap-3">
-          <img src={qrQ.data.dataUrl} alt="Gate pass QR" className="h-28 w-28 shrink-0 rounded-md" />
-          <div className="min-w-0 space-y-1 text-xs">
-            <div className="flex items-center gap-1.5 text-info">
-              <Key className="h-3.5 w-3.5 shrink-0" />
-              <span className="break-all font-mono text-foreground">{pass.id}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-info">
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              <span className="break-all font-mono text-foreground">{qrQ.data.token}</span>
-            </div>
+        <div className="space-y-2">
+          <div className="mx-auto grid max-w-xs place-items-center rounded-2xl bg-white p-4">
+            <img src={qrQ.data.dataUrl} alt="Gate pass QR" className="h-full w-full rounded-lg" />
           </div>
+          <p className="text-center text-xs text-muted-foreground">Show this QR at the gate</p>
         </div>
       )}
-    </CardContent></Card>
+    </div>
   );
 }

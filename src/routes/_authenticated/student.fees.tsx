@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, IndianRupee, Info, Zap } from "lucide-react";
+import { Info, Zap } from "lucide-react";
 import { StudentFeesList } from "@/components/finance/StudentFeesList";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,39 +37,6 @@ function StudentFeesPage() {
   return (
     <StudentModuleGuard module="finance">
       <div className="space-y-4 p-4">
-        <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xl sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Fees &amp; Payments
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-6">
-            <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-                Your invoices and payment history.
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                View and manage your payments in one place.
-              </p>
-            </div>
-            <div className="hidden shrink-0 items-center gap-3 sm:flex">
-              <div className="relative h-16 w-16 shrink-0">
-                <span className="absolute inset-0 grid place-items-center rounded-2xl bg-info/15 text-info">
-                  <IndianRupee className="h-7 w-7" />
-                </span>
-                <span className="absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-primary shadow-sm">
-                  <CreditCard className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="text-sm font-medium leading-snug text-muted-foreground">
-                Simple.
-                <br />
-                Secure.
-                <br />
-                Hassle-free.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <StudentFeesList studentId={q.data.id} canPay={canPay} />
 
         {canPay && (

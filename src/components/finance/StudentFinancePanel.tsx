@@ -114,7 +114,7 @@ export function StudentFinancePanel({ propertyId }: { propertyId: string }) {
         </div>
       </div>
 
-      <div>
+      <div className="min-w-0">
         {!selectedStudent && (
           <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
             Select a student to see their finance details.

@@ -31,9 +31,9 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authz } } },
     );
 
-    const { data: userRes } = await supabase.auth.getUser();
-    const userId = userRes.user?.id;
-    if (!userId) return json({ error: "Unauthorized" }, 401, cors);
+    const { data: userRes, error: userErr } = await supabase.auth.getUser();
+    const userId = userRes?.user?.id;
+    if (userErr || !userId) return json({ error: "Unauthorized" }, 401, cors);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

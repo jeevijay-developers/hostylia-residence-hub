@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { PaymentEntryForm } from "@/components/finance/PaymentEntryForm";
 import { usePropertyStore } from "@/stores/property-store";
 
@@ -17,7 +16,6 @@ function AdminPaymentsPage() {
     );
   return (
     <div className="space-y-4">
-      <PageHeader title="Record payment" />
       <PaymentEntryForm propertyId={propertyId} />
     </div>
   );

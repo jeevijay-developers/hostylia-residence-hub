@@ -161,6 +161,10 @@ export function StudentsListPage({
   canDelete,
   initialStatusFilter,
 }: StudentsListPageProps) {
+  // Scopes the mobile status+search row-merge below to Warden only (its
+  // property switcher never renders, so that grid cell sits empty) — Admin's
+  // multi-property mobile row is untouched.
+  const isWarden = viewBasePath === "/warden/students";
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
   const [q, setQ] = useState("");
@@ -233,105 +237,119 @@ export function StudentsListPage({
     [studentsQ.data, currentPage, pageSize],
   );
 
+  const searchBox = (
+    <div className="relative w-full lg:order-6 lg:w-64">
+      <Search className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="bg-card border-border text-foreground rounded-xl h-9 pl-9 text-xs sm:h-11 sm:pl-10 sm:text-sm font-medium placeholder:text-muted-foreground"
+        placeholder="Search by name..."
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setPage(1);
+        }}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6 max-w-6xl pb-10 overflow-x-hidden">
-      {/* Top Action Buttons Section */}
-      {canCreate && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3 sm:items-center sm:justify-start">
-          <Button
-            variant="outline"
-            onClick={shareAdmissionLink}
-            className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
-          >
-            <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
-            <span>Share public form</span>
-          </Button>
-
-          <div className="flex gap-2 sm:contents">
+      {/* Toolbar: property/status/search + create actions — one row on
+          desktop (lg:), unchanged stacked/grouped layout below that. */}
+      <div className="space-y-4 sm:space-y-6 lg:flex lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:space-y-0">
+        {/* Top Action Buttons Section */}
+        {canCreate && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3 sm:items-center sm:justify-start lg:contents">
             <Button
               variant="outline"
-              onClick={() => setImportOpen(true)}
-              className="flex-1 sm:flex-initial border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
+              onClick={shareAdmissionLink}
+              className="border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 cursor-pointer transition-all lg:order-2"
             >
-              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
-              <span>Bulk import</span>
+              <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
+              <span>Share public form</span>
             </Button>
 
-            <Button
-              disabled={!effectiveProperty}
-              onClick={() => setAddOpen(true)}
-              className="flex-1 sm:flex-initial bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all"
-            >
-              <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
-              <span>Add student</span>
-            </Button>
+            <div className="flex gap-2 sm:contents">
+              <Button
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+                className="flex-1 sm:flex-initial border-border bg-card hover:bg-accent text-foreground rounded-xl h-9 px-3 text-xs sm:h-11 sm:px-4 sm:text-sm font-semibold flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all lg:order-3"
+              >
+                <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700 dark:text-amber-400" />
+                <span>Bulk import</span>
+              </Button>
+
+              <Button
+                disabled={!effectiveProperty}
+                onClick={() => setAddOpen(true)}
+                className="flex-1 sm:flex-initial bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all lg:order-4"
+              >
+                <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
+                <span>Add student</span>
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Filters & Search Section */}
-      <div className="space-y-2 sm:space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          {properties.length > 1 && (
+        {/* Filters & Search Section */}
+        <div className="space-y-2 sm:space-y-3 lg:contents">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:contents">
+            {properties.length > 1 && (
+              <Select
+                value={effectiveProperty ?? ""}
+                onValueChange={(v) => {
+                  onPropertyChange?.(v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium lg:order-1 lg:w-52">
+                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                    <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
+                    <SelectValue placeholder="Property" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border text-foreground">
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Select
-              value={effectiveProperty ?? ""}
+              value={statusFilter}
               onValueChange={(v) => {
-                onPropertyChange?.(v);
+                setStatusFilter(v);
                 setPage(1);
               }}
             >
-              <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium">
+              <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium lg:order-5 lg:w-48">
                 <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
-                  <SelectValue placeholder="Property" />
+                  <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Status" />
                 </div>
               </SelectTrigger>
               <SelectContent className="bg-card border-border text-foreground">
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="ALL">All statuses</SelectItem>
+                <SelectItem value="APPLICANT">Applicant</SelectItem>
+                <SelectItem value="VERIFIED">Verified</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="NOTICE_GIVEN">Notice given</SelectItem>
+                <SelectItem value="MOVED_OUT">Moved out</SelectItem>
+                <SelectItem value="ARCHIVED">Archived</SelectItem>
               </SelectContent>
             </Select>
-          )}
 
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => {
-              setStatusFilter(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium">
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="Status" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border text-foreground">
-              <SelectItem value="ALL">All statuses</SelectItem>
-              <SelectItem value="APPLICANT">Applicant</SelectItem>
-              <SelectItem value="VERIFIED">Verified</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="NOTICE_GIVEN">Notice given</SelectItem>
-              <SelectItem value="MOVED_OUT">Moved out</SelectItem>
-              <SelectItem value="ARCHIVED">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            {/* Warden has no property switcher, so this grid cell is
+                otherwise empty on mobile/tablet — pairs Search with Status
+                in that same row instead of it wrapping to its own row
+                below. Admin (property switcher present) is unaffected. */}
+            {isWarden && searchBox}
+          </div>
 
-        <div className="relative w-full">
-          <Search className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="bg-card border-border text-foreground rounded-xl h-9 pl-9 text-xs sm:h-11 sm:pl-10 sm:text-sm font-medium placeholder:text-muted-foreground"
-            placeholder="Search by name..."
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-          />
+          {!isWarden && searchBox}
         </div>
       </div>
 

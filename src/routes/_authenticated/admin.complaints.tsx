@@ -41,7 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useComplaints, useComplaintCategories, type ComplaintWithRelations } from "@/lib/complaint";
+import {
+  useComplaints,
+  useComplaintCategories,
+  OPEN_COMPLAINT_STATUSES,
+  type ComplaintWithRelations,
+} from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +59,10 @@ const complaintsSearchSchema = z.object({
   // COMPLAINT_RESOLVED notification lands (see src/lib/notifications.ts) —
   // scrolls to and expands that complaint's timeline/detail section below.
   complaintId: z.string().uuid().optional(),
+  // Preselects the status filter (e.g. the Dashboard's "Open complaints"
+  // card deep-linking here) — defaults to "ALL" (today's unchanged
+  // behavior) when omitted.
+  status: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/admin/complaints")({
@@ -94,9 +103,9 @@ function useBlocks(propertyId: string | null | undefined) {
 }
 
 function AdminComplaintsPage() {
-  const { complaintId } = Route.useSearch();
+  const { complaintId, status: initialStatus } = Route.useSearch();
   const propId = usePropertyStore((s) => s.activePropertyId);
-  const [status, setStatus] = useState("ALL");
+  const [status, setStatus] = useState(initialStatus ?? "ALL");
   const [category, setCategory] = useState("ALL");
   const [block, setBlock] = useState("ALL");
   const all = useComplaints({ propertyId: propId });
@@ -111,7 +120,16 @@ function AdminComplaintsPage() {
 
   const list = useMemo(() => {
     let l = all.data ?? [];
-    if (status !== "ALL") l = l.filter((c) => c.status === status);
+    if (status === "OPEN") {
+      // Same "open" definition as the Admin Dashboard's "Open complaints"
+      // KPI and fn_scan_complaint_sla_breaches — everything short of
+      // RESOLVED/CLOSED/CANCELLED — so the count you click through from
+      // matches what actually lists here. Every other status option below
+      // still matches its own literal status exactly.
+      l = l.filter((c) => (OPEN_COMPLAINT_STATUSES as readonly string[]).includes(c.status));
+    } else if (status !== "ALL") {
+      l = l.filter((c) => c.status === status);
+    }
     if (category !== "ALL") l = l.filter((c) => c.category_id === category);
     if (block !== "ALL") l = l.filter((c) => (c.block_id ?? "none") === block);
     return l;

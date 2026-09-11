@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, LogOut, User } from "lucide-react";
+import { Menu, Search, LogOut, User, MessageSquare } from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
+import { MessagesPanel } from "@/components/warden/MessagesPanel";
+import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
   CommandEmpty,
@@ -21,9 +23,11 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useThemeStore, useAutoTheme } from "@/stores/theme-store";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
 import { useResolvedRole } from "@/lib/user-role";
+import { getGreeting } from "@/lib/greeting";
 import { BrandLockup } from "@/components/BrandLockup";
 import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,8 +73,35 @@ export function Topbar({
 
   const isWarden = resolved?.role === "WARDEN";
   const isStudent = resolved?.role === "STUDENT";
+  const isStudentHome = isStudent && pathname === "/student/home";
   const isParent = resolved?.role === "PARENT";
+
+  // Same key/select as student.home.tsx's old greeting query — shares its
+  // cache entry. Only fetched on the Home page, where the fixed header
+  // shows "Today / Good Evening, <name>" instead of the usual breadcrumb.
+  const { data: studentHomeProfile } = useQuery({
+    queryKey: ["my-profile-record", resolved?.userId],
+    enabled: isStudentHome && !!resolved?.userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("students")
+        .select("full_name")
+        .eq("profile_id", resolved!.userId!)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const studentHomeFirstName = studentHomeProfile?.full_name?.trim().split(" ")[0];
+  const studentHomeGreeting = getGreeting(new Date().getHours());
   const isSuperAdmin = resolved?.role === "SUPER_ADMIN";
+  // These 5 roles no longer get a manual theme toggle — their theme always
+  // follows the OS/browser color-scheme preference (Super Admin and the
+  // marketing site keep the existing manual toggle, untouched).
+  const isAutoThemeRole = isAdmin || isAccountant || isWarden || isStudent || isParent;
 
   let profileHref: string | undefined = undefined;
   if (isAdmin) profileHref = "/admin/profile";
@@ -90,8 +121,25 @@ export function Topbar({
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  // Keeps stores/theme-store.ts's reactive `theme` (which BrandLockup's logo
+  // asset swap reads) matching the OS preference for these 5 roles — the
+  // pre-hydration THEME_INIT_SCRIPT in __root.tsx already applied the class
+  // for first paint, this just syncs the store and reacts to a live OS
+  // theme change while the app stays open.
+  useAutoTheme(isAutoThemeRole);
+
+  const isBrightHeaderRole = isStudent || isParent || isAccountant || isWarden;
+
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-6">
+    <header
+      className={cn(
+        "sticky top-0 z-20 flex h-16 items-center gap-4 px-4 backdrop-blur-md sm:px-6",
+        isBrightHeaderRole ? "border-b border-transparent" : "border-b border-border/80",
+        isBrightHeaderRole
+          ? "bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_92%,var(--primary)_8%)_0%,color-mix(in_srgb,var(--card)_80%,var(--background)_20%)_100%)]"
+          : "bg-background/90",
+      )}
+    >
       {navItems.length > 0 && !hideMobileNavTrigger && (
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
           <SheetTrigger asChild>
@@ -138,9 +186,20 @@ export function Topbar({
           </SheetContent>
         </Sheet>
       )}
+      {isStudentHome ? (
+        <div className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden">
+          <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-muted-foreground">
+            Today
+          </p>
+          <h1 className="mt-1 truncate font-serif text-lg font-bold leading-tight tracking-tight text-foreground sm:text-xl">
+            {studentHomeGreeting}
+            {studentHomeFirstName ? `, ${studentHomeFirstName}` : ""}
+          </h1>
+        </div>
+      ) : (
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
         <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          {crumbs.map((c, i) => {
+          {!isParent && !isWarden && !isAccountant && crumbs.map((c, i) => {
             if (i === 0 && crumbs.length > 1) return null;
 
             const path = "/" + crumbs.slice(0, i + 1).join("/");
@@ -181,8 +240,9 @@ export function Topbar({
           })}
         </ol>
       </nav>
+      )}
 
-      <button
+      {!isStudentHome && !isStudent && <button
         type="button"
         onClick={() => setSearchOpen(true)}
         className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
@@ -192,7 +252,7 @@ export function Topbar({
         <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
           Ctrl K
         </kbd>
-      </button>
+      </button>}
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search pages…" />
@@ -216,8 +276,20 @@ export function Topbar({
         </CommandList>
       </CommandDialog>
 
-      <ThemeToggle />
-      <NotificationBell />
+      {!isAutoThemeRole && <ThemeToggle />}
+      {!isStudent && (
+        <NotificationBell
+          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
+        />
+      )}
+      {isWarden && <MessagesPanel />}
+      {isParent && (
+        <Button asChild variant="ghost" size="icon" className="min-h-10 min-w-10">
+          <Link to="/parent/messages" aria-label="Messages">
+            <MessageSquare className="h-4 w-4" />
+          </Link>
+        </Button>
+      )}
 
       <div className="flex items-center gap-2">
         {isSuperAdmin && (
@@ -230,7 +302,7 @@ export function Topbar({
             <LogOut className="h-4 w-4" />
           </button>
         )}
-        {isAdmin || isWarden || isStudent || isAccountant ? (
+        {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -255,7 +327,9 @@ export function Topbar({
                         ? "/warden/profile"
                         : isAccountant
                           ? "/accountant/profile"
-                          : "/student/profile"
+                          : isParent
+                            ? "/parent/profile"
+                            : "/student/profile"
                   }
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -291,8 +365,10 @@ export function Topbar({
       <SignOutDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title={isAdmin || isWarden || isStudent || isAccountant ? "Sign out?" : undefined}
-        confirmLabel={isAdmin || isWarden || isStudent || isAccountant ? "Sign out" : undefined}
+        title={isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out?" : undefined}
+        confirmLabel={
+          isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out" : undefined
+        }
       />
     </header>
   );

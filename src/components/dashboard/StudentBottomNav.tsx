@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutList } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem } from "@/lib/dashboard-nav";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface StudentBottomNavProps {
   /**
@@ -18,15 +18,19 @@ interface StudentBottomNavProps {
    * slot is hidden and items fill the bar normally.
    */
   centerItem?: NavItem;
-  /** Secondary routes shown in the "More" sheet, already module-filtered. */
-  moreItems: NavItem[];
+  /**
+   * Extra routes that don't fit the 5-slot bar — surfaced behind a trailing
+   * "More" tab that opens a sheet listing them. Omitted/empty hides the tab
+   * entirely (e.g. Warden, which fits everything in the 5 direct slots).
+   */
+  moreItems?: NavItem[];
 }
 
 /**
  * Student-only mobile bottom navigation.
  *
  * Layout (5 slots):
- *   [left items…] · [▲ Attendance] · [right items…] · [More]
+ *   [left items…] · [▲ Attendance] · [right items…]
  *
  * The center Attendance button is a circular primary-colored disc raised
  * above the bar with a shadow, matching the "FAB-in-nav" pattern common in
@@ -35,13 +39,9 @@ interface StudentBottomNavProps {
  *
  * Hidden at `lg` and above — desktop keeps the sidebar untouched.
  */
-export function StudentBottomNav({ items, centerItem, moreItems }: StudentBottomNavProps) {
+export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentBottomNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
-
-  const isMoreActive = moreItems.some(
-    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
-  );
 
   // Split primary items around the center slot
   const half = Math.ceil(items.length / 2);
@@ -52,13 +52,17 @@ export function StudentBottomNav({ items, centerItem, moreItems }: StudentBottom
     !!centerItem &&
     (pathname === centerItem.to || pathname.startsWith(`${centerItem.to}/`));
 
+  const isMoreActive = moreItems.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
+
   return (
     <>
       {/* ── Bottom bar ── */}
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 shadow-card-ambient backdrop-blur-md lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-3 bottom-3 z-30 rounded-[32px] border border-border/80 bg-card/95 shadow-card-ambient backdrop-blur-md lg:hidden"
+        style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
         {/* overflow-visible so the raised center button can escape upward */}
         <ul
@@ -104,7 +108,7 @@ export function StudentBottomNav({ items, centerItem, moreItems }: StudentBottom
               {/* Label rendered inside the bar, below the disc */}
               <span
                 className={cn(
-                  "absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium leading-none",
+                  "absolute bottom-2 left-1/2 w-16 -translate-x-1/2 truncate text-center text-[11px] sm:text-sm font-semibold leading-none",
                   isCenterActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
@@ -118,71 +122,63 @@ export function StudentBottomNav({ items, centerItem, moreItems }: StudentBottom
             <NavTab key={item.to} item={item} pathname={pathname} />
           ))}
 
-          {/* ── More ── */}
+          {/* ── More slot ── */}
           {moreItems.length > 0 && (
             <li className="flex flex-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => setMoreOpen(true)}
-                aria-label="More options"
-                aria-expanded={moreOpen}
-                aria-haspopup="dialog"
-                aria-current={isMoreActive ? "page" : undefined}
-                className={cn(
-                  "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-1",
-                  "text-[10px] font-medium transition-colors",
-                  isMoreActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span className="relative">
-                  <LayoutList className="h-5 w-5 shrink-0" />
-                  {isMoreActive && (
-                    <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary shadow-tone-glow" />
-                  )}
-                </span>
-                <span className="w-full truncate text-center">More</span>
-              </button>
+              <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More"
+                    className={cn(
+                      "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
+                      "text-[11px] sm:text-sm font-semibold transition-colors",
+                      isMoreActive
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span className="relative">
+                      <MoreHorizontal className="h-5 w-5 shrink-0" />
+                      {isMoreActive && (
+                        <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary shadow-tone-glow" />
+                      )}
+                    </span>
+                    <span className="w-full truncate text-center">More</span>
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="rounded-t-3xl p-0">
+                  <SheetHeader className="border-b border-border p-4 text-left">
+                    <SheetTitle>More</SheetTitle>
+                  </SheetHeader>
+                  <nav className="space-y-1 p-3">
+                    {moreItems.map((item) => {
+                      const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMoreOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                            active
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </li>
           )}
         </ul>
       </nav>
-
-      {/* ── More sheet ── */}
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl p-0 lg:hidden">
-          <SheetHeader className="border-b border-border px-4 py-4 text-left">
-            <SheetTitle>More</SheetTitle>
-          </SheetHeader>
-          <nav
-            aria-label="Secondary navigation"
-            className="flex flex-col p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-          >
-            {moreItems.map((item) => {
-              const Icon = item.icon;
-              const active =
-                pathname === item.to || pathname.startsWith(`${item.to}/`);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    "flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-muted",
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span className="flex-1 truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </SheetContent>
-      </Sheet>
     </>
   );
 }
@@ -198,8 +194,8 @@ function NavTab({ item, pathname }: { item: NavItem; pathname: string }) {
         to={item.to}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-1",
-          "text-[10px] font-medium transition-colors",
+          "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
+          "text-[11px] sm:text-sm font-semibold transition-colors",
           active
             ? "text-primary"
             : "text-muted-foreground hover:text-foreground",

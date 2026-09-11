@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MessageSquare, Send, Soup, Star, Sunrise, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,10 +62,6 @@ function StudentMessPage() {
   return (
     <StudentModuleGuard module="mess">
       <div className="space-y-4">
-        <PageHeader
-          title="Today's menu and your feedback."
-          description="Help us serve you better every day."
-        />
         {(menusQ.data ?? []).map((m) => (
           <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} canWrite={canWrite} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
         ))}

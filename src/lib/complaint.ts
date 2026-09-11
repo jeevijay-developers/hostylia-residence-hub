@@ -28,6 +28,21 @@ export type ComplaintWithRelations = ComplaintRow & {
   category_name: string | null;
 };
 
+/**
+ * The single "open complaint" definition shared by every count/filter in the
+ * app (Admin Dashboard's "Open complaints" KPI, the Complaints page's OPEN
+ * filter, fn_scan_complaint_sla_breaches) — everything except
+ * RESOLVED/CLOSED/CANCELLED. Kept in one place so a dashboard count and a
+ * list filter can never drift apart on what "open" means.
+ */
+export const OPEN_COMPLAINT_STATUSES = [
+  "OPEN",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "WAITING_FOR_STUDENT",
+  "REOPENED",
+] as const;
+
 const COMPLAINT_FEED_COLUMNS =
   "id, tenant_id, property_id, block_id, room_id, bed_id, student_id, category_id, complaint_number, title, description, priority, status, assigned_to, assigned_at, sla_due_at, sla_breached_at, resolved_at, resolved_by, closed_at, resolution_summary, rating, rating_comment, reopen_until, is_anonymous, created_at, updated_at, student_full_name, student_admission_number, student_profile_id, student_avatar_path, room_number, block_name, category_name";
 

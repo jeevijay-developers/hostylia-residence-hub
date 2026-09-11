@@ -131,15 +131,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-// Default is "dark" (matches stores/theme-store.ts) so a first-time visitor
-// with no saved preference still sees the same navy/gold palette as the
-// marketing site, not a flash of the old light theme.
+// No surface has a manual light/dark toggle anymore except Super Admin —
+// every other route (dashboards, auth pages, the marketing site) always
+// follows the OS/browser color-scheme preference instead (see
+// MANUAL_THEME_ROUTE_PREFIXES below and each surface's useAutoTheme() call
+// in stores/theme-store.ts, which keeps the reactive `theme` value — read by
+// BrandLockup's logo-asset swap — in sync after hydration and reacts to a
+// live OS theme change). Super Admin is unaffected and keeps the existing
+// manual toggle/localStorage behavior.
+const MANUAL_THEME_ROUTE_PREFIXES = ["/super-admin"];
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
-    var raw = localStorage.getItem("hostylia_theme");
-    var theme = raw ? JSON.parse(raw).state.theme : "dark";
-    if (theme === "dark") document.documentElement.classList.add("dark");
+    var path = window.location.pathname;
+    var manualPrefixes = ${JSON.stringify(MANUAL_THEME_ROUTE_PREFIXES)};
+    var isManualThemeRoute = manualPrefixes.some(function (p) {
+      return path === p || path.indexOf(p + "/") === 0;
+    });
+    if (isManualThemeRoute) {
+      var raw = localStorage.getItem("hostylia_theme");
+      var theme = raw ? JSON.parse(raw).state.theme : "dark";
+      if (theme === "dark") document.documentElement.classList.add("dark");
+      return;
+    }
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (prefersDark) document.documentElement.classList.add("dark");
   } catch (e) {}
 })();
 `;
@@ -175,13 +191,10 @@ function ScrollToTop() {
 
 // Routes that belong to the app (auth flow + authenticated shells) render
 // WITHOUT the marketing chrome. Auth-flow routes (login/signup/verify-otp/
-// access-pending/403) force their own dark class via AuthLayout; the rest
-// (dashboards) follow the user's saved preference (see stores/theme-store.ts),
-// which toggles the `.dark` class on <html> — this wrapper never forces a
-// class itself. Marketing routes follow the same shared preference (default
-// dark, via theme-store's default + THEME_INIT_SCRIPT below) — SiteHeader
-// renders a ThemeToggle so visitors can switch, same mechanism as the
-// authenticated app's Topbar/MobileHeader toggle.
+// access-pending/403), dashboards, and marketing routes all follow the OS/
+// browser color-scheme preference via useAutoTheme() (see
+// stores/theme-store.ts and THEME_INIT_SCRIPT above) — this wrapper never
+// forces a class itself. Only Super Admin keeps the manual toggle.
 const APP_ROUTE_PREFIXES = [
   "/login",
   "/signup",
