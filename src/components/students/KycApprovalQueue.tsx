@@ -135,14 +135,14 @@ function KycQueueRow({ doc }: { doc: PendingKycDoc }) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3">
-      <div>
+      <div className="min-w-0">
         <p className="text-sm font-medium">
           {doc.student?.full_name ?? "Unknown student"}{" "}
           <span className="text-xs font-normal text-muted-foreground">
             {doc.student?.admission_number}
           </span>
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="truncate text-xs text-muted-foreground">
           {doc.document_type} • {doc.original_filename}
         </p>
       </div>

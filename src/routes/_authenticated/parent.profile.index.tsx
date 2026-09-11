@@ -78,7 +78,7 @@ function FieldRow({
   truncate?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 py-2">
+    <div className="min-w-0 flex flex-col gap-0.5 py-2">
       <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         <Icon className="h-3 w-3 shrink-0" />
         {label}

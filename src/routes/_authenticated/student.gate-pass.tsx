@@ -125,7 +125,7 @@ function StudentGatePassPage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <label className="text-sm text-foreground">Going out — date</label>
                   <div className="relative">
                     <Input
@@ -145,7 +145,7 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <label className="text-sm text-foreground">Going out — time</label>
                   <div className="relative">
                     <Input
@@ -165,7 +165,7 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <label className="text-sm text-foreground">Expected back — date</label>
                   <div className="relative">
                     <Input
@@ -185,7 +185,7 @@ function StudentGatePassPage() {
                     </button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <label className="text-sm text-foreground">Expected back — time</label>
                   <div className="relative">
                     <Input
