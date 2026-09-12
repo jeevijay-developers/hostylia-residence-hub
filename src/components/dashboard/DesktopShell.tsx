@@ -24,6 +24,15 @@ interface DesktopShellProps {
   mobileBottomNav?: ReactNode;
   /** Hides Topbar's hamburger/Sheet mobile-nav trigger — used when mobileBottomNav replaces it. */
   hideMobileNavTrigger?: boolean;
+  /**
+   * Below `lg`, makes the header part of the same scrollable region as the
+   * page content (instead of a fixed pane outside it) so it scrolls with the
+   * content and re-sticks at the top threshold no matter where on the page
+   * the scroll gesture starts — matching Warden's requested mobile behavior.
+   * Opt-in only; every other caller is unaffected, and `lg:`+ is identical
+   * either way.
+   */
+  mobileHeaderScrollsWithContent?: boolean;
 }
 
 export function DesktopShell({
@@ -33,6 +42,7 @@ export function DesktopShell({
   children,
   mobileBottomNav,
   hideMobileNavTrigger,
+  mobileHeaderScrollsWithContent,
 }: DesktopShellProps) {
   const { data } = useResolvedRole();
   return (
@@ -44,14 +54,26 @@ export function DesktopShell({
           showPropertySwitcher={showPropertySwitcher}
           tenantId={data?.tenantId ?? null}
         />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden min-h-0">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col min-h-0",
+            mobileHeaderScrollsWithContent ? "overflow-y-auto lg:overflow-hidden" : "overflow-hidden",
+          )}
+        >
           <Topbar
             navItems={navItems}
             showPropertySwitcher={showPropertySwitcher}
             tenantId={data?.tenantId ?? null}
             hideMobileNavTrigger={hideMobileNavTrigger}
           />
-          <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <main
+            className={cn(
+              "overscroll-contain",
+              mobileHeaderScrollsWithContent
+                ? "lg:flex-1 lg:min-h-0 lg:overflow-y-auto"
+                : "flex-1 min-h-0 overflow-y-auto",
+            )}
+          >
             <div
               className={cn(
                 "mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8",

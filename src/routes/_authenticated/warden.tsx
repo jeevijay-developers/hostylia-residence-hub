@@ -19,6 +19,7 @@ function WardenLayout() {
       allow={["WARDEN"]}
       navItems={SIDEBAR_NAV.WARDEN ?? []}
       hideMobileNavTrigger
+      mobileHeaderScrollsWithContent
       mobileBottomNav={
         <StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={NO_MORE_ITEMS} />
       }
