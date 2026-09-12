@@ -38,7 +38,7 @@ export function DesktopShell({
   return (
     <RoleGuard allow={allow}>
       <ImpersonationBanner />
-      <div className="flex h-screen overflow-hidden bg-muted/30">
+      <div className="flex h-dvh overflow-hidden bg-muted/30 lg:h-screen">
         <Sidebar
           items={navItems}
           showPropertySwitcher={showPropertySwitcher}
