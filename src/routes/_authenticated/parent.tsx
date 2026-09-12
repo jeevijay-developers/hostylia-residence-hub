@@ -19,6 +19,7 @@ function ParentLayout() {
       allow={["PARENT"]}
       navItems={SIDEBAR_NAV.PARENT ?? []}
       hideMobileNavTrigger
+      mobileHeaderScrollsWithContent
       mobileBottomNav={
         <StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={NO_MORE_ITEMS} />
       }
