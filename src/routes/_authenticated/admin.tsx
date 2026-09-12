@@ -9,6 +9,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       allow={["HOSTEL_ADMIN"]}
       navItems={SIDEBAR_NAV.HOSTEL_ADMIN ?? []}
       showPropertySwitcher
+      mobileHeaderScrollsWithContent
     >
       <Outlet />
     </DesktopShell>

@@ -28,6 +28,7 @@ function AccountantLayout() {
       allow={["ACCOUNTANT"]}
       navItems={SIDEBAR_NAV.ACCOUNTANT ?? []}
       hideMobileNavTrigger
+      mobileHeaderScrollsWithContent
       mobileBottomNav={
         <StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={moreItems} />
       }

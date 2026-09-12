@@ -68,6 +68,7 @@ function StudentLayout() {
       allow={["STUDENT"]}
       navItems={navItems}
       hideMobileNavTrigger
+      mobileHeaderScrollsWithContent
       mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} />}
     >
       {gateQ.isLoading ? (
