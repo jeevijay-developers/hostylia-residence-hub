@@ -111,7 +111,11 @@ function TermsPage() {
                   Hostylia is offered on a subscription basis, billed per student per month or as
                   otherwise stated in your order form. Fees are exclusive of applicable taxes.
                   Unless stated otherwise, fees are non-refundable. We may revise pricing on renewal
-                  with prior written notice.
+                  with prior written notice. See our{" "}
+                  <a href="/refund-policy" className="text-soft-teal hover:underline">
+                    Cancellation &amp; Refund Policy
+                  </a>{" "}
+                  for SaaS subscriptions, hostel-fee refunds, and the absence of physical shipping.
                 </p>
                 <p>
                   All transactions are processed through authorised payment gateways. You authorise

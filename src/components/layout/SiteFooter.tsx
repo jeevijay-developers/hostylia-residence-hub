@@ -36,6 +36,7 @@ const cols = [
     links: [
       { label: "Privacy Policy", to: "/privacy" },
       { label: "Terms & Conditions", to: "/terms" },
+      { label: "Refund Policy", to: "/refund-policy" },
       { label: "Delete account", to: "/account-deletion" },
     ],
   },

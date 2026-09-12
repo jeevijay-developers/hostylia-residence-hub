@@ -6,7 +6,7 @@
 **Company:** Jeevijay Technologies Private Limited
 **Build target:** Lovable project `Hostylia: Smart Residential OS`
 **Memory version:** 1.0
-**Last updated:** July 15, 2026
+**Last updated:** September 12, 2026
 
 ---
 
@@ -181,16 +181,13 @@ Carried from `PRD.md` Sec. 13 (product-level, unresolved):
 
 ## 8. Next recommended step
 
-**Superseded 2026-07-29.** Phase 1 is long complete. The next work, in priority order:
+**Updated 2026-09-12 (Android publish).** Immediate operator steps:
 
-1. **Re-grant `check_rate_limit` to `anon`** (or route OTP through a service-role path) so phone login works — coordinate with the in-flight MSG91 integration.
-2. **Fix `fn_is_acting_as_student_only`** to require `auth.uid() IS NOT NULL`, then schedule `fn_scan_complaint_sla_breaches`. The trigger fix must land first or the scan will fail silently.
-3. **Wire the dashboard KPIs to real queries** — the data is there; the cards ignore it.
-4. **Give the admin complaint actions** (assign/resolve/comment) — the board is read-only today, which makes the whole complaints module non-operational for the superset role.
-5. **Reconcile the two aging calculations** and remove the 500-row cap on `getAgingReport`.
-6. Add a JS/TS test runner. There is still none; the QA harness lives outside the repo in a scratchpad and should be brought in-tree if these tests are to be kept.
+1. Upload production AAB to Play Internal testing; complete forms using `hostylia-mobile/docs/PLAY-CONSOLE-SETUP.md`.
+2. Create Razorpay webhook + set `RAZORPAY_WEBHOOK_SECRET`; when ready run `scripts/razorpay-live-cutover.ps1` with `rzp_live_…`.
+3. Fill SHA-256 in `assetlinks.json`, redeploy hub, run device QA (`docs/DEVICE-QA-CHECKLIST.md`).
 
-Update Sec. 3, Sec. 5 and Sec. 6 of this file as each lands.
+Historical backlog (still open): dashboard KPI wiring, admin complaint actions, aging report reconcile, JS/TS test runner.
 
 ---
 
@@ -213,5 +210,20 @@ Update Sec. 3, Sec. 5 and Sec. 6 of this file as each lands.
 - Leftover remote function `create-razorpay-order` is a 501 stub (`verify_jwt` false) — disable before launch.
 - `check_rate_limit` EXECUTE is granted to `anon` (the 2026-07 “phone OTP dead” grant issue is fixed in prod DB). Phone OTP still depends on Auth hook + MSG91 template + Phone provider in Dashboard.
 - No secrets committed. Did not spam MSG91.
+
+### 2026-09-12 — Android publish blockers execution
+
+- Phone Auth OTP endpoint returns 200 (provider enabled). Legal URLs live on hostylia.com.
+- Banned all Auth users with `@hostylia.local` / `@dev.hostylia.local` emails (`banned_until` 2099) before public listing.
+- EAS production env: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `EXPO_PUBLIC_RAZORPAY_KEY_ID` (still TEST key).
+- Production AAB built: Expo build `c3cd2cb8-3aee-4f22-baa6-ae904e85c874`, artifact on Expo CDN; local copy under mobile `dist-aab/` (gitignored).
+- Added hub `public/.well-known/assetlinks.json` + route (SHA-256 placeholders until Play App Signing fingerprint).
+- Added `scripts/razorpay-live-cutover.ps1`, mobile `docs/PLAY-CONSOLE-SETUP.md`, `docs/DEVICE-QA-CHECKLIST.md`, `scripts/backup-android-signing.ps1`.
+- Operator still: Razorpay webhook secret + live keys, Play Console forms/upload, assetlinks SHA-256 + redeploy, device QA sign-off.
+
+### 2026-09-12 — Refund policy + Razorpay review student
+
+- Public `/refund-policy` (SaaS subscription refunds, hostel-fee maker-checker, no shipping). Footer + sitemap + Terms cross-link.
+- Demo student for Razorpay website review: `arjun.mehta@hostylia.com` (email/password), open ₹5000 ISSUED invoice on Durga / Rj Group tenant. Created via `scripts/create-razorpay-review-student.mjs`.
 
 _End of Memory.md_
