@@ -79,7 +79,15 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return json({ error: "Forbidden" }, 403, cors);
 
-    const idempotencyKey = `inv:${invoice_id}:balance:${inv.balance_paise}`;
+    // Scoped to the current key's mode (test/live, per Razorpay's standard
+    // rzp_test_/rzp_live_ key-id prefix) — without this, a PENDING order
+    // created under test keys would get reused (and its stale order_id
+    // handed back paired with a live key_id) after switching RAZORPAY_KEY_ID/
+    // SECRET from test to live, which Razorpay's Checkout rejects with a
+    // generic "Something went wrong" (an order only ever belongs to the
+    // mode/account that created it).
+    const mode = KEY_ID.startsWith("rzp_live_") ? "live" : "test";
+    const idempotencyKey = `inv:${invoice_id}:balance:${inv.balance_paise}:${mode}`;
 
     const { data: existingPo } = await admin
       .from("payment_orders")
@@ -88,6 +96,7 @@ Deno.serve(async (req) => {
       .eq("provider", "razorpay")
       .eq("status", "PENDING")
       .eq("amount_paise", inv.balance_paise)
+      .eq("idempotency_key", idempotencyKey)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
