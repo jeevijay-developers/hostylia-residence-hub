@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -76,6 +77,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/gate")({
+  // Lets the Daily Brief's Visitors Today card open the visitors tab scoped to today.
+  validateSearch: z.object({ view: z.literal("visitors-today").optional() }),
   component: WardenGatePage,
 });
 
@@ -167,7 +170,8 @@ function WardenGatePage() {
   const createVis = useServerFn(createVisitor);
   const today = todayStr();
 
-  const [tab, setTab] = useState("approvals");
+  const { view: initialView } = Route.useSearch();
+  const [tab, setTab] = useState(initialView === "visitors-today" ? "visitors" : "approvals");
   const [approvalFilter, setApprovalFilter] = useState<
     "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
   >("PENDING");
@@ -269,7 +273,7 @@ function WardenGatePage() {
   // Set only when the visitors tab is opened from the "Visitors Today" KPI
   // card, so the "All" view scopes to today without changing the All/Expected
   // Today/Inside/Checked Out toggle buttons' own existing behavior.
-  const [visitorTodayOnly, setVisitorTodayOnly] = useState(false);
+  const [visitorTodayOnly, setVisitorTodayOnly] = useState(initialView === "visitors-today");
   const visitorsCheckedOut = useMemo(
     () =>
       ((visitors.data as VisitorWithRelations[]) ?? []).filter((v) => v.status === "CHECKED_OUT"),

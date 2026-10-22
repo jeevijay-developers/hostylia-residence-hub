@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, type LinkProps } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -91,6 +91,7 @@ function BriefKpiTile({
   caption,
   tone,
   loading,
+  linkProps,
 }: {
   icon: LucideIcon;
   label: string;
@@ -98,9 +99,13 @@ function BriefKpiTile({
   caption: string;
   tone: SemanticTone;
   loading?: boolean;
+  linkProps: LinkProps;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <Link
+      {...linkProps}
+      className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <div className="flex items-center gap-3">
         <span
           className={cn(
@@ -121,7 +126,7 @@ function BriefKpiTile({
           </p>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -186,11 +191,12 @@ function WardenBriefPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
         <BriefKpiTile
           icon={Users}
-          label="Total Students"
+          label="Active Students"
           value={studentsQ.data?.length ?? 0}
           caption="Registered"
           loading={studentsQ.isLoading}
           tone="info"
+          linkProps={{ to: "/warden/students", search: { status: "ACTIVE" } }}
         />
         <BriefKpiTile
           icon={UserCheck}
@@ -199,6 +205,7 @@ function WardenBriefPage() {
           caption="Today"
           loading={studentsQ.isLoading}
           tone="success"
+          linkProps={{ to: "/warden/attendance", search: { status: "PRESENT" } }}
         />
         <BriefKpiTile
           icon={UserX}
@@ -207,6 +214,7 @@ function WardenBriefPage() {
           caption="Today"
           loading={attendanceQ.isLoading}
           tone="destructive"
+          linkProps={{ to: "/warden/attendance", search: { status: "ABSENT" } }}
         />
         <BriefKpiTile
           icon={MessageSquareWarning}
@@ -215,6 +223,7 @@ function WardenBriefPage() {
           caption="To be resolved"
           loading={complaintsQ.isLoading}
           tone="warning"
+          linkProps={{ to: "/warden/complaints", search: { status: "PENDING" } }}
         />
         <BriefKpiTile
           icon={DoorOpen}
@@ -223,6 +232,7 @@ function WardenBriefPage() {
           caption="Awaiting approval"
           loading={gatePassesQ.isLoading}
           tone="primary"
+          linkProps={{ to: "/warden/gate" }}
         />
         <BriefKpiTile
           icon={UserPlus}
@@ -231,6 +241,7 @@ function WardenBriefPage() {
           caption="Checked in"
           loading={visitorsQ.isLoading}
           tone="info"
+          linkProps={{ to: "/warden/gate", search: { view: "visitors-today" } }}
         />
       </div>
 

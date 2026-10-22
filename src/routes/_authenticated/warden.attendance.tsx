@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   CalendarDays,
   CheckCheck,
@@ -35,6 +36,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
+  // Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
+  validateSearch: z.object({
+    status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
+  }),
   component: WardenAttendancePage,
 });
 
@@ -70,7 +75,8 @@ function WardenAttendancePage() {
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const { status: initialStatus } = Route.useSearch();
+  const [statusFilter, setStatusFilter] = useState(initialStatus ?? "ALL");
   const [roomFilter, setRoomFilter] = useState("ALL");
 
   // Local overrides (student_id -> Status / remark text)

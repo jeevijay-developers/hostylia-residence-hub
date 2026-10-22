@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { registerDocument } from "@/lib/student.functions";
+import { discardFailedComplaint, registerDocument } from "@/lib/student.functions";
 import { useComplaintCategories, useStudentSelf } from "@/lib/complaint";
 import { complaintFormSchema } from "@/schemas/complaint";
 import { useKycComplete } from "@/lib/kyc";
@@ -29,6 +29,7 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
   const cats = useComplaintCategories(propId);
   const qc = useQueryClient();
   const registerFn = useServerFn(registerDocument);
+  const discardFn = useServerFn(discardFailedComplaint);
   const { complete: kycComplete } = useKycComplete(student.data?.id);
 
   const [categoryId, setCategoryId] = useState("");
@@ -72,24 +73,33 @@ export function ComplaintForm({ onDone }: { onDone?: () => void }) {
 
       if (photo) {
         const path = `${s.tenant_id}/${s.property_id}/${inserted.id}/${Date.now()}-${photo.name}`;
-        const { error: upErr } = await supabase.storage
-          .from("complaint-media")
-          .upload(path, photo, { contentType: photo.type, upsert: false });
-        if (upErr) throw upErr;
-        await registerFn({
-          data: {
-            tenant_id: s.tenant_id,
-            property_id: s.property_id,
-            owner_type: "COMPLAINT",
-            owner_id: inserted.id,
-            document_type: "PHOTO",
-            storage_bucket: "complaint-media",
-            storage_path: path,
-            original_filename: photo.name,
-            mime_type: photo.type || "image/jpeg",
-            size_bytes: photo.size,
-          },
-        });
+        try {
+          const { error: upErr } = await supabase.storage
+            .from("complaint-media")
+            .upload(path, photo, { contentType: photo.type, upsert: false });
+          if (upErr) throw upErr;
+          await registerFn({
+            data: {
+              tenant_id: s.tenant_id,
+              property_id: s.property_id,
+              owner_type: "COMPLAINT",
+              owner_id: inserted.id,
+              document_type: "PHOTO",
+              storage_bucket: "complaint-media",
+              storage_path: path,
+              original_filename: photo.name,
+              mime_type: photo.type || "image/jpeg",
+              size_bytes: photo.size,
+            },
+          });
+        } catch (e) {
+          // Don't leave a photo-less complaint / orphaned file behind; the
+          // student can resubmit with the photo.
+          await discardFn({ data: { complaint_id: inserted.id, storage_path: path } }).catch(
+            () => undefined,
+          );
+          throw e;
+        }
       }
       return inserted.id;
     },

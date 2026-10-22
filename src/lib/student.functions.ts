@@ -979,6 +979,66 @@ export const registerDocument = createServerFn({ method: "POST" })
   });
 
 /**
+ * Undo a complaint submission whose photo step failed, so a retry doesn't leave
+ * a photo-less duplicate complaint or an orphaned storage object behind.
+ * Students have no delete rights on `complaints` or `complaint-media`, so this
+ * runs with the service role — gated on the caller owning the complaint, it
+ * being brand new, and it having no registered attachment.
+ */
+const discardFailedComplaintSchema = z.object({
+  complaint_id: z.string().uuid(),
+  storage_path: z.string().min(1).optional(),
+});
+
+export const discardFailedComplaint = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => discardFailedComplaintSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // RLS: a student can only see their own complaints.
+    const { data: complaint, error: cErr } = await supabase
+      .from("complaints")
+      .select("id, tenant_id, property_id, student_id, created_at")
+      .eq("id", data.complaint_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    if (!complaint) return { ok: true as const };
+
+    const { data: owned } = await supabase
+      .from("students")
+      .select("id")
+      .eq("id", complaint.student_id)
+      .eq("profile_id", userId)
+      .maybeSingle();
+    if (!owned) throw new Error("Not allowed");
+
+    const ageMs = Date.now() - new Date(complaint.created_at).getTime();
+    if (ageMs > 10 * 60_000) throw new Error("Complaint is too old to discard");
+
+    const admin = adminClient();
+    const { count: docCount } = await admin
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_type", "COMPLAINT")
+      .eq("owner_id", complaint.id)
+      .is("deleted_at", null);
+    if ((docCount ?? 0) > 0) return { ok: true as const };
+
+    const prefix = `${complaint.tenant_id}/${complaint.property_id}/${complaint.id}/`;
+    if (data.storage_path?.startsWith(prefix)) {
+      await admin.storage.from("complaint-media").remove([data.storage_path]);
+    }
+    const { error } = await admin
+      .from("complaints")
+      .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+      .eq("id", complaint.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/**
  * Student self-service profile edit (student.profile.tsx). The RLS self-
  * update policy + guard trigger already restrict a student to their own
  * non-staff-controlled columns, but neither enforces *format* — a raw client
