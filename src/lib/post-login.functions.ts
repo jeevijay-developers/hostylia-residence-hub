@@ -75,6 +75,36 @@ async function linkGuardianProfiles(
   return matches.length;
 }
 
+async function hasGuardianLink(
+  supabaseAdmin: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("guardians")
+    .select("id")
+    .eq("profile_id", userId)
+    .is("deleted_at", null)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data ?? []).length > 0;
+}
+
+/** Linked as a guardian, and no student row is linked to this user. */
+async function isGuardianOnly(
+  supabaseAdmin: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+) {
+  if (!(await hasGuardianLink(supabaseAdmin, userId))) return false;
+  const { data, error } = await supabaseAdmin
+    .from("students")
+    .select("id")
+    .eq("profile_id", userId)
+    .is("deleted_at", null)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data ?? []).length === 0;
+}
+
 async function linkStudentProfiles(
   supabaseAdmin: import("@supabase/supabase-js").SupabaseClient,
   userId: string,
@@ -151,7 +181,12 @@ export const resolvePostLoginDestination = createServerFn({ method: "POST" })
 
     if (authPhone) {
       await linkGuardianProfiles(supabaseAdmin, userId, authPhone);
-      await linkStudentProfiles(supabaseAdmin, userId, authPhone);
+      // A number that belongs to a guardian is that guardian's login, not the
+      // login of a student row that merely lists the same number (data-entry
+      // overlap) — so don't also claim student rows by phone for a guardian.
+      if (!(await hasGuardianLink(supabaseAdmin, userId))) {
+        await linkStudentProfiles(supabaseAdmin, userId, authPhone);
+      }
     }
 
     await activateInvitesForUser(supabase, userId);
@@ -173,6 +208,12 @@ export const resolvePostLoginDestination = createServerFn({ method: "POST" })
         p_tenant_id: tenantId,
       });
       if (roleErr) throw new Error(roleErr.message);
+      // A STUDENT role not backed by a student row linked to this user (e.g.
+      // stamped by an earlier phone match) must not outrank a real guardian
+      // link — otherwise a parent lands in the student flow.
+      if (role === "STUDENT" && (await isGuardianOnly(supabaseAdmin, userId))) {
+        return { kind: "destination", destination: "/parent/overview" };
+      }
       const dest = destinationForRole(role);
       if (dest) return { kind: "destination", destination: dest };
     }
@@ -203,9 +244,27 @@ export const resolvePostLoginDestination = createServerFn({ method: "POST" })
       .limit(1);
     if (guardianRows?.length) return { kind: "destination", destination: "/parent/overview" };
 
-    const signupRole = user.user_metadata?.signup_role as string | undefined;
-    return {
-      kind: "pending",
-      as: signupRole === "STUDENT" ? "student" : "parent",
-    };
+    // Nothing resolved to a dashboard. Decide which "pending" explanation is
+    // true from the records that actually carry this number — never from a
+    // default. (A student whose row is linked to a different profile, e.g. a
+    // legacy duplicate account, used to be told "not linked to a student
+    // profile / guardian" because this fell back to "parent".) No link is
+    // created or reassigned here.
+    return { kind: "pending", as: await inferPendingRole(supabaseAdmin, authPhone, user) };
   });
+
+async function inferPendingRole(
+  supabaseAdmin: import("@supabase/supabase-js").SupabaseClient,
+  authPhone: string | null,
+  user: import("@supabase/supabase-js").User,
+): Promise<"student" | "parent" | undefined> {
+  if (authPhone) {
+    const [{ data: students }, { data: guardians }] = await Promise.all([
+      supabaseAdmin.from("students").select("phone").is("deleted_at", null),
+      supabaseAdmin.from("guardians").select("phone").is("deleted_at", null),
+    ]);
+    if ((students ?? []).some((r) => phoneNumbersMatch(authPhone, r.phone ?? ""))) return "student";
+    if ((guardians ?? []).some((r) => phoneNumbersMatch(authPhone, r.phone ?? ""))) return "parent";
+  }
+  return user.user_metadata?.signup_role === "STUDENT" ? "student" : undefined;
+}

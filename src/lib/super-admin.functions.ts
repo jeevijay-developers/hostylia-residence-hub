@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dispatchNotification } from "@/lib/dispatch-notification";
+import { normalizeIndianPhone } from "@/schemas/auth";
 
 export async function assertSuper(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
@@ -758,7 +759,9 @@ export const createHostelWithAdmin = createServerFn({ method: "POST" })
     // 5. Create Auth User Placeholder (No password, email_confirm: false)
     const { data: createdUser, error: uErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.adminEmail,
-      phone: data.adminPhone || undefined,
+      // Same E.164 form as every other auth.users.phone writer, so the
+      // normalized-phone uniqueness guard sees (and OTP login matches) one identity.
+      phone: data.adminPhone ? normalizeIndianPhone(data.adminPhone) : undefined,
       email_confirm: false,
       phone_confirm: false,
       user_metadata: {
