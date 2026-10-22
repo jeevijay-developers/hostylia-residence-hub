@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DepositLedgerPanel } from "@/components/finance/DepositLedgerPanel";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/accountant/deposit-ledger")({
@@ -16,7 +17,8 @@ function AccDepositLedgerPage() {
       </p>
     );
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader title="Deposit Ledger" description="Security deposit tracking and settlement" />
       <DepositLedgerPanel propertyId={propertyId} />
     </div>
   );
