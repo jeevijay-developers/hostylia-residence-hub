@@ -33,10 +33,17 @@ export function NotificationBell({ className }: { className?: string }) {
   function handleItemClick(n: NotificationRow) {
     const p = (n.payload ?? {}) as Record<string, unknown>;
     const ticketId = p.ticket_id;
+    const refundId = p.refund_id;
     if (typeof ticketId === "string") {
       if (!n.read_at) void markNotificationRead(n.id);
       setOpen(false);
       navigate({ to: "/admin/support/$id", params: { id: ticketId } });
+    } else if (typeof refundId === "string") {
+      // Pending refund approvals live inline on the Revenue & Collections
+      // page (admin.finance.pnl.tsx) — no separate route to deep-link to.
+      if (!n.read_at) void markNotificationRead(n.id);
+      setOpen(false);
+      navigate({ to: "/admin/finance/pnl" });
     }
   }
 
@@ -68,7 +75,8 @@ export function NotificationBell({ className }: { className?: string }) {
                 const p = (n.payload ?? {}) as Record<string, unknown>;
                 const title = String(p.title ?? n.event_type.replaceAll("_", " "));
                 const body = String(p.body ?? p.invoice_number ?? p.complaint_number ?? "");
-                const clickable = typeof p.ticket_id === "string";
+                const clickable =
+                  typeof p.ticket_id === "string" || typeof p.refund_id === "string";
                 const content = (
                   <>
                     <div className="flex justify-between gap-2">
