@@ -11,6 +11,28 @@ import {
   editInvoiceSchema,
 } from "@/schemas/finance";
 
+type FinanceAuditRow = {
+  tenant_id: string;
+  property_id: string | null;
+  actor_user_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  before_data?: Record<string, unknown> | null;
+  after_data?: Record<string, unknown> | null;
+};
+
+/** audit_logs has no client INSERT policy. Service role only, same as student.functions.ts. */
+async function writeFinanceAudit(row: FinanceAuditRow) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("audit_logs").insert(row);
+    if (error) console.warn("[finance] audit_logs insert failed", error.message);
+  } catch (e) {
+    console.warn("[finance] audit_logs insert failed", e);
+  }
+}
+
 /**
  * Create or update a fee plan and its components in one call.
  * Accountant / Hostel Admin only (enforced by RLS).
@@ -257,7 +279,7 @@ export const recordManualPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => recordPaymentSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
 
     const { data: pay, error: pErr } = await supabase
       .rpc("record_manual_payment", {
@@ -277,6 +299,22 @@ export const recordManualPayment = createServerFn({ method: "POST" })
     } catch (e) {
       console.warn("[recordManualPayment] receipt generation failed", e);
     }
+
+    await writeFinanceAudit({
+      tenant_id: pay.tenant_id,
+      property_id: pay.property_id,
+      actor_user_id: userId,
+      action: "MANUAL_PAYMENT_RECORDED",
+      entity_type: "payments",
+      entity_id: pay.id,
+      after_data: {
+        invoice_id: data.invoice_id,
+        amount_paise: data.amount_paise,
+        mode: data.mode,
+        payment_number: pay.payment_number,
+        offline_reference: data.offline_reference || null,
+      },
+    });
 
     return { payment_id: pay.id, payment_number: pay.payment_number };
   });
@@ -315,6 +353,24 @@ export const initiateRefund = createServerFn({ method: "POST" })
       .select("id, refund_number")
       .single();
     if (error) throw new Error(error.message);
+
+    await writeFinanceAudit({
+      tenant_id: pay.tenant_id,
+      property_id: pay.property_id,
+      actor_user_id: userId,
+      action: "REFUND_INITIATED",
+      entity_type: "refunds",
+      entity_id: ref.id,
+      after_data: {
+        payment_id: data.payment_id,
+        amount_paise: data.amount_paise,
+        reason: data.reason,
+        mode: data.mode,
+        status: "PENDING_APPROVAL",
+        refund_number: ref.refund_number,
+      },
+    });
+
     return { refund_id: ref.id, refund_number: ref.refund_number };
   });
 
@@ -326,13 +382,33 @@ export const decideRefund = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => approveRefundSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: out, error } = await supabase.rpc("fn_approve_refund", {
       p_refund_id: data.refund_id,
       p_decision: data.decision,
       p_reason: data.reason || undefined,
     });
     if (error) throw new Error(error.message);
+
+    const refund = Array.isArray(out) ? out[0] : out;
+    if (refund?.id) {
+      await writeFinanceAudit({
+        tenant_id: refund.tenant_id,
+        property_id: refund.property_id,
+        actor_user_id: userId,
+        action: data.decision === "APPROVED" ? "REFUND_APPROVED" : "REFUND_REJECTED",
+        entity_type: "refunds",
+        entity_id: refund.id,
+        after_data: {
+          payment_id: refund.payment_id,
+          amount_paise: refund.amount_paise,
+          status: refund.status,
+          decision: data.decision,
+          reason: data.reason ?? null,
+        },
+      });
+    }
+
     return { ok: true as const, refund: out };
   });
 

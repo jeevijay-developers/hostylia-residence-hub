@@ -715,4 +715,117 @@ SELECT pg_temp.assert_throws(
   'WardenA (no override) still cannot delete a student');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION 14 — Missing tenant-isolation pairs for seeded tables, plus the
+-- private avatar reader set (20261023085038).
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.guardians WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B guardians');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.guardians WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A guardians');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.student_guardians WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B student_guardians');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.student_guardians WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A student_guardians');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B allocations');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.allocations WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A allocations');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.payments WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B payments');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.payments WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A payments');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.fee_plan_components WHERE tenant_id='22222222-2222-2222-2222-222222222222'), 0, 'AdminA cannot see Tenant B fee_plan_components');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.fee_plan_components WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'AdminA sees Tenant A fee_plan_components');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assert_eq(
+  (SELECT CASE WHEN public THEN 1 ELSE 0 END FROM storage.buckets WHERE id = 'avatars'),
+  0,
+  'avatars bucket is private'
+);
+ROLLBACK;
+
+BEGIN;
+-- Probe objects. Inserted as the table owner before assuming a role.
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000021/peer.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000028/other-property.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000013/accountant.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000012/warden-b.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000040/parent.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000101/tenant-b-student.jpg');
+
+SELECT pg_temp.assume_anon();
+SELECT pg_temp.assert_eq(
+  (SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars'),
+  0,
+  'anon cannot read avatars'
+);
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000021/peer.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000028/other-property.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000013/accountant.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000012/warden-b.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000040/parent.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000101/tenant-b-student.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 1, 'Student sees own avatar');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000021/%'), 0, 'Student cannot see a peer avatar');
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000013/accountant.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000040/parent.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant A
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000013/%'), 1, 'Accountant sees own avatar');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 0, 'Accountant cannot see a student avatar');
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000040/parent.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000040/%'), 1, 'Parent sees own avatar');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 0, 'Parent cannot see their child avatar');
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000028/other-property.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000012/warden-b.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000101/tenant-b-student.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden Block A, property A1
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 1, 'Warden sees a student avatar in their property');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000012/%'), 1, 'Warden sees a staff avatar in their property');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000028/%'), 0, 'Warden cannot see a student avatar in another property');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000101/%'), 0, 'Warden cannot see another tenant avatar');
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg'),
+  ('avatars', '00000000-0000-0000-0000-000000000101/tenant-b-student.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 1, 'Hostel admin sees an avatar in their tenant');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000101/%'), 0, 'Hostel admin cannot see another tenant avatar');
+ROLLBACK;
+
+BEGIN;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('avatars', '00000000-0000-0000-0000-000000000020/self.jpg');
+
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- SUPER_ADMIN
+SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 1, 'Super admin sees an avatar');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

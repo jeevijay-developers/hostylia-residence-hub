@@ -81,6 +81,28 @@ const inviteSchema = z.object({
   permissions: staffPermissionsSchema.optional(),
 });
 
+type StaffAuditRow = {
+  tenant_id: string;
+  property_id: string | null;
+  actor_user_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  before_data?: Record<string, unknown> | null;
+  after_data?: Record<string, unknown> | null;
+};
+
+/** audit_logs has no client INSERT policy. Service role only. */
+async function writeStaffAudit(row: StaffAuditRow) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("audit_logs").insert(row);
+    if (error) console.warn("[admin-staff] audit_logs insert failed", error.message);
+  } catch (e) {
+    console.warn("[admin-staff] audit_logs insert failed", e);
+  }
+}
+
 export async function assertAdmin(supabase: any, userId: string, tenantId: string) {
   const { data, error } = await supabase.rpc("has_tenant_role", {
     _user_id: userId,
@@ -402,6 +424,23 @@ export const inviteStaff = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw rErr;
 
+    await writeStaffAudit({
+      tenant_id: data.tenant_id,
+      property_id: data.property_id ?? null,
+      actor_user_id: userId,
+      action: "ROLE_GRANTED",
+      entity_type: "role_assignments",
+      entity_id: ra.id,
+      after_data: {
+        user_id: inviteeId,
+        role: data.role,
+        property_id: data.property_id ?? null,
+        block_id: data.block_id ?? null,
+        is_active: false,
+        permissions: data.permissions ?? {},
+      },
+    });
+
     // Awaited (see the matching comment above) — staff is already saved
     // (tenant_membership + role_assignment above are committed); this only
     // waits for the invite notification job to be queued, not for it to be
@@ -517,18 +556,30 @@ export const revokeStaff = createServerFn({ method: "POST" })
 
     const { data: ra, error: raFetchErr } = await supabase
       .from("role_assignments")
-      .select("id, user_id, property_id")
+      .select("id, user_id, property_id, role, is_active")
       .eq("id", data.role_assignment_id)
       .eq("tenant_id", data.tenant_id)
       .maybeSingle();
     if (raFetchErr || !ra) throw new Error("Staff assignment not found");
 
+    const revokedAt = new Date().toISOString();
     const { error } = await supabase
       .from("role_assignments")
-      .update({ is_active: false, revoked_by: userId, revoked_at: new Date().toISOString() })
+      .update({ is_active: false, revoked_by: userId, revoked_at: revokedAt })
       .eq("id", data.role_assignment_id)
       .eq("tenant_id", data.tenant_id);
     if (error) throw error;
+
+    await writeStaffAudit({
+      tenant_id: data.tenant_id,
+      property_id: ra.property_id,
+      actor_user_id: userId,
+      action: "ROLE_REVOKED",
+      entity_type: "role_assignments",
+      entity_id: ra.id,
+      before_data: { role: ra.role, is_active: ra.is_active, user_id: ra.user_id },
+      after_data: { role: ra.role, is_active: false, revoked_at: revokedAt, user_id: ra.user_id },
+    });
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
