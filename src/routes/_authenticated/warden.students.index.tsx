@@ -8,6 +8,9 @@ import { StudentsListPage } from "@/components/students/StudentsListPage";
 
 export const Route = createFileRoute("/_authenticated/warden/students/")({
   head: () => ({ meta: [{ title: "Students — Hostylia" }] }),
+  validateSearch: (search: Record<string, unknown>): { status?: string } => ({
+    status: typeof search.status === "string" ? search.status : undefined,
+  }),
   component: WardenStudentsRoute,
 });
 
@@ -18,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/warden/students/")({
  * of Admin's always-on access.
  */
 function WardenStudentsRoute() {
+  const { status } = Route.useSearch();
   const { data: resolved } = useResolvedRole();
   const tenantId = resolved?.tenantId ?? null;
   const propQ = useMyStaffProperty(resolved?.userId);
@@ -48,6 +52,7 @@ function WardenStudentsRoute() {
       effectiveProperty={propertyId}
       canCreate={can("students_create")}
       canDelete={can("students_delete")}
+      initialStatusFilter={status}
     />
   );
 }

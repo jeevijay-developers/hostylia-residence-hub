@@ -1130,24 +1130,18 @@ function AdminStaffPage() {
 
   useEffect(() => {
     const handle = setTimeout(() => {
-      if (addMode === "phone") {
-        const trimmedPhone = phone.trim();
-        setDuplicateContact(
-          trimmedPhone && activeContacts.phones.has(normalizeIndianPhone(trimmedPhone))
-            ? "Someone with this phone number already has access to this hostel."
-            : null,
-        );
-      } else {
-        const trimmedEmail = email.trim().toLowerCase();
-        setDuplicateContact(
-          trimmedEmail && activeContacts.emails.has(trimmedEmail)
+      const trimmedPhone = phone.trim();
+      const trimmedEmail = email.trim().toLowerCase();
+      setDuplicateContact(
+        trimmedPhone && activeContacts.phones.has(normalizeIndianPhone(trimmedPhone))
+          ? "Someone with this phone number already has access to this hostel."
+          : trimmedEmail && activeContacts.emails.has(trimmedEmail)
             ? "Someone with this email already has access to this hostel."
             : null,
-        );
-      }
+      );
     }, 400);
     return () => clearTimeout(handle);
-  }, [phone, email, addMode, activeContacts]);
+  }, [phone, email, activeContacts]);
 
   const invite = useMutation({
     mutationFn: () =>
@@ -1174,7 +1168,7 @@ function AdminStaffPage() {
         toast.success("Invitation already pending — resent it.");
       } else {
         toast.success(
-          addMode === "phone"
+          phone.trim()
             ? "Invitation queued — they'll get access once they sign in with this phone number."
             : "Invitation queued — they'll get access once they set up sign-in via the invite email.",
         );
@@ -1257,7 +1251,9 @@ function AdminStaffPage() {
     !phoneError &&
     !!addRole &&
     staffName.trim().length >= 2 &&
-    (addMode === "phone" ? phone.trim() !== "" : email.trim() !== "");
+    // Phone is optional: at least one contact (email or phone) is required, as
+    // inviteStaff enforces server-side.
+    (phone.trim() !== "" || email.trim() !== "");
 
   if (!tenantId) {
     return (
@@ -1453,12 +1449,12 @@ function AdminStaffPage() {
             </div>
 
             {/* Helper text for phone/email */}
-            {addMode === "phone" && phone.trim() && (
+            {phone.trim() && (
               <p className="text-xs text-muted-foreground -mt-2">
                 They sign in with this phone number and a one-time code — no password.
               </p>
             )}
-            {addMode === "email" && email.trim() && (
+            {!phone.trim() && email.trim() && (
               <p className="text-xs text-muted-foreground -mt-2">
                 They'll get an invite email — ask them to use "Forgot password" on first sign-in to set one.
               </p>

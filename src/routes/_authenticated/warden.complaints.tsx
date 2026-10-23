@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Eye, EyeOff, Search } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -39,10 +40,21 @@ import {
 } from "@/schemas/complaint";
 
 export const Route = createFileRoute("/_authenticated/warden/complaints")({
+  // Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
+  validateSearch: z.object({ status: z.literal("PENDING").optional() }),
   component: WardenComplaintsPage,
 });
 
-const STATUS_FILTER_OPTIONS = ["ALL", ...complaintStatusEnum.options];
+// Same set the Daily Brief counts as "Pending Complaints".
+const PENDING_COMPLAINT_STATUSES = [
+  "OPEN",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "WAITING_FOR_STUDENT",
+  "REOPENED",
+];
+
+const STATUS_FILTER_OPTIONS = ["ALL", "PENDING", ...complaintStatusEnum.options];
 const PRIORITY_FILTER_OPTIONS = ["ALL", ...complaintPriorityEnum.options];
 
 function WardenComplaintsPage() {
@@ -53,12 +65,13 @@ function WardenComplaintsPage() {
   const categoriesQ = useComplaintCategories(propertyId);
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
+  const { status: initialStatus } = Route.useSearch();
+  const [status, setStatus] = useState(initialStatus ?? "ALL");
   const [priority, setPriority] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [activeComplaint, setActiveComplaint] = useState<ComplaintWithRelations | null>(null);
 
-  // Warden sees all in-scope complaints via RLS; we sort by SLA urgency.
+  // Warden sees all in-scope complaints via RLS, newest first.
   const all = useComplaints({});
   const scoped = useMemo(
     () => (all.data ?? []).filter((c) => !c.assigned_to || c.assigned_to === userId),
@@ -67,7 +80,8 @@ function WardenComplaintsPage() {
 
   const list = useMemo(() => {
     let l = scoped;
-    if (status !== "ALL") l = l.filter((c) => c.status === status);
+    if (status === "PENDING") l = l.filter((c) => PENDING_COMPLAINT_STATUSES.includes(c.status));
+    else if (status !== "ALL") l = l.filter((c) => c.status === status);
     if (priority !== "ALL") l = l.filter((c) => c.priority === priority);
     if (category !== "ALL") l = l.filter((c) => c.category_id === category);
     const q = search.trim().toLowerCase();
@@ -79,8 +93,10 @@ function WardenComplaintsPage() {
           (c.room_number ?? "").toLowerCase().includes(q),
       );
     }
+    // Newest raised first (created_at DESC), same order as the query — filters
+    // above only narrow the list, they never reorder it.
     return [...l].sort(
-      (a, b) => new Date(a.sla_due_at).getTime() - new Date(b.sla_due_at).getTime(),
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
   }, [scoped, status, priority, category, search]);
 
@@ -104,7 +120,11 @@ function WardenComplaintsPage() {
             <SelectContent>
               {STATUS_FILTER_OPTIONS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s === "ALL" ? "All statuses" : s.replaceAll("_", " ")}
+                  {s === "ALL"
+                    ? "All statuses"
+                    : s === "PENDING"
+                      ? "Pending"
+                      : s.replaceAll("_", " ")}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -5,6 +5,27 @@ import type { Database } from "@/integrations/supabase/types";
 import { indianMobileSchema, normalizeIndianPhone } from "@/schemas/auth";
 import { isDevTestParentPhone } from "@/lib/dev-auth.functions";
 
+export const ALREADY_REGISTERED_MESSAGE =
+  "This phone number is already registered. Please log in with your existing account.";
+
+type PhoneRegistrationState = "none" | "auth_exact" | "auth_variant" | "profile_only" | "unavailable";
+
+async function getPhoneRegistrationState(phone: string): Promise<PhoneRegistrationState> {
+  // Untyped client: phone_registration_state is service-role-only and not part
+  // of the generated Database types.
+  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await admin.rpc("phone_registration_state", { p_phone: phone });
+  if (error) {
+    console.error("phone_registration_state failed", error.message);
+    return "unavailable";
+  }
+  return data === "auth_exact" || data === "auth_variant" || data === "profile_only"
+    ? data
+    : "none";
+}
+
 const OTP_LIMIT = 5;
 const OTP_WINDOW_SECONDS = 600; // 10 minutes
 
@@ -44,26 +65,27 @@ export const sendPhoneOtp = createServerFn({ method: "POST" })
       return { ok: true as const, message: null };
     }
 
-    if (data.intent === "signup") {
-      const admin = createClient<Database>(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } },
-      );
-      // Stored phones aren't guaranteed to carry the leading "+" (same
-      // ambiguity findUserByPhone in dev-auth.functions.ts defends against),
-      // so match either form rather than risk a false "not registered".
-      const { data: existing } = await admin
-        .from("profiles")
-        .select("id")
-        .in("phone", [phone, phone.replace(/^\+/, "")])
-        .limit(1);
-      if (existing && existing.length > 0) {
-        return {
-          ok: false as const,
-          message: "This phone number is already registered. Please sign in instead.",
-        };
-      }
+    // Numbers are stored as "+91…", "91…" and bare 10 digits across the
+    // codebase's history, so the lookup is done in SQL on the normalized
+    // number (phone_registration_state) rather than by exact string.
+    // - signup: any existing account (or profile) with this number is a duplicate.
+    // - login: signInWithOtp would silently create a *second* account when the
+    //   number is only held in another format (auth_variant) or only on a
+    //   profile (profile_only), so those are blocked with the same message.
+    // The DB trigger on profiles remains the concurrency-safe backstop.
+    const registrationState = await getPhoneRegistrationState(phone);
+    if (registrationState === "unavailable") {
+      return {
+        ok: false as const,
+        message: "Could not verify this phone number right now. Please try again.",
+      };
+    }
+    if (
+      (data.intent === "signup" && registrationState !== "none") ||
+      (data.intent === "login" &&
+        (registrationState === "auth_variant" || registrationState === "profile_only"))
+    ) {
+      return { ok: false as const, message: ALREADY_REGISTERED_MESSAGE };
     }
 
     const supabase = createClient<Database>(

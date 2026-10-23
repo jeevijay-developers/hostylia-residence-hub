@@ -313,12 +313,14 @@ export const inviteStaff = createServerFn({ method: "POST" })
       if (p && p.length) inviteeId = p[0].id;
     }
     if (!inviteeId && phone) {
-      const { data: p } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .eq("phone", phone)
-        .limit(1);
-      if (p && p.length) inviteeId = p[0].id;
+      // Profiles hold this number as "+91…", "91…" or bare 10 digits; match on
+      // the normalized number so an existing account is reused instead of a
+      // duplicate one being created (the profiles guard would reject that).
+      const { data: existingId } = await supabaseAdmin.rpc(
+        "find_profile_id_by_phone" as never,
+        { p_phone: phone } as never,
+      );
+      if (typeof existingId === "string") inviteeId = existingId;
     }
 
     // Reusing an existing (e.g. orphaned/partial-invite/test) profile skips

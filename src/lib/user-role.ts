@@ -39,6 +39,27 @@ async function fetchResolvedRole(): Promise<ResolvedRole> {
       p_user_id: user.id,
       p_tenant_id: tenantId,
     });
+    // Same rule as resolvePostLoginDestination: a STUDENT role with no student
+    // row linked to this user, but a real guardian link, is a parent.
+    if (role === "STUDENT") {
+      const [{ data: ownStudent }, { data: ownGuardian }] = await Promise.all([
+        supabase
+          .from("students")
+          .select("id")
+          .eq("profile_id", user.id)
+          .is("deleted_at", null)
+          .limit(1),
+        supabase
+          .from("guardians")
+          .select("id")
+          .eq("profile_id", user.id)
+          .is("deleted_at", null)
+          .limit(1),
+      ]);
+      if (!ownStudent?.length && ownGuardian?.length) {
+        return { role: "PARENT", tenantId: null, userId: user.id };
+      }
+    }
     return { role: (role as AppRole) ?? null, tenantId, userId: user.id };
   }
 
