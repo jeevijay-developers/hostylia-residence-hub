@@ -31,6 +31,7 @@ import { getGreeting } from "@/lib/greeting";
 import { BrandLockup } from "@/components/BrandLockup";
 import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -64,9 +65,7 @@ export function Topbar({
   });
   const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
-  const avatarUrl = ownProfile?.avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl
-    : undefined;
+  const avatarUrl = useAvatarUrl(ownProfile?.avatar_path);
   const { data: resolved } = useResolvedRole();
   const isAccountant = resolved?.role === "ACCOUNTANT";
   const isAdmin = resolved?.role === "HOSTEL_ADMIN";
@@ -197,62 +196,71 @@ export function Topbar({
           </h1>
         </div>
       ) : (
-      <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
-        <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          {!isParent && !isWarden && !isAccountant && !isAdmin && crumbs.map((c, i) => {
-            if (i === 0 && crumbs.length > 1) return null;
+        <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
+          <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            {!isParent &&
+              !isWarden &&
+              !isAccountant &&
+              !isAdmin &&
+              crumbs.map((c, i) => {
+                if (i === 0 && crumbs.length > 1) return null;
 
-            const path = "/" + crumbs.slice(0, i + 1).join("/");
-            const isLast = i === crumbs.length - 1;
-            const isId = UUID_RE.test(c) || /^\d+$/.test(c);
-            const label = isId ? c : c.replace(/-/g, " ");
-            const isFirstVisible = i === 1 || crumbs.length === 1;
-            const crumbClasses = cn(
-              "min-w-0 truncate",
-              isId
-                ? "max-w-[64px] sm:max-w-[110px]"
-                : "max-w-[140px] shrink sm:max-w-none sm:shrink-0",
-              isId ? "" : "capitalize",
-            );
-            return (
-              <li
-                key={path}
-                className={cn("flex min-w-0 items-center gap-1.5", !isLast && "hidden sm:flex")}
-              >
-                {!isFirstVisible && (
-                  <span className="hidden shrink-0 text-muted-foreground/50 sm:inline">/</span>
-                )}
-                {isLast ? (
-                  <span className={cn(crumbClasses, "font-semibold text-foreground")} title={label}>
-                    {label}
-                  </span>
-                ) : (
-                  <Link
-                    to={path}
-                    className={cn(crumbClasses, "hover:text-foreground")}
-                    title={label}
+                const path = "/" + crumbs.slice(0, i + 1).join("/");
+                const isLast = i === crumbs.length - 1;
+                const isId = UUID_RE.test(c) || /^\d+$/.test(c);
+                const label = isId ? c : c.replace(/-/g, " ");
+                const isFirstVisible = i === 1 || crumbs.length === 1;
+                const crumbClasses = cn(
+                  "min-w-0 truncate",
+                  isId
+                    ? "max-w-[64px] sm:max-w-[110px]"
+                    : "max-w-[140px] shrink sm:max-w-none sm:shrink-0",
+                  isId ? "" : "capitalize",
+                );
+                return (
+                  <li
+                    key={path}
+                    className={cn("flex min-w-0 items-center gap-1.5", !isLast && "hidden sm:flex")}
                   >
-                    {label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+                    {!isFirstVisible && (
+                      <span className="hidden shrink-0 text-muted-foreground/50 sm:inline">/</span>
+                    )}
+                    {isLast ? (
+                      <span
+                        className={cn(crumbClasses, "font-semibold text-foreground")}
+                        title={label}
+                      >
+                        {label}
+                      </span>
+                    ) : (
+                      <Link
+                        to={path}
+                        className={cn(crumbClasses, "hover:text-foreground")}
+                        title={label}
+                      >
+                        {label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+          </ol>
+        </nav>
       )}
 
-      {!isStudentHome && !isStudent && <button
-        type="button"
-        onClick={() => setSearchOpen(true)}
-        className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
-      >
-        <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">Search…</span>
-        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
-          Ctrl K
-        </kbd>
-      </button>}
+      {!isStudentHome && !isStudent && (
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="hidden items-center gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-muted/70 hover:text-foreground md:flex md:w-72"
+        >
+          <Search className="h-4 w-4" />
+          <span className="flex-1 text-left">Search…</span>
+          <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+            Ctrl K
+          </kbd>
+        </button>
+      )}
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search pages…" />
@@ -365,7 +373,9 @@ export function Topbar({
       <SignOutDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title={isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out?" : undefined}
+        title={
+          isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out?" : undefined
+        }
         confirmLabel={
           isAdmin || isWarden || isStudent || isAccountant || isParent ? "Sign out" : undefined
         }

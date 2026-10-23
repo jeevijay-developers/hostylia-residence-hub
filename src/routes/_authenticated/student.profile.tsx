@@ -52,6 +52,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
@@ -264,6 +265,13 @@ function StudentProfilePage() {
       return data;
     },
   });
+
+  // Called unconditionally here, before the loading/not-found early returns
+  // below — the hooks-order rule means this can't live next to
+  // `displayAvatarUrl` further down, past those returns.
+  const displayAvatarUrl = useAvatarUrl(
+    mode === "edit" ? avatarPath : (studentQ.data?.photo_path ?? profileQ.data?.avatar_path),
+  );
 
   const authUserQ = useQuery({
     queryKey: ["student-auth-user", userId],
@@ -564,7 +572,10 @@ function StudentProfilePage() {
       setAvatarPath(s.photo_path || p.avatar_path);
 
       const addr = (p.address ?? null) as {
-        line1?: string; city?: string; state?: string; pincode?: string;
+        line1?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
       } | null;
       setAddrLine1(addr?.line1 ?? "");
       setAddrCity(addr?.city ?? "");
@@ -631,16 +642,6 @@ function StudentProfilePage() {
 
   const isActive = s.status === "ACTIVE";
   const initial = (mode === "edit" ? fullName : s.full_name).trim()[0]?.toUpperCase() ?? "S";
-  const displayAvatarUrl =
-    mode === "edit"
-      ? avatarPath
-        ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-        : undefined
-      : s.photo_path
-        ? supabase.storage.from("avatars").getPublicUrl(s.photo_path).data.publicUrl
-        : prof.avatar_path
-          ? supabase.storage.from("avatars").getPublicUrl(prof.avatar_path).data.publicUrl
-          : undefined;
 
   const isEmailVerified = !!authUser?.email_confirmed_at;
   const lastLogin = authUser?.last_sign_in_at
@@ -661,10 +662,13 @@ function StudentProfilePage() {
     : undefined;
 
   const genderDisplay =
-    s.gender === "MALE" ? "Male"
-    : s.gender === "FEMALE" ? "Female"
-    : s.gender === "OTHER" ? "Other"
-    : (s.gender ?? undefined);
+    s.gender === "MALE"
+      ? "Male"
+      : s.gender === "FEMALE"
+        ? "Female"
+        : s.gender === "OTHER"
+          ? "Other"
+          : (s.gender ?? undefined);
 
   const joiningFormatted = s.joined_at
     ? new Date(s.joined_at).toLocaleDateString(undefined, {
@@ -676,7 +680,10 @@ function StudentProfilePage() {
 
   const addrDisplay = (() => {
     const addr = (prof.address ?? null) as {
-      line1?: string; city?: string; state?: string; pincode?: string;
+      line1?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
     } | null;
     if (!addr) return null;
     return [addr.line1, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ") || null;
@@ -687,7 +694,6 @@ function StudentProfilePage() {
   return (
     <StudentModuleGuard module="profile">
       <div className="flex flex-col gap-4 pb-8 max-w-[1200px]">
-
         {/* ══════════════════════════════════════════════════
             PROFILE HEADER
         ══════════════════════════════════════════════════ */}
@@ -840,25 +846,52 @@ function StudentProfilePage() {
             MULTI-COLUMN SECTION GRID
         ══════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
           {/* ── PERSONAL INFORMATION ── */}
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
             <SectionHeader icon={User} title="Personal Information" tone="info" />
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
               {fieldsEditable ? (
                 <>
-                  <EditField label="Full Name" htmlFor="s-name" error={editErrors.full_name} className="py-1">
-                    <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Full Name"
+                    htmlFor="s-name"
+                    error={editErrors.full_name}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                   <FieldRow icon={Lock} label="Student ID" value={s.admission_number} />
-                  
-                  <EditField label="Date of Birth" htmlFor="s-dob" error={editErrors.date_of_birth} className="py-1">
-                    <Input id="s-dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="h-8 text-sm" />
+
+                  <EditField
+                    label="Date of Birth"
+                    htmlFor="s-dob"
+                    error={editErrors.date_of_birth}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-dob"
+                      type="date"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
-                  
-                  <EditField label="Gender" htmlFor="s-gender" error={editErrors.gender} className="py-1">
+
+                  <EditField
+                    label="Gender"
+                    htmlFor="s-gender"
+                    error={editErrors.gender}
+                    className="py-1"
+                  >
                     <Select value={gender} onValueChange={setGender}>
-                      <SelectTrigger id="s-gender" className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger id="s-gender" className="h-8 text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="MALE">Male</SelectItem>
                         <SelectItem value="FEMALE">Female</SelectItem>
@@ -867,20 +900,50 @@ function StudentProfilePage() {
                     </Select>
                   </EditField>
 
-                  <EditField label="Mobile Number" htmlFor="s-phone" error={editErrors.phone} className="py-1">
-                    <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Mobile Number"
+                    htmlFor="s-phone"
+                    error={editErrors.phone}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
 
-                  <EditField label="Email" htmlFor="s-email" error={editErrors.email} className="py-1">
-                    <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Email"
+                    htmlFor="s-email"
+                    error={editErrors.email}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
 
-                  <EditField label="Blood Group" htmlFor="s-blood" error={editErrors.blood_group} className="py-1">
+                  <EditField
+                    label="Blood Group"
+                    htmlFor="s-blood"
+                    error={editErrors.blood_group}
+                    className="py-1"
+                  >
                     <Select value={bloodGroup} onValueChange={setBloodGroup}>
-                      <SelectTrigger id="s-blood" className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectTrigger id="s-blood" className="h-8 text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
                       <SelectContent>
                         {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                          <SelectItem key={bg} value={bg}>
+                            {bg}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -906,14 +969,44 @@ function StudentProfilePage() {
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
               {fieldsEditable ? (
                 <>
-                  <EditField label="Institute" htmlFor="s-inst" error={editErrors.academic_institute} className="py-1 col-span-1 sm:col-span-2">
-                    <Input id="s-inst" value={academicInstitute} onChange={(e) => setAcademicInstitute(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Institute"
+                    htmlFor="s-inst"
+                    error={editErrors.academic_institute}
+                    className="py-1 col-span-1 sm:col-span-2"
+                  >
+                    <Input
+                      id="s-inst"
+                      value={academicInstitute}
+                      onChange={(e) => setAcademicInstitute(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
-                  <EditField label="Course" htmlFor="s-course" error={editErrors.course_name} className="py-1">
-                    <Input id="s-course" value={courseName} onChange={(e) => setCourseName(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Course"
+                    htmlFor="s-course"
+                    error={editErrors.course_name}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-course"
+                      value={courseName}
+                      onChange={(e) => setCourseName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
-                  <EditField label="Academic Year / Batch" htmlFor="s-batch" error={editErrors.academic_year} className="py-1">
-                    <Input id="s-batch" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Academic Year / Batch"
+                    htmlFor="s-batch"
+                    error={editErrors.academic_year}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-batch"
+                      value={academicYear}
+                      onChange={(e) => setAcademicYear(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                 </>
               ) : (
@@ -922,7 +1015,11 @@ function StudentProfilePage() {
                     <FieldRow icon={Building2} label="Institute" value={s.academic_institute} />
                   </div>
                   <FieldRow icon={BookOpen} label="Course" value={s.course_name} />
-                  <FieldRow icon={CalendarDays} label="Academic Year / Batch" value={s.academic_year} />
+                  <FieldRow
+                    icon={CalendarDays}
+                    label="Academic Year / Batch"
+                    value={s.academic_year}
+                  />
                 </>
               )}
             </CardContent>
@@ -934,33 +1031,82 @@ function StudentProfilePage() {
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
               {fieldsEditable ? (
                 <>
-                  <EditField label="Emergency Contact Name" htmlFor="s-ecname" error={editErrors.emergency_contact_name} className="py-1">
-                    <Input id="s-ecname" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Emergency Contact Name"
+                    htmlFor="s-ecname"
+                    error={editErrors.emergency_contact_name}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-ecname"
+                      value={emergencyContactName}
+                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
-                  <EditField label="Emergency Contact Phone" htmlFor="s-ecphone" error={editErrors.emergency_contact_number} className="py-1">
-                    <Input id="s-ecphone" value={emergencyContactNumber} onChange={(e) => setEmergencyContactNumber(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Emergency Contact Phone"
+                    htmlFor="s-ecphone"
+                    error={editErrors.emergency_contact_number}
+                    className="py-1"
+                  >
+                    <Input
+                      id="s-ecphone"
+                      value={emergencyContactNumber}
+                      onChange={(e) => setEmergencyContactNumber(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
 
                   <div className="col-span-1 sm:col-span-2">
                     <EditField label="Address" htmlFor="s-addr1" className="py-1">
-                      <Input id="s-addr1" placeholder="Street address" value={addrLine1} onChange={(e) => setAddrLine1(e.target.value)} className="h-8 text-sm" />
+                      <Input
+                        id="s-addr1"
+                        placeholder="Street address"
+                        value={addrLine1}
+                        onChange={(e) => setAddrLine1(e.target.value)}
+                        className="h-8 text-sm"
+                      />
                     </EditField>
                   </div>
-                  
+
                   <EditField label="City" htmlFor="s-city" className="py-1">
-                    <Input id="s-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="s-city"
+                      value={addrCity}
+                      onChange={(e) => setAddrCity(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                   <EditField label="State" htmlFor="s-state" className="py-1">
-                    <Input id="s-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="s-state"
+                      value={addrState}
+                      onChange={(e) => setAddrState(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                   <EditField label="Pincode" htmlFor="s-pin" className="py-1">
-                    <Input id="s-pin" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="s-pin"
+                      value={addrPincode}
+                      onChange={(e) => setAddrPincode(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                 </>
               ) : (
                 <>
-                  <FieldRow icon={User} label="Emergency Contact Name" value={prof.emergency_contact_name} />
-                  <FieldRow icon={Phone} label="Emergency Contact Phone" value={prof.emergency_contact_number} />
+                  <FieldRow
+                    icon={User}
+                    label="Emergency Contact Name"
+                    value={prof.emergency_contact_name}
+                  />
+                  <FieldRow
+                    icon={Phone}
+                    label="Emergency Contact Phone"
+                    value={prof.emergency_contact_number}
+                  />
                   <div className="col-span-1 sm:col-span-2">
                     <FieldRow icon={MapPin} label="Address" value={addrDisplay} />
                   </div>
@@ -990,7 +1136,6 @@ function StudentProfilePage() {
             <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
               <SectionHeader icon={ShieldCheck} title="Account & Security" tone="warning" />
               <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
-
                 <div className="flex flex-col gap-0.5 py-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     <Mail className="h-3 w-3 shrink-0" />
@@ -1011,7 +1156,21 @@ function StudentProfilePage() {
                 </div>
 
                 <FieldRow icon={Clock} label="Last Login" value={lastLogin} />
-                <FieldRow icon={ShieldCheck} label="Account Status" value={<span className={isActive ? "font-semibold text-emerald-500" : "font-semibold text-muted-foreground"}>{isActive ? "Active" : s.status}</span>} />
+                <FieldRow
+                  icon={ShieldCheck}
+                  label="Account Status"
+                  value={
+                    <span
+                      className={
+                        isActive
+                          ? "font-semibold text-emerald-500"
+                          : "font-semibold text-muted-foreground"
+                      }
+                    >
+                      {isActive ? "Active" : s.status}
+                    </span>
+                  }
+                />
 
                 {/* Password row */}
                 <div className="flex flex-col gap-0.5 py-2">
@@ -1033,9 +1192,13 @@ function StudentProfilePage() {
                       className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
                     >
                       {showPasswordForm ? (
-                        <><ChevronUp className="h-3.5 w-3.5" /> Hide Password Form</>
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" /> Hide Password Form
+                        </>
                       ) : (
-                        <><ChevronDown className="h-3.5 w-3.5" /> Change Password</>
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" /> Change Password
+                        </>
                       )}
                     </button>
                   )}
@@ -1050,29 +1213,98 @@ function StudentProfilePage() {
                     </p>
 
                     <div className="space-y-1">
-                      <Label htmlFor="pw-current" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current Password</Label>
-                      <PasswordInput id="pw-current" autoComplete="current-password" placeholder="Enter current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="h-8 text-sm" />
-                      {pwErrors.currentPassword && <p className="text-xs text-destructive">{pwErrors.currentPassword}</p>}
+                      <Label
+                        htmlFor="pw-current"
+                        className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        Current Password
+                      </Label>
+                      <PasswordInput
+                        id="pw-current"
+                        autoComplete="current-password"
+                        placeholder="Enter current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {pwErrors.currentPassword && (
+                        <p className="text-xs text-destructive">{pwErrors.currentPassword}</p>
+                      )}
                     </div>
 
                     <div className="space-y-1">
-                      <Label htmlFor="pw-new" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">New Password</Label>
-                      <PasswordInput id="pw-new" autoComplete="new-password" placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8 text-sm" />
-                      {pwErrors.password && <p className="text-xs text-destructive">{pwErrors.password}</p>}
+                      <Label
+                        htmlFor="pw-new"
+                        className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        New Password
+                      </Label>
+                      <PasswordInput
+                        id="pw-new"
+                        autoComplete="new-password"
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {pwErrors.password && (
+                        <p className="text-xs text-destructive">{pwErrors.password}</p>
+                      )}
                     </div>
 
                     <div className="space-y-1">
-                      <Label htmlFor="pw-confirm" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Confirm Password</Label>
-                      <PasswordInput id="pw-confirm" autoComplete="new-password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-8 text-sm" />
-                      {pwErrors.confirmPassword && <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>}
+                      <Label
+                        htmlFor="pw-confirm"
+                        className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        Confirm Password
+                      </Label>
+                      <PasswordInput
+                        id="pw-confirm"
+                        autoComplete="new-password"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {pwErrors.confirmPassword && (
+                        <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPwErrors({}); setShowPasswordForm(false); }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => {
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmPassword("");
+                          setPwErrors({});
+                          setShowPasswordForm(false);
+                        }}
+                      >
                         <X className="h-3.5 w-3.5" /> Cancel
                       </Button>
-                      <Button size="sm" id="student-profile-update-password-btn" className="h-8 text-xs" disabled={changePassword.isPending || !currentPassword || !newPassword || !confirmPassword} onClick={() => changePassword.mutate()}>
-                        {changePassword.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Update Password
+                      <Button
+                        size="sm"
+                        id="student-profile-update-password-btn"
+                        className="h-8 text-xs"
+                        disabled={
+                          changePassword.isPending ||
+                          !currentPassword ||
+                          !newPassword ||
+                          !confirmPassword
+                        }
+                        onClick={() => changePassword.mutate()}
+                      >
+                        {changePassword.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <KeyRound className="h-3.5 w-3.5" />
+                        )}{" "}
+                        Update Password
                       </Button>
                     </div>
                   </div>
@@ -1095,7 +1327,13 @@ function StudentProfilePage() {
                     Your last submission was rejected — please upload again.
                   </p>
                 )}
-                <KycUploadForm tenantId={s.tenant_id} propertyId={s.property_id} studentId={s.id} existingDocs={docs} onUploaded={() => docsQ.refetch()} />
+                <KycUploadForm
+                  tenantId={s.tenant_id}
+                  propertyId={s.property_id}
+                  studentId={s.id}
+                  existingDocs={docs}
+                  onUploaded={() => docsQ.refetch()}
+                />
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -1120,7 +1358,6 @@ function StudentProfilePage() {
             )}
           </DialogContent>
         </Dialog>
-
       </div>
     </StudentModuleGuard>
   );

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normalizeIndianPhone } from "@/schemas/auth";
+import { emailSchema, normalizeIndianPhone } from "@/schemas/auth";
 import { dispatchNotification } from "@/lib/dispatch-notification";
 
 // The independently-RLS'd finance resources an Accountant has by default and
@@ -74,7 +74,9 @@ const inviteSchema = z.object({
   property_id: z.string().uuid().nullable().optional(),
   block_id: z.string().uuid().nullable().optional(),
   full_name: z.string().trim().min(2).max(120).nullable().optional(),
-  email: z.string().email().nullable().optional(),
+  // Required — see inviteStaff: email is the one contact every invite must
+  // have, phone stays optional.
+  email: emailSchema,
   phone: z.string().trim().min(6).nullable().optional(),
   role: z.enum(["WARDEN", "ACCOUNTANT"]),
   // Omitted/empty = use the role's default access, unchanged.
@@ -270,53 +272,56 @@ export const inviteStaff = createServerFn({ method: "POST" })
   .validator((d) => inviteSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (!data.email && !data.phone) throw new Error("email or phone required");
     await assertAdmin(supabase, userId, data.tenant_id);
 
     // Login matches auth.users.phone by exact string — a bare 10-digit
     // number stored here would silently never match "+91…" typed at sign-in.
     const phone = data.phone ? normalizeIndianPhone(data.phone) : null;
+    const email = data.email.trim().toLowerCase();
 
-    // Resolve invitee by email/phone (may not exist yet). `profiles` RLS only
-    // allows reading your own row, so looking up someone else's by contact
-    // info needs the service-role client, not the request-scoped `supabase`.
+    // Resolve by email/phone (may not exist yet). `profiles` RLS only allows
+    // reading your own row, so looking up someone else's by contact info
+    // needs the service-role client, not the request-scoped `supabase`.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let inviteeId: string | null = null;
-    if (data.email) {
-      const { data: p } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .eq("email", data.email)
-        .limit(1);
-      if (p && p.length) inviteeId = p[0].id;
-    }
-    if (!inviteeId && phone) {
-      // Profiles hold this number as "+91…", "91…" or bare 10 digits; match on
-      // the normalized number so an existing account is reused instead of a
-      // duplicate one being created (the profiles guard would reject that).
+
+    const { data: byEmail } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email", email)
+      .limit(1);
+    const emailProfileId: string | null = byEmail?.[0]?.id ?? null;
+
+    let phoneProfileId: string | null = null;
+    if (phone) {
+      // Profiles hold this number as "+91…", "91…" or bare 10 digits — match
+      // on the normalized number (same lookup phone-uniqueness elsewhere
+      // uses) so an already-registered number is never missed.
       const { data: existingId } = await supabaseAdmin.rpc(
         "find_profile_id_by_phone" as never,
         { p_phone: phone } as never,
       );
-      if (typeof existingId === "string") inviteeId = existingId;
+      if (typeof existingId === "string") phoneProfileId = existingId;
     }
 
-    // Reusing an existing (e.g. orphaned/partial-invite/test) profile skips
-    // the createUser call below, which is the only place full_name otherwise
-    // gets set — so the name the admin just typed here would silently be
-    // dropped in favor of whatever (often garbage, from earlier testing)
-    // name the shell profile already had. The admin typing a name in this
-    // form is a deliberate act — it should always win.
-    if (inviteeId && data.full_name) {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ full_name: data.full_name })
-        .eq("id", inviteeId);
+    // Email and phone must belong to the same (possibly nonexistent) person.
+    // Either one matching a *different* existing account is a real conflict
+    // — reject outright rather than silently attaching a new role to
+    // whichever account happened to match (that used to be possible, and is
+    // exactly how one account ends up holding two unrelated roles).
+    if (phoneProfileId && (!emailProfileId || phoneProfileId !== emailProfileId)) {
+      throw new Error("This mobile number is already registered.");
     }
+
+    let inviteeId: string | null = emailProfileId;
 
     // Duplicate handling: an already-ACTIVE assignment for this exact
     // person+role+tenant is a real conflict; an already-PENDING one just
-    // means "resend", not "create a second invite".
+    // means "resend", not "create a second invite". Any other existing
+    // profile match (no assignment at all for this role+tenant — e.g. an
+    // Admin's own email, or someone with a different role entirely) is
+    // rejected outright, with no write to that person's profile at all —
+    // checked *before* touching full_name, so a rejected attempt can never
+    // have the side effect of renaming someone else's account.
     if (inviteeId) {
       const { data: existingRa } = await supabase
         .from("role_assignments")
@@ -332,6 +337,21 @@ export const inviteStaff = createServerFn({ method: "POST" })
         throw new Error("This person already has active access for this role.");
       }
       if (existing && !existing.is_active) {
+        // Reusing an existing (e.g. orphaned/partial-invite/test) profile
+        // skips the createUser call below, which is the only place
+        // full_name otherwise gets set — so the name the admin just typed
+        // here would silently be dropped in favor of whatever (often
+        // garbage, from earlier testing) name the shell profile already
+        // had. The admin typing a name in this form is a deliberate act —
+        // it should always win. Only reached for a genuine resend (we
+        // already know this is the same pending invite), never for a
+        // rejected duplicate.
+        if (data.full_name) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({ full_name: data.full_name })
+            .eq("id", inviteeId);
+        }
         // Awaited, but never blocks meaningfully — sendStaffInviteNotification
         // (and the send-notification edge function it calls) only waits for
         // the notification job to be queued, never for actual email/SMS
@@ -341,7 +361,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
         // the response is sent, silently dropping the invite notification.
         await sendStaffInviteNotification(supabase, {
           inviteeId,
-          email: data.email ?? null,
+          email,
           phone,
           role: data.role,
           tenantId: data.tenant_id,
@@ -350,26 +370,35 @@ export const inviteStaff = createServerFn({ method: "POST" })
         });
         return { role_assignment_id: existing.id, invitee_id: inviteeId, resent: true as const };
       }
+      throw new Error("This email is already registered.");
     }
 
-    if (!inviteeId) {
-      // Store pending invite via admin (needs to insert a role_assignments row we can flip later).
-      // Requires a real user_id, so we create a placeholder profile via admin client.
-      const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
-        email: data.email ?? undefined,
-        phone: phone ?? undefined,
-        email_confirm: false,
-        phone_confirm: false,
-        user_metadata: {
-          full_name: data.full_name ?? undefined,
-          invited_role: data.role,
-          invited_tenant: data.tenant_id,
-        },
-      });
-      if (cErr) throw cErr;
-      inviteeId = created.user?.id ?? null;
-      if (!inviteeId) throw new Error("could not create invitee");
+    // Brand new person. createUser enforces email uniqueness natively
+    // (auth.users), and the normalized-phone-uniqueness guard on `profiles`
+    // (fired by the on_auth_user_created -> handle_new_user trigger) catches
+    // a genuinely concurrent duplicate that raced past the checks above —
+    // translated to the same friendly messages used for the pre-checks.
+    const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      phone: phone ?? undefined,
+      email_confirm: false,
+      phone_confirm: false,
+      user_metadata: {
+        full_name: data.full_name ?? undefined,
+        invited_role: data.role,
+        invited_tenant: data.tenant_id,
+      },
+    });
+    if (cErr) {
+      const msg = cErr.message.toLowerCase();
+      if (msg.includes("phone")) throw new Error("This mobile number is already registered.");
+      if (msg.includes("email") || msg.includes("already registered")) {
+        throw new Error("This email is already registered.");
+      }
+      throw cErr;
     }
+    inviteeId = created.user?.id ?? null;
+    if (!inviteeId) throw new Error("could not create invitee");
 
     // tenant_memberships — INVITED, not ACTIVE. `activateMyInvites` flips
     // this (and joined_at) to ACTIVE on the invitee's first real sign-in.
@@ -410,7 +439,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
     // delivered, and can never fail or meaningfully slow down this response.
     await sendStaffInviteNotification(supabase, {
       inviteeId,
-      email: data.email ?? null,
+      email,
       phone,
       role: data.role,
       tenantId: data.tenant_id,

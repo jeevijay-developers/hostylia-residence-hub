@@ -33,6 +33,7 @@ import { useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
@@ -128,6 +129,10 @@ function WardenAttendancePage() {
     }
     return list;
   }, [roster, statusFilter, roomFilter, search, effective]);
+
+  // One signed-URL request for every visible student's photo, instead of one
+  // per row.
+  const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
@@ -268,9 +273,7 @@ function WardenAttendancePage() {
           const saved = currentMap[s.id];
           const needsRemark = st !== "PRESENT";
           const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
-          const avatarUrl = s.photo_path
-            ? supabase.storage.from("avatars").getPublicUrl(s.photo_path).data.publicUrl
-            : undefined;
+          const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
           const missingRemark = needsRemark && !remarkValue.trim();
           const isOpen = expandedIds[s.id] ?? missingRemark;
           const tone = STATUS_TONE[st];

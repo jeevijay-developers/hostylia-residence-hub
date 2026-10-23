@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { accountantProfileEditSchema } from "@/schemas/profile";
 
@@ -27,6 +28,7 @@ function AccountantProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const avatarUrl = useAvatarUrl(avatarPath);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const profileQ = useQuery({
@@ -115,9 +117,6 @@ function AccountantProfileEditPage() {
   if (profileQ.isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const initial = fullName.trim()[0]?.toUpperCase() ?? "A";
-  const avatarUrl = avatarPath
-    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-    : undefined;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -173,22 +172,14 @@ function AccountantProfileEditPage() {
             <Label htmlFor="a-name" className="text-xs">
               Full Name
             </Label>
-            <Input
-              id="a-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
+            <Input id="a-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             {errors.fullName ? <p className="text-xs text-destructive">{errors.fullName}</p> : null}
           </div>
           <div className="space-y-1">
             <Label htmlFor="a-phone" className="text-xs">
               Phone
             </Label>
-            <Input
-              id="a-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <Input id="a-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             {errors.phone ? <p className="text-xs text-destructive">{errors.phone}</p> : null}
           </div>
           <div className="space-y-1">

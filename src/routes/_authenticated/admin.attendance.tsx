@@ -41,6 +41,7 @@ import { usePropertyStore } from "@/stores/property-store";
 import { useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
 
@@ -116,6 +117,10 @@ function AdminAttendancePage() {
     }
     return list;
   }, [roster, statusFilter, roomFilter, search, effective]);
+
+  // One signed-URL request for every visible student's photo, instead of one
+  // per row.
+  const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, ON_LEAVE: 0 };
@@ -251,8 +256,12 @@ function AdminAttendancePage() {
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Total</p>
-              <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">{summary.total}</p>
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
+                Total
+              </p>
+              <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {summary.total}
+              </p>
             </div>
           </div>
 
@@ -261,8 +270,12 @@ function AdminAttendancePage() {
               <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Present</p>
-              <p className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary.PRESENT}</p>
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
+                Present
+              </p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {summary.PRESENT}
+              </p>
             </div>
           </div>
 
@@ -271,8 +284,12 @@ function AdminAttendancePage() {
               <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">Absent</p>
-              <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">{summary.ABSENT}</p>
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
+                Absent
+              </p>
+              <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">
+                {summary.ABSENT}
+              </p>
             </div>
           </div>
 
@@ -281,8 +298,12 @@ function AdminAttendancePage() {
               <UserMinus className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">On leave</p>
-              <p className="text-lg sm:text-2xl font-bold text-rose-600 dark:text-rose-400">{summary.ON_LEAVE}</p>
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
+                On leave
+              </p>
+              <p className="text-lg sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
+                {summary.ON_LEAVE}
+              </p>
             </div>
           </div>
         </div>
@@ -341,15 +362,15 @@ function AdminAttendancePage() {
             const saved = currentMap[s.id];
             const needsRemark = st !== "PRESENT";
             const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
-            const avatarUrl = s.photo_path
-              ? supabase.storage.from("avatars").getPublicUrl(s.photo_path).data.publicUrl
-              : undefined;
+            const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
             return (
               <div
                 key={s.id}
                 className={cn(
                   "space-y-3 p-4 transition-colors hover:bg-accent/20",
-                  needsRemark && !remarkValue.trim() && "border-l-4 border-rose-500/80 bg-rose-500/5",
+                  needsRemark &&
+                    !remarkValue.trim() &&
+                    "border-l-4 border-rose-500/80 bg-rose-500/5",
                 )}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -361,7 +382,9 @@ function AdminAttendancePage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="font-semibold text-foreground text-sm truncate">{s.full_name}</div>
+                      <div className="font-semibold text-foreground text-sm truncate">
+                        {s.full_name}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {s.admission_number}
                         {s.roomNumber ? ` · Room ${s.roomNumber}` : ""}
@@ -369,7 +392,10 @@ function AdminAttendancePage() {
                       </div>
                       {saved && (
                         <div className="mt-1">
-                          <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          >
                             Saved: {STATUS_LABEL[saved.status] ?? saved.status}
                             {saved.notes ? ` — ${saved.notes}` : ""}
                           </Badge>
@@ -437,7 +463,9 @@ function AdminAttendancePage() {
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => !v && setPendingDelete(null)}>
         <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete attendance record?</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">
+              Delete attendance record?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
               This clears {pendingDelete?.name}'s attendance for {date} back to unmarked. This can't
               be undone.
@@ -458,4 +486,3 @@ function AdminAttendancePage() {
     </div>
   );
 }
-

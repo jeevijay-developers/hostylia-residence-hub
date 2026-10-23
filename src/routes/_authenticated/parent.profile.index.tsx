@@ -42,6 +42,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { displayIndianPhone } from "@/schemas/auth";
 import { changePasswordSchema } from "@/schemas/auth";
@@ -159,18 +160,19 @@ function ParentProfilePage() {
   // guardian-details "Save changes" button.)
   const [uploading, setUploading] = useState(false);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const displayAvatarUrl = useAvatarUrl(avatarPath);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
 
   // ── Edit form fields ──
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [occupation, setOccupation] = useState("");
-  
+
   const [addrLine1, setAddrLine1] = useState("");
   const [addrCity, setAddrCity] = useState("");
   const [addrState, setAddrState] = useState("");
   const [addrPincode, setAddrPincode] = useState("");
-  
+
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   // ── Password fields ──
@@ -210,7 +212,9 @@ function ParentProfilePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("student_guardians")
-        .select("relationship, is_emergency_contact, is_primary, student_id, students(id, full_name, admission_number, status, property_id, joined_at)")
+        .select(
+          "relationship, is_emergency_contact, is_primary, student_id, students(id, full_name, admission_number, status, property_id, joined_at)",
+        )
         .eq("guardian_id", guardianQ.data!.id)
         .is("unlinked_at", null);
       if (error) throw error;
@@ -337,7 +341,7 @@ function ParentProfilePage() {
       const d = parsed.data;
 
       const hasAddress = d.address && Object.values(d.address).some((v) => v);
-      
+
       const { error } = await supabase
         .from("guardians")
         .update({
@@ -424,7 +428,10 @@ function ParentProfilePage() {
       setOccupation(g.occupation ?? "");
 
       const addr = (g.address ?? null) as {
-        line1?: string; city?: string; state?: string; pincode?: string;
+        line1?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
       } | null;
       setAddrLine1(addr?.line1 ?? "");
       setAddrCity(addr?.city ?? "");
@@ -467,9 +474,6 @@ function ParentProfilePage() {
   const authUser = authUserQ.data;
 
   const initial = (mode === "edit" ? fullName : g.full_name).trim()[0]?.toUpperCase() ?? "P";
-  const displayAvatarUrl = avatarPath
-    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-    : undefined;
   const isActive = g.portal_access_enabled && g.status !== "INACTIVE";
 
   const isEmailVerified = !!authUser?.email_confirmed_at;
@@ -485,7 +489,10 @@ function ParentProfilePage() {
 
   const addrDisplay = (() => {
     const addr = (g.address ?? null) as {
-      line1?: string; city?: string; state?: string; pincode?: string;
+      line1?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
     } | null;
     if (!addr) return null;
     return [addr.line1, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ") || null;
@@ -495,7 +502,6 @@ function ParentProfilePage() {
 
   return (
     <div className="flex flex-col gap-4 pb-8 max-w-[1200px]">
-
       {/* ══════════════════════════════════════════════════
           PROFILE HEADER
       ══════════════════════════════════════════════════ */}
@@ -565,9 +571,7 @@ function ParentProfilePage() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-lg font-bold text-foreground sm:text-xl">
-                {g.full_name}
-              </p>
+              <p className="truncate text-lg font-bold text-foreground sm:text-xl">{g.full_name}</p>
               <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 Parent
                 {isActive && (
@@ -584,13 +588,16 @@ function ParentProfilePage() {
                 {primaryStudent && (
                   <p className="flex items-center gap-1.5">
                     <User className="h-3 w-3 shrink-0" />
-                    Student: <span className="font-medium text-foreground">{primaryStudent.full_name}</span>
+                    Student:{" "}
+                    <span className="font-medium text-foreground">{primaryStudent.full_name}</span>
                   </p>
                 )}
                 {g.phone && (
                   <p className="flex items-center gap-1.5">
                     <Phone className="h-3 w-3 shrink-0" />
-                    <span className="font-medium text-foreground">{displayIndianPhone(g.phone)}</span>
+                    <span className="font-medium text-foreground">
+                      {displayIndianPhone(g.phone)}
+                    </span>
                   </p>
                 )}
               </div>
@@ -600,11 +607,7 @@ function ParentProfilePage() {
           {/* Header buttons */}
           <div className="relative flex shrink-0 gap-2">
             {mode === "view" ? (
-              <Button
-                size="sm"
-                id="parent-profile-edit-btn"
-                onClick={() => setMode("edit")}
-              >
+              <Button size="sm" id="parent-profile-edit-btn" onClick={() => setMode("edit")}>
                 <UserRoundPen className="h-4 w-4" />
                 Edit Profile
               </Button>
@@ -637,7 +640,6 @@ function ParentProfilePage() {
           MULTI-COLUMN SECTION GRID
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
         <div className="flex flex-col gap-4">
           {/* ── PERSONAL INFORMATION ── */}
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
@@ -645,23 +647,55 @@ function ParentProfilePage() {
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-1 px-5 pb-5 pt-1">
               {mode === "edit" ? (
                 <>
-                  <EditField label="Full Name" htmlFor="p-name" error={editErrors.fullName} className="py-1 col-span-1 sm:col-span-2">
-                    <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Full Name"
+                    htmlFor="p-name"
+                    error={editErrors.fullName}
+                    className="py-1 col-span-1 sm:col-span-2"
+                  >
+                    <Input
+                      id="p-name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
-                  <FieldRow icon={Users} label="Relationship with Student" value={relationshipLabel} />
-                  
-                  {/* Phone is intentionally read-only as per SSO rules */}
-                  <FieldRow icon={Lock} label="Mobile Number" value={g.phone ? displayIndianPhone(g.phone) : "—"} />
+                  <FieldRow
+                    icon={Users}
+                    label="Relationship with Student"
+                    value={relationshipLabel}
+                  />
 
-                  <EditField label="Occupation" htmlFor="p-occ" error={editErrors.occupation} className="py-1 col-span-1 sm:col-span-2">
-                    <Input id="p-occ" value={occupation} onChange={(e) => setOccupation(e.target.value)} className="h-8 text-sm" />
+                  {/* Phone is intentionally read-only as per SSO rules */}
+                  <FieldRow
+                    icon={Lock}
+                    label="Mobile Number"
+                    value={g.phone ? displayIndianPhone(g.phone) : "—"}
+                  />
+
+                  <EditField
+                    label="Occupation"
+                    htmlFor="p-occ"
+                    error={editErrors.occupation}
+                    className="py-1 col-span-1 sm:col-span-2"
+                  >
+                    <Input
+                      id="p-occ"
+                      value={occupation}
+                      onChange={(e) => setOccupation(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                 </>
               ) : (
                 <>
                   <FieldRow icon={UserRoundPen} label="Full Name" value={g.full_name} />
                   <FieldRow icon={Users} label="Relationship" value={relationshipLabel} />
-                  <FieldRow icon={Phone} label="Mobile Number" value={g.phone ? displayIndianPhone(g.phone) : undefined} />
+                  <FieldRow
+                    icon={Phone}
+                    label="Mobile Number"
+                    value={g.phone ? displayIndianPhone(g.phone) : undefined}
+                  />
                   <FieldRow icon={User} label="Occupation" value={g.occupation} />
                 </>
               )}
@@ -676,18 +710,39 @@ function ParentProfilePage() {
                 <>
                   <div className="col-span-1 sm:col-span-2">
                     <EditField label="Address" htmlFor="p-addr1" className="py-1">
-                      <Input id="p-addr1" placeholder="Street address" value={addrLine1} onChange={(e) => setAddrLine1(e.target.value)} className="h-8 text-sm" />
+                      <Input
+                        id="p-addr1"
+                        placeholder="Street address"
+                        value={addrLine1}
+                        onChange={(e) => setAddrLine1(e.target.value)}
+                        className="h-8 text-sm"
+                      />
                     </EditField>
                   </div>
-                  
+
                   <EditField label="City" htmlFor="p-city" className="py-1">
-                    <Input id="p-city" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="p-city"
+                      value={addrCity}
+                      onChange={(e) => setAddrCity(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                   <EditField label="State" htmlFor="p-state" className="py-1">
-                    <Input id="p-state" value={addrState} onChange={(e) => setAddrState(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="p-state"
+                      value={addrState}
+                      onChange={(e) => setAddrState(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                   <EditField label="Pincode" htmlFor="p-pin" className="py-1">
-                    <Input id="p-pin" value={addrPincode} onChange={(e) => setAddrPincode(e.target.value)} className="h-8 text-sm" />
+                    <Input
+                      id="p-pin"
+                      value={addrPincode}
+                      onChange={(e) => setAddrPincode(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                 </>
               ) : (
@@ -704,11 +759,21 @@ function ParentProfilePage() {
           <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
             <SectionHeader icon={ShieldCheck} title="Account & Security" tone="warning" />
             <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
-
               {mode === "edit" ? (
                 <div className="py-2">
-                  <EditField label="Auth Email" htmlFor="p-email" error={editErrors.email} className="py-1">
-                    <Input id="p-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-8 text-sm" />
+                  <EditField
+                    label="Auth Email"
+                    htmlFor="p-email"
+                    error={editErrors.email}
+                    className="py-1"
+                  >
+                    <Input
+                      id="p-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-8 text-sm"
+                    />
                   </EditField>
                 </div>
               ) : (
@@ -733,7 +798,21 @@ function ParentProfilePage() {
               )}
 
               <FieldRow icon={Clock} label="Last Login" value={lastLogin} />
-              <FieldRow icon={ShieldCheck} label="Account Status" value={<span className={isActive ? "font-semibold text-emerald-500" : "font-semibold text-muted-foreground"}>{isActive ? "Active" : g.status}</span>} />
+              <FieldRow
+                icon={ShieldCheck}
+                label="Account Status"
+                value={
+                  <span
+                    className={
+                      isActive
+                        ? "font-semibold text-emerald-500"
+                        : "font-semibold text-muted-foreground"
+                    }
+                  >
+                    {isActive ? "Active" : g.status}
+                  </span>
+                }
+              />
 
               {/* Password row */}
               <div className="flex flex-col gap-0.5 py-2">
@@ -755,9 +834,13 @@ function ParentProfilePage() {
                     className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
                   >
                     {showPasswordForm ? (
-                      <><ChevronUp className="h-3.5 w-3.5" /> Hide Password Form</>
+                      <>
+                        <ChevronUp className="h-3.5 w-3.5" /> Hide Password Form
+                      </>
                     ) : (
-                      <><ChevronDown className="h-3.5 w-3.5" /> Change Password</>
+                      <>
+                        <ChevronDown className="h-3.5 w-3.5" /> Change Password
+                      </>
                     )}
                   </button>
                 )}
@@ -772,29 +855,98 @@ function ParentProfilePage() {
                   </p>
 
                   <div className="space-y-1">
-                    <Label htmlFor="pw-current" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current Password</Label>
-                    <PasswordInput id="pw-current" autoComplete="current-password" placeholder="Enter current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="h-8 text-sm" />
-                    {pwErrors.currentPassword && <p className="text-xs text-destructive">{pwErrors.currentPassword}</p>}
+                    <Label
+                      htmlFor="pw-current"
+                      className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      Current Password
+                    </Label>
+                    <PasswordInput
+                      id="pw-current"
+                      autoComplete="current-password"
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    {pwErrors.currentPassword && (
+                      <p className="text-xs text-destructive">{pwErrors.currentPassword}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="pw-new" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">New Password</Label>
-                    <PasswordInput id="pw-new" autoComplete="new-password" placeholder="Enter new password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8 text-sm" />
-                    {pwErrors.password && <p className="text-xs text-destructive">{pwErrors.password}</p>}
+                    <Label
+                      htmlFor="pw-new"
+                      className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      New Password
+                    </Label>
+                    <PasswordInput
+                      id="pw-new"
+                      autoComplete="new-password"
+                      placeholder="Enter new password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    {pwErrors.password && (
+                      <p className="text-xs text-destructive">{pwErrors.password}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="pw-confirm" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Confirm Password</Label>
-                    <PasswordInput id="pw-confirm" autoComplete="new-password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-8 text-sm" />
-                    {pwErrors.confirmPassword && <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>}
+                    <Label
+                      htmlFor="pw-confirm"
+                      className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      Confirm Password
+                    </Label>
+                    <PasswordInput
+                      id="pw-confirm"
+                      autoComplete="new-password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    {pwErrors.confirmPassword && (
+                      <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPwErrors({}); setShowPasswordForm(false); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                        setPwErrors({});
+                        setShowPasswordForm(false);
+                      }}
+                    >
                       <X className="h-3.5 w-3.5" /> Cancel
                     </Button>
-                    <Button size="sm" id="parent-profile-update-password-btn" className="h-8 text-xs" disabled={changePassword.isPending || !currentPassword || !newPassword || !confirmPassword} onClick={() => changePassword.mutate()}>
-                      {changePassword.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Update Password
+                    <Button
+                      size="sm"
+                      id="parent-profile-update-password-btn"
+                      className="h-8 text-xs"
+                      disabled={
+                        changePassword.isPending ||
+                        !currentPassword ||
+                        !newPassword ||
+                        !confirmPassword
+                      }
+                      onClick={() => changePassword.mutate()}
+                    >
+                      {changePassword.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-3.5 w-3.5" />
+                      )}{" "}
+                      Update Password
                     </Button>
                   </div>
                 </div>
@@ -821,7 +973,6 @@ function ParentProfilePage() {
               </CardContent>
             </Card>
           )}
-
         </div>
       </div>
 
@@ -880,9 +1031,7 @@ function StudentDetailItem({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("allocations")
-        .select(
-          "id, status, bed:beds(code, room:rooms(room_number), block:blocks(name))",
-        )
+        .select("id, status, bed:beds(code, room:rooms(room_number), block:blocks(name))")
         .eq("student_id", student.id)
         .in("status", OPEN_ALLOCATION_STATUSES)
         .order("created_at", { ascending: false })
@@ -908,7 +1057,9 @@ function StudentDetailItem({
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/40">
         <div>
           <p className="font-semibold text-foreground text-sm">{student.full_name}</p>
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{relationship || "Student"}</p>
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            {relationship || "Student"}
+          </p>
         </div>
         <Badge
           variant="outline"
@@ -924,7 +1075,12 @@ function StudentDetailItem({
       <div className="grid grid-cols-2 gap-3 pt-3">
         <FieldRow icon={User} label="Student ID" value={student.admission_number} truncate />
         <FieldRow icon={Building2} label="Property" value={propertyName} truncate />
-        <FieldRow icon={Building2} label="Block & Room" value={bed ? `${blockName} · ${roomNumber}` : "—"} truncate />
+        <FieldRow
+          icon={Building2}
+          label="Block & Room"
+          value={bed ? `${blockName} · ${roomNumber}` : "—"}
+          truncate
+        />
         <FieldRow icon={BedDouble} label="Bed" value={bedCode} truncate />
       </div>
     </div>

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { accountantProfileEditSchema } from "@/schemas/profile";
 import { changePasswordSchema } from "@/schemas/auth";
@@ -197,6 +198,11 @@ function AccountantProfilePage() {
       return data;
     },
   });
+
+  // Called unconditionally here, before the loading/not-found early returns
+  // below — the hooks-order rule means this can't live next to
+  // `displayAvatarUrl` further down, past those returns.
+  const displayAvatarUrl = useAvatarUrl(mode === "edit" ? avatarPath : profileQ.data?.avatar_path);
 
   const assignmentQ = useQuery({
     queryKey: ["accountant-assignment", userId],
@@ -417,7 +423,10 @@ function AccountantProfilePage() {
       setEmergencyContactNumber(p.emergency_contact_number ?? "");
       setAvatarPath(p.avatar_path);
       const addr = (p.address ?? null) as {
-        line1?: string; city?: string; state?: string; pincode?: string;
+        line1?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
       } | null;
       setAddrLine1(addr?.line1 ?? "");
       setAddrCity(addr?.city ?? "");
@@ -461,14 +470,6 @@ function AccountantProfilePage() {
   const isActive = a?.is_active ?? true;
 
   const initial = (mode === "edit" ? fullName : p.full_name).trim()[0]?.toUpperCase() ?? "A";
-  const displayAvatarUrl =
-    mode === "edit"
-      ? avatarPath
-        ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-        : undefined
-      : p.avatar_path
-        ? supabase.storage.from("avatars").getPublicUrl(p.avatar_path).data.publicUrl
-        : undefined;
 
   const authUser = authUserQ.data;
   const isEmailVerified = !!authUser?.email_confirmed_at;
@@ -482,7 +483,10 @@ function AccountantProfilePage() {
   // Read-only address display
   const addrDisplay = (() => {
     const addr = (p.address ?? null) as {
-      line1?: string; city?: string; state?: string; pincode?: string;
+      line1?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
     } | null;
     if (!addr) return null;
     return [addr.line1, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ") || null;
@@ -492,7 +496,6 @@ function AccountantProfilePage() {
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-
       {/* ══════════════════════════════════════════════════
           PROFILE HEADER
       ══════════════════════════════════════════════════ */}
@@ -568,9 +571,7 @@ function AccountantProfilePage() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-lg font-bold text-foreground sm:text-xl">
-                {p.full_name}
-              </p>
+              <p className="truncate text-lg font-bold text-foreground sm:text-xl">{p.full_name}</p>
               <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 Accountant
                 {isActive && (
@@ -630,14 +631,18 @@ function AccountantProfilePage() {
           THREE-COLUMN SECTION GRID
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-
         {/* ── CONTACT & IDENTITY ── */}
         <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
           <SectionHeader icon={User} title="Contact & Identity" tone="info" />
           <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
             {fieldsEditable ? (
               <>
-                <EditField label="Full Name" htmlFor="ac-name" error={editErrors.fullName} className="py-2">
+                <EditField
+                  label="Full Name"
+                  htmlFor="ac-name"
+                  error={editErrors.fullName}
+                  className="py-2"
+                >
                   <Input
                     id="ac-name"
                     value={fullName}
@@ -651,7 +656,12 @@ function AccountantProfilePage() {
                 <FieldRow icon={Lock} label="Role" value="Accountant" />
                 <FieldRow icon={Building2} label="Assigned Property" value={propertyName} />
 
-                <EditField label="Phone Number" htmlFor="ac-phone" error={editErrors.phone} className="py-2">
+                <EditField
+                  label="Phone Number"
+                  htmlFor="ac-phone"
+                  error={editErrors.phone}
+                  className="py-2"
+                >
                   <Input
                     id="ac-phone"
                     placeholder="Enter phone number"
@@ -683,7 +693,12 @@ function AccountantProfilePage() {
           <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
             {fieldsEditable ? (
               <>
-                <EditField label="Alternate Phone" htmlFor="ac-altphone" error={editErrors.alternatePhone} className="py-2">
+                <EditField
+                  label="Alternate Phone"
+                  htmlFor="ac-altphone"
+                  error={editErrors.alternatePhone}
+                  className="py-2"
+                >
                   <Input
                     id="ac-altphone"
                     placeholder="Enter alternate phone"
@@ -693,7 +708,12 @@ function AccountantProfilePage() {
                   />
                 </EditField>
 
-                <EditField label="Date of Birth" htmlFor="ac-dob" error={editErrors.dateOfBirth} className="py-2">
+                <EditField
+                  label="Date of Birth"
+                  htmlFor="ac-dob"
+                  error={editErrors.dateOfBirth}
+                  className="py-2"
+                >
                   <Input
                     id="ac-dob"
                     type="date"
@@ -703,7 +723,12 @@ function AccountantProfilePage() {
                   />
                 </EditField>
 
-                <EditField label="Gender" htmlFor="ac-gender" error={editErrors.gender} className="py-2">
+                <EditField
+                  label="Gender"
+                  htmlFor="ac-gender"
+                  error={editErrors.gender}
+                  className="py-2"
+                >
                   <Select value={gender} onValueChange={setGender}>
                     <SelectTrigger id="ac-gender" className="h-8 text-sm">
                       <SelectValue placeholder="Select gender" />
@@ -716,20 +741,32 @@ function AccountantProfilePage() {
                   </Select>
                 </EditField>
 
-                <EditField label="Blood Group" htmlFor="ac-blood" error={editErrors.bloodGroup} className="py-2">
+                <EditField
+                  label="Blood Group"
+                  htmlFor="ac-blood"
+                  error={editErrors.bloodGroup}
+                  className="py-2"
+                >
                   <Select value={bloodGroup} onValueChange={setBloodGroup}>
                     <SelectTrigger id="ac-blood" className="h-8 text-sm">
                       <SelectValue placeholder="Select blood group" />
                     </SelectTrigger>
                     <SelectContent>
                       {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
-                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                        <SelectItem key={bg} value={bg}>
+                          {bg}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </EditField>
 
-                <EditField label="Emergency Contact Name" htmlFor="ac-ecname" error={editErrors.emergencyContactName} className="py-2">
+                <EditField
+                  label="Emergency Contact Name"
+                  htmlFor="ac-ecname"
+                  error={editErrors.emergencyContactName}
+                  className="py-2"
+                >
                   <Input
                     id="ac-ecname"
                     placeholder="Enter contact name"
@@ -739,7 +776,12 @@ function AccountantProfilePage() {
                   />
                 </EditField>
 
-                <EditField label="Emergency Contact Number" htmlFor="ac-ecnumber" error={editErrors.emergencyContactNumber} className="py-2">
+                <EditField
+                  label="Emergency Contact Number"
+                  htmlFor="ac-ecnumber"
+                  error={editErrors.emergencyContactNumber}
+                  className="py-2"
+                >
                   <Input
                     id="ac-ecnumber"
                     placeholder="Enter contact number"
@@ -797,15 +839,21 @@ function AccountantProfilePage() {
                   icon={Calendar}
                   label="Date of Birth"
                   value={
-                    p.date_of_birth
-                      ? new Date(p.date_of_birth).toLocaleDateString()
-                      : undefined
+                    p.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : undefined
                   }
                 />
                 <FieldRow icon={User} label="Gender" value={p.gender} />
                 <FieldRow icon={Droplet} label="Blood Group" value={p.blood_group} />
-                <FieldRow icon={User} label="Emergency Contact Name" value={p.emergency_contact_name} />
-                <FieldRow icon={Phone} label="Emergency Contact Number" value={p.emergency_contact_number} />
+                <FieldRow
+                  icon={User}
+                  label="Emergency Contact Name"
+                  value={p.emergency_contact_name}
+                />
+                <FieldRow
+                  icon={Phone}
+                  label="Emergency Contact Number"
+                  value={p.emergency_contact_number}
+                />
                 <FieldRow icon={MapPin} label="Address" value={addrDisplay} />
               </>
             )}
@@ -816,7 +864,6 @@ function AccountantProfilePage() {
         <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
           <SectionHeader icon={ShieldCheck} title="Account & Security" tone="warning" />
           <CardContent className="flex flex-col divide-y divide-border/40 px-5 pb-4 pt-1">
-
             {/* Email */}
             <div className="flex flex-col gap-0.5 py-2">
               <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -867,9 +914,13 @@ function AccountantProfilePage() {
                   className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
                 >
                   {showPasswordForm ? (
-                    <><ChevronUp className="h-3.5 w-3.5" /> Hide Password Form</>
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" /> Hide Password Form
+                    </>
                   ) : (
-                    <><ChevronDown className="h-3.5 w-3.5" /> Change Password</>
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" /> Change Password
+                    </>
                   )}
                 </button>
               )}
@@ -884,7 +935,10 @@ function AccountantProfilePage() {
                 </p>
 
                 <div className="space-y-1">
-                  <Label htmlFor="pw-current" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="pw-current"
+                    className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >
                     Current Password
                   </Label>
                   <PasswordInput
@@ -901,7 +955,10 @@ function AccountantProfilePage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="pw-new" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="pw-new"
+                    className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >
                     New Password
                   </Label>
                   <PasswordInput
@@ -918,7 +975,10 @@ function AccountantProfilePage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="pw-confirm" className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="pw-confirm"
+                    className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                  >
                     Confirm Password
                   </Label>
                   <PasswordInput

@@ -3,7 +3,7 @@ import { CalendarClock, CheckCircle2, EyeOff, UserCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PriorityBadge, SlaBadge, StatusBadge, slaAccentBorderClass } from "./SlaBadge";
-import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrl } from "@/lib/avatar";
 import { slaMeta, useResolvedByLabel, type ComplaintWithRelations } from "@/lib/complaint";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -25,9 +25,7 @@ export function ComplaintCard({
    */
   identityVisibility?: "default" | "full" | "strict";
 }) {
-  const avatarUrl = complaint.student_avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(complaint.student_avatar_path).data.publicUrl
-    : undefined;
+  const avatarUrl = useAvatarUrl(complaint.student_avatar_path);
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
   const resolvedByLabel = useResolvedByLabel(complaint.resolved_by);
   const isAnonymous = identityVisibility === "full" ? false : complaint.is_anonymous;
