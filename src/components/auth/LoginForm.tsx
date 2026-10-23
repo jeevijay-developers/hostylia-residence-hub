@@ -20,6 +20,7 @@ import {
   type EmailLoginInput,
   type PhoneLoginInput,
 } from "@/schemas/auth";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 
@@ -61,6 +62,7 @@ function PhoneForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const captcha = useCaptchaToken();
   const {
     register,
     handleSubmit,
@@ -76,20 +78,22 @@ function PhoneForm() {
   const phoneField = register("phone");
 
   const onSubmit = async (values: PhoneLoginInput) => {
+    if (!captcha.token) {
+      toast.error("Complete the captcha to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       const phone = normalizeIndianPhone(values.phone);
-      const result = await sendPhoneOtp({ data: { phone } });
+      const result = await sendPhoneOtp({ data: { phone, captchaToken: captcha.token } });
       if (!result.ok) {
+        captcha.reset();
         toast.error(result.message ?? "Could not send OTP. Please try again.");
         return;
       }
       navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {
-      // Truly unexpected failures (network, etc.) still land here — server-fn
-      // errors don't always round-trip as a plain Error with a populated
-      // `.message` (TanStack Start's serializer can drop it), so log the raw
-      // value too instead of just showing a blank/"{}" toast.
+      captcha.reset();
       console.error("sendPhoneOtp failed:", err);
       const message =
         err instanceof Error && err.message ? err.message : "Could not send OTP. Please try again.";
@@ -125,7 +129,12 @@ function PhoneForm() {
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
       </div>
-      <Button type="submit" disabled={submitting || !phoneValid} className="min-h-11 w-full">
+      <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+      <Button
+        type="submit"
+        disabled={submitting || !phoneValid || !captcha.token}
+        className="min-h-11 w-full"
+      >
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         {t("auth.sendCode")}
       </Button>
@@ -137,6 +146,7 @@ function EmailForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const captcha = useCaptchaToken();
   const {
     register,
     handleSubmit,
@@ -150,13 +160,19 @@ function EmailForm() {
   const email = watch("email");
 
   const onSubmit = async (values: EmailLoginInput) => {
+    if (!captcha.token) {
+      toast.error("Complete the captcha to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
+        options: { captchaToken: captcha.token },
       });
       if (error) {
+        captcha.reset();
         toast.error(error.message);
         return;
       }
@@ -168,6 +184,7 @@ function EmailForm() {
       }
       navigate({ to: "/post-login" });
     } catch (err) {
+      captcha.reset();
       const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
       toast.error(message);
     } finally {
@@ -211,7 +228,8 @@ function EmailForm() {
           </p>
         ) : null}
       </div>
-      <Button type="submit" disabled={submitting} className="min-h-11 w-full">
+      <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+      <Button type="submit" disabled={submitting || !captcha.token} className="min-h-11 w-full">
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
         {t("auth.signIn")}
       </Button>

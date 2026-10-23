@@ -24,7 +24,7 @@ const rooms = [
 
 const statusStyle: Record<string, string> = {
   vacant:
-    "bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] text-[color:var(--trust-green)] border-[color-mix(in_oklab,var(--trust-green)_40%,transparent)]",
+    "bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] text-trust-green border-[color-mix(in_oklab,var(--trust-green)_40%,transparent)]",
   occupied:
     "bg-[color-mix(in_oklab,var(--brand-blue)_28%,transparent)] text-white border-[color-mix(in_oklab,var(--brand-blue)_55%,transparent)]",
   maintenance:
@@ -58,9 +58,9 @@ export function HeroDashboard() {
               <div className="text-sm font-bold text-white">Room Status</div>
             </div>
             <div className="flex gap-3 text-[10px] font-semibold text-soft-grey">
-              <Legend color="bg-[color:var(--trust-green)]" label="Vacant" />
-              <Legend color="bg-[color:var(--brand-blue)]" label="Occupied" />
-              <Legend color="bg-[color:var(--gold)]" label="Maint." />
+              <Legend color="bg-trust-green" label="Vacant" />
+              <Legend color="bg-brand-blue" label="Occupied" />
+              <Legend color="bg-gold" label="Maint." />
               <Legend color="bg-[#E55353]" label="Alert" />
             </div>
           </div>
@@ -88,7 +88,7 @@ export function HeroDashboard() {
               Rahul S. exited campus at 6:42 PM · Gate Pass #2148
             </div>
           </div>
-          <span className="ml-auto rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[color:var(--trust-green)]">
+          <span className="ml-auto rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] px-2 py-0.5 text-[10px] font-bold text-trust-green">
             Delivered
           </span>
         </div>
@@ -110,8 +110,8 @@ function Stat({
 }) {
   const colors = {
     teal: "text-soft-teal",
-    green: "text-[color:var(--trust-green)]",
-    blue: "text-[color:var(--brand-blue)]",
+    green: "text-trust-green",
+    blue: "text-brand-blue",
     gold: "text-gold",
   }[tone];
   return (

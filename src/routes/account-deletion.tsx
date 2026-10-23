@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalUrl, PUBLIC_EMAIL, PUBLIC_EMAIL_MAILTO } from "@/lib/site";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { LegalCompanyCard, LegalSection, LegalTocNav } from "@/components/site/LegalLayout";
 
@@ -26,9 +27,9 @@ export const Route = createFileRoute("/account-deletion")({
         property: "og:description",
         content: "How students, parents and wardens can request account deletion.",
       },
-      { property: "og:url", content: "/account-deletion" },
+      { property: "og:url", content: canonicalUrl("/account-deletion") },
     ],
-    links: [{ rel: "canonical", href: "/account-deletion" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/account-deletion") }],
   }),
   component: AccountDeletionPage,
 });
@@ -64,10 +65,10 @@ function AccountDeletionPage() {
                   <li>
                     Email{" "}
                     <a
-                      href="mailto:team@hostylia.com?subject=Hostylia%20account%20deletion%20request"
+                      href={`${PUBLIC_EMAIL_MAILTO}?subject=Hostylia%20account%20deletion%20request`}
                       className="text-soft-teal hover:underline"
                     >
-                      team@hostylia.com
+                      {PUBLIC_EMAIL}
                     </a>{" "}
                     from the same phone or email used to sign in. Include your full name, role
                     (student / parent / warden / staff), and the mobile number on the account.

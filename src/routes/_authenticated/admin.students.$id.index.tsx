@@ -138,11 +138,11 @@ function StudentDetailPage() {
         </Link>
       </Button>
 
-      <Card className="overflow-hidden rounded-2xl lg:bg-gradient-to-br lg:from-primary/[0.06] lg:to-transparent">
+      <Card className="overflow-hidden rounded-2xl lg:bg-linear-to-br lg:from-primary/[0.06] lg:to-transparent">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:p-7">
           <div className="flex min-w-0 items-center gap-4 lg:gap-5">
             <div
-              className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-1 ring-primary/20 lg:h-16 lg:w-16 lg:bg-gradient-to-br lg:from-primary lg:to-info lg:text-xl lg:text-primary-foreground lg:ring-2 lg:ring-primary/25"
+              className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/15 text-lg font-semibold text-primary ring-1 ring-primary/20 lg:h-16 lg:w-16 lg:bg-linear-to-br lg:from-primary lg:to-info lg:text-xl lg:text-primary-foreground lg:ring-2 lg:ring-primary/25"
               aria-hidden="true"
             >
               {initialsOf(s.full_name)}

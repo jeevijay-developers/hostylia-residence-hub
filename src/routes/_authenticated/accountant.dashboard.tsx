@@ -461,7 +461,7 @@ function RecentPaymentsCard({
           />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/80">
-            <table className="w-full max-sm:min-w-[640px] text-sm">
+            <table className="w-full max-sm:min-w-160 text-sm">
               <thead className="border-b border-border/80 bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5">Student</th>

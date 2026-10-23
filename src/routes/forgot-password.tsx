@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ function ForgotPasswordPage() {
   const { email: prefilledEmail } = Route.useSearch();
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const captcha = useCaptchaToken();
   const {
     register,
     handleSubmit,
@@ -45,17 +47,24 @@ function ForgotPasswordPage() {
   });
 
   const onSubmit = async (values: ForgotPasswordInput) => {
+    if (!captcha.token) {
+      toast.error("Complete the captcha to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${window.location.origin}/reset-password`,
+        captchaToken: captcha.token,
       });
       if (error) {
+        captcha.reset();
         toast.error(error.message);
         return;
       }
       setSentTo(values.email);
     } catch (err) {
+      captcha.reset();
       const message =
         err instanceof Error ? err.message : "Could not send reset link. Please try again.";
       toast.error(message);
@@ -104,7 +113,8 @@ function ForgotPasswordPage() {
             </p>
           ) : null}
         </div>
-        <Button type="submit" disabled={submitting} className="min-h-11 w-full">
+        <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+        <Button type="submit" disabled={submitting || !captcha.token} className="min-h-11 w-full">
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {t("auth.sendResetLink")}
         </Button>

@@ -1762,7 +1762,7 @@ function AdminStaffPage() {
             <Button
               disabled={!canUpdate}
               onClick={() => update.mutate()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
             >
               {update.isPending ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" /> : null}
               {update.isPending ? "Saving…" : "Save"}

@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import {
   IndianRupee,
   ReceiptText,
@@ -64,9 +65,9 @@ export const Route = createFileRoute("/features")({
         property: "og:description",
         content: "Every feature your residential operations need, in one platform.",
       },
-      { property: "og:url", content: "/features" },
+      { property: "og:url", content: canonicalUrl("/features") },
     ],
-    links: [{ rel: "canonical", href: "/features" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/features") }],
   }),
   component: FeaturesPage,
 });
@@ -191,7 +192,6 @@ function FeaturesPage() {
               { v: "92%", l: "On-time collection" },
               { v: "3 min", l: "Daily attendance" },
               { v: "100%", l: "Parent reach" },
-              { v: "10k+", l: "Beds managed" },
             ]}
           />
         </div>

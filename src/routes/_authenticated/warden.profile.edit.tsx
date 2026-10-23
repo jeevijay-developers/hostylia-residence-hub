@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
 import { useResolvedRole } from "@/lib/user-role";
 import { wardenProfileEditSchema } from "@/schemas/profile";
 
@@ -166,6 +167,8 @@ function WardenProfileEditPage() {
     },
   });
 
+  const avatarUrl = useSignedAvatarUrl(avatarPath);
+
   if (profileQ.isLoading) {
     return (
       <div className="space-y-6">
@@ -175,9 +178,6 @@ function WardenProfileEditPage() {
   }
 
   const initial = fullName.trim()[0]?.toUpperCase() ?? "W";
-  const avatarUrl = avatarPath
-    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-    : undefined;
 
   return (
     <div className="flex h-full flex-col gap-3">

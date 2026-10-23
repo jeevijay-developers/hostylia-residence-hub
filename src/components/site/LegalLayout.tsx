@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 import { Mail, MapPin, Phone, Building2 } from "lucide-react";
+import {
+  PUBLIC_EMAIL,
+  PUBLIC_EMAIL_MAILTO,
+  PUBLIC_PHONE_DISPLAY,
+  PUBLIC_PHONE_TEL,
+} from "@/lib/site";
 
 export function LegalCompanyCard() {
   return (
@@ -26,14 +32,14 @@ export function LegalCompanyCard() {
         </div>
         <div className="flex items-start gap-2 text-sm text-soft-grey">
           <Mail size={14} className="mt-0.5 text-soft-teal" />
-          <a href="mailto:team@hostylia.com" className="hover:text-foreground">
-            team@hostylia.com
+          <a href={PUBLIC_EMAIL_MAILTO} className="hover:text-foreground">
+            {PUBLIC_EMAIL}
           </a>
         </div>
         <div className="flex items-start gap-2 text-sm text-soft-grey">
           <Phone size={14} className="mt-0.5 text-soft-teal" />
-          <a href="tel:+918619483010" className="hover:text-foreground">
-            +91 86194 83010
+          <a href={PUBLIC_PHONE_TEL} className="hover:text-foreground">
+            {PUBLIC_PHONE_DISPLAY}
           </a>
         </div>
       </div>

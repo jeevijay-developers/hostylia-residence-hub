@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import {
   Target,
   Heart,
@@ -33,9 +34,9 @@ export const Route = createFileRoute("/about")({
       },
       { property: "og:title", content: "About — Hostylia" },
       { property: "og:description", content: "Our mission and the team behind Hostylia." },
-      { property: "og:url", content: "/about" },
+      { property: "og:url", content: canonicalUrl("/about") },
     ],
-    links: [{ rel: "canonical", href: "/about" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/about") }],
   }),
   component: AboutPage,
 });
@@ -79,8 +80,6 @@ function AboutPage() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <StatBand
             stats={[
-              { v: "120+", l: "Properties live" },
-              { v: "65,000", l: "Beds managed" },
               { v: "₹240 Cr+", l: "Fees collected" },
               { v: "11 cities", l: "Across Indiaaa" },
             ]}
@@ -182,7 +181,7 @@ function AboutPage() {
             />
             <FeatureCard
               icon={Users}
-              title="2024 · 10k beds"
+              title="2024"
               desc="First multi-city deployments across boarding schools and PGs."
               tone="teal"
             />
@@ -194,7 +193,7 @@ function AboutPage() {
             />
             <FeatureCard
               icon={Globe}
-              title="2026 · 65k beds"
+              title="2026"
               desc="Scaling across 11 Indian cities and select international campuses."
               tone="green"
             />

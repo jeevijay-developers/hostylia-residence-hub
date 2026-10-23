@@ -32,8 +32,8 @@ export function BrowserFrame({
   // component nested inside it (they all render via BrowserFrame/PhoneFrame)
   // shouldn't flip when a visitor switches the marketing site to light mode.
   return (
-    <div className="dark overflow-hidden rounded-2xl border border-dark-border bg-[color:var(--indigo-deep)] shadow-2xl">
-      <div className="flex items-center gap-2 border-b border-dark-border bg-[color:var(--navy)]/80 px-4 py-2.5">
+    <div className="dark overflow-hidden rounded-2xl border border-dark-border bg-indigo-deep shadow-2xl">
+      <div className="flex items-center gap-2 border-b border-dark-border bg-navy/80 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
@@ -44,7 +44,7 @@ export function BrowserFrame({
           </div>
         </div>
       </div>
-      <div className="bg-gradient-to-br from-[color:var(--indigo-deep)] via-[#0c1530] to-[color:var(--navy)] p-5">
+      <div className="bg-linear-to-br from-indigo-deep via-[#0c1530] to-navy p-5">
         {children}
       </div>
     </div>
@@ -54,8 +54,8 @@ export function BrowserFrame({
 export function PhoneFrame({ children }: { children: ReactNode }) {
   // Pinned dark — same reasoning as BrowserFrame above.
   return (
-    <div className="dark mx-auto w-[280px] rounded-[2.5rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
-      <div className="overflow-hidden rounded-[2rem] border border-dark-border bg-gradient-to-br from-[color:var(--indigo-deep)] to-[color:var(--navy)]">
+    <div className="dark mx-auto w-[280px] rounded-[2.5rem] border border-dark-border bg-navy p-2 shadow-2xl">
+      <div className="overflow-hidden rounded-[2rem] border border-dark-border bg-linear-to-br from-indigo-deep to-navy">
         <div className="flex items-center justify-between px-5 pb-1 pt-3 text-[10px] font-semibold text-white">
           <span>9:41</span>
           <span className="flex items-center gap-1">
@@ -160,7 +160,7 @@ export function MockFinanceDashboard() {
         {months.map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t-md bg-gradient-to-t from-[color:var(--brand-blue)] to-soft-teal"
+            className="flex-1 rounded-t-md bg-linear-to-t from-brand-blue to-soft-teal"
             style={{ height: `${h}%` }}
           />
         ))}
@@ -193,8 +193,8 @@ export function MockComplaintBoard() {
     {
       t: "AC service — Room 408",
       s: "Assigned",
-      c: "text-[color:var(--brand-blue)]",
-      b: "border-[color:var(--brand-blue)]/40 bg-[color:var(--brand-blue)]/10",
+      c: "text-brand-blue",
+      b: "border-brand-blue/40 bg-brand-blue/10",
     },
     { t: "Mess feedback — Dinner", s: "Open", c: "text-white", b: "border-dark-border bg-white/5" },
   ];
@@ -219,7 +219,7 @@ export function MockComplaintBoard() {
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-between rounded-xl border border-dark-border bg-[color:var(--brand-blue)]/15 px-3 py-2">
+      <div className="mt-3 flex items-center justify-between rounded-xl border border-dark-border bg-brand-blue/15 px-3 py-2">
         <div className="text-[11px] font-semibold text-white">Avg resolution time</div>
         <div className="text-sm font-extrabold text-soft-teal">3h 12m</div>
       </div>
@@ -230,7 +230,7 @@ export function MockComplaintBoard() {
 export function MockRoomBooking() {
   return (
     <PhoneFrame>
-      <div className="rounded-xl bg-gradient-to-br from-[color:var(--brand-blue)] to-soft-teal p-3">
+      <div className="rounded-xl bg-linear-to-br from-brand-blue to-soft-teal p-3">
         <div className="text-[10px] font-semibold uppercase tracking-widest text-white/80">
           Featured Stay
         </div>
@@ -321,7 +321,7 @@ export function MockParentApp() {
           <Bell size={14} />
         </div>
       </div>
-      <div className="mt-3 rounded-xl border border-dark-border bg-gradient-to-br from-[color:var(--brand-blue)]/30 to-soft-teal/20 p-3">
+      <div className="mt-3 rounded-xl border border-dark-border bg-linear-to-br from-brand-blue/30 to-soft-teal/20 p-3">
         <div className="text-[10px] uppercase tracking-widest text-soft-teal">Aarav · Room 214</div>
         <div className="mt-1 flex items-center gap-2 text-xs font-bold text-white">
           <Check size={12} className="text-soft-teal" /> Checked in at 9:42 PM
@@ -494,7 +494,7 @@ export function TestimonialCard({
       </div>
       <blockquote className="mt-3 text-sm leading-relaxed text-foreground">"{quote}"</blockquote>
       <figcaption className="mt-4 flex items-center gap-3 border-t border-dark-border pt-4">
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[color:var(--brand-blue)] to-soft-teal text-sm font-extrabold text-white">
+        <div className="grid h-10 w-10 place-items-center rounded-full bg-linear-to-br from-brand-blue to-soft-teal text-sm font-extrabold text-white">
           {name
             .split(" ")
             .map((p) => p[0])

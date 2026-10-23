@@ -133,7 +133,8 @@ function WardenBriefPage() {
   const today = new Date().toISOString().slice(0, 10);
   const qc = useQueryClient();
 
-  const studentsQ = useStudentsInProperty(propertyId);
+  const studentsQ = useStudentsInProperty(propertyId, { page: 0, pageSize: 1 });
+  const studentTotal = studentsQ.data?.total ?? 0;
   const attendanceQ = useAttendance(propertyId, today);
   const complaintsQ = useComplaints({ propertyId });
   // Matches warden.gate.tsx's own "pending" definition (APPROVAL_FILTER_STATUSES.PENDING):
@@ -156,16 +157,23 @@ function WardenBriefPage() {
   });
 
   const attendanceCounts = useMemo(() => {
-    const currentMap = new Map<string, string>();
-    for (const a of attendanceQ.data ?? []) currentMap.set(a.student_id, a.status);
-    const counts = { total: 0, PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
-    for (const s of studentsQ.data ?? []) {
-      counts.total++;
-      const status = currentMap.get(s.id) ?? "PRESENT";
-      if (status in counts) counts[status as keyof typeof counts]++;
+    const counts = { total: studentTotal, PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
+    const seen = new Set<string>();
+    for (const a of attendanceQ.data ?? []) {
+      const status = a.status;
+      if (
+        status === "PRESENT" ||
+        status === "ABSENT" ||
+        status === "LATE" ||
+        status === "ON_LEAVE"
+      ) {
+        counts[status] += 1;
+      }
+      seen.add(a.student_id);
     }
+    counts.PRESENT += Math.max(0, studentTotal - seen.size);
     return counts;
-  }, [studentsQ.data, attendanceQ.data]);
+  }, [attendanceQ.data, studentTotal]);
 
   const pendingComplaints = useMemo(() => {
     return (complaintsQ.data ?? [])
@@ -187,7 +195,7 @@ function WardenBriefPage() {
         <BriefKpiTile
           icon={Users}
           label="Total Students"
-          value={studentsQ.data?.length ?? 0}
+          value={studentTotal}
           caption="Registered"
           loading={studentsQ.isLoading}
           tone="info"
@@ -307,4 +315,3 @@ function SummaryStat({ label, value, tone }: { label: string; value: number; ton
     </div>
   );
 }
-

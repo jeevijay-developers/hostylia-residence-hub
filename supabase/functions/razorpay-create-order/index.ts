@@ -2,12 +2,13 @@
 // Requires secrets: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET.
 // If they aren't set, this returns a clear 503 the UI surfaces.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+
+const ORDER_LIMIT = 10;
+const ORDER_WINDOW_SECONDS = 600;
 
 Deno.serve(async (req) => {
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
@@ -104,6 +105,16 @@ Deno.serve(async (req) => {
         200,
         cors,
       );
+    }
+
+    const { data: withinLimit, error: rlErr } = await admin.rpc("check_rate_limit", {
+      p_bucket_key: `razorpay-order:${userId}`,
+      p_limit: ORDER_LIMIT,
+      p_window_seconds: ORDER_WINDOW_SECONDS,
+    });
+    if (rlErr) return json({ error: "Rate limit check failed" }, 503, cors);
+    if (!withinLimit) {
+      return json({ error: "Too many payment attempts. Please wait and try again." }, 429, cors);
     }
 
     const basic = btoa(`${KEY_ID}:${KEY_SECRET}`);

@@ -16,6 +16,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PUBLIC_EMAIL, PUBLIC_PHONE_DISPLAY, SITE_ORIGIN } from "@/lib/site";
 import "@/i18n";
 
 function NotFoundComponent() {
@@ -40,7 +41,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -79,7 +80,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: ({ match }) => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -104,18 +105,48 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Hostylia is the smart residential operating system for hostels, boarding schools, student housing, PGs and co-living.",
       },
+      { property: "og:image", content: `${SITE_ORIGIN}/og.png` },
+      { name: "twitter:image", content: `${SITE_ORIGIN}/og.png` },
       {
-        property: "og:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/jniP1INDbGeWUnFtlV1iyCqRoJV2/social-images/social-1782193576198-AE800E6D-1A63-4728-845D-C99D6882A527.webp",
+        "script:ld+json": {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "Hostylia",
+              url: SITE_ORIGIN,
+              email: PUBLIC_EMAIL,
+              telephone: PUBLIC_PHONE_DISPLAY,
+              logo: `${SITE_ORIGIN}/favicon.png`,
+            },
+            {
+              "@type": "WebSite",
+              name: "Hostylia",
+              url: SITE_ORIGIN,
+              email: PUBLIC_EMAIL,
+              telephone: PUBLIC_PHONE_DISPLAY,
+            },
+          ],
+        },
       },
-      {
-        name: "twitter:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/jniP1INDbGeWUnFtlV1iyCqRoJV2/social-images/social-1782193576198-AE800E6D-1A63-4728-845D-C99D6882A527.webp",
-      },
+      ...(match.status === "notFound" || match._notFound
+        ? [{ title: "Page not found — Hostylia" }, { name: "robots", content: "noindex" }]
+        : []),
     ],
     links: [
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      {
+        rel: "icon",
+        href: "/favicon.png",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        rel: "icon",
+        href: "/favicon-dark.png",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

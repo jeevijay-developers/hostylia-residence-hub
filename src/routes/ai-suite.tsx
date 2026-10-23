@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import {
   Brain,
   Wallet,
@@ -31,9 +32,9 @@ export const Route = createFileRoute("/ai-suite")({
       },
       { property: "og:title", content: "AI Suite — Hostylia" },
       { property: "og:description", content: "Models tuned for residential operations." },
-      { property: "og:url", content: "/ai-suite" },
+      { property: "og:url", content: canonicalUrl("/ai-suite") },
     ],
-    links: [{ rel: "canonical", href: "/ai-suite" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/ai-suite") }],
   }),
   component: AISuitePage,
 });

@@ -383,6 +383,42 @@ export const decideRefund = createServerFn({ method: "POST" })
   .validator((d) => approveRefundSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    const { data: beforeRow, error: readErr } = await supabase
+      .from("refunds")
+      .select(
+        "tenant_id, property_id, payment_id, amount_paise, status, reason, mode, refund_number, initiated_by, approved_by, approved_at, decision_reason",
+      )
+      .eq("id", data.refund_id)
+      .single();
+    if (readErr || !beforeRow) throw new Error("Refund not found");
+
+    const refundAuditSnapshot = (row: {
+      payment_id: string;
+      amount_paise: number;
+      status: string;
+      reason: string | null;
+      mode: string;
+      refund_number: string;
+      initiated_by: string;
+      approved_by: string | null;
+      approved_at: string | null;
+      decision_reason: string | null;
+    }) => ({
+      payment_id: row.payment_id,
+      amount_paise: row.amount_paise,
+      status: row.status,
+      reason: row.reason,
+      mode: row.mode,
+      refund_number: row.refund_number,
+      initiated_by: row.initiated_by,
+      approved_by: row.approved_by,
+      approved_at: row.approved_at,
+      decision_reason: row.decision_reason,
+    });
+
+    const before_data = refundAuditSnapshot(beforeRow);
+
     const { data: out, error } = await supabase.rpc("fn_approve_refund", {
       p_refund_id: data.refund_id,
       p_decision: data.decision,
@@ -399,12 +435,10 @@ export const decideRefund = createServerFn({ method: "POST" })
         action: data.decision === "APPROVED" ? "REFUND_APPROVED" : "REFUND_REJECTED",
         entity_type: "refunds",
         entity_id: refund.id,
+        before_data,
         after_data: {
-          payment_id: refund.payment_id,
-          amount_paise: refund.amount_paise,
-          status: refund.status,
+          ...refundAuditSnapshot(refund),
           decision: data.decision,
-          reason: data.reason ?? null,
         },
       });
     }

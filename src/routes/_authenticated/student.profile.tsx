@@ -42,6 +42,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import {
   Select,
   SelectContent,
@@ -52,6 +53,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { KycUploadForm } from "@/components/students/KycUploadForm";
 import { supabase } from "@/integrations/supabase/client";
+import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
@@ -227,6 +229,7 @@ function StudentProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
+  const captcha = useCaptchaToken();
 
   // ─── Data queries ─────────────────────────────────────────────────────────
 
@@ -509,6 +512,9 @@ function StudentProfilePage() {
         throw new Error("Please fix the highlighted fields");
       }
       setPwErrors({});
+      if (!captcha.token) {
+        throw new Error("Complete the captcha to continue.");
+      }
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user?.email) {
@@ -518,8 +524,10 @@ function StudentProfilePage() {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: userData.user.email,
         password: parsed.data.currentPassword,
+        options: { captchaToken: captcha.token },
       });
       if (signInErr) {
+        captcha.reset();
         setPwErrors({ currentPassword: "Current password is incorrect" });
         throw new Error("Current password is incorrect");
       }
@@ -527,10 +535,14 @@ function StudentProfilePage() {
       const { error: updateErr } = await supabase.auth.updateUser({
         password: parsed.data.password,
       });
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        captcha.reset();
+        throw updateErr;
+      }
     },
     onSuccess: () => {
       toast.success("Password changed successfully");
+      captcha.reset();
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -580,6 +592,10 @@ function StudentProfilePage() {
     setMode("view");
     setPhotoOnlyEdit(false);
   }
+
+  const displayAvatarUrl = useSignedAvatarUrl(
+    mode === "edit" ? avatarPath : studentQ.data?.photo_path || profileQ.data?.avatar_path,
+  );
 
   // ─── Guards ───────────────────────────────────────────────────────────────
 
@@ -631,16 +647,6 @@ function StudentProfilePage() {
 
   const isActive = s.status === "ACTIVE";
   const initial = (mode === "edit" ? fullName : s.full_name).trim()[0]?.toUpperCase() ?? "S";
-  const displayAvatarUrl =
-    mode === "edit"
-      ? avatarPath
-        ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-        : undefined
-      : s.photo_path
-        ? supabase.storage.from("avatars").getPublicUrl(s.photo_path).data.publicUrl
-        : prof.avatar_path
-          ? supabase.storage.from("avatars").getPublicUrl(prof.avatar_path).data.publicUrl
-          : undefined;
 
   const isEmailVerified = !!authUser?.email_confirmed_at;
   const lastLogin = authUser?.last_sign_in_at
@@ -686,7 +692,7 @@ function StudentProfilePage() {
 
   return (
     <StudentModuleGuard module="profile">
-      <div className="flex flex-col gap-4 pb-8 max-w-[1200px]">
+      <div className="flex flex-col gap-4 pb-8 max-w-300">
 
         {/* ══════════════════════════════════════════════════
             PROFILE HEADER
@@ -695,7 +701,7 @@ function StudentProfilePage() {
           <CardContent className="relative flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent"
+              className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent"
             />
 
             {/* Avatar + identity */}
@@ -1067,11 +1073,13 @@ function StudentProfilePage() {
                       {pwErrors.confirmPassword && <p className="text-xs text-destructive">{pwErrors.confirmPassword}</p>}
                     </div>
 
+                    <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPwErrors({}); setShowPasswordForm(false); }}>
                         <X className="h-3.5 w-3.5" /> Cancel
                       </Button>
-                      <Button size="sm" id="student-profile-update-password-btn" className="h-8 text-xs" disabled={changePassword.isPending || !currentPassword || !newPassword || !confirmPassword} onClick={() => changePassword.mutate()}>
+                      <Button size="sm" id="student-profile-update-password-btn" className="h-8 text-xs" disabled={changePassword.isPending || !currentPassword || !newPassword || !confirmPassword || !captcha.token} onClick={() => changePassword.mutate()}>
                         {changePassword.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Update Password
                       </Button>
                     </div>

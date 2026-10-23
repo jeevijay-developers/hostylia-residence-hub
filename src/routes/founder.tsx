@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Linkedin, Mail, ArrowRight, Quote, Rocket, Users, Sparkles, Globe } from "lucide-react";
+import { Mail, ArrowRight, Quote, Rocket, Users, Sparkles, Globe } from "lucide-react";
+import { canonicalUrl } from "@/lib/site";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
@@ -25,9 +26,9 @@ export const Route = createFileRoute("/founder")({
       },
       { property: "og:title", content: "Founder — Hostylia" },
       { property: "og:description", content: "Meet Vikas Patel, Founder & CEO of Hostylia." },
-      { property: "og:url", content: "/founder" },
+      { property: "og:url", content: canonicalUrl("/founder") },
     ],
-    links: [{ rel: "canonical", href: "/founder" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/founder") }],
   }),
   component: FounderPage,
 });
@@ -45,24 +46,20 @@ function FounderPage() {
               <img
                 src={vikasPhoto}
                 alt="Vikas Patel, Founder & CEO of Hostylia"
-                className="h-40 w-40 rounded-2xl object-cover ring-2 ring-[color:var(--soft-teal)]/40 shadow-2xl"
+                className="h-40 w-40 rounded-2xl object-cover ring-2 ring-soft-teal/40 shadow-2xl"
               />
 
               <div>
                 <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                   Founder & CEO
                 </div>
-                <h2 className="mt-2 text-3xl font-extrabold text-foreground md:text-4xl">Vikas Patel</h2>
+                <h2 className="mt-2 text-3xl font-extrabold text-foreground md:text-4xl">
+                  Vikas Patel
+                </h2>
                 <div className="text-sm text-soft-grey">
                   Hostylia · Powered by Jeevijay Technologies Private Limited
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <a
-                    href="#"
-                    className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-4 py-2 text-sm font-semibold text-foreground hover:bg-foreground/10"
-                  >
-                    <Linkedin size={14} /> LinkedIn
-                  </a>
                   <a
                     href="mailto:founder@hostylia.com"
                     className="inline-flex items-center gap-2 rounded-lg border border-dark-border bg-foreground/5 px-4 py-2 text-sm font-semibold text-foreground hover:bg-foreground/10"
@@ -96,8 +93,6 @@ function FounderPage() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <StatBand
             stats={[
-              { v: "120+", l: "Properties live" },
-              { v: "65,000", l: "Beds managed" },
               { v: "11 cities", l: "Across India" },
               { v: "3 yrs", l: "Building Hostylia" },
             ]}
@@ -195,7 +190,7 @@ function FounderPage() {
             />
             <FeatureCard
               icon={Users}
-              title="2024 · 10k beds"
+              title="2024"
               desc="First multi-city deployments across boarding schools and PGs."
             />
             <FeatureCard
@@ -206,7 +201,7 @@ function FounderPage() {
             />
             <FeatureCard
               icon={Globe}
-              title="2026 · 65k beds"
+              title="2026"
               desc="Scaling across 11 Indian cities and select international campuses."
               tone="green"
             />

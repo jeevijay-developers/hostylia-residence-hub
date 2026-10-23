@@ -413,7 +413,7 @@ export function AttendanceReportPanel({
               <Input
                 id="attendance-report-month"
                 type="month"
-                className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl pr-8 text-xs sm:text-sm [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                className="h-9 w-36 sm:h-10 sm:w-44 bg-background/90 border-border text-foreground rounded-xl pr-8 text-xs sm:text-sm scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 value={monthInput}
                 max={currentMonthValue()}
                 onChange={(e) => setMonthInput(e.target.value)}

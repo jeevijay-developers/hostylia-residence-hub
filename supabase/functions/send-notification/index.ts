@@ -15,6 +15,7 @@
 // fn_retry_failed_notifications via pg_cron). Skips idempotency-key computation
 // entirely and reuses the existing notifications row.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 import {
   msg91AuthKey,
   resolveMsg91TemplateId,
@@ -39,13 +40,32 @@ interface Body {
 
 const MAX_ATTEMPTS = 5;
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function constantTimeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const left = enc.encode(a);
+  const right = enc.encode(b);
+  const length = Math.max(left.length, right.length);
+  let diff = left.length ^ right.length;
+  for (let i = 0; i < length; i++) {
+    diff |= (left[i] ?? 0) ^ (right[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+/** Reject unless x-hostylia-internal matches INTERNAL_FUNCTION_SECRET. verify_jwt stays on. */
+function isInternalCaller(req: Request): boolean {
+  const expected = Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "";
+  if (expected.length === 0) return false;
+  const provided = req.headers.get("x-hostylia-internal") ?? "";
+  return constantTimeEqual(provided, expected);
+}
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (!isInternalCaller(req)) {
+    return json({ ok: false, error_code: "UNAUTHORIZED" }, 401, cors);
+  }
   try {
     const b = (await req.json()) as Body;
 
@@ -62,10 +82,10 @@ Deno.serve(async (req) => {
         .eq("id", b.notificationId)
         .single();
       if (notifErr || !notif) {
-        return json({ ok: false, error_code: "NOT_FOUND", error: "notification not found" }, 404);
+        return json({ ok: false, error_code: "NOT_FOUND", error: "notification not found" }, 404, cors);
       }
       if (notif.channel === "IN_APP") {
-        return json({ ok: true, notification_id: notif.id, deduped: true });
+        return json({ ok: true, notification_id: notif.id, deduped: true }, 200, cors);
       }
 
       const { count } = await admin
@@ -74,28 +94,36 @@ Deno.serve(async (req) => {
         .eq("notification_id", notif.id);
       const nextAttemptNumber = (count ?? 0) + 1;
       if (nextAttemptNumber > MAX_ATTEMPTS) {
-        return json({ ok: false, notification_id: notif.id, error_code: "MAX_ATTEMPTS_EXCEEDED" });
+        return json(
+          { ok: false, notification_id: notif.id, error_code: "MAX_ATTEMPTS_EXCEEDED" },
+          200,
+          cors,
+        );
       }
 
       await admin.from("notifications").update({ status: "PENDING" }).eq("id", notif.id);
 
-      return dispatchAndRespond(admin, {
-        notifId: notif.id,
-        channel: notif.channel as Channel,
-        templateKey: notif.template_key,
-        variables: (notif.payload ?? {}) as Record<string, unknown>,
-        recipient: {
-          userId: notif.recipient_user_id ?? undefined,
-          phone: notif.recipient_phone ?? undefined,
-          email: notif.recipient_email ?? undefined,
+      return dispatchAndRespond(
+        admin,
+        {
+          notifId: notif.id,
+          channel: notif.channel as Channel,
+          templateKey: notif.template_key,
+          variables: (notif.payload ?? {}) as Record<string, unknown>,
+          recipient: {
+            userId: notif.recipient_user_id ?? undefined,
+            phone: notif.recipient_phone ?? undefined,
+            email: notif.recipient_email ?? undefined,
+          },
+          attemptNumber: nextAttemptNumber,
         },
-        attemptNumber: nextAttemptNumber,
-      });
+        cors,
+      );
     }
 
     // ─── Normal mode: create/find a notification row, then dispatch ──────────
     if (!b?.channel || !b?.templateKey || !b?.eventType || !b?.tenantId) {
-      return json({ ok: false, error_code: "BAD_REQUEST", error: "missing fields" }, 400);
+      return json({ ok: false, error_code: "BAD_REQUEST", error: "missing fields" }, 400, cors);
     }
 
     const recipientIdent =
@@ -130,7 +158,7 @@ Deno.serve(async (req) => {
     if (existing) {
       notifId = existing.id;
       if (existing.status === "DELIVERED" || existing.status === "SENT") {
-        return json({ ok: true, notification_id: notifId, deduped: true });
+        return json({ ok: true, notification_id: notifId, deduped: true }, 200, cors);
       }
     } else {
       const { data, error } = await admin
@@ -138,7 +166,7 @@ Deno.serve(async (req) => {
         .insert(insertRow)
         .select("id")
         .single();
-      if (error) return json({ ok: false, error_code: "DB_ERROR", error: error.message }, 500);
+      if (error) return json({ ok: false, error_code: "DB_ERROR", error: error.message }, 500, cors);
       notifId = data.id;
     }
 
@@ -152,21 +180,26 @@ Deno.serve(async (req) => {
           delivered_at: new Date().toISOString(),
         })
         .eq("id", notifId);
-      return json({ ok: true, notification_id: notifId, status: "DELIVERED" });
+      return json({ ok: true, notification_id: notifId, status: "DELIVERED" }, 200, cors);
     }
 
-    return dispatchAndRespond(admin, {
-      notifId,
-      channel: b.channel,
-      templateKey: b.templateKey,
-      variables: b.variables ?? {},
-      recipient: b.recipient,
-      attemptNumber: 1,
-    });
+    return dispatchAndRespond(
+      admin,
+      {
+        notifId,
+        channel: b.channel,
+        templateKey: b.templateKey,
+        variables: b.variables ?? {},
+        recipient: b.recipient,
+        attemptNumber: 1,
+      },
+      cors,
+    );
   } catch (e) {
     return json(
       { ok: false, error_code: "INTERNAL", error: e instanceof Error ? e.message : "err" },
       500,
+      cors,
     );
   }
 });
@@ -190,6 +223,7 @@ async function dispatchAndRespond(
     recipient: { userId?: string; phone?: string; email?: string };
     attemptNumber: number;
   },
+  cors: Record<string, string>,
 ) {
   const { notifId, channel, templateKey, variables, recipient, attemptNumber } = args;
 
@@ -266,6 +300,7 @@ async function dispatchAndRespond(
         message: `${channel} not configured — add ${hint}.`,
       },
       200,
+      cors,
     );
   }
 
@@ -377,7 +412,7 @@ async function dispatchAndRespond(
     await deliver();
   }
 
-  return json({ ok: true, notification_id: notifId, status: "PENDING" });
+  return json({ ok: true, notification_id: notifId, status: "PENDING" }, 200, cors);
 }
 
 /** Exponential backoff for the next retry attempt: 2, 4, 8, 16, 32 minutes (capped). */
@@ -661,9 +696,9 @@ function renderHtmlTemplate(key: string, vars: Record<string, unknown>): string 
   return s;
 }
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors },
+    headers: { "Content-Type": "application/json", ...extra },
   });
 }

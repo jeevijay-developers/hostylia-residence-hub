@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import {
   Cpu,
   Cloud,
@@ -31,9 +32,9 @@ export const Route = createFileRoute("/platform")({
         property: "og:description",
         content: "Architecture, integrations and security behind Hostylia.",
       },
-      { property: "og:url", content: "/platform" },
+      { property: "og:url", content: canonicalUrl("/platform") },
     ],
-    links: [{ rel: "canonical", href: "/platform" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/platform") }],
   }),
   component: PlatformPage,
 });

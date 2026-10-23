@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
 import { Calendar, CheckCircle2, Send, Sparkles, Users, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
+import { TurnstileWidget } from "@/components/site/TurnstileWidget";
+import { submitPublicLead } from "@/lib/public-lead.functions";
+import { canonicalUrl } from "@/lib/site";
 import { SectionHeading } from "@/components/site/Primitives";
 import {
   MockOccupancyDashboard,
@@ -22,25 +26,66 @@ export const Route = createFileRoute("/book-demo")({
       },
       { property: "og:title", content: "Book a Demo — Hostylia" },
       { property: "og:description", content: "See Hostylia in action." },
-      { property: "og:url", content: "/book-demo" },
+      { property: "og:url", content: canonicalUrl("/book-demo") },
     ],
-    links: [{ rel: "canonical", href: "/book-demo" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/book-demo") }],
   }),
   component: BookDemoPage,
 });
 
 function BookDemoPage() {
+  const submitLead = useServerFn(submitPublicLead);
   const [loading, setLoading] = useState(false);
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [widgetKey, setWidgetKey] = useState(0);
+
+  function resetWidget() {
+    setTurnstileToken("");
+    setWidgetKey((key) => key + 1);
+  }
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (!turnstileToken) {
+      toast.error("Complete the verification check before sending.");
+      return;
+    }
+    const data = new FormData(form);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      (e.target as HTMLFormElement).reset();
+    try {
+      const result = await submitLead({
+        data: {
+          kind: "demo",
+          captchaToken: turnstileToken,
+          name: String(data.get("name") ?? ""),
+          email: String(data.get("email") ?? ""),
+          phone: String(data.get("phone") ?? ""),
+          propertyName: String(data.get("property") ?? ""),
+          beds: String(data.get("beds") ?? ""),
+          city: String(data.get("city") ?? ""),
+          propertyType: String(data.get("type") ?? ""),
+          message: String(data.get("notes") ?? ""),
+        },
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not send your request.");
+        resetWidget();
+        return;
+      }
+      form.reset();
+      resetWidget();
       toast.success("Demo request received", {
         description: "We'll reach out shortly to schedule your walkthrough.",
       });
-    }, 700);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message ? err.message : "Could not send your request.";
+      toast.error(message);
+      resetWidget();
+    } finally {
+      setLoading(false);
+    }
   }
   const types = [
     "Student Hostel",
@@ -98,8 +143,11 @@ function BookDemoPage() {
               textarea
               placeholder="Tell us about your operations"
             />
+            <div className="mt-4">
+              <TurnstileWidget key={widgetKey} onToken={setTurnstileToken} />
+            </div>
             <button
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-3 text-sm font-bold text-navy disabled:opacity-60"
             >
               <Send size={14} /> {loading ? "Submitting..." : "Request Demo"}
@@ -141,7 +189,6 @@ function BookDemoPage() {
             stats={[
               { v: "30 min", l: "Personalized walkthrough" },
               { v: "48 hrs", l: "From demo to live trial" },
-              { v: "65,000", l: "Beds already on Hostylia" },
               { v: "4.9 / 5", l: "Demo-to-decision rating" },
             ]}
           />

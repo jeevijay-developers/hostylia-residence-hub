@@ -26,6 +26,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useThemeStore, useAutoTheme } from "@/stores/theme-store";
 import { EditProfileDialog, fetchOwnProfile } from "@/components/dashboard/EditProfileDialog";
 import { SignOutDialog } from "@/components/dashboard/SignOutDialog";
+import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
 import { useResolvedRole } from "@/lib/user-role";
 import { getGreeting } from "@/lib/greeting";
 import { BrandLockup } from "@/components/BrandLockup";
@@ -64,9 +65,7 @@ export function Topbar({
   });
   const displayName = ownProfile?.full_name || ownProfile?.preferred_name || "";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() ?? "?";
-  const avatarUrl = ownProfile?.avatar_path
-    ? supabase.storage.from("avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl
-    : undefined;
+  const avatarUrl = useSignedAvatarUrl(ownProfile?.avatar_path);
   const { data: resolved } = useResolvedRole();
   const isAccountant = resolved?.role === "ACCOUNTANT";
   const isAdmin = resolved?.role === "HOSTEL_ADMIN";
@@ -279,7 +278,7 @@ export function Topbar({
       {!isAutoThemeRole && <ThemeToggle />}
       {!isStudent && (
         <NotificationBell
-          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
+          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-0")}
         />
       )}
       {isWarden && <MessagesPanel />}
@@ -317,7 +316,7 @@ export function Topbar({
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[190px] p-2">
+            <DropdownMenuContent align="end" className="min-w-47.5 p-2">
               <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
                 <Link
                   to={

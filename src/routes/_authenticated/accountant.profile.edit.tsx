@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
 import { useResolvedRole } from "@/lib/user-role";
 import { accountantProfileEditSchema } from "@/schemas/profile";
 
@@ -112,12 +113,11 @@ function AccountantProfileEditPage() {
     },
   });
 
+  const avatarUrl = useSignedAvatarUrl(avatarPath);
+
   if (profileQ.isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const initial = fullName.trim()[0]?.toUpperCase() ?? "A";
-  const avatarUrl = avatarPath
-    ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-    : undefined;
 
   return (
     <div className="flex h-full flex-col gap-3">

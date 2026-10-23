@@ -186,7 +186,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
                 type="time"
                 value={curfewTime}
                 onChange={(e) => setCurfewTime(e.target.value)}
-                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 pl-3.5 pr-8 text-sm font-medium [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                className="bg-background/90 border-border focus:border-amber-500 focus:ring-amber-500/30 text-foreground rounded-xl h-11 pl-3.5 pr-8 text-sm font-medium scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
               />
               <button
                 type="button"
@@ -254,7 +254,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
         <Button
           onClick={() => save.mutate()}
           disabled={save.isPending}
-          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           {save.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
@@ -405,7 +405,7 @@ function OrgForm({ tenantId }: { tenantId: string }) {
         <Button
           onClick={() => save.mutate()}
           disabled={save.isPending}
-          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           {save.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />

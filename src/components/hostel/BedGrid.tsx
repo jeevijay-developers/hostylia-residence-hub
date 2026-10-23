@@ -97,14 +97,30 @@ interface BedGridProps {
    * cards, a search box and a grid/list toggle for a standalone board page.
    */
   variant?: "compact" | "expanded";
+  /** Property-wide totals. When omitted, counts are taken from `beds`. */
+  statusCounts?: Record<BedStatus, number>;
+  /** Controlled search for the expanded variant. */
+  queryValue?: string;
+  onQueryChange?: (value: string) => void;
+  /** Parent already filtered this page (server `.range`). */
+  serverFiltered?: boolean;
 }
 
 /**
  * Occupancy column signature visual per Design.md Sec 5 — colour + icon
  * always paired (never colour alone) to stay WCAG-compliant.
  */
-export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
+export function BedGrid({
+  beds,
+  onSelect,
+  variant = "compact",
+  statusCounts,
+  queryValue,
+  onQueryChange,
+  serverFiltered = false,
+}: BedGridProps) {
   const counts = useMemo(() => {
+    if (statusCounts) return statusCounts;
     const c: Record<BedStatus, number> = {
       VACANT: 0,
       OCCUPIED: 0,
@@ -113,12 +129,15 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
     };
     beds.forEach((b) => (c[b.status] += 1));
     return c;
-  }, [beds]);
+  }, [beds, statusCounts]);
 
-  const [query, setQuery] = useState("");
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = queryValue ?? internalQuery;
+  const setQuery = onQueryChange ?? setInternalQuery;
   const [view, setView] = useState<"grid" | "list">("grid");
 
   const visibleBeds = useMemo(() => {
+    if (serverFiltered) return beds;
     if (!query.trim()) {
       // Room search (below) can surface any status so Occupied rooms stay
       // findable, but the default board is the bed *selection* list for new
@@ -132,9 +151,9 @@ export function BedGrid({ beds, onSelect, variant = "compact" }: BedGridProps) {
         (b.roomNumber ?? "").toLowerCase().includes(q) ||
         (b.occupantName ?? "").toLowerCase().includes(q),
     );
-  }, [beds, query, variant]);
+  }, [beds, query, variant, serverFiltered]);
 
-  if (beds.length === 0) {
+  if (beds.length === 0 && !serverFiltered) {
     return (
       <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground">
         No beds yet — set room capacity to generate beds.
@@ -352,7 +371,7 @@ function BedTileGrid({ beds, onSelect }: { beds: BedTile[]; onSelect?: (bed: Bed
             onClick={() => onSelect?.(b)}
             title={title}
             className={cn(
-              "flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 px-2 py-3 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+              "flex min-h-18 flex-col items-center justify-center gap-1 rounded-xl border-2 px-2 py-3 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
               className,
             )}
           >

@@ -124,7 +124,7 @@ function WardenMessPage() {
   const propertyId = propQ.data ?? null;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const menusQ = useMessMenusForDate(propertyId, date);
-  const studentsQ = useStudentsInProperty(propertyId);
+  const studentsQ = useStudentsInProperty(propertyId, { page: 0, pageSize: 1 });
   const qc = useQueryClient();
   const [meal, setMeal] = useState<(typeof MEALS)[number]>("BREAKFAST");
   const [title, setTitle] = useState("");
@@ -207,7 +207,7 @@ function WardenMessPage() {
     },
   });
 
-  const activeStudentCount = studentsQ.data?.length ?? 0;
+  const activeStudentCount = studentsQ.data?.total ?? 0;
 
   return (
     <div className="space-y-4">
@@ -218,7 +218,7 @@ function WardenMessPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-40 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+            className="w-40 pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
           />
         </div>
       </div>
@@ -244,7 +244,7 @@ function WardenMessPage() {
               placeholder="Title (optional)"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="flex-1 min-w-[10rem]"
+              className="flex-1 min-w-40"
             />
             <div className="relative w-32">
               <Clock className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -252,7 +252,7 @@ function WardenMessPage() {
                 type="time"
                 value={serveTime}
                 onChange={(e) => setServeTime(e.target.value)}
-                className="w-32 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                className="w-32 pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 aria-label={`${meal.charAt(0)}${meal.slice(1).toLowerCase()} time`}
               />
             </div>
@@ -674,7 +674,7 @@ function EditMenuDialog({
                 <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="date"
-                  className="w-full pl-11 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="w-full pl-11 pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                   value={menuDate}
                   onChange={(e) => setMenuDate(e.target.value)}
                 />
@@ -692,7 +692,7 @@ function EditMenuDialog({
                 <Clock className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="time"
-                  className="w-full pl-11 pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="w-full pl-11 pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                   value={serveTime}
                   onChange={(e) => setServeTime(e.target.value)}
                 />
@@ -703,11 +703,7 @@ function EditMenuDialog({
             <Label className="text-xs">Title (optional)</Label>
             <div className="relative">
               <FieldIcon icon={Tag} />
-              <Input
-                className="pl-11"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <Input className="pl-11" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1">

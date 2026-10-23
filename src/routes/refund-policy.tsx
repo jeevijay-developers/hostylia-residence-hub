@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalUrl, PUBLIC_EMAIL, PUBLIC_EMAIL_MAILTO } from "@/lib/site";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { LegalCompanyCard, LegalSection, LegalTocNav } from "@/components/site/LegalLayout";
 
@@ -28,9 +29,9 @@ export const Route = createFileRoute("/refund-policy")({
         property: "og:description",
         content: "How SaaS subscriptions and hostel fee refunds are handled on Hostylia.",
       },
-      { property: "og:url", content: "/refund-policy" },
+      { property: "og:url", content: canonicalUrl("/refund-policy") },
     ],
-    links: [{ rel: "canonical", href: "/refund-policy" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/refund-policy") }],
   }),
   component: RefundPolicyPage,
 });
@@ -89,8 +90,9 @@ function RefundPolicyPage() {
 
               <LegalSection id="no-shipping" title="2. No physical shipping">
                 <p>
-                  Hostylia is a <strong className="text-foreground">digital software service</strong>
-                  . We do not sell physical goods and we do{" "}
+                  Hostylia is a{" "}
+                  <strong className="text-foreground">digital software service</strong>. We do not
+                  sell physical goods and we do{" "}
                   <strong className="text-foreground">not ship products</strong>. There is therefore
                   no shipping policy, delivery timeline, or logistics partner. All paid services are
                   delivered digitally (platform access and hostel fee settlement records).
@@ -119,22 +121,25 @@ function RefundPolicyPage() {
                     Terms and any notice period in the order form.
                   </li>
                   <li>
-                    If Hostylia fails to provide the contracted service for a material period due
-                    to a fault solely attributable to us, we may, at our discretion, offer a
-                    pro-rata credit or refund for the affected period.
+                    If Hostylia fails to provide the contracted service for a material period due to
+                    a fault solely attributable to us, we may, at our discretion, offer a pro-rata
+                    credit or refund for the affected period.
                   </li>
                   <li>
                     Duplicate or erroneous charges for Hostylia's own SaaS billing should be
                     reported to{" "}
-                    <a href="mailto:team@hostylia.com" className="text-soft-teal hover:underline">
-                      team@hostylia.com
+                    <a href={PUBLIC_EMAIL_MAILTO} className="text-soft-teal hover:underline">
+                      {PUBLIC_EMAIL}
                     </a>{" "}
                     within seven (7) days with the payment reference.
                   </li>
                 </ul>
               </LegalSection>
 
-              <LegalSection id="hostel-fees" title="4. Hostel / PG fee refunds (students & parents)">
+              <LegalSection
+                id="hostel-fees"
+                title="4. Hostel / PG fee refunds (students & parents)"
+              >
                 <p>
                   When a student or parent pays a hostel fee invoice through Hostylia, the{" "}
                   <strong className="text-foreground">residential operator (hostel / PG)</strong> is
@@ -172,8 +177,8 @@ function RefundPolicyPage() {
               <LegalSection id="how-to-request" title="5. How to request a refund or cancellation">
                 <p>
                   <strong className="text-foreground">Operators (SaaS):</strong> email{" "}
-                  <a href="mailto:team@hostylia.com" className="text-soft-teal hover:underline">
-                    team@hostylia.com
+                  <a href={PUBLIC_EMAIL_MAILTO} className="text-soft-teal hover:underline">
+                    {PUBLIC_EMAIL}
                   </a>{" "}
                   with your organisation name, billing email, and Razorpay / invoice reference, or
                   use in-app subscription controls where available.
@@ -195,9 +200,7 @@ function RefundPolicyPage() {
               </LegalSection>
 
               <LegalSection id="contact" title="7. Contact">
-                <p>
-                  For questions about this Cancellation &amp; Refund Policy, contact us at:
-                </p>
+                <p>For questions about this Cancellation &amp; Refund Policy, contact us at:</p>
                 <LegalCompanyCard />
               </LegalSection>
             </div>

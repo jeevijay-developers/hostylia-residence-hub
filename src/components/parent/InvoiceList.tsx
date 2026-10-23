@@ -119,7 +119,7 @@ export function InvoiceList({
         return (
           <Card
             key={i.id}
-            className="relative overflow-hidden rounded-2xl border-info/20 bg-gradient-to-br from-info/5 via-card to-card shadow-card-ambient"
+            className="relative overflow-hidden rounded-2xl border-info/20 bg-linear-to-br from-info/5 via-card to-card shadow-card-ambient"
           >
             <WaveMark className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-40 text-info/10" />
             <CardContent className="relative p-4 sm:p-5">

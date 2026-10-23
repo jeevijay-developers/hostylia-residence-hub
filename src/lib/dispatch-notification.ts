@@ -45,8 +45,15 @@ export async function dispatchNotification(
   args: DispatchNotificationArgs,
 ): Promise<DispatchResult> {
   try {
+    // Server env only. Do not read a VITE_ copy of this secret.
+    const internalSecret = process.env.INTERNAL_FUNCTION_SECRET;
+    if (!internalSecret) {
+      console.warn("dispatchNotification: INTERNAL_FUNCTION_SECRET is not set");
+      return { ok: false, message: "Notification dispatch is not configured" };
+    }
     const { data, error } = await supabase.functions.invoke("send-notification", {
       body: args,
+      headers: { "x-hostylia-internal": internalSecret },
     });
     if (error) {
       console.warn("dispatchNotification: edge function call failed", error);

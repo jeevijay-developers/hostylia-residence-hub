@@ -7,6 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
 import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
 import { dispatchNotification } from "@/lib/dispatch-notification";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import {
   publicAdmissionSchema,
   studentBulkRowSchema,
@@ -71,6 +72,9 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     if (rlErr) throw new Error("Rate limiter unavailable");
     if (!allowed)
       throw new Error("Too many applications from this network. Please try again later.");
+
+    const captcha = await verifyTurnstileToken(data.turnstileToken, ip);
+    if (!captcha.ok) throw new Error(captcha.message);
 
     const { data: props, error: pErr } = await admin
       .from("properties")
