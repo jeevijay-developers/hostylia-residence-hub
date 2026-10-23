@@ -113,7 +113,13 @@ export function AddStudentDialog({ open, onOpenChange, tenantId, propertyId, onD
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="s-dob">Date of birth</Label>
-              <Input id="s-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+              <Input
+                id="s-dob"
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                className="[color-scheme:dark]"
+              />
             </div>
             <div>
               <Label>Gender</Label>

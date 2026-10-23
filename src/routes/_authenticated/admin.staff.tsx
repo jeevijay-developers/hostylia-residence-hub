@@ -61,7 +61,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
-import { displayIndianPhone, normalizeIndianPhone, indianMobileSchema } from "@/schemas/auth";
+import {
+  displayIndianPhone,
+  normalizeIndianPhone,
+  indianMobileSchema,
+  emailSchema,
+} from "@/schemas/auth";
 import {
   deleteStaff,
   inviteStaff,
@@ -179,7 +184,11 @@ const OPERATIONAL_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; help
     label: "Manage Visitors",
   },
   { keys: ["notices"], label: "Manage Notices" },
-  { keys: ["mess_menus"], label: "Manage Mess Menu", helper: "Also covers menu items and headcount." },
+  {
+    keys: ["mess_menus"],
+    label: "Manage Mess Menu",
+    helper: "Also covers menu items and headcount.",
+  },
   { keys: ["feedback"], label: "Manage Feedback" },
 ];
 
@@ -244,7 +253,8 @@ const WARDEN_MODULE_GRID: ModuleGridRow[] = [
   {
     id: "complaints",
     label: "Complaints",
-    helper: "Read and Update share one permission — students raise complaints, staff never create or delete them.",
+    helper:
+      "Read and Update share one permission — students raise complaints, staff never create or delete them.",
     verbs: { view: "complaints", edit: "complaints" },
   },
   {
@@ -349,12 +359,36 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const AVATAR_COLOR_PAIRS = [
-  { bg: "bg-purple-100 dark:bg-purple-950/80", text: "text-purple-600 dark:text-purple-400", border: "border-purple-300 dark:border-purple-800/50" },
-  { bg: "bg-blue-100 dark:bg-blue-950/80", text: "text-blue-600 dark:text-blue-400", border: "border-blue-300 dark:border-blue-800/50" },
-  { bg: "bg-teal-100 dark:bg-teal-950/80", text: "text-teal-600 dark:text-teal-400", border: "border-teal-300 dark:border-teal-800/50" },
-  { bg: "bg-amber-100 dark:bg-amber-950/80", text: "text-amber-700 dark:text-amber-400", border: "border-amber-300 dark:border-amber-800/50" },
-  { bg: "bg-emerald-100 dark:bg-emerald-950/80", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-300 dark:border-emerald-800/50" },
-  { bg: "bg-indigo-100 dark:bg-indigo-950/80", text: "text-indigo-600 dark:text-indigo-400", border: "border-indigo-300 dark:border-indigo-800/50" },
+  {
+    bg: "bg-purple-100 dark:bg-purple-950/80",
+    text: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-300 dark:border-purple-800/50",
+  },
+  {
+    bg: "bg-blue-100 dark:bg-blue-950/80",
+    text: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-300 dark:border-blue-800/50",
+  },
+  {
+    bg: "bg-teal-100 dark:bg-teal-950/80",
+    text: "text-teal-600 dark:text-teal-400",
+    border: "border-teal-300 dark:border-teal-800/50",
+  },
+  {
+    bg: "bg-amber-100 dark:bg-amber-950/80",
+    text: "text-amber-700 dark:text-amber-400",
+    border: "border-amber-300 dark:border-amber-800/50",
+  },
+  {
+    bg: "bg-emerald-100 dark:bg-emerald-950/80",
+    text: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-300 dark:border-emerald-800/50",
+  },
+  {
+    bg: "bg-indigo-100 dark:bg-indigo-950/80",
+    text: "text-indigo-600 dark:text-indigo-400",
+    border: "border-indigo-300 dark:border-indigo-800/50",
+  },
 ];
 
 function getAvatarStyle(name: string) {
@@ -366,7 +400,10 @@ function getAvatarStyle(name: string) {
 function StaffStatusBadge({ row }: { row: StaffRow }) {
   if (row.revoked_at) {
     return (
-      <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+      <Badge
+        variant="outline"
+        className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5"
+      >
         <span className="w-2 h-2 rounded-full bg-rose-400 shadow-sm shadow-rose-400/50" />
         Revoked
       </Badge>
@@ -374,14 +411,20 @@ function StaffStatusBadge({ row }: { row: StaffRow }) {
   }
   if (row.is_active) {
     return (
-      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+      <Badge
+        variant="outline"
+        className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5"
+      >
         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse" />
         Active
       </Badge>
     );
   }
   return (
-    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+    <Badge
+      variant="outline"
+      className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-xs font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1.5"
+    >
       <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
       Invited
     </Badge>
@@ -415,7 +458,9 @@ function PermissionChecklist({
           />
           <span>
             {item.label}
-            {item.helper && <span className="block text-xs text-muted-foreground">{item.helper}</span>}
+            {item.helper && (
+              <span className="block text-xs text-muted-foreground">{item.helper}</span>
+            )}
           </span>
         </label>
       ))}
@@ -536,8 +581,14 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
 
   // --- Invoices & Payments ---
   const financeKeys: PermissionKey[] = [
-    "invoices_view", "invoices_create", "invoices_edit", "invoices_delete",
-    "payments_view", "payments_create", "payments_edit", "payments_delete",
+    "invoices_view",
+    "invoices_create",
+    "invoices_edit",
+    "invoices_delete",
+    "payments_view",
+    "payments_create",
+    "payments_edit",
+    "payments_delete",
   ];
   if (role === "ACCOUNTANT" || anyHas(financeKeys)) {
     cats.push({
@@ -559,7 +610,10 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
 
   // --- Attendance ---
   const attendanceKeys: PermissionKey[] = [
-    "attendance_view", "attendance_create", "attendance_edit", "attendance_delete",
+    "attendance_view",
+    "attendance_create",
+    "attendance_edit",
+    "attendance_delete",
   ];
   if (role === "WARDEN" || anyHas(attendanceKeys)) {
     cats.push({
@@ -577,7 +631,10 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
 
   // --- Students ---
   const studentKeys: PermissionKey[] = [
-    "students_view", "students_create", "students_edit", "students_delete",
+    "students_view",
+    "students_create",
+    "students_edit",
+    "students_delete",
   ];
   if (role === "WARDEN" || anyHas(studentKeys)) {
     cats.push({
@@ -593,7 +650,10 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
 
   // --- Visitors ---
   const visitorKeys: PermissionKey[] = [
-    "visitors_view", "visitors_create", "visitors_edit", "visitors_delete",
+    "visitors_view",
+    "visitors_create",
+    "visitors_edit",
+    "visitors_delete",
   ];
   if (role === "WARDEN" || anyHas(visitorKeys)) {
     cats.push({
@@ -609,7 +669,10 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
 
   // --- Rooms & Beds ---
   const roomsKeys: PermissionKey[] = [
-    "rooms_beds_view", "rooms_beds_edit", "rooms_beds_create", "rooms_beds_delete",
+    "rooms_beds_view",
+    "rooms_beds_edit",
+    "rooms_beds_create",
+    "rooms_beds_delete",
   ];
   if (role === "WARDEN" || anyHas(roomsKeys)) {
     cats.push({
@@ -713,12 +776,10 @@ function StaffCard({
   const isRevoked = !!s.revoked_at;
   const isPending = !s.is_active && !isRevoked;
   const fullName = s.profile?.full_name ?? "—";
-  const initial = fullName !== "—" ? fullName.trim()[0]?.toUpperCase() ?? "?" : "?";
+  const initial = fullName !== "—" ? (fullName.trim()[0]?.toUpperCase() ?? "?") : "?";
   const avatarStyle = getAvatarStyle(fullName);
   const contact =
-    s.profile?.email ??
-    (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ??
-    "—";
+    s.profile?.email ?? (s.profile?.phone ? displayIndianPhone(s.profile.phone) : null) ?? "—";
 
   const canExpandFeatures = !isOwner && (s.role === "WARDEN" || s.role === "ACCOUNTANT");
 
@@ -829,14 +890,10 @@ function StaffCard({
                       onClick={() => {
                         setEditRow(s);
                         setEditName(s.profile?.full_name ?? "");
-                        setEditPhone(
-                          s.profile?.phone ? displayIndianPhone(s.profile.phone) : "",
-                        );
+                        setEditPhone(s.profile?.phone ? displayIndianPhone(s.profile.phone) : "");
                         setEditBlockId(s.block_id ?? "ALL");
                         const role = s.role as "WARDEN" | "ACCOUNTANT";
-                        const flatKeys = permissionItemsForRole(role).flatMap(
-                          (item) => item.keys,
-                        );
+                        const flatKeys = permissionItemsForRole(role).flatMap((item) => item.keys);
                         const allKeys =
                           role === "WARDEN" ? [...WARDEN_GRID_KEYS, ...flatKeys] : flatKeys;
                         const hasOverride = allKeys.some(
@@ -1004,7 +1061,12 @@ function StaffCardList({
           <p className="text-sm text-muted-foreground mb-3">
             {errorMessage(staffQ.error, "Could not load staff.")}
           </p>
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => staffQ.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => staffQ.refetch()}
+          >
             Try again
           </Button>
         </div>
@@ -1128,15 +1190,19 @@ function AdminStaffPage() {
     return { phones, emails };
   }, [staff]);
 
+  // Fast local hint only (checked against this tenant's own staff list,
+  // already loaded) — same wording as the authoritative, global check
+  // inviteStaff runs server-side at submit time (see the invite mutation's
+  // onError below), which is what actually blocks a duplicate.
   useEffect(() => {
     const handle = setTimeout(() => {
       const trimmedPhone = phone.trim();
       const trimmedEmail = email.trim().toLowerCase();
       setDuplicateContact(
         trimmedPhone && activeContacts.phones.has(normalizeIndianPhone(trimmedPhone))
-          ? "Someone with this phone number already has access to this hostel."
+          ? "This mobile number is already registered."
           : trimmedEmail && activeContacts.emails.has(trimmedEmail)
-            ? "Someone with this email already has access to this hostel."
+            ? "This email is already registered."
             : null,
       );
     }, 400);
@@ -1182,7 +1248,20 @@ function AdminStaffPage() {
       setAddCustomizePerms(false);
       qc.invalidateQueries({ queryKey: ["staff", tenantId] });
     },
-    onError: (e) => toast.error(errorMessage(e, "Could not add them")),
+    onError: (e) => {
+      const message = errorMessage(e, "Could not add them");
+      // Surface a duplicate phone/email as the same inline field-level
+      // message the debounced pre-check already renders (a concurrent
+      // registration can slip past that check and only get caught here,
+      // server-side, at submit time).
+      if (
+        message === "This mobile number is already registered." ||
+        message === "This email is already registered."
+      ) {
+        setDuplicateContact(message);
+      }
+      toast.error(message);
+    },
   });
 
   const resend = useMutation({
@@ -1245,15 +1324,21 @@ function AdminStaffPage() {
       ? "Enter a valid 10-digit Indian mobile number"
       : null;
 
+  // Email is required (inviteStaff enforces this server-side too); phone
+  // stays optional.
+  const emailError =
+    email.trim() && !emailSchema.safeParse(email.trim()).success
+      ? "Enter a valid email address"
+      : null;
+
   const canInvite =
     !invite.isPending &&
     !duplicateContact &&
     !phoneError &&
+    !emailError &&
     !!addRole &&
     staffName.trim().length >= 2 &&
-    // Phone is optional: at least one contact (email or phone) is required, as
-    // inviteStaff enforces server-side.
-    (phone.trim() !== "" || email.trim() !== "");
+    email.trim() !== "";
 
   if (!tenantId) {
     return (
@@ -1325,7 +1410,6 @@ function AdminStaffPage() {
 
           {/* ── Modal Body ── */}
           <div className="px-6 py-5 space-y-5 flex-1 min-h-0 overflow-y-auto">
-
             {/* Role */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -1360,7 +1444,10 @@ function AdminStaffPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Key className="w-4 h-4 text-muted-foreground" />
-                  <label htmlFor="add-staff-block" className="text-sm font-semibold text-foreground">
+                  <label
+                    htmlFor="add-staff-block"
+                    className="text-sm font-semibold text-foreground"
+                  >
                     Block access
                   </label>
                 </div>
@@ -1412,8 +1499,11 @@ function AdminStaffPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-muted-foreground" />
-                  <label htmlFor="add-staff-phone" className="text-sm font-semibold text-foreground">
-                    Phone
+                  <label
+                    htmlFor="add-staff-phone"
+                    className="text-sm font-semibold text-foreground"
+                  >
+                    Phone <span className="font-normal text-muted-foreground">(optional)</span>
                   </label>
                 </div>
                 <Input
@@ -1432,14 +1522,18 @@ function AdminStaffPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-muted-foreground" />
-                  <label htmlFor="add-staff-email" className="text-sm font-semibold text-foreground">
-                    Email
+                  <label
+                    htmlFor="add-staff-email"
+                    className="text-sm font-semibold text-foreground"
+                  >
+                    Email <span className="text-destructive">*</span>
                   </label>
                 </div>
                 <Input
                   id="add-staff-email"
                   type="email"
                   autoComplete="off"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email address"
@@ -1456,12 +1550,16 @@ function AdminStaffPage() {
             )}
             {!phone.trim() && email.trim() && (
               <p className="text-xs text-muted-foreground -mt-2">
-                They'll get an invite email — ask them to use "Forgot password" on first sign-in to set one.
+                They'll get an invite email — ask them to use "Forgot password" on first sign-in to
+                set one.
               </p>
             )}
 
             {/* Phone format error */}
             {phoneError && <p className="text-sm text-destructive font-medium">{phoneError}</p>}
+
+            {/* Email format error */}
+            {emailError && <p className="text-sm text-destructive font-medium">{emailError}</p>}
 
             {/* Duplicate contact warning */}
             {duplicateContact && (
@@ -1650,7 +1748,9 @@ function AdminStaffPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="edit-staff-name" className="text-foreground">Name</Label>
+              <Label htmlFor="edit-staff-name" className="text-foreground">
+                Name
+              </Label>
               <Input
                 id="edit-staff-name"
                 autoComplete="off"
@@ -1661,7 +1761,9 @@ function AdminStaffPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-staff-phone" className="text-foreground">Phone</Label>
+              <Label htmlFor="edit-staff-phone" className="text-foreground">
+                Phone
+              </Label>
               <Input
                 id="edit-staff-phone"
                 type="tel"
@@ -1675,7 +1777,9 @@ function AdminStaffPage() {
             </div>
             {editRow?.role === "WARDEN" && (
               <div className="space-y-1.5">
-                <Label htmlFor="edit-staff-block" className="text-foreground">Block access</Label>
+                <Label htmlFor="edit-staff-block" className="text-foreground">
+                  Block access
+                </Label>
                 <Select value={editBlockId} onValueChange={setEditBlockId}>
                   <SelectTrigger
                     id="edit-staff-block"
@@ -1760,7 +1864,9 @@ function AdminStaffPage() {
               onClick={() => update.mutate()}
               className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl"
             >
-              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" /> : null}
+              {update.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin text-primary-foreground dark:text-slate-950" />
+              ) : null}
               {update.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
@@ -1769,4 +1875,3 @@ function AdminStaffPage() {
     </div>
   );
 }
-

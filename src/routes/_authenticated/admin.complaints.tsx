@@ -247,7 +247,11 @@ function AdminComplaintRow({
           s.role === "WARDEN" &&
           s.is_active &&
           (!s.property_id || s.property_id === complaint.property_id) &&
-          (!s.block_id || s.block_id === complaint.block_id),
+          (!s.block_id || s.block_id === complaint.block_id) &&
+          // Absent key = Warden's own default (true) — matches can_manage_complaints()'s
+          // RLS gate (20260814090000), so a Warden whose complaints access was
+          // explicitly revoked never shows up as assignable.
+          (s.permissions as Record<string, boolean> | null)?.complaints !== false,
       ),
     [staffQ.data, complaint.property_id, complaint.block_id],
   );
@@ -363,7 +367,12 @@ function AdminComplaintRow({
                             "Unnamed"}
                         </SelectItem>
                       ))}
-                      {staffQ.isFetched && wardens.length === 0 && (
+                      {staffQ.isError && (
+                        <div className="px-2 py-1.5 text-sm text-destructive">
+                          Could not load wardens — try again
+                        </div>
+                      )}
+                      {staffQ.isSuccess && wardens.length === 0 && (
                         <div className="px-2 py-1.5 text-sm text-muted-foreground">
                           No wardens in scope
                         </div>

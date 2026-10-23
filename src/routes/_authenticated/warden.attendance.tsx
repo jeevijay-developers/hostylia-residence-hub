@@ -33,7 +33,7 @@ import { useMyStaffProperty } from "@/lib/staff-scope";
 import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
+import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
@@ -44,11 +44,10 @@ export const Route = createFileRoute("/_authenticated/warden/attendance")({
   component: WardenAttendancePage,
 });
 
-function StudentRosterAvatar({ path, name }: { path: string | null | undefined; name: string }) {
-  const avatarUrl = useSignedAvatarUrl(path);
+function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
   return (
     <Avatar className="h-10 w-10 shrink-0">
-      {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
+      {url ? <AvatarImage src={url} alt={name} /> : null}
       <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
         {name.trim()[0]?.toUpperCase() ?? "S"}
       </AvatarFallback>
@@ -147,6 +146,10 @@ function WardenAttendancePage() {
     }
     return list;
   }, [roster, statusFilter, roomFilter, search, effective]);
+
+  // One signed-URL request for every visible student's photo, instead of one
+  // per row.
+  const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
@@ -298,6 +301,7 @@ function WardenAttendancePage() {
           const saved = currentMap[s.id];
           const needsRemark = st !== "PRESENT";
           const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
+          const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
           const missingRemark = needsRemark && !remarkValue.trim();
           const isOpen = expandedIds[s.id] ?? missingRemark;
           const tone = STATUS_TONE[st];
@@ -313,7 +317,7 @@ function WardenAttendancePage() {
               )}
             >
               <CollapsibleTrigger className="flex w-full items-center gap-3 text-left">
-                <StudentRosterAvatar path={s.photo_path} name={s.full_name} />
+                <StudentRosterAvatar url={avatarUrl} name={s.full_name} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{s.full_name}</div>
                   <div className="truncate text-xs text-muted-foreground">

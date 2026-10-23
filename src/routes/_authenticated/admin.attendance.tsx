@@ -41,8 +41,8 @@ import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { usePropertyStore } from "@/stores/property-store";
 import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
-import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
 import { supabase } from "@/integrations/supabase/client";
+import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
 
@@ -58,11 +58,10 @@ const STATUS_LABEL: Record<Status, string> = {
 };
 const STATUSES = Object.keys(STATUS_LABEL) as Status[];
 
-function StudentRosterAvatar({ path, name }: { path: string | null | undefined; name: string }) {
-  const avatarUrl = useSignedAvatarUrl(path);
+function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
   return (
     <Avatar className="h-10 w-10 shrink-0 border border-border">
-      {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
+      {url ? <AvatarImage src={url} alt={name} /> : null}
       <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
         {name.trim()[0]?.toUpperCase() ?? "S"}
       </AvatarFallback>
@@ -136,6 +135,10 @@ function AdminAttendancePage() {
     }
     return list;
   }, [roster, statusFilter, roomFilter, search, effective]);
+
+  // One signed-URL request for every visible student's photo, instead of one
+  // per row.
+  const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, ON_LEAVE: 0 };
@@ -388,6 +391,7 @@ function AdminAttendancePage() {
             const saved = currentMap[s.id];
             const needsRemark = st !== "PRESENT";
             const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
+            const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
             return (
               <div
                 key={s.id}
@@ -400,7 +404,7 @@ function AdminAttendancePage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <StudentRosterAvatar path={s.photo_path} name={s.full_name} />
+                    <StudentRosterAvatar url={avatarUrl} name={s.full_name} />
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground text-sm truncate">
                         {s.full_name}

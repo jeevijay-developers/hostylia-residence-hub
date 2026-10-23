@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
+import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { wardenProfileEditSchema } from "@/schemas/profile";
 
@@ -36,6 +36,7 @@ function WardenProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const avatarUrl = useAvatarUrl(avatarPath);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const profileQ = useQuery({
@@ -166,8 +167,6 @@ function WardenProfileEditPage() {
       }
     },
   });
-
-  const avatarUrl = useSignedAvatarUrl(avatarPath);
 
   if (profileQ.isLoading) {
     return (

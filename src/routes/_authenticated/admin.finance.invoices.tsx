@@ -463,6 +463,7 @@ function CreateInvoiceDialog({
                 type="date"
                 value={periodStart}
                 onChange={(e) => setPeriodStart(e.target.value)}
+                className="[color-scheme:dark]"
               />
             </div>
             <div>
@@ -472,6 +473,7 @@ function CreateInvoiceDialog({
                 type="date"
                 value={periodEnd}
                 onChange={(e) => setPeriodEnd(e.target.value)}
+                className="[color-scheme:dark]"
               />
             </div>
           </div>
@@ -482,6 +484,7 @@ function CreateInvoiceDialog({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              className="[color-scheme:dark]"
             />
           </div>
           <div>
@@ -598,6 +601,7 @@ function InvoiceDetailDialog({
                     type="date"
                     defaultValue={row.due_date}
                     onChange={(e) => setDueDate(e.target.value)}
+                    className="[color-scheme:dark]"
                   />
                 </div>
                 <div>

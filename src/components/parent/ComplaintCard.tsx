@@ -18,7 +18,7 @@ import {
   StatusBadge,
   slaAccentBorderClass,
 } from "@/components/complaints/SlaBadge";
-import { useSignedAvatarUrl } from "@/lib/signed-avatar-url";
+import { useAvatarUrl } from "@/lib/avatar";
 import { slaMeta, type ComplaintWithRelations } from "@/lib/complaint";
 import { cn, type SemanticTone } from "@/lib/utils";
 import type { ComplaintPriority } from "@/schemas/complaint";
@@ -61,7 +61,7 @@ function categoryIcon(categoryName: string | null | undefined): LucideIcon {
  */
 export function ComplaintCard({ complaint }: { complaint: ComplaintWithRelations }) {
   const studentName = complaint.student_full_name;
-  const avatarUrl = useSignedAvatarUrl(complaint.student_avatar_path);
+  const avatarUrl = useAvatarUrl(complaint.student_avatar_path);
   const accent = slaAccentBorderClass(slaMeta(complaint).tone, complaint.status);
   const tone = PRIORITY_TONE[complaint.priority as ComplaintPriority] ?? "muted";
   const Icon = categoryIcon(complaint.category_name);

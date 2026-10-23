@@ -174,6 +174,7 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
               type="date"
               value={chequeDate}
               onChange={(e) => setChequeDate(e.target.value)}
+              className="[color-scheme:dark]"
             />
           </FormField>
         )}
