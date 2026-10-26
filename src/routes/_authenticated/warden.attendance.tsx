@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -37,11 +37,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
+// Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
+// Shared with the Accountant attendance route, which reuses this page.
+export const attendanceSearchSchema = z.object({
+  status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
-  // Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
-  validateSearch: z.object({
-    status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
-  }),
+  validateSearch: attendanceSearchSchema,
   component: () => (
     <StaffModuleGuard role="WARDEN" module="attendance_view">
       <WardenAttendancePage />
@@ -81,7 +84,7 @@ const STATUS_ICON: Record<Status, typeof UserCheck> = {
 };
 const STATUSES = Object.keys(STATUS_LABEL) as Status[];
 
-function WardenAttendancePage() {
+export function WardenAttendancePage() {
   const role = useResolvedRole();
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
@@ -96,7 +99,7 @@ function WardenAttendancePage() {
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
-  const { status: initialStatus } = Route.useSearch();
+  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<typeof attendanceSearchSchema>;
   const [statusFilter, setStatusFilter] = useState(initialStatus ?? "ALL");
   const [roomFilter, setRoomFilter] = useState("ALL");
 

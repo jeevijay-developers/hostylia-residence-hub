@@ -223,6 +223,10 @@ export function useAccountantPermissions() {
   });
   const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
   function can(key: string): boolean {
+    // Synthetic key (not stored): the Gate page hosts both Gate Pass and
+    // Visitors, so either grant shows it; each tab/action is still gated by
+    // its own key via RLS.
+    if (key === "gate_any") return can("gate_passes_view") || can("visitors_view");
     const override = permissions[key];
     if (override !== undefined) return override;
     return ACCOUNTANT_FINANCE_DEFAULT_TRUE.has(key);
@@ -233,6 +237,20 @@ export function useAccountantPermissions() {
     blockId: q.data?.block_id ?? null,
     isLoading: q.isLoading,
   };
+}
+
+/**
+ * Role-aware wrapper for operational pages shared between Warden and
+ * Accountant (attendance, complaints, gate, notices, mess, students) — resolves
+ * `can()` / property / block from whichever staff role is signed in, so the
+ * same page component enforces the Admin-granted keys for either role. Both
+ * underlying queries are role-gated, so only the matching one actually runs.
+ */
+export function useStaffPermissions() {
+  const { data: role } = useResolvedRole();
+  const warden = useWardenPermissions();
+  const accountant = useAccountantPermissions();
+  return role?.role === "ACCOUNTANT" ? accountant : warden;
 }
 
 // Modules without a real write action for students today (Attendance,

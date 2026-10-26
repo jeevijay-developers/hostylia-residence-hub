@@ -61,6 +61,7 @@ export function Topbar({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { data: ownProfile } = useQuery({
     queryKey: ["own-profile"],
@@ -314,12 +315,67 @@ export function Topbar({
           </button>
         )}
         {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
+          <>
+          {isWarden && (
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open menu"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-foreground transition-colors hover:bg-muted lg:hidden"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="flex w-72 flex-col p-0 lg:hidden">
+                <SheetHeader className="p-4 pb-2 text-left">
+                  <SheetTitle className="sr-only">Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-8">
+                  <Link
+                    to="/warden/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Profile</span>
+                  </Link>
+                  {mobileProfileMenuItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+                <div className="p-4">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setSignOutOpen(true);
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" /> Sign out
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 aria-label="Account menu"
-                className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60"
+                className={cn(
+                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
+                  isWarden && "max-lg:hidden",
+                )}
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -370,6 +426,7 @@ export function Topbar({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
         ) : (
           <ProfileAvatarMenu
             avatarUrl={avatarUrl}

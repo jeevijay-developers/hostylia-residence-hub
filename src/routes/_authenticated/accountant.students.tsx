@@ -1,23 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { StudentFinancePanel } from "@/components/finance/StudentFinancePanel";
-import { useAccountantProperty } from "@/lib/staff-scope";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
+/**
+ * Layout route for /accountant/students/*. The finance lookup (and, when
+ * granted, student management) lives in accountant.students.index.tsx; this
+ * must render an <Outlet /> so the $id detail child route can display.
+ */
 export const Route = createFileRoute("/_authenticated/accountant/students")({
-  component: AccStudentsPage,
+  component: () => <Outlet />,
 });
-
-function AccStudentsPage() {
-  const { propertyId, isLoading: propertyLoading } = useAccountantProperty();
-  if (propertyLoading) return null;
-  if (!propertyId)
-    return (
-      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
-        No property assigned to your account yet — contact your Hostel Admin.
-      </p>
-    );
-  return (
-    <div className="space-y-4">
-      <StudentFinancePanel propertyId={propertyId} />
-    </div>
-  );
-}

@@ -82,6 +82,21 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Payments", to: "/accountant/payments", icon: CreditCard, module: "payments_view" },
     { label: "Refunds", to: "/accountant/refunds", icon: Receipt, module: "refunds" },
     { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
+    {
+      label: "Attendance",
+      to: "/accountant/attendance",
+      icon: CalendarCheck,
+      module: "attendance_view",
+    },
+    {
+      label: "Complaints",
+      to: "/accountant/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
+    { label: "Gate", to: "/accountant/gate", icon: DoorOpen, module: "gate_any" },
+    { label: "Notices", to: "/accountant/notices", icon: BellRing, module: "notices" },
+    { label: "Mess", to: "/accountant/mess", icon: Utensils, module: "mess_menus" },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart, module: "reports_view" },
   ],
   WARDEN: [
@@ -195,6 +210,21 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     },
     { label: "Refunds", to: "/accountant/refunds", icon: Receipt, module: "refunds" },
     { label: "Deposit Ledger", to: "/accountant/deposit-ledger", icon: Wallet },
+    {
+      label: "Attendance",
+      to: "/accountant/attendance",
+      icon: CalendarCheck,
+      module: "attendance_view",
+    },
+    {
+      label: "Complaints",
+      to: "/accountant/complaints",
+      icon: MessageSquareWarning,
+      module: "complaints",
+    },
+    { label: "Gate", to: "/accountant/gate", icon: DoorOpen, module: "gate_any" },
+    { label: "Notices", to: "/accountant/notices", icon: BellRing, module: "notices" },
+    { label: "Mess", to: "/accountant/mess", icon: Utensils, module: "mess_menus" },
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart, module: "reports_view" },
   ],
   WARDEN: [

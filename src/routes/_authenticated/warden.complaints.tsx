@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ import {
   type ComplaintWithRelations,
 } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
-import { useMyStaffProperty, useWardenPermissions } from "@/lib/staff-scope";
+import { useMyStaffProperty, useStaffPermissions } from "@/lib/staff-scope";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/utils";
 import {
@@ -40,9 +40,12 @@ import {
   wardenStatusOptions,
 } from "@/schemas/complaint";
 
+// Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
+// Shared with the Accountant complaints route, which reuses this page.
+export const complaintsSearchSchema = z.object({ status: z.literal("PENDING").optional() });
+
 export const Route = createFileRoute("/_authenticated/warden/complaints")({
-  // Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
-  validateSearch: z.object({ status: z.literal("PENDING").optional() }),
+  validateSearch: complaintsSearchSchema,
   component: () => (
     <StaffModuleGuard role="WARDEN" module="complaints">
       <WardenComplaintsPage />
@@ -62,7 +65,7 @@ const PENDING_COMPLAINT_STATUSES = [
 const STATUS_FILTER_OPTIONS = ["ALL", "PENDING", ...complaintStatusEnum.options];
 const PRIORITY_FILTER_OPTIONS = ["ALL", ...complaintPriorityEnum.options];
 
-function WardenComplaintsPage() {
+export function WardenComplaintsPage() {
   const role = useResolvedRole();
   const userId = role.data?.userId ?? null;
   const propQ = useMyStaffProperty(userId);
@@ -70,7 +73,9 @@ function WardenComplaintsPage() {
   const categoriesQ = useComplaintCategories(propertyId);
 
   const [search, setSearch] = useState("");
-  const { status: initialStatus } = Route.useSearch();
+  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<
+    typeof complaintsSearchSchema
+  >;
   const [status, setStatus] = useState(initialStatus ?? "ALL");
   const [priority, setPriority] = useState("ALL");
   const [category, setCategory] = useState("ALL");
@@ -205,7 +210,7 @@ function ComplaintDetailsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const { can } = useWardenPermissions();
+  const { can } = useStaffPermissions();
   const [status, setStatus] = useState<string>(complaint.status);
   const [resolutionSummary, setResolutionSummary] = useState(complaint.resolution_summary ?? "");
 

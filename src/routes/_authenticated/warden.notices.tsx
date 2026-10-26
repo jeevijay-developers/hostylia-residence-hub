@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 
 import { NoticeComposer } from "@/components/notifications/NoticeComposer";
-import { useWardenPermissions } from "@/lib/staff-scope";
+import { useStaffPermissions } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/warden/notices")({
   component: () => (
@@ -12,8 +12,8 @@ export const Route = createFileRoute("/_authenticated/warden/notices")({
   ),
 });
 
-function WardenNoticesPage() {
-  const { propertyId, isLoading } = useWardenPermissions();
+export function WardenNoticesPage() {
+  const { propertyId, isLoading } = useStaffPermissions();
 
   if (isLoading) return null;
 

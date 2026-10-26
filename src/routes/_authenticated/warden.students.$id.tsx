@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -45,7 +45,7 @@ import { StudentProfileEditDialog } from "@/components/students/StudentProfileEd
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
 import { confirmStudentAdmission } from "@/lib/student.functions";
-import { useWardenPermissions } from "@/lib/staff-scope";
+import { useStaffPermissions } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/warden/students/$id")({
   head: () => ({ meta: [{ title: "Student — Hostylia" }] }),
@@ -66,11 +66,14 @@ interface AllocationRow {
   } | null;
 }
 
-function WardenStudentDetailPage() {
-  const { id } = Route.useParams();
+export function WardenStudentDetailPage() {
+  const { id } = useParams({ strict: false }) as { id: string };
+  const isAccountantView = useRouterState({
+    select: (s) => s.location.pathname.startsWith("/accountant/"),
+  });
   const [editOpen, setEditOpen] = useState(false);
   const [stayOpen, setStayOpen] = useState(false);
-  const { can } = useWardenPermissions();
+  const { can } = useStaffPermissions();
 
   const studentQ = useQuery({
     queryKey: ["student", id],
@@ -137,9 +140,15 @@ function WardenStudentDetailPage() {
   return (
     <div className="space-y-5 pb-3">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/warden/students">
-          <ArrowLeft className="h-4 w-4" /> Back to students
-        </Link>
+        {isAccountantView ? (
+          <Link to="/accountant/students">
+            <ArrowLeft className="h-4 w-4" /> Back to students
+          </Link>
+        ) : (
+          <Link to="/warden/students">
+            <ArrowLeft className="h-4 w-4" /> Back to students
+          </Link>
+        )}
       </Button>
 
       <PageHeader

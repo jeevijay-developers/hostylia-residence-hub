@@ -111,7 +111,7 @@ interface PropertyOption {
 export interface StudentsListPageProps {
   tenantId: string;
   /** Route prefix for the View action and Add/Import dialogs' student links. */
-  viewBasePath: "/admin/students" | "/warden/students";
+  viewBasePath: "/admin/students" | "/warden/students" | "/accountant/students";
   /** Properties available to switch between. Length <= 1 hides the switcher
    * (a single-property Warden never sees it — same condition Admin's own
    * page already used). */
@@ -150,7 +150,7 @@ export function StudentsListPage({
   // Scopes the mobile status+search row-merge below to Warden only (its
   // property switcher never renders, so that grid cell sits empty) — Admin's
   // multi-property mobile row is untouched.
-  const isWarden = viewBasePath === "/warden/students";
+  const isWarden = viewBasePath !== "/admin/students";
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
   const [q, setQ] = useState("");

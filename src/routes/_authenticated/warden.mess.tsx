@@ -122,7 +122,7 @@ function FieldIcon({ icon: Icon, alignTop }: { icon: LucideIcon; alignTop?: bool
 const DUPLICATE_MENU_MESSAGE =
   "A menu for this meal already exists on this date. Edit the existing one instead.";
 
-function WardenMessPage() {
+export function WardenMessPage() {
   const role = useResolvedRole();
   const userId = role.data?.userId ?? null;
   const propQ = useMyStaffProperty(userId);

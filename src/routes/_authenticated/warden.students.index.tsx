@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
-import { useMyStaffProperty, useWardenPermissions } from "@/lib/staff-scope";
+import { useMyStaffProperty, useStaffPermissions } from "@/lib/staff-scope";
 import { StudentsListPage } from "@/components/students/StudentsListPage";
 
 export const Route = createFileRoute("/_authenticated/warden/students/")({
@@ -20,13 +20,16 @@ export const Route = createFileRoute("/_authenticated/warden/students/")({
  * their real granted permissions (students_create/students_delete) instead
  * of Admin's always-on access.
  */
-function WardenStudentsRoute() {
-  const { status } = Route.useSearch();
+export function WardenStudentsRoute() {
+  const { status } = useSearch({ strict: false }) as { status?: string };
+  const isAccountantView = useRouterState({
+    select: (s) => s.location.pathname.startsWith("/accountant/"),
+  });
   const { data: resolved } = useResolvedRole();
   const tenantId = resolved?.tenantId ?? null;
   const propQ = useMyStaffProperty(resolved?.userId);
   const propertyId = propQ.data ?? null;
-  const { can, isLoading: permsLoading } = useWardenPermissions();
+  const { can, isLoading: permsLoading } = useStaffPermissions();
 
   const propertyRowQ = useQuery({
     queryKey: ["warden-own-property-row", propertyId],
@@ -47,7 +50,7 @@ function WardenStudentsRoute() {
   return (
     <StudentsListPage
       tenantId={tenantId}
-      viewBasePath="/warden/students"
+      viewBasePath={isAccountantView ? "/accountant/students" : "/warden/students"}
       properties={propertyRowQ.data ? [propertyRowQ.data] : []}
       effectiveProperty={propertyId}
       canCreate={can("students_create")}
