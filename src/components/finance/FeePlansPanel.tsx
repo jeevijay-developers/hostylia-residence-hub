@@ -30,8 +30,22 @@ import type { FeePlanFormInput } from "@/schemas/finance";
  * HOSTEL_ADMIN and ACCOUNTANT by default — Delete defaults to HOSTEL_ADMIN
  * only, hidden here to match (an Admin can still opt an Accountant into it
  * via Customize Permissions).
+ *
+ * `canCreate`/`canEdit` default to `true` so the existing Admin/Accountant
+ * call sites (which pass neither) keep their unconditional access exactly
+ * as before — only the Warden fee-plans route passes explicit, permission-
+ * derived values. `canDelete` already defaults correctly per-caller via
+ * `useMyPermission`'s explicit `false` default, so it isn't a prop here.
  */
-export function FeePlansPanel({ propertyId }: { propertyId: string }) {
+export function FeePlansPanel({
+  propertyId,
+  canCreate = true,
+  canEdit = true,
+}: {
+  propertyId: string;
+  canCreate?: boolean;
+  canEdit?: boolean;
+}) {
   const qc = useQueryClient();
   const deleteFn = useServerFn(deleteOrDeactivateFeePlan);
   const canDelete = useMyPermission("fee_plans_delete", false);
@@ -68,13 +82,21 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete fee plan"),
   });
 
+  const showForm = editingPlan ? canEdit : canCreate;
+
   return (
     <div className="space-y-6">
-      <FeePlanForm
-        propertyId={propertyId}
-        plan={editingPlan ?? undefined}
-        onSaved={() => setEditingPlan(null)}
-      />
+      {showForm ? (
+        <FeePlanForm
+          propertyId={propertyId}
+          plan={editingPlan ?? undefined}
+          onSaved={() => setEditingPlan(null)}
+        />
+      ) : (
+        <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          Access denied — you don't have permission to {editingPlan ? "edit" : "create"} fee plans.
+        </p>
+      )}
       <div className="space-y-2.5">
         {(q.data ?? []).map((p) => {
           const activeComponents = (p.fee_plan_components ?? []).filter(
@@ -101,40 +123,42 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
                       ),
                     )}
                   </p>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Edit"
-                    aria-label="Edit"
-                    onClick={() =>
-                      setEditingPlan({
-                        id: p.id,
-                        property_id: p.property_id,
-                        name: p.name,
-                        code: p.code,
-                        billing_frequency: p.billing_frequency,
-                        due_day: p.due_day,
-                        grace_period_days: p.grace_period_days,
-                        late_fee_type: p.late_fee_type,
-                        late_fee_value: p.late_fee_value,
-                        effective_from: p.effective_from,
-                        effective_until: p.effective_until ?? "",
-                        status: p.status,
-                        components: activeComponents.map((c) => ({
-                          id: c.id,
-                          name: c.name,
-                          component_type: c.component_type,
-                          amount_paise: c.amount_paise,
-                          allow_zero_amount: c.allow_zero_amount,
-                          is_refundable: c.is_refundable,
-                          is_taxable: c.is_taxable,
-                          tax_rate_basis_points: c.tax_rate_basis_points,
-                        })),
-                      } as FeePlanFormInput)
-                    }
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Edit"
+                      aria-label="Edit"
+                      onClick={() =>
+                        setEditingPlan({
+                          id: p.id,
+                          property_id: p.property_id,
+                          name: p.name,
+                          code: p.code,
+                          billing_frequency: p.billing_frequency,
+                          due_day: p.due_day,
+                          grace_period_days: p.grace_period_days,
+                          late_fee_type: p.late_fee_type,
+                          late_fee_value: p.late_fee_value,
+                          effective_from: p.effective_from,
+                          effective_until: p.effective_until ?? "",
+                          status: p.status,
+                          components: activeComponents.map((c) => ({
+                            id: c.id,
+                            name: c.name,
+                            component_type: c.component_type,
+                            amount_paise: c.amount_paise,
+                            allow_zero_amount: c.allow_zero_amount,
+                            is_refundable: c.is_refundable,
+                            is_taxable: c.is_taxable,
+                            tax_rate_basis_points: c.tax_rate_basis_points,
+                          })),
+                        } as FeePlanFormInput)
+                      }
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button
                       size="icon"
@@ -159,18 +183,15 @@ export function FeePlansPanel({ propertyId }: { propertyId: string }) {
         )}
       </div>
 
-      <AlertDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-      >
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {pendingDelete?.name ?? "this fee plan"}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Existing invoices and payments already generated from this plan are never affected.
-              If it still backs an active allocation, it's deactivated instead of deleted so
-              current tenants keep billing correctly; otherwise it's soft-deleted and disappears
-              from this list.
+              Existing invoices and payments already generated from this plan are never affected. If
+              it still backs an active allocation, it's deactivated instead of deleted so current
+              tenants keep billing correctly; otherwise it's soft-deleted and disappears from this
+              list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

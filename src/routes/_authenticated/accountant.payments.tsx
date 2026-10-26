@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { PaymentEntryForm } from "@/components/finance/PaymentEntryForm";
 import { PaymentHistoryPanel } from "@/components/finance/PaymentHistoryPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
@@ -7,7 +8,11 @@ export const Route = createFileRoute("/_authenticated/accountant/payments")({
   validateSearch: (search: Record<string, unknown>): { paidToday?: string } => ({
     paidToday: typeof search.paidToday === "string" ? search.paidToday : undefined,
   }),
-  component: AccPaymentsPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="payments_view">
+      <AccPaymentsPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function AccPaymentsPage() {

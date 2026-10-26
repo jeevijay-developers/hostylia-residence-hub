@@ -32,11 +32,13 @@ function WardenAllocationsPage() {
 
   if (permsLoading || propQ.isLoading) return null;
 
-  if (!can("allocations_create")) {
+  if (!can("allocations_view")) {
     return (
       <div className="space-y-3">
         <BackLink studentId={student} />
-        <p className="text-sm text-muted-foreground">You don't have permission to allocate beds.</p>
+        <p className="text-sm text-destructive">
+          Access denied — you don't have permission to view allocations.
+        </p>
       </div>
     );
   }
@@ -44,7 +46,12 @@ function WardenAllocationsPage() {
   return (
     <div className="space-y-4">
       <BackLink studentId={student} />
-      <AllocationBoard initialStudentId={student} propertyIdOverride={propQ.data ?? null} />
+      <AllocationBoard
+        initialStudentId={student}
+        propertyIdOverride={propQ.data ?? null}
+        canCreate={can("allocations_create")}
+        canEdit={can("allocations_edit")}
+      />
     </div>
   );
 }

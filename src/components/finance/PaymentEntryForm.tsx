@@ -20,7 +20,18 @@ import { formatInr } from "@/lib/finance";
 
 const PAYABLE_STATUSES = ["ISSUED", "PARTIALLY_PAID", "OVERDUE"];
 
-export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
+/**
+ * `canCreate` defaults to `true` so the existing Admin/Accountant call sites
+ * (which pass neither) keep recording payments unconditionally — only the
+ * Warden payments route passes an explicit, permission-derived value.
+ */
+export function PaymentEntryForm({
+  propertyId,
+  canCreate = true,
+}: {
+  propertyId: string;
+  canCreate?: boolean;
+}) {
   const qc = useQueryClient();
   const record = useServerFn(recordManualPayment);
   const [invoiceId, setInvoiceId] = useState("");
@@ -105,6 +116,14 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+
+  if (!canCreate) {
+    return (
+      <div className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
+        Access denied — you don't have permission to record payments.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">

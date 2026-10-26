@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -42,7 +43,11 @@ import {
 export const Route = createFileRoute("/_authenticated/warden/complaints")({
   // Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
   validateSearch: z.object({ status: z.literal("PENDING").optional() }),
-  component: WardenComplaintsPage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="complaints">
+      <WardenComplaintsPage />
+    </StaffModuleGuard>
+  ),
 });
 
 // Same set the Daily Brief counts as "Pending Complaints".

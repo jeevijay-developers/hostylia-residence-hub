@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -79,7 +80,11 @@ import { cn, getErrorMessage } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/warden/gate")({
   // Lets the Daily Brief's Visitors Today card open the visitors tab scoped to today.
   validateSearch: z.object({ view: z.literal("visitors-today").optional() }),
-  component: WardenGatePage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="gate_passes_view">
+      <WardenGatePage />
+    </StaffModuleGuard>
+  ),
 });
 
 type RoomAllocation = { status: string; rooms?: { room_number: string } | null };
@@ -611,8 +616,14 @@ function WardenGatePage() {
               <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Currently Out
               {!active.isLoading && (
-                <Badge variant="outline" className="border-transparent bg-muted text-muted-foreground">
-                  {((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE").length}
+                <Badge
+                  variant="outline"
+                  className="border-transparent bg-muted text-muted-foreground"
+                >
+                  {
+                    ((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE")
+                      .length
+                  }
                 </Badge>
               )}
             </div>
@@ -1024,8 +1035,7 @@ function VisitorDetailsDialog({
 function FeedEventCard({ event, avatarIndex }: { event: FeedEvent; avatarIndex: number }) {
   const isVisitorEvent = !!event.visitors;
   const name = event.students?.full_name ?? event.visitors?.name ?? "—";
-  const room =
-    roomOf(event.students?.allocations) ?? roomOf(event.visitors?.students?.allocations);
+  const room = roomOf(event.students?.allocations) ?? roomOf(event.visitors?.students?.allocations);
   const hostName = isVisitorEvent ? event.visitors?.students?.full_name : undefined;
   return (
     <Card>
@@ -1055,7 +1065,10 @@ function FeedEventCard({ event, avatarIndex }: { event: FeedEvent; avatarIndex: 
               {isVisitorEvent && event.visitors?.phone ? ` (${event.visitors.phone})` : ""}
             </span>
             {event.is_late && (
-              <Badge variant="outline" className="border-transparent bg-destructive/15 text-destructive">
+              <Badge
+                variant="outline"
+                className="border-transparent bg-destructive/15 text-destructive"
+              >
                 LATE
               </Badge>
             )}
@@ -1378,7 +1391,9 @@ function RegisterVisitorDialog({
                 aria-invalid={expectedDateInvalid}
               />
               {expectedDateInvalid && (
-                <p className="text-xs text-destructive">Enter a valid date within the current year</p>
+                <p className="text-xs text-destructive">
+                  Enter a valid date within the current year
+                </p>
               )}
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -1393,7 +1408,11 @@ function RegisterVisitorDialog({
           </div>
         </div>
         <DialogFooter className="flex-row justify-end gap-2 space-x-0">
-          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button

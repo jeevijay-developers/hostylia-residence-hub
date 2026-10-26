@@ -1,31 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 
 import { NoticeComposer } from "@/components/notifications/NoticeComposer";
-import { supabase } from "@/integrations/supabase/client";
+import { useWardenPermissions } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/warden/notices")({
-  component: WardenNoticesPage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="notices">
+      <WardenNoticesPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function WardenNoticesPage() {
-  // Wardens are scoped to a single property; resolve the first assignment.
-  const { data: propertyId } = useQuery({
-    queryKey: ["warden-property"],
-    queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
-      const { data } = await supabase
-        .from("role_assignments")
-        .select("property_id")
-        .eq("user_id", u.user.id)
-        .eq("role", "WARDEN")
-        .is("revoked_at", null)
-        .limit(1)
-        .maybeSingle();
-      return data?.property_id ?? null;
-    },
-  });
+  const { propertyId, isLoading } = useWardenPermissions();
+
+  if (isLoading) return null;
 
   return (
     <div className="space-y-6">

@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useAccountantProperty } from "@/lib/staff-scope";
 import { AgingReportPanel, OccupancyReportPanel } from "@/components/reports/panels";
 
 // Accountants get DSO/Aging + a revenue-relevant occupancy view.
 // No SLA / bed-level operational detail per Phase 4 RLS scoping.
 export const Route = createFileRoute("/_authenticated/accountant/reports")({
-  component: AccountantReportsPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="reports_view">
+      <AccountantReportsPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function AccountantReportsPage() {

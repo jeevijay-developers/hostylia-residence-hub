@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
@@ -61,7 +62,11 @@ import { messMenuFormSchema } from "@/schemas/mess";
 import { cn, getErrorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/mess")({
-  component: WardenMessPage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="mess_menus">
+      <WardenMessPage />
+    </StaffModuleGuard>
+  ),
 });
 
 const MEALS = ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"] as const;
@@ -703,11 +708,7 @@ function EditMenuDialog({
             <Label className="text-xs">Title (optional)</Label>
             <div className="relative">
               <FieldIcon icon={Tag} />
-              <Input
-                className="pl-11"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <Input className="pl-11" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1">

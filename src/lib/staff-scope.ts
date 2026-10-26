@@ -75,6 +75,31 @@ const WARDEN_KEY_DEFAULT_FALSE = new Set([
   "rooms_beds_delete",
 ]);
 
+// Finance keys never default on for a Warden, unlike the rest of
+// WARDEN_KEY_DEFAULT_FALSE's "on by default, a few carved out" shape — this
+// mirrors the SQL truth in has_finance_permission()/has_role_permission()
+// (20260814070000/20260814090000): only HOSTEL_ADMIN or an explicit
+// `permissions[key] = true` grants a Warden access; the "absent key still
+// passes" default-true fallback those functions give ACCOUNTANT never
+// applies to WARDEN. Without this, the client would show Finance
+// nav/actions as allowed for every Warden by default while the RLS layer
+// silently rejects the underlying query/mutation.
+const WARDEN_FINANCE_KEYS = new Set([
+  "fee_plans_view",
+  "fee_plans_create",
+  "fee_plans_edit",
+  "fee_plans_delete",
+  "invoices_view",
+  "invoices_create",
+  "invoices_edit",
+  "invoices_delete",
+  "payments_view",
+  "payments_create",
+  "payments_edit",
+  "payments_delete",
+  "refunds",
+]);
+
 /**
  * A Warden's own effective per-module permission overrides, read straight
  * from their `role_assignments` row (RLS already allows reading your own
@@ -106,7 +131,71 @@ export function useWardenPermissions() {
   function can(key: string): boolean {
     const override = permissions[key];
     if (override !== undefined) return override;
+    if (WARDEN_FINANCE_KEYS.has(key)) return false;
     return !WARDEN_KEY_DEFAULT_FALSE.has(key);
+  }
+  return {
+    can,
+    propertyId: q.data?.property_id ?? null,
+    blockId: q.data?.block_id ?? null,
+    isLoading: q.isLoading,
+  };
+}
+
+// Finance keys default true for an Accountant (their own role defaults, see
+// has_finance_permission() in 20260814070000); every other key — operational
+// (attendance/complaints/gate_passes/.../reports_view) and the granular CRUD
+// pilot keys — defaults false unless explicitly granted (see
+// has_operational_permission_property/scope() in 20260814090000). Mirrors
+// those two SQL functions exactly so the sidebar/route gating here never
+// drifts from what RLS actually enforces.
+const ACCOUNTANT_FINANCE_DEFAULT_TRUE = new Set([
+  "fee_plans_view",
+  "fee_plans_create",
+  "fee_plans_edit",
+  "fee_plans_delete",
+  "invoices_view",
+  "invoices_create",
+  "invoices_edit",
+  "invoices_delete",
+  "payments_view",
+  "payments_create",
+  "payments_edit",
+  "payments_delete",
+  "refunds",
+]);
+
+/**
+ * An Accountant's own effective per-module permission overrides — same
+ * shape/intent as useWardenPermissions above, for the other direction
+ * (Accountant's defaults are Warden's grantable-extras, and vice versa).
+ * Client-side UI gating only; can_manage_()/can_view_() RLS is the real
+ * enforcement.
+ */
+export function useAccountantPermissions() {
+  const { data: role } = useResolvedRole();
+  const q = useQuery({
+    queryKey: ["my-accountant-permissions", role?.userId, role?.tenantId],
+    enabled: !!role?.userId && !!role?.tenantId && role.role === "ACCOUNTANT",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("role_assignments")
+        .select("property_id, block_id, permissions")
+        .eq("user_id", role!.userId!)
+        .eq("tenant_id", role!.tenantId!)
+        .eq("role", "ACCOUNTANT")
+        .eq("is_active", true)
+        .order("granted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
+  function can(key: string): boolean {
+    const override = permissions[key];
+    if (override !== undefined) return override;
+    return ACCOUNTANT_FINANCE_DEFAULT_TRUE.has(key);
   }
   return {
     can,
@@ -120,13 +209,7 @@ export function useWardenPermissions() {
 // Notices are read-only) only ever expose Read/No Access — there's no
 // `edit` key for them, `can()` below just returns `false` for that verb.
 export type StudentModule =
-  | "profile"
-  | "attendance"
-  | "complaints"
-  | "notices"
-  | "finance"
-  | "gate_passes"
-  | "mess";
+  "profile" | "attendance" | "complaints" | "notices" | "finance" | "gate_passes" | "mess";
 
 const STUDENT_VIEW_ONLY_MODULES = new Set<StudentModule>(["attendance", "notices"]);
 
@@ -182,9 +265,7 @@ export function useMyPermission(key: string, defaultValue: boolean): boolean {
   const q = useQuery({
     queryKey: ["my-permission-override", role?.userId, role?.tenantId, role?.role],
     enabled:
-      !!role?.userId &&
-      !!role?.tenantId &&
-      (role.role === "WARDEN" || role.role === "ACCOUNTANT"),
+      !!role?.userId && !!role?.tenantId && (role.role === "WARDEN" || role.role === "ACCOUNTANT"),
     queryFn: async () => {
       const { data } = await supabase
         .from("role_assignments")

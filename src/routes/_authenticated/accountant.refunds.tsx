@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { RefundRequestForm } from "@/components/finance/RefundRequestForm";
 import { RefundHistoryPanel } from "@/components/finance/RefundHistoryPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/accountant/refunds")({
-  component: AccRefundsPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="refunds">
+      <AccRefundsPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function AccRefundsPage() {

@@ -3,7 +3,12 @@ import { Navigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
 import { useResolvedRole, type AppRole } from "@/lib/user-role";
-import { useStudentPermissions, type StudentModule } from "@/lib/staff-scope";
+import {
+  useStudentPermissions,
+  useWardenPermissions,
+  useAccountantPermissions,
+  type StudentModule,
+} from "@/lib/staff-scope";
 
 interface RoleGuardProps {
   allow: NonNullable<AppRole>[];
@@ -57,6 +62,41 @@ export function StudentModuleGuard({ module, children }: StudentModuleGuardProps
   }
 
   if (role?.role === "STUDENT" && !can(module, "view")) {
+    return <Navigate to="/403" />;
+  }
+  return <>{children}</>;
+}
+
+interface StaffModuleGuardProps {
+  role: "WARDEN" | "ACCOUNTANT";
+  /** A PermissionKey from admin.staff.tsx's custom-permission matrix
+   * (e.g. "attendance_view", "fee_plans_view", "reports_view"). */
+  module: string;
+  children: ReactNode;
+}
+
+/**
+ * Blocks direct route access to a Warden/Accountant module page the signed-in
+ * staff member hasn't been granted — same UX-only redirect-to-/403 pattern as
+ * RoleGuard/StudentModuleGuard above, keeping "no permission -> hidden from
+ * nav AND unreachable by URL" consistent. can_manage_()/can_view_() RLS is
+ * the real boundary underneath; this only stops a No-Access staff member from
+ * loading a page whose queries would return empty/error anyway.
+ */
+export function StaffModuleGuard({ role, module, children }: StaffModuleGuardProps) {
+  const warden = useWardenPermissions();
+  const accountant = useAccountantPermissions();
+  const { can, isLoading } = role === "WARDEN" ? warden : accountant;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!can(module)) {
     return <Navigate to="/403" />;
   }
   return <>{children}</>;

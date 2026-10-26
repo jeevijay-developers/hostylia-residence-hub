@@ -87,10 +87,17 @@ import { Route as AuthenticatedWardenAllocationsRouteImport } from './routes/_au
 import { Route as AuthenticatedWardenAttendanceRouteImport } from './routes/_authenticated/warden.attendance'
 import { Route as AuthenticatedWardenComplaintsRouteImport } from './routes/_authenticated/warden.complaints'
 import { Route as AuthenticatedWardenDailyBriefRouteImport } from './routes/_authenticated/warden.daily-brief'
+import { Route as AuthenticatedWardenFeePlansRouteImport } from './routes/_authenticated/warden.fee-plans'
+import { Route as AuthenticatedWardenFinanceRouteImport } from './routes/_authenticated/warden.finance'
 import { Route as AuthenticatedWardenGateRouteImport } from './routes/_authenticated/warden.gate'
+import { Route as AuthenticatedWardenInvoicesRouteImport } from './routes/_authenticated/warden.invoices'
 import { Route as AuthenticatedWardenMessRouteImport } from './routes/_authenticated/warden.mess'
 import { Route as AuthenticatedWardenNoticesRouteImport } from './routes/_authenticated/warden.notices'
+import { Route as AuthenticatedWardenPaymentsRouteImport } from './routes/_authenticated/warden.payments'
+import { Route as AuthenticatedWardenRefundsRouteImport } from './routes/_authenticated/warden.refunds'
 import { Route as AuthenticatedWardenReportsRouteImport } from './routes/_authenticated/warden.reports'
+import { Route as AuthenticatedWardenRevenueRouteImport } from './routes/_authenticated/warden.revenue'
+import { Route as AuthenticatedWardenRoomsBedsRouteImport } from './routes/_authenticated/warden.rooms-beds'
 import { Route as AuthenticatedWardenStudentsRouteImport } from './routes/_authenticated/warden.students'
 import { Route as AuthenticatedAccountantProfileIndexRouteImport } from './routes/_authenticated/accountant.profile.index'
 import { Route as AuthenticatedAccountantProfileChangePasswordRouteImport } from './routes/_authenticated/accountant.profile.change-password'
@@ -556,11 +563,29 @@ const AuthenticatedWardenDailyBriefRoute =
     path: '/daily-brief',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedWardenFeePlansRoute =
+  AuthenticatedWardenFeePlansRouteImport.update({
+    id: '/fee-plans',
+    path: '/fee-plans',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedWardenFinanceRoute =
+  AuthenticatedWardenFinanceRouteImport.update({
+    id: '/finance',
+    path: '/finance',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedWardenGateRoute = AuthenticatedWardenGateRouteImport.update({
   id: '/gate',
   path: '/gate',
   getParentRoute: () => AuthenticatedWardenRoute,
 } as any)
+const AuthenticatedWardenInvoicesRoute =
+  AuthenticatedWardenInvoicesRouteImport.update({
+    id: '/invoices',
+    path: '/invoices',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedWardenMessRoute = AuthenticatedWardenMessRouteImport.update({
   id: '/mess',
   path: '/mess',
@@ -572,10 +597,34 @@ const AuthenticatedWardenNoticesRoute =
     path: '/notices',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
+const AuthenticatedWardenPaymentsRoute =
+  AuthenticatedWardenPaymentsRouteImport.update({
+    id: '/payments',
+    path: '/payments',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedWardenRefundsRoute =
+  AuthenticatedWardenRefundsRouteImport.update({
+    id: '/refunds',
+    path: '/refunds',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedWardenReportsRoute =
   AuthenticatedWardenReportsRouteImport.update({
     id: '/reports',
     path: '/reports',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedWardenRevenueRoute =
+  AuthenticatedWardenRevenueRouteImport.update({
+    id: '/revenue',
+    path: '/revenue',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
+const AuthenticatedWardenRoomsBedsRoute =
+  AuthenticatedWardenRoomsBedsRouteImport.update({
+    id: '/rooms-beds',
+    path: '/rooms-beds',
     getParentRoute: () => AuthenticatedWardenRoute,
   } as any)
 const AuthenticatedWardenStudentsRoute =
@@ -837,10 +886,17 @@ export interface FileRoutesByFullPath {
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
+  '/warden/fee-plans': typeof AuthenticatedWardenFeePlansRoute
+  '/warden/finance': typeof AuthenticatedWardenFinanceRoute
   '/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/warden/invoices': typeof AuthenticatedWardenInvoicesRoute
   '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
+  '/warden/payments': typeof AuthenticatedWardenPaymentsRoute
+  '/warden/refunds': typeof AuthenticatedWardenRefundsRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/warden/revenue': typeof AuthenticatedWardenRevenueRoute
+  '/warden/rooms-beds': typeof AuthenticatedWardenRoomsBedsRoute
   '/warden/students': typeof AuthenticatedWardenStudentsRouteWithChildren
   '/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
   '/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
@@ -947,10 +1003,17 @@ export interface FileRoutesByTo {
   '/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
+  '/warden/fee-plans': typeof AuthenticatedWardenFeePlansRoute
+  '/warden/finance': typeof AuthenticatedWardenFinanceRoute
   '/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/warden/invoices': typeof AuthenticatedWardenInvoicesRoute
   '/warden/mess': typeof AuthenticatedWardenMessRoute
   '/warden/notices': typeof AuthenticatedWardenNoticesRoute
+  '/warden/payments': typeof AuthenticatedWardenPaymentsRoute
+  '/warden/refunds': typeof AuthenticatedWardenRefundsRoute
   '/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/warden/revenue': typeof AuthenticatedWardenRevenueRoute
+  '/warden/rooms-beds': typeof AuthenticatedWardenRoomsBedsRoute
   '/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
   '/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
   '/admin/finance/fee-plans': typeof AuthenticatedAdminFinanceFeePlansRoute
@@ -1060,10 +1123,17 @@ export interface FileRoutesById {
   '/_authenticated/warden/attendance': typeof AuthenticatedWardenAttendanceRoute
   '/_authenticated/warden/complaints': typeof AuthenticatedWardenComplaintsRoute
   '/_authenticated/warden/daily-brief': typeof AuthenticatedWardenDailyBriefRoute
+  '/_authenticated/warden/fee-plans': typeof AuthenticatedWardenFeePlansRoute
+  '/_authenticated/warden/finance': typeof AuthenticatedWardenFinanceRoute
   '/_authenticated/warden/gate': typeof AuthenticatedWardenGateRoute
+  '/_authenticated/warden/invoices': typeof AuthenticatedWardenInvoicesRoute
   '/_authenticated/warden/mess': typeof AuthenticatedWardenMessRoute
   '/_authenticated/warden/notices': typeof AuthenticatedWardenNoticesRoute
+  '/_authenticated/warden/payments': typeof AuthenticatedWardenPaymentsRoute
+  '/_authenticated/warden/refunds': typeof AuthenticatedWardenRefundsRoute
   '/_authenticated/warden/reports': typeof AuthenticatedWardenReportsRoute
+  '/_authenticated/warden/revenue': typeof AuthenticatedWardenRevenueRoute
+  '/_authenticated/warden/rooms-beds': typeof AuthenticatedWardenRoomsBedsRoute
   '/_authenticated/warden/students': typeof AuthenticatedWardenStudentsRouteWithChildren
   '/_authenticated/accountant/profile/change-password': typeof AuthenticatedAccountantProfileChangePasswordRoute
   '/_authenticated/accountant/profile/edit': typeof AuthenticatedAccountantProfileEditRoute
@@ -1175,10 +1245,17 @@ export interface FileRouteTypes {
     | '/warden/attendance'
     | '/warden/complaints'
     | '/warden/daily-brief'
+    | '/warden/fee-plans'
+    | '/warden/finance'
     | '/warden/gate'
+    | '/warden/invoices'
     | '/warden/mess'
     | '/warden/notices'
+    | '/warden/payments'
+    | '/warden/refunds'
     | '/warden/reports'
+    | '/warden/revenue'
+    | '/warden/rooms-beds'
     | '/warden/students'
     | '/accountant/profile/change-password'
     | '/accountant/profile/edit'
@@ -1285,10 +1362,17 @@ export interface FileRouteTypes {
     | '/warden/attendance'
     | '/warden/complaints'
     | '/warden/daily-brief'
+    | '/warden/fee-plans'
+    | '/warden/finance'
     | '/warden/gate'
+    | '/warden/invoices'
     | '/warden/mess'
     | '/warden/notices'
+    | '/warden/payments'
+    | '/warden/refunds'
     | '/warden/reports'
+    | '/warden/revenue'
+    | '/warden/rooms-beds'
     | '/accountant/profile/change-password'
     | '/accountant/profile/edit'
     | '/admin/finance/fee-plans'
@@ -1397,10 +1481,17 @@ export interface FileRouteTypes {
     | '/_authenticated/warden/attendance'
     | '/_authenticated/warden/complaints'
     | '/_authenticated/warden/daily-brief'
+    | '/_authenticated/warden/fee-plans'
+    | '/_authenticated/warden/finance'
     | '/_authenticated/warden/gate'
+    | '/_authenticated/warden/invoices'
     | '/_authenticated/warden/mess'
     | '/_authenticated/warden/notices'
+    | '/_authenticated/warden/payments'
+    | '/_authenticated/warden/refunds'
     | '/_authenticated/warden/reports'
+    | '/_authenticated/warden/revenue'
+    | '/_authenticated/warden/rooms-beds'
     | '/_authenticated/warden/students'
     | '/_authenticated/accountant/profile/change-password'
     | '/_authenticated/accountant/profile/edit'
@@ -2010,11 +2101,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenDailyBriefRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
+    '/_authenticated/warden/fee-plans': {
+      id: '/_authenticated/warden/fee-plans'
+      path: '/fee-plans'
+      fullPath: '/warden/fee-plans'
+      preLoaderRoute: typeof AuthenticatedWardenFeePlansRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/finance': {
+      id: '/_authenticated/warden/finance'
+      path: '/finance'
+      fullPath: '/warden/finance'
+      preLoaderRoute: typeof AuthenticatedWardenFinanceRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
     '/_authenticated/warden/gate': {
       id: '/_authenticated/warden/gate'
       path: '/gate'
       fullPath: '/warden/gate'
       preLoaderRoute: typeof AuthenticatedWardenGateRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/invoices': {
+      id: '/_authenticated/warden/invoices'
+      path: '/invoices'
+      fullPath: '/warden/invoices'
+      preLoaderRoute: typeof AuthenticatedWardenInvoicesRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
     '/_authenticated/warden/mess': {
@@ -2031,11 +2143,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenNoticesRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
+    '/_authenticated/warden/payments': {
+      id: '/_authenticated/warden/payments'
+      path: '/payments'
+      fullPath: '/warden/payments'
+      preLoaderRoute: typeof AuthenticatedWardenPaymentsRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/refunds': {
+      id: '/_authenticated/warden/refunds'
+      path: '/refunds'
+      fullPath: '/warden/refunds'
+      preLoaderRoute: typeof AuthenticatedWardenRefundsRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
     '/_authenticated/warden/reports': {
       id: '/_authenticated/warden/reports'
       path: '/reports'
       fullPath: '/warden/reports'
       preLoaderRoute: typeof AuthenticatedWardenReportsRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/revenue': {
+      id: '/_authenticated/warden/revenue'
+      path: '/revenue'
+      fullPath: '/warden/revenue'
+      preLoaderRoute: typeof AuthenticatedWardenRevenueRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
+    '/_authenticated/warden/rooms-beds': {
+      id: '/_authenticated/warden/rooms-beds'
+      path: '/rooms-beds'
+      fullPath: '/warden/rooms-beds'
+      preLoaderRoute: typeof AuthenticatedWardenRoomsBedsRouteImport
       parentRoute: typeof AuthenticatedWardenRoute
     }
     '/_authenticated/warden/students': {
@@ -2551,10 +2691,17 @@ interface AuthenticatedWardenRouteChildren {
   AuthenticatedWardenAttendanceRoute: typeof AuthenticatedWardenAttendanceRoute
   AuthenticatedWardenComplaintsRoute: typeof AuthenticatedWardenComplaintsRoute
   AuthenticatedWardenDailyBriefRoute: typeof AuthenticatedWardenDailyBriefRoute
+  AuthenticatedWardenFeePlansRoute: typeof AuthenticatedWardenFeePlansRoute
+  AuthenticatedWardenFinanceRoute: typeof AuthenticatedWardenFinanceRoute
   AuthenticatedWardenGateRoute: typeof AuthenticatedWardenGateRoute
+  AuthenticatedWardenInvoicesRoute: typeof AuthenticatedWardenInvoicesRoute
   AuthenticatedWardenMessRoute: typeof AuthenticatedWardenMessRoute
   AuthenticatedWardenNoticesRoute: typeof AuthenticatedWardenNoticesRoute
+  AuthenticatedWardenPaymentsRoute: typeof AuthenticatedWardenPaymentsRoute
+  AuthenticatedWardenRefundsRoute: typeof AuthenticatedWardenRefundsRoute
   AuthenticatedWardenReportsRoute: typeof AuthenticatedWardenReportsRoute
+  AuthenticatedWardenRevenueRoute: typeof AuthenticatedWardenRevenueRoute
+  AuthenticatedWardenRoomsBedsRoute: typeof AuthenticatedWardenRoomsBedsRoute
   AuthenticatedWardenStudentsRoute: typeof AuthenticatedWardenStudentsRouteWithChildren
   AuthenticatedWardenProfileChangePasswordRoute: typeof AuthenticatedWardenProfileChangePasswordRoute
   AuthenticatedWardenProfileEditRoute: typeof AuthenticatedWardenProfileEditRoute
@@ -2567,10 +2714,17 @@ const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
   AuthenticatedWardenAttendanceRoute: AuthenticatedWardenAttendanceRoute,
   AuthenticatedWardenComplaintsRoute: AuthenticatedWardenComplaintsRoute,
   AuthenticatedWardenDailyBriefRoute: AuthenticatedWardenDailyBriefRoute,
+  AuthenticatedWardenFeePlansRoute: AuthenticatedWardenFeePlansRoute,
+  AuthenticatedWardenFinanceRoute: AuthenticatedWardenFinanceRoute,
   AuthenticatedWardenGateRoute: AuthenticatedWardenGateRoute,
+  AuthenticatedWardenInvoicesRoute: AuthenticatedWardenInvoicesRoute,
   AuthenticatedWardenMessRoute: AuthenticatedWardenMessRoute,
   AuthenticatedWardenNoticesRoute: AuthenticatedWardenNoticesRoute,
+  AuthenticatedWardenPaymentsRoute: AuthenticatedWardenPaymentsRoute,
+  AuthenticatedWardenRefundsRoute: AuthenticatedWardenRefundsRoute,
   AuthenticatedWardenReportsRoute: AuthenticatedWardenReportsRoute,
+  AuthenticatedWardenRevenueRoute: AuthenticatedWardenRevenueRoute,
+  AuthenticatedWardenRoomsBedsRoute: AuthenticatedWardenRoomsBedsRoute,
   AuthenticatedWardenStudentsRoute:
     AuthenticatedWardenStudentsRouteWithChildren,
   AuthenticatedWardenProfileChangePasswordRoute:

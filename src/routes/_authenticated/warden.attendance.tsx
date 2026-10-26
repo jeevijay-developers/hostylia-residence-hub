@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -41,7 +42,11 @@ export const Route = createFileRoute("/_authenticated/warden/attendance")({
   validateSearch: z.object({
     status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
   }),
-  component: WardenAttendancePage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="attendance_view">
+      <WardenAttendancePage />
+    </StaffModuleGuard>
+  ),
 });
 
 type Status = "PRESENT" | "ABSENT" | "LATE" | "ON_LEAVE";

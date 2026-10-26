@@ -16,6 +16,8 @@ import {
   User,
 } from "lucide-react";
 
+import { useResolvedRole } from "@/lib/user-role";
+import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,19 +71,41 @@ const OPEN_ALLOCATION_STATUSES = [
  * file re-exporting a non-Route symbol (TanStack Router route files must
  * only export `Route` for proper code-splitting — an extra named export
  * pulls the whole route's code into the importer's bundle instead).
- * Both optional props default to the original Admin-only behavior
- * (activePropertyId from the property switcher, no pre-selected student).
+ * All optional props default to the original Admin-only behavior
+ * (activePropertyId from the property switcher, no pre-selected student,
+ * full allocate/swap access) — Admin's own call site passes none of them.
  */
 export function AllocationBoard({
   initialStudentId,
   propertyIdOverride,
+  canCreate = true,
+  canEdit = true,
 }: {
   initialStudentId?: string;
   propertyIdOverride?: string | null;
+  /** Gates the "Allocate" action (new allocation into an empty bed) — matches the
+   * `allocations_create` permission key. */
+  canCreate?: boolean;
+  /** Gates the "Swap" action (move an existing allocation to another bed) —
+   * matches the `allocations_edit` permission key. */
+  canEdit?: boolean;
 } = {}) {
   const activePropertyId = usePropertyStore((s) => s.activePropertyId);
   const effectiveProp = propertyIdOverride !== undefined ? propertyIdOverride : activePropertyId;
   const qc = useQueryClient();
+
+  // Admin always has the Rooms/Beds page (its own route is HOSTEL_ADMIN-only
+  // regardless of permissions); a Warden needs the `rooms_beds_view`
+  // permission and is routed to their own copy of the same board
+  // (/warden/rooms-beds, sharing RoomsBedsBoard with the Admin route) since
+  // /admin/* stays locked to HOSTEL_ADMIN. Checked here, before navigating,
+  // so an ungranted Warden sees an inline Access Denied message instead of
+  // bouncing through /403.
+  const { data: resolvedRole } = useResolvedRole();
+  const { can: canWarden } = useWardenPermissions();
+  const isAdmin = resolvedRole?.role === "HOSTEL_ADMIN";
+  const canManageStructure = isAdmin || canWarden("rooms_beds_view");
+  const structureTo = isAdmin ? "/admin/properties/$id/structure" : "/warden/rooms-beds";
 
   const bedsQ = useQuery({
     queryKey: ["allocation-beds", effectiveProp],
@@ -273,30 +297,56 @@ export function AllocationBoard({
 
   return (
     <div className="space-y-6">
-      {effectiveProp && (
-        <Link
-          to="/admin/properties/$id/structure"
-          params={{ id: effectiveProp }}
-          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
-        >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
-            <LayoutGrid className="h-6 w-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
-              Manage rooms & beds
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              View and manage all rooms and beds in your property
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
-          <BedSingle
-            className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
-            aria-hidden="true"
-          />
-        </Link>
-      )}
+      {effectiveProp &&
+        (canManageStructure ? (
+          <Link
+            to={structureTo}
+            params={isAdmin ? { id: effectiveProp } : undefined}
+            className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+              <LayoutGrid className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                Manage rooms & beds
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                View and manage all rooms and beds in your property
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+            <BedSingle
+              className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+              aria-hidden="true"
+            />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() =>
+              toast.error("Access denied — you don't have permission to manage rooms & beds.")
+            }
+            className="group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-destructive/40 hover:shadow-md sm:gap-6 sm:p-6"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+              <LayoutGrid className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                Manage rooms & beds
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                View and manage all rooms and beds in your property
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-destructive" />
+            <BedSingle
+              className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+              aria-hidden="true"
+            />
+          </button>
+        ))}
 
       {!effectiveProp ? (
         <p className="text-sm text-muted-foreground">Choose a property from the sidebar first.</p>
@@ -504,16 +554,26 @@ export function AllocationBoard({
               Cancel
             </Button>
             {openAllocationQ.data ? (
-              <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
-                <ArrowRightLeft className="h-4 w-4" /> Swap
-              </Button>
-            ) : (
+              canEdit ? (
+                <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
+                  <ArrowRightLeft className="h-4 w-4" /> Swap
+                </Button>
+              ) : (
+                <p className="text-sm text-destructive">
+                  Access denied — you don't have permission to swap allocations.
+                </p>
+              )
+            ) : canCreate ? (
               <Button
                 disabled={!studentId || !feePlanId || create.isPending}
                 onClick={() => create.mutate()}
               >
                 <BedSingle className="h-4 w-4" /> Allocate
               </Button>
+            ) : (
+              <p className="text-sm text-destructive">
+                Access denied — you don't have permission to allocate beds.
+              </p>
             )}
           </DialogFooter>
         </DialogContent>

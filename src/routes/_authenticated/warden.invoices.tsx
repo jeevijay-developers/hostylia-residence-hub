@@ -1,0 +1,162 @@
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ReceiptText, Search } from "lucide-react";
+
+import { InvoiceTable } from "@/components/finance/InvoiceTable";
+import { InvoiceDetailDialog } from "@/components/finance/InvoiceDetailDialog";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { listPropertyInvoices } from "@/lib/finance.functions";
+import { useWardenPermissions } from "@/lib/staff-scope";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const INVOICES_PAGE_SIZE = 20;
+
+export const Route = createFileRoute("/_authenticated/warden/invoices")({
+  validateSearch: (search: Record<string, unknown>): { status?: string } => ({
+    status: typeof search.status === "string" ? search.status : undefined,
+  }),
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="invoices_view">
+      <WardenInvoicesPage />
+    </StaffModuleGuard>
+  ),
+});
+
+const STATUS_OPTIONS = [
+  "ALL",
+  "DRAFT",
+  "ISSUED",
+  "PARTIALLY_PAID",
+  "PAID",
+  "OVERDUE",
+  "VOID",
+  "PARTIALLY_REFUNDED",
+  "REFUNDED",
+];
+
+function WardenInvoicesPage() {
+  const { status: initialStatus } = Route.useSearch();
+  const { propertyId, isLoading: propertyLoading } = useWardenPermissions();
+  const fn = useServerFn(listPropertyInvoices);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(initialStatus ?? "ALL");
+  const [page, setPage] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const q = useQuery({
+    queryKey: ["invoices", propertyId, status, search, page],
+    enabled: !!propertyId,
+    queryFn: () =>
+      fn({
+        data: {
+          property_id: propertyId!,
+          status: status === "ALL" ? undefined : status,
+          search: search.trim() || undefined,
+          page,
+          pageSize: INVOICES_PAGE_SIZE,
+        },
+      }),
+  });
+
+  const rows = q.data?.rows ?? [];
+  const total = q.data?.total ?? 0;
+
+  if (propertyLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    );
+  }
+  if (!propertyId) {
+    return (
+      <p className="rounded-2xl border border-dashed border-border/80 bg-card p-6 text-sm text-muted-foreground">
+        No property assigned to your account yet — contact your Hostel Admin.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:flex-row sm:items-center sm:p-5">
+        <div className="flex items-center gap-2.5 sm:hidden">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
+            <ReceiptText className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-base font-semibold text-foreground">Invoices</h2>
+        </div>
+        <span className="hidden h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow sm:grid">
+          <ReceiptText className="h-5 w-5" />
+        </span>
+        <div className="relative min-w-[12rem] flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by invoice # or student"
+            className="pl-10"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v);
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s === "ALL" ? "All statuses" : s.replaceAll("_", " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {q.isLoading ? (
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : q.isError ? (
+        <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
+          {q.error instanceof Error ? q.error.message : "Could not load invoices."}
+        </p>
+      ) : (
+        <>
+          <InvoiceTable rows={rows} onSelect={(r) => setSelectedId(r.id)} />
+          {total > 0 && (
+            <PaginationBar
+              page={page}
+              pageSize={INVOICES_PAGE_SIZE}
+              total={total}
+              onPageChange={setPage}
+            />
+          )}
+        </>
+      )}
+      {selectedId && (
+        <InvoiceDetailDialog
+          invoiceId={selectedId}
+          onOpenChange={(open) => {
+            if (!open) setSelectedId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}

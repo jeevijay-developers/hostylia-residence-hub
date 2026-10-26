@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ReceiptText, Search } from "lucide-react";
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/_authenticated/accountant/invoices")({
   validateSearch: (search: Record<string, unknown>): { status?: string } => ({
     status: typeof search.status === "string" ? search.status : undefined,
   }),
-  component: AccInvoicesPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="invoices_view">
+      <AccInvoicesPage />
+    </StaffModuleGuard>
+  ),
 });
 
 const STATUS_OPTIONS = [
