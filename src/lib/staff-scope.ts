@@ -100,6 +100,32 @@ const WARDEN_FINANCE_KEYS = new Set([
   "refunds",
 ]);
 
+// Default Warden access when Customize Permissions is OFF: Brief (no key),
+// Students, Attendance, Complaints and Gate only. Mirrors the default list in
+// 20261026100000_warden_default_permissions_five_modules.sql — keep in sync.
+// allocations_view/rooms_beds_view are deliberately absent: the pages are
+// hidden/guarded here, while the backend keeps read-only access so the
+// student detail page can still show the student's current room/bed.
+const WARDEN_DEFAULT_KEYS = new Set([
+  "students_view",
+  "students_create",
+  "students_edit",
+  "attendance_view",
+  "attendance_create",
+  "attendance_edit",
+  "attendance_delete",
+  "complaints",
+  "gate_passes_view",
+  "gate_passes_create",
+  "gate_passes_edit",
+  "gate_passes_delete",
+  "visitors_view",
+  "visitors_create",
+  "visitors_edit",
+  "visitors_delete",
+  "gate_events",
+]);
+
 /**
  * A Warden's own effective per-module permission overrides, read straight
  * from their `role_assignments` row (RLS already allows reading your own
@@ -128,9 +154,13 @@ export function useWardenPermissions() {
     },
   });
   const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
+  // "Customize Permissions" OFF is stored as an empty bag; ON always saves
+  // at least one explicit key (admin.staff.tsx seeds every key).
+  const isCustomized = Object.keys(permissions).length > 0;
   function can(key: string): boolean {
     const override = permissions[key];
     if (override !== undefined) return override;
+    if (!isCustomized) return WARDEN_DEFAULT_KEYS.has(key);
     if (WARDEN_FINANCE_KEYS.has(key)) return false;
     return !WARDEN_KEY_DEFAULT_FALSE.has(key);
   }

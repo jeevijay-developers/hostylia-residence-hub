@@ -34,10 +34,16 @@ function WardenLayout() {
   const centerItem =
     rawCenter && (!rawCenter.module || canModule(rawCenter.module)) ? rawCenter : undefined;
 
+  // Permitted sidebar modules that aren't already on the bottom bar (the
+  // bottom items + center action) — shown in the mobile profile dropdown.
+  const bottomTargets = new Set([...bottomItems.map((i) => i.to), centerItem?.to]);
+  const profileMenuItems = navItems.filter((item) => !bottomTargets.has(item.to));
+
   return (
     <DesktopShell
       allow={["WARDEN"]}
       navItems={navItems}
+      mobileProfileMenuItems={profileMenuItems}
       hideMobileNavTrigger
       mobileHeaderScrollsWithContent
       mobileBottomNav={

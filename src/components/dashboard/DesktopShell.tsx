@@ -33,6 +33,8 @@ interface DesktopShellProps {
    * either way.
    */
   mobileHeaderScrollsWithContent?: boolean;
+  /** Forwarded to Topbar: extra links in the mobile account dropdown (Warden). */
+  mobileProfileMenuItems?: NavItem[];
 }
 
 export function DesktopShell({
@@ -43,6 +45,7 @@ export function DesktopShell({
   mobileBottomNav,
   hideMobileNavTrigger,
   mobileHeaderScrollsWithContent,
+  mobileProfileMenuItems,
 }: DesktopShellProps) {
   const { data } = useResolvedRole();
   return (
@@ -65,6 +68,7 @@ export function DesktopShell({
             showPropertySwitcher={showPropertySwitcher}
             tenantId={data?.tenantId ?? null}
             hideMobileNavTrigger={hideMobileNavTrigger}
+            mobileProfileMenuItems={mobileProfileMenuItems}
           />
           <main
             className={cn(

@@ -41,6 +41,8 @@ interface TopbarProps {
   tenantId?: string | null;
   /** Hides the mobile hamburger/Sheet nav trigger — used when a role-specific mobile bottom nav replaces it. */
   hideMobileNavTrigger?: boolean;
+  /** Extra permission-filtered links shown in the account dropdown between Profile and Sign out, below `lg` only. */
+  mobileProfileMenuItems?: NavItem[];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,6 +52,7 @@ export function Topbar({
   showPropertySwitcher,
   tenantId,
   hideMobileNavTrigger,
+  mobileProfileMenuItems = [],
 }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
@@ -346,6 +349,16 @@ export function Topbar({
                   <span className="text-sm font-medium text-foreground">Profile</span>
                 </Link>
               </DropdownMenuItem>
+              {mobileProfileMenuItems.map((item) => (
+                <DropdownMenuItem key={item.to} asChild className="gap-3 rounded-lg px-2 py-2 lg:hidden">
+                  <Link to={item.to}>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
               <DropdownMenuItem
                 onSelect={() => setSignOutOpen(true)}
                 className="gap-3 rounded-lg px-2 py-2"
