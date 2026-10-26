@@ -41,6 +41,7 @@ const sendOtpSchema = z.object({
   // used to. "login" (default) keeps the exact prior behavior.
   intent: z.enum(["login", "signup"]).default("login"),
   metadata: z.record(z.string(), z.unknown()).optional(),
+  captchaToken: z.string().trim().min(1).max(2048),
 });
 
 /**
@@ -125,8 +126,10 @@ export const sendPhoneOtp = createServerFn({ method: "POST" })
 
       const { error } = await supabase.auth.signInWithOtp({
         phone,
-        options:
-          data.intent === "signup" ? { shouldCreateUser: true, data: data.metadata } : undefined,
+        options: {
+          captchaToken: data.captchaToken,
+          ...(data.intent === "signup" ? { shouldCreateUser: true, data: data.metadata } : {}),
+        },
       });
 
       if (error) {

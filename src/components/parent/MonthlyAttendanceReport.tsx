@@ -142,7 +142,7 @@ export function MonthlyAttendanceReport({
             <Input
               id="monthly-attendance-month"
               type="month"
-              className="h-9 w-40 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-100"
+              className="h-9 w-40 scheme-dark [&::-webkit-calendar-picker-indicator]:opacity-100"
               value={monthInput}
               max={currentMonthValue()}
               onChange={(e) => setMonthInput(e.target.value)}

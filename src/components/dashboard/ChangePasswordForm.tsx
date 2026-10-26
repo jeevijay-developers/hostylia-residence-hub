@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { changePasswordSchema } from "@/schemas/auth";
 
@@ -20,6 +21,7 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const captcha = useCaptchaToken();
 
   const changePassword = useMutation({
     mutationFn: async () => {
@@ -33,6 +35,9 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess: () => void }) {
         throw new Error("Please fix the highlighted fields");
       }
       setErrors({});
+      if (!captcha.token) {
+        throw new Error("Complete the captcha to continue.");
+      }
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user?.email) {
@@ -42,8 +47,10 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess: () => void }) {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: userData.user.email,
         password: parsed.data.currentPassword,
+        options: { captchaToken: captcha.token },
       });
       if (signInErr) {
+        captcha.reset();
         setErrors({ currentPassword: "Current password is incorrect" });
         throw new Error("Current password is incorrect");
       }
@@ -51,7 +58,10 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess: () => void }) {
       const { error: updateErr } = await supabase.auth.updateUser({
         password: parsed.data.password,
       });
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        captcha.reset();
+        throw updateErr;
+      }
     },
     onSuccess: () => {
       toast.success("Password changed successfully");
@@ -113,12 +123,19 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess: () => void }) {
               <p className="text-xs text-destructive">{errors.confirmPassword}</p>
             ) : null}
           </div>
+          <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
         </CardContent>
       </Card>
 
       <Button
         className="min-h-10 w-full sm:w-auto"
-        disabled={changePassword.isPending || !currentPassword || !password || !confirmPassword}
+        disabled={
+          changePassword.isPending ||
+          !currentPassword ||
+          !password ||
+          !confirmPassword ||
+          !captcha.token
+        }
         onClick={() => changePassword.mutate()}
       >
         {changePassword.isPending ? (

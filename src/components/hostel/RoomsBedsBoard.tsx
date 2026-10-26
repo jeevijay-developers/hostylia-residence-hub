@@ -168,7 +168,7 @@ export function RoomsBedsBoard({
                 <Upload className="h-4 w-4" /> Import CSV
               </Button>
               <Button
-                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
                 onClick={() => setAddBlockOpen(true)}
               >
                 <Plus className="h-4 w-4" /> Block

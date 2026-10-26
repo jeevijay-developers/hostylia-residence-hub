@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -15,12 +15,11 @@ import {
   Users,
   UserCheck,
   ClipboardList,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,7 +49,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
@@ -104,18 +102,6 @@ function getAvatarStyle(name: string) {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
-function pageNumbers(current: number, total: number): (number | "ellipsis")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = new Set<number>([1, 2, 3, total - 1, total, current - 1, current, current + 1]);
-  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
-  const out: (number | "ellipsis")[] = [];
-  sorted.forEach((p, i) => {
-    if (i > 0 && p - sorted[i - 1] > 1) out.push("ellipsis");
-    out.push(p);
-  });
-  return out;
-}
-
 interface PropertyOption {
   id: string;
   name: string;
@@ -168,7 +154,8 @@ export function StudentsListPage({
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
   const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -188,23 +175,78 @@ export function StudentsListPage({
     toast.success("Admission link copied — share it with applicants via WhatsApp/SMS.");
   }
 
+  useEffect(() => {
+    if (q === debouncedQ) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedQ(q);
+      setPage(0);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [q, debouncedQ]);
+
   const studentsQ = useQuery({
-    queryKey: ["students-list", tenantId, effectiveProperty, statusFilter, q],
+    queryKey: [
+      "students-list",
+      tenantId,
+      effectiveProperty,
+      statusFilter,
+      debouncedQ,
+      page,
+      pageSize,
+    ],
     enabled: !!tenantId && !!effectiveProperty,
     queryFn: async () => {
+      if (!effectiveProperty) return { rows: [], total: 0 };
       let query = supabase
         .from("students")
-        .select("id, full_name, admission_number, phone, email, status, created_at")
+        .select("id, full_name, admission_number, phone, email, status, created_at", {
+          count: "exact",
+        })
         .eq("tenant_id", tenantId)
-        .eq("property_id", effectiveProperty!)
+        .eq("property_id", effectiveProperty)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .range(page * pageSize, page * pageSize + pageSize - 1);
       if (statusFilter !== "ALL") query = query.eq("status", statusFilter);
-      if (q.trim()) query = query.ilike("full_name", `%${q.trim()}%`);
-      const { data, error } = await query;
+      if (debouncedQ.trim()) query = query.ilike("full_name", `%${debouncedQ.trim()}%`);
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data ?? [];
+      return { rows: data ?? [], total: count ?? 0 };
+    },
+  });
+
+  const statsQ = useQuery({
+    queryKey: ["students-list", "stats", tenantId, effectiveProperty, statusFilter, debouncedQ],
+    enabled: !!tenantId && !!effectiveProperty,
+    queryFn: async () => {
+      if (!effectiveProperty) return { total: 0, active: 0, applicants: 0 };
+      const countStatus = async (status?: string) => {
+        let query = supabase
+          .from("students")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenantId)
+          .eq("property_id", effectiveProperty)
+          .is("deleted_at", null);
+        if (status) query = query.eq("status", status);
+        if (debouncedQ.trim()) query = query.ilike("full_name", `%${debouncedQ.trim()}%`);
+        const { count, error } = await query;
+        if (error) throw error;
+        return count ?? 0;
+      };
+      if (statusFilter !== "ALL") {
+        const total = await countStatus(statusFilter);
+        return {
+          total,
+          active: statusFilter === "ACTIVE" ? total : 0,
+          applicants: statusFilter === "APPLICANT" ? total : 0,
+        };
+      }
+      const [total, active, applicants] = await Promise.all([
+        countStatus(),
+        countStatus("ACTIVE"),
+        countStatus("APPLICANT"),
+      ]);
+      return { total, active, applicants };
     },
   });
 
@@ -219,23 +261,15 @@ export function StudentsListPage({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete student"),
   });
 
-  const stats = useMemo(() => {
-    const s = { total: 0, active: 0, applicants: 0 };
-    (studentsQ.data ?? []).forEach((r) => {
-      s.total += 1;
-      if (r.status === "ACTIVE") s.active += 1;
-      if (r.status === "APPLICANT") s.applicants += 1;
-    });
-    return s;
-  }, [studentsQ.data]);
+  const stats = statsQ.data ?? { total: 0, active: 0, applicants: 0 };
+  const totalRows = studentsQ.data?.total ?? 0;
+  const pagedStudents = studentsQ.data?.rows ?? [];
 
-  const totalRows = studentsQ.data?.length ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pagedStudents = useMemo(
-    () => (studentsQ.data ?? []).slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [studentsQ.data, currentPage, pageSize],
-  );
+  useEffect(() => {
+    if (totalRows === 0) return;
+    const lastPage = Math.max(0, Math.ceil(totalRows / pageSize) - 1);
+    if (page > lastPage) setPage(lastPage);
+  }, [totalRows, page, pageSize]);
 
   const searchBox = (
     <div className="relative w-full lg:order-6 lg:w-64">
@@ -244,10 +278,7 @@ export function StudentsListPage({
         className="bg-card border-border text-foreground rounded-xl h-9 pl-9 text-xs sm:h-11 sm:pl-10 sm:text-sm font-medium placeholder:text-muted-foreground"
         placeholder="Search by name..."
         value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setPage(1);
-        }}
+        onChange={(e) => setQ(e.target.value)}
       />
     </div>
   );
@@ -282,7 +313,7 @@ export function StudentsListPage({
               <Button
                 disabled={!effectiveProperty}
                 onClick={() => setAddOpen(true)}
-                className="flex-1 sm:flex-initial bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all lg:order-4"
+                className="flex-1 sm:flex-initial bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold rounded-xl h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer transition-all lg:order-4"
               >
                 <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground dark:text-slate-950 stroke-[2.5]" />
                 <span>Add student</span>
@@ -299,7 +330,7 @@ export function StudentsListPage({
                 value={effectiveProperty ?? ""}
                 onValueChange={(v) => {
                   onPropertyChange?.(v);
-                  setPage(1);
+                  setPage(0);
                 }}
               >
                 <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium lg:order-1 lg:w-52">
@@ -322,7 +353,7 @@ export function StudentsListPage({
               value={statusFilter}
               onValueChange={(v) => {
                 setStatusFilter(v);
-                setPage(1);
+                setPage(0);
               }}
             >
               <SelectTrigger className="bg-card border-border text-foreground rounded-xl h-9 text-xs sm:h-11 sm:text-sm font-medium lg:order-5 lg:w-48">
@@ -401,7 +432,11 @@ export function StudentsListPage({
       {/* Data Table Section */}
       {studentsQ.isLoading ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
-      ) : (studentsQ.data ?? []).length === 0 ? (
+      ) : studentsQ.isError ? (
+        <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
+          {studentsQ.error instanceof Error ? studentsQ.error.message : "Could not load students."}
+        </p>
+      ) : pagedStudents.length === 0 ? (
         <EmptyState
           title="No students yet"
           description={
@@ -413,7 +448,7 @@ export function StudentsListPage({
       ) : (
         <div className="overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-card shadow-2xl">
           <div className="overflow-x-auto">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-160">
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-border/80 bg-card">
                   <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -523,7 +558,7 @@ export function StudentsListPage({
                 value={String(pageSize)}
                 onValueChange={(v) => {
                   setPageSize(Number(v));
-                  setPage(1);
+                  setPage(0);
                 }}
               >
                 <SelectTrigger className="w-32 sm:w-36 bg-card border-border text-foreground rounded-xl h-9 sm:h-10 text-[11px] sm:text-xs font-semibold">
@@ -538,54 +573,12 @@ export function StudentsListPage({
                 </SelectContent>
               </Select>
 
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage(currentPage - 1)}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </Button>
-                {pageNumbers(currentPage, totalPages).map((p, i) =>
-                  p === "ellipsis" ? (
-                    <span
-                      key={`e-${i}`}
-                      className="px-1.5 sm:px-2 text-xs sm:text-sm text-muted-foreground"
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <Button
-                      key={p}
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        "h-8 w-8 sm:h-9 sm:w-9 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                        p === currentPage
-                          ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400 shadow-sm shadow-amber-500/10"
-                          : "border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent",
-                      )}
-                      onClick={() => setPage(p)}
-                      aria-current={p === currentPage ? "page" : undefined}
-                    >
-                      {p}
-                    </Button>
-                  ),
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/60 text-muted-foreground hover:text-foreground"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage(currentPage + 1)}
-                  aria-label="Next page"
-                >
-                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </Button>
-              </div>
+              <PaginationBar
+                page={page}
+                pageSize={pageSize}
+                total={totalRows}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>
@@ -598,14 +591,14 @@ export function StudentsListPage({
             onOpenChange={setImportOpen}
             tenantId={tenantId}
             propertyId={effectiveProperty}
-            onDone={() => studentsQ.refetch()}
+            onDone={() => qc.invalidateQueries({ queryKey: ["students-list"] })}
           />
           <AddStudentDialog
             open={addOpen}
             onOpenChange={setAddOpen}
             tenantId={tenantId}
             propertyId={effectiveProperty}
-            onDone={() => studentsQ.refetch()}
+            onDone={() => qc.invalidateQueries({ queryKey: ["students-list"] })}
           />
         </>
       )}

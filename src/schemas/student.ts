@@ -38,6 +38,7 @@ export const publicAdmissionSchema = z.object({
   guardian_name: z.string().trim().min(2).max(120),
   guardian_phone: phoneSchema,
   guardian_relationship: z.string().trim().min(2).max(60),
+  turnstileToken: z.string().trim().min(1).max(2048),
 });
 export type PublicAdmissionInput = z.infer<typeof publicAdmissionSchema>;
 
@@ -98,7 +99,7 @@ const MAX_STUDENT_AGE_YEARS = 100;
  * self-update RLS policy + guard trigger already let a student touch these
  * columns freely at the DB level — this is the only place format/sanity is
  * enforced, so a bad phone/email/DOB was previously saved as-is. */
-/** Student self-service profile edit (student.profile.tsx). Validates fields 
+/** Student self-service profile edit (student.profile.tsx). Validates fields
  * that are split across the `students` and `profiles` tables. */
 export const studentSelfProfileSchema = z.object({
   full_name: z.string().trim().min(2).max(120),

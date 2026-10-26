@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { CameraQrScanner } from "@/components/gate/CameraQrScanner";
@@ -445,7 +446,7 @@ function WardenGatePage() {
 
         <TabsContent value="approvals" className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-[10rem]">
+            <div className="relative flex-1 min-w-40">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by student or room"
@@ -1245,6 +1246,8 @@ function QueryErrorAlert({ error, onRetry }: { error: unknown; onRetry: () => vo
   );
 }
 
+const HOST_PAGE_SIZE = 20;
+
 function RegisterVisitorDialog({
   open,
   onOpenChange,
@@ -1257,7 +1260,24 @@ function RegisterVisitorDialog({
   createVis: ReturnType<typeof useServerFn<typeof createVisitor>>;
 }) {
   const qc = useQueryClient();
-  const students = useStudentsInProperty(propertyId);
+  const [hostPage, setHostPage] = useState(0);
+  const [hostSearch, setHostSearch] = useState("");
+  const [debouncedHostSearch, setDebouncedHostSearch] = useState("");
+  const [hostLabel, setHostLabel] = useState("");
+  useEffect(() => {
+    if (hostSearch === debouncedHostSearch) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedHostSearch(hostSearch);
+      setHostPage(0);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [hostSearch, debouncedHostSearch]);
+  const students = useStudentsInProperty(propertyId, {
+    page: hostPage,
+    pageSize: HOST_PAGE_SIZE,
+    search: debouncedHostSearch,
+  });
+  const hostRows = students.data?.rows ?? [];
   const [hostId, setHostId] = useState("");
   const [hostPickerOpen, setHostPickerOpen] = useState(false);
   const [name, setName] = useState("");
@@ -1268,6 +1288,9 @@ function RegisterVisitorDialog({
 
   function reset() {
     setHostId("");
+    setHostLabel("");
+    setHostSearch("");
+    setHostPage(0);
     setName("");
     setPhone("");
     setPurpose("");
@@ -1325,25 +1348,29 @@ function RegisterVisitorDialog({
                   aria-expanded={hostPickerOpen}
                   className="w-full justify-between font-normal"
                 >
-                  {hostId
-                    ? ((students.data ?? []).find((s) => s.id === hostId)?.full_name ??
-                      "Select student")
-                    : "Select student"}
+                  {hostId ? hostLabel || "Selected student" : "Select student"}
                   <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
-                <Command>
-                  <CommandInput placeholder="Search by name…" />
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search by name…"
+                    value={hostSearch}
+                    onValueChange={setHostSearch}
+                  />
                   <CommandList>
-                    <CommandEmpty>No student found.</CommandEmpty>
+                    <CommandEmpty>
+                      {students.isLoading ? "Loading…" : "No student found."}
+                    </CommandEmpty>
                     <CommandGroup>
-                      {(students.data ?? []).map((s) => (
+                      {hostRows.map((s) => (
                         <CommandItem
                           key={s.id}
                           value={s.full_name}
                           onSelect={() => {
                             setHostId(s.id);
+                            setHostLabel(s.full_name);
                             setHostPickerOpen(false);
                           }}
                         >
@@ -1355,6 +1382,14 @@ function RegisterVisitorDialog({
                       ))}
                     </CommandGroup>
                   </CommandList>
+                  {(students.data?.total ?? 0) > HOST_PAGE_SIZE && (
+                    <PaginationBar
+                      page={hostPage}
+                      pageSize={HOST_PAGE_SIZE}
+                      total={students.data?.total ?? 0}
+                      onPageChange={setHostPage}
+                    />
+                  )}
                 </Command>
               </PopoverContent>
             </Popover>

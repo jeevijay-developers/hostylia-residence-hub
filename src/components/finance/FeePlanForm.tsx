@@ -160,7 +160,7 @@ export function FeePlanForm({
           <Input
             id="fee-plan-effective-from"
             type="date"
-            className="[color-scheme:dark]"
+            className="scheme-dark"
             {...form.register("effective_from")}
           />
         </FormField>

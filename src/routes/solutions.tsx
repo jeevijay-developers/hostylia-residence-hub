@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import {
   Building2,
   Home,
@@ -40,9 +41,9 @@ export const Route = createFileRoute("/solutions")({
       },
       { property: "og:title", content: "Solutions — Hostylia" },
       { property: "og:description", content: "One platform for every residential property type." },
-      { property: "og:url", content: "/solutions" },
+      { property: "og:url", content: canonicalUrl("/solutions") },
     ],
-    links: [{ rel: "canonical", href: "/solutions" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/solutions") }],
   }),
   component: SolutionsPage,
 });

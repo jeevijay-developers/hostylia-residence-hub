@@ -133,7 +133,7 @@ function StudentGatePassPage() {
                       type="date"
                       value={outDate}
                       onChange={(e) => setOutDate(e.target.value)}
-                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <button
                       type="button"
@@ -153,7 +153,7 @@ function StudentGatePassPage() {
                       type="time"
                       value={outTime}
                       onChange={(e) => setOutTime(e.target.value)}
-                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <button
                       type="button"
@@ -173,7 +173,7 @@ function StudentGatePassPage() {
                       type="date"
                       value={inDate}
                       onChange={(e) => setInDate(e.target.value)}
-                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <button
                       type="button"
@@ -193,7 +193,7 @@ function StudentGatePassPage() {
                       type="time"
                       value={inTime}
                       onChange={(e) => setInTime(e.target.value)}
-                      className="pr-8 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <button
                       type="button"

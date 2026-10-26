@@ -433,7 +433,7 @@ function PropertySetupPage() {
           </Button>
           {step === STEPS.length - 1 ? (
             <Button
-              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
               onClick={() => finishMut.mutate(form)}
               disabled={finishMut.isPending}
             >
@@ -441,7 +441,7 @@ function PropertySetupPage() {
             </Button>
           ) : (
             <Button
-              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
               onClick={async () => {
                 await saveMut.mutateAsync(form);
                 setStep((s) => Math.min(STEPS.length - 1, s + 1));

@@ -216,7 +216,7 @@ function PropertiesListPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xl">
           <div className="overflow-x-auto">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-160">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="px-3 py-3 sm:px-6 sm:py-4">Name</TableHead>

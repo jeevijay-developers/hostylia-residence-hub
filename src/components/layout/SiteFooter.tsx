@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/site/Logo";
+import {
+  PUBLIC_EMAIL,
+  PUBLIC_EMAIL_MAILTO,
+  PUBLIC_PHONE_DISPLAY,
+  PUBLIC_PHONE_TEL,
+} from "@/lib/site";
 import { Mail, MapPin, Globe, Phone } from "lucide-react";
 
 const cols = [
@@ -57,12 +63,15 @@ export function SiteFooter() {
               <p className="flex items-center gap-2">
                 <Globe size={14} className="text-soft-teal" /> hostylia.com
               </p>
-              <p className="flex items-center gap-2">
-                <Mail size={14} className="text-soft-teal" /> team@hostylia.com
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone size={14} className="text-soft-teal" /> +91 86194 83010
-              </p>
+              <a
+                href={PUBLIC_EMAIL_MAILTO}
+                className="flex items-center gap-2 hover:text-foreground"
+              >
+                <Mail size={14} className="text-soft-teal" /> {PUBLIC_EMAIL}
+              </a>
+              <a href={PUBLIC_PHONE_TEL} className="flex items-center gap-2 hover:text-foreground">
+                <Phone size={14} className="text-soft-teal" /> {PUBLIC_PHONE_DISPLAY}
+              </a>
               <p className="flex items-start gap-2">
                 <MapPin size={14} className="mt-0.5 text-soft-teal" /> H No 1, Sai Extension Colony,
                 Bengaluru — Jeevijay Technologies Pvt Ltd
@@ -71,9 +80,9 @@ export function SiteFooter() {
           </div>
           {cols.map((col) => (
             <div key={col.title}>
-              <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-gold">
+              <p className="mb-4 text-xs font-bold uppercase tracking-widest text-gold">
                 {col.title}
-              </h4>
+              </p>
               <ul className="space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>

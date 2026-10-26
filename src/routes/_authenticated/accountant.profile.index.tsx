@@ -41,6 +41,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import {
   Select,
   SelectContent,
@@ -180,6 +181,7 @@ function AccountantProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
+  const captcha = useCaptchaToken();
 
   // ─── Data queries ─────────────────────────────────────────────────────────
 
@@ -374,6 +376,9 @@ function AccountantProfilePage() {
         throw new Error("Please fix the highlighted fields");
       }
       setPwErrors({});
+      if (!captcha.token) {
+        throw new Error("Complete the captcha to continue.");
+      }
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userData.user?.email) {
@@ -383,8 +388,10 @@ function AccountantProfilePage() {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: userData.user.email,
         password: parsed.data.currentPassword,
+        options: { captchaToken: captcha.token },
       });
       if (signInErr) {
+        captcha.reset();
         setPwErrors({ currentPassword: "Current password is incorrect" });
         throw new Error("Current password is incorrect");
       }
@@ -392,10 +399,14 @@ function AccountantProfilePage() {
       const { error: updateErr } = await supabase.auth.updateUser({
         password: parsed.data.password,
       });
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        captcha.reset();
+        throw updateErr;
+      }
     },
     onSuccess: () => {
       toast.success("Password changed successfully");
+      captcha.reset();
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -503,7 +514,7 @@ function AccountantProfilePage() {
         <CardContent className="relative flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent"
+            className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent"
           />
 
           {/* Avatar + identity */}
@@ -994,6 +1005,8 @@ function AccountantProfilePage() {
                   )}
                 </div>
 
+                <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     variant="outline"
@@ -1018,7 +1031,8 @@ function AccountantProfilePage() {
                       changePassword.isPending ||
                       !currentPassword ||
                       !newPassword ||
-                      !confirmPassword
+                      !confirmPassword ||
+                      !captcha.token
                     }
                     onClick={() => changePassword.mutate()}
                   >

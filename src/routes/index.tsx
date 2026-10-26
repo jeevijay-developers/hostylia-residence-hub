@@ -38,6 +38,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
+import { canonicalUrl } from "@/lib/site";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import {
   MockOccupancyDashboard,
@@ -72,10 +73,22 @@ export const Route = createFileRoute("/")({
         content:
           "Rooms, students, wardens, parents, fees, attendance, complaints and security — unified.",
       },
-      { property: "og:url", content: "/" },
+      { property: "og:url", content: canonicalUrl("/") },
+      {
+        "script:ld+json": {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Hostylia",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: canonicalUrl("/"),
+          description:
+            "One intelligent operating system for hostels, boarding schools, student housing, PGs and co-living. Rooms, fees, attendance, complaints and security in one platform.",
+        },
+      },
     ],
     links: [
-      { rel: "canonical", href: "/" },
+      { rel: "canonical", href: canonicalUrl("/") },
       { rel: "preload", as: "image", href: buildingHero, fetchPriority: "high" },
     ],
   }),
@@ -132,10 +145,6 @@ function Hero() {
               <Sparkles size={12} className="text-gold" />
               Smart Residential Operating System
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-soft-teal/30 bg-soft-teal/10 px-3 py-1.5 text-xs font-semibold text-soft-teal">
-              <span className="h-1.5 w-1.5 rounded-full bg-soft-teal" />
-              Trusted by 120+ properties · 65,000 beds
-            </div>
           </div>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground md:text-5xl lg:text-6xl">
             Smart Residential Management for{" "}
@@ -160,9 +169,8 @@ function Hero() {
               <Compass size={16} /> Explore Platform
             </Link>
           </div>
-          <div className="mt-8 grid max-w-md grid-cols-3 gap-4 border-t border-dark-border pt-6">
+          <div className="mt-8 grid max-w-md grid-cols-2 gap-4 border-t border-dark-border pt-6">
             {[
-              { v: "10k+", l: "Beds Managed" },
               { v: "98%", l: "On-time Collection" },
               { v: "24x7", l: "Parent Alerts" },
             ].map((s) => (
@@ -174,7 +182,7 @@ function Hero() {
           </div>
         </div>
         <div className="animate-fade-up relative">
-          <div className="absolute inset-0 -z-0 overflow-hidden rounded-3xl opacity-40">
+          <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl opacity-40">
             <img
               src={buildingHero}
               alt=""
@@ -184,7 +192,7 @@ function Hero() {
               height="960"
               fetchPriority="high"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--navy)] via-[color:var(--navy)]/70 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-navy via-navy/70 to-transparent" />
           </div>
           <div className="relative z-10">
             <HeroDashboard />
@@ -260,7 +268,7 @@ function PropertyHierarchy() {
   ];
   const styleMap: Record<string, string> = {
     vacant:
-      "bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)] border-[color-mix(in_oklab,var(--trust-green)_40%,transparent)] text-[color:var(--trust-green)]",
+      "bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)] border-[color-mix(in_oklab,var(--trust-green)_40%,transparent)] text-trust-green",
     occupied:
       "bg-[color-mix(in_oklab,var(--brand-blue)_22%,transparent)] border-[color-mix(in_oklab,var(--brand-blue)_50%,transparent)] text-white",
     maintenance:
@@ -315,9 +323,9 @@ function PropertyHierarchy() {
           </div>
           <div className="space-y-3">
             {[
-              { c: "bg-[color:var(--trust-green)]", l: "Vacant", d: "Ready for allocation" },
-              { c: "bg-[color:var(--brand-blue)]", l: "Occupied", d: "Active student in bed" },
-              { c: "bg-[color:var(--gold)]", l: "Maintenance", d: "Temporarily out of service" },
+              { c: "bg-trust-green", l: "Vacant", d: "Ready for allocation" },
+              { c: "bg-brand-blue", l: "Occupied", d: "Active student in bed" },
+              { c: "bg-gold", l: "Maintenance", d: "Temporarily out of service" },
               { c: "bg-[#E55353]", l: "Alert", d: "Requires immediate attention" },
             ].map((x) => (
               <div
@@ -490,7 +498,7 @@ function ComplaintFlow() {
           title="A transparent flow from raise to resolution"
         />
         <div className="relative mt-12">
-          <div className="absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-soft-teal/40 to-transparent lg:block" />
+          <div className="absolute left-0 right-0 top-7 hidden h-px bg-linear-to-r from-transparent via-soft-teal/40 to-transparent lg:block" />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
             {steps.map((s, i) => (
               <div
@@ -537,7 +545,7 @@ function FeeManagement() {
           <ul className="mt-6 space-y-3">
             {features.map((f) => (
               <li key={f} className="flex items-start gap-3 text-sm text-soft-grey">
-                <span className="mt-0.5 inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] text-[color:var(--trust-green)]">
+                <span className="mt-0.5 inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] text-trust-green">
                   <Check size={12} />
                 </span>
                 <span className="text-foreground/90">{f}</span>
@@ -562,13 +570,13 @@ function FeeManagement() {
               <div className="text-xs uppercase tracking-widest text-soft-grey">June 2026</div>
               <div className="text-lg font-bold text-white">Fee Dashboard</div>
             </div>
-            <span className="rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] px-3 py-1 text-[11px] font-bold text-[color:var(--trust-green)]">
+            <span className="rounded-full bg-[color-mix(in_oklab,var(--trust-green)_25%,transparent)] px-3 py-1 text-[11px] font-bold text-trust-green">
               Live
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             {[
-              { l: "Collected", v: "₹18.4L", t: "text-[color:var(--trust-green)]" },
+              { l: "Collected", v: "₹18.4L", t: "text-trust-green" },
               { l: "Pending", v: "₹3.2L", t: "text-gold" },
               { l: "Overdue", v: "₹0.6L", t: "text-[#FF8B8B]" },
             ].map((s) => (
@@ -588,7 +596,7 @@ function FeeManagement() {
                 room: "A-201",
                 amt: "₹12,500",
                 st: "Paid",
-                c: "text-[color:var(--trust-green)] bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)]",
+                c: "text-trust-green bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)]",
               },
               {
                 name: "Priya Verma",
@@ -609,7 +617,7 @@ function FeeManagement() {
                 room: "A-118",
                 amt: "₹13,000",
                 st: "Paid",
-                c: "text-[color:var(--trust-green)] bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)]",
+                c: "text-trust-green bg-[color-mix(in_oklab,var(--trust-green)_18%,transparent)]",
               },
             ].map((r) => (
               <div
@@ -746,14 +754,16 @@ function FounderSection() {
             <img
               src={vikasPhoto}
               alt="Vikas Patel, Founder & CEO of Hostylia"
-              className="h-32 w-32 rounded-2xl object-cover ring-2 ring-[color:var(--soft-teal)]/40 shadow-xl"
+              className="h-32 w-32 rounded-2xl object-cover ring-2 ring-soft-teal/40 shadow-xl"
             />
 
             <div>
               <div className="text-xs font-semibold uppercase tracking-widest text-gold">
                 Founder
               </div>
-              <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">Vikas Patel</h3>
+              <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
+                Vikas Patel
+              </h3>
               <div className="text-sm text-soft-grey">
                 Founder & CEO, Hostylia · Powered by Jeevijay Technologies Private Limited
               </div>
@@ -803,7 +813,7 @@ function PricingPreview() {
           {plans.map((p) => (
             <div
               key={p.name}
-              className={`card-lift rounded-2xl border p-6 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
+              className={`card-lift rounded-2xl border p-6 ${p.featured ? "border-gold/60 bg-linear-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
             >
               {p.featured && (
                 <div className="mb-3 inline-block rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-navy">
@@ -819,7 +829,7 @@ function PricingPreview() {
               <ul className="mt-5 space-y-2 text-sm">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-foreground/90">
-                    <Check size={14} className="text-[color:var(--trust-green)]" /> {f}
+                    <Check size={14} className="text-trust-green" /> {f}
                   </li>
                 ))}
               </ul>
@@ -841,7 +851,7 @@ function FinalCTA() {
   return (
     <section className="bg-section-dark py-20">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="relative overflow-hidden rounded-3xl border border-dark-border bg-gradient-to-br from-card via-background to-background p-10 md:p-14">
+        <div className="relative overflow-hidden rounded-3xl border border-dark-border bg-linear-to-br from-card via-background to-background p-10 md:p-14">
           <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--brand-blue)_35%,transparent),transparent_70%)] blur-2xl" />
           <div className="relative max-w-2xl">
             <h2 className="text-3xl font-extrabold text-foreground md:text-4xl">
@@ -892,7 +902,6 @@ function HeroStats() {
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <StatBand
           stats={[
-            { v: "65,000", l: "Beds managed" },
             { v: "11 cities", l: "Across India" },
             { v: "92%", l: "On-time collection" },
             { v: "4.9 / 5", l: "Operator CSAT" },
@@ -957,7 +966,7 @@ function HowItWorks() {
               className="card-lift relative overflow-hidden rounded-2xl border border-dark-border bg-card p-6"
             >
               <div
-                className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-foreground/[0.04]"
+                className="pointer-events-none absolute -right-10 -top-10 text-7xl font-extrabold text-foreground/4"
                 aria-hidden
               >
                 {s.n}

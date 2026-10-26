@@ -1,8 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
 import { Mail, Phone, MapPin, Send, Clock, ShieldCheck, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
+import { TurnstileWidget } from "@/components/site/TurnstileWidget";
+import { submitPublicLead } from "@/lib/public-lead.functions";
+import {
+  canonicalUrl,
+  PUBLIC_EMAIL,
+  PUBLIC_EMAIL_MAILTO,
+  PUBLIC_PHONE_DISPLAY,
+  PUBLIC_PHONE_TEL,
+} from "@/lib/site";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import {
   MockParentApp,
@@ -22,25 +32,63 @@ export const Route = createFileRoute("/contact")({
       },
       { property: "og:title", content: "Contact — Hostylia" },
       { property: "og:description", content: "Reach out to Hostylia." },
-      { property: "og:url", content: "/contact" },
+      { property: "og:url", content: canonicalUrl("/contact") },
     ],
-    links: [{ rel: "canonical", href: "/contact" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/contact") }],
   }),
   component: ContactPage,
 });
 
 function ContactPage() {
+  const submitLead = useServerFn(submitPublicLead);
   const [loading, setLoading] = useState(false);
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [widgetKey, setWidgetKey] = useState(0);
+
+  function resetWidget() {
+    setTurnstileToken("");
+    setWidgetKey((key) => key + 1);
+  }
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (!turnstileToken) {
+      toast.error("Complete the verification check before sending.");
+      return;
+    }
+    const data = new FormData(form);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      (e.target as HTMLFormElement).reset();
+    try {
+      const result = await submitLead({
+        data: {
+          kind: "contact",
+          captchaToken: turnstileToken,
+          name: String(data.get("name") ?? ""),
+          email: String(data.get("email") ?? ""),
+          propertyName: String(data.get("property") ?? ""),
+          beds: String(data.get("beds") ?? ""),
+          message: String(data.get("message") ?? ""),
+        },
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not send your message.");
+        resetWidget();
+        return;
+      }
+      form.reset();
+      resetWidget();
       toast.success("Message sent", {
         description: "Our team will get back to you within one business day.",
       });
-    }, 700);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message ? err.message : "Could not send your message.";
+      toast.error(message);
+      resetWidget();
+    } finally {
+      setLoading(false);
+    }
   }
   return (
     <div className="bg-section-dark">
@@ -53,8 +101,13 @@ function ContactPage() {
       <section className="py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 md:px-6 lg:grid-cols-[1fr_1.3fr]">
           <div className="space-y-4">
-            <InfoCard icon={Mail} title="Email" value="team@hostylia.com" />
-            <InfoCard icon={Phone} title="Phone" value="+91 80000 00000" />
+            <InfoCard icon={Mail} title="Email" value={PUBLIC_EMAIL} href={PUBLIC_EMAIL_MAILTO} />
+            <InfoCard
+              icon={Phone}
+              title="Phone"
+              value={PUBLIC_PHONE_DISPLAY}
+              href={PUBLIC_PHONE_TEL}
+            />
             <InfoCard icon={MapPin} title="Office" value="Jeevijay Technologies Private Limited" />
           </div>
           <form onSubmit={onSubmit} className="glass-panel rounded-2xl p-6 md:p-8">
@@ -77,8 +130,11 @@ function ContactPage() {
               placeholder="How can we help?"
               required
             />
+            <div className="mt-4">
+              <TurnstileWidget key={widgetKey} onToken={setTurnstileToken} />
+            </div>
             <button
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-3 text-sm font-bold text-navy disabled:opacity-60"
             >
               <Send size={14} /> {loading ? "Sending..." : "Send Message"}
@@ -197,14 +253,30 @@ function ContactPage() {
   );
 }
 
-function InfoCard({ icon: Icon, title, value }: { icon: any; title: string; value: string }) {
+function InfoCard({
+  icon: Icon,
+  title,
+  value,
+  href,
+}: {
+  icon: typeof Mail;
+  title: string;
+  value: string;
+  href?: string;
+}) {
   return (
     <div className="card-lift rounded-2xl border border-dark-border bg-card p-5">
       <Icon size={18} className="text-soft-teal" />
       <div className="mt-2 text-xs font-semibold uppercase tracking-widest text-soft-grey">
         {title}
       </div>
-      <div className="text-base font-bold text-foreground">{value}</div>
+      {href ? (
+        <a href={href} className="text-base font-bold text-foreground hover:underline">
+          {value}
+        </a>
+      ) : (
+        <div className="text-base font-bold text-foreground">{value}</div>
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ import {
   type EmailCredentialsInput,
   type PhoneCredentialsInput,
 } from "@/schemas/auth";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 import { listPublicActiveProperties } from "@/lib/public-property.functions";
@@ -403,9 +404,7 @@ function IdentityStep({
               <SelectTrigger id="propertySlug" className="min-h-11">
                 <SelectValue
                   placeholder={
-                    propertiesQ.isLoading
-                      ? t("common.loading")
-                      : t("auth.selectHostelPlaceholder")
+                    propertiesQ.isLoading ? t("common.loading") : t("auth.selectHostelPlaceholder")
                   }
                 />
               </SelectTrigger>
@@ -495,7 +494,9 @@ function signupMetadata(role: SignupRole, identity: IdentityValues) {
     ...(role === "STUDENT" && identity.guardianName && identity.guardianPhone
       ? { guardian_name: identity.guardianName, guardian_phone: identity.guardianPhone }
       : {}),
-    ...(role === "STUDENT" && identity.propertySlug ? { property_slug: identity.propertySlug } : {}),
+    ...(role === "STUDENT" && identity.propertySlug
+      ? { property_slug: identity.propertySlug }
+      : {}),
   };
 }
 
@@ -514,7 +515,7 @@ function signupMetadata(role: SignupRole, identity: IdentityValues) {
 async function submitStudentApplication(
   submitFn: ReturnType<typeof useServerFn<typeof submitPublicAdmission>>,
   identity: IdentityValues,
-  contact: { email?: string; phone?: string },
+  contact: { email?: string; phone?: string; turnstileToken: string },
 ) {
   if (!identity.propertySlug || !identity.guardianName || !identity.guardianPhone) return;
   try {
@@ -527,6 +528,7 @@ async function submitStudentApplication(
         guardian_name: identity.guardianName,
         guardian_phone: identity.guardianPhone,
         guardian_relationship: "Guardian",
+        turnstileToken: contact.turnstileToken,
       },
     });
   } catch (e) {
@@ -550,6 +552,8 @@ function EmailCredentialsForm({
 }) {
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
+  const authCaptcha = useCaptchaToken();
+  const applicationCaptcha = useCaptchaToken();
   const submitApplicationFn = useServerFn(submitPublicAdmission);
   const {
     register,
@@ -562,17 +566,24 @@ function EmailCredentialsForm({
   });
 
   const onSubmit = async (values: EmailCredentialsInput) => {
+    if (!authCaptcha.token || (role === "STUDENT" && !applicationCaptcha.token)) {
+      toast.error("Complete the captcha to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
+          captchaToken: authCaptcha.token,
           data: signupMetadata(role, identity),
           emailRedirectTo: `${window.location.origin}/verify-email`,
         },
       });
       if (error) {
+        authCaptcha.reset();
+        applicationCaptcha.reset();
         toast.error(error.message);
         return;
       }
@@ -582,14 +593,21 @@ function EmailCredentialsForm({
       // `identities` array, so surface that as an explicit error instead of
       // showing the misleading "check your inbox" step.
       if (data.user && data.user.identities?.length === 0) {
+        authCaptcha.reset();
+        applicationCaptcha.reset();
         toast.error("This email is already registered. Please sign in instead.");
         return;
       }
       if (role === "STUDENT") {
-        await submitStudentApplication(submitApplicationFn, identity, { email: values.email });
+        await submitStudentApplication(submitApplicationFn, identity, {
+          email: values.email,
+          turnstileToken: applicationCaptcha.token,
+        });
       }
       onSignedUp(values.email);
     } catch (err) {
+      authCaptcha.reset();
+      applicationCaptcha.reset();
       const message = err instanceof Error ? err.message : "Sign-up failed. Please try again.";
       toast.error(message);
     } finally {
@@ -650,7 +668,16 @@ function EmailCredentialsForm({
           </p>
         ) : null}
       </div>
-      <StepButtons onBack={onBack} nextLabel={t("auth.createAccount")} submitting={submitting} />
+      <TurnstileWidget key={authCaptcha.key} onToken={authCaptcha.setToken} />
+      {role === "STUDENT" ? (
+        <TurnstileWidget key={applicationCaptcha.key} onToken={applicationCaptcha.setToken} />
+      ) : null}
+      <StepButtons
+        onBack={onBack}
+        nextLabel={t("auth.createAccount")}
+        submitting={submitting}
+        disabled={!authCaptcha.token || (role === "STUDENT" && !applicationCaptcha.token)}
+      />
     </form>
   );
 }
@@ -667,6 +694,8 @@ function PhoneCredentialsForm({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const authCaptcha = useCaptchaToken();
+  const applicationCaptcha = useCaptchaToken();
   const submitApplicationFn = useServerFn(submitPublicAdmission);
   const {
     register,
@@ -682,21 +711,37 @@ function PhoneCredentialsForm({
   const phoneValid = indianMobileSchema.safeParse(watch("phone")).success;
 
   const onSubmit = async (values: PhoneCredentialsInput) => {
+    if (!authCaptcha.token || (role === "STUDENT" && !applicationCaptcha.token)) {
+      toast.error("Complete the captcha to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       const phone = normalizeIndianPhone(values.phone);
       const result = await sendPhoneOtp({
-        data: { phone, intent: "signup", metadata: signupMetadata(role, identity) },
+        data: {
+          phone,
+          intent: "signup",
+          metadata: signupMetadata(role, identity),
+          captchaToken: authCaptcha.token,
+        },
       });
       if (!result.ok) {
+        authCaptcha.reset();
+        applicationCaptcha.reset();
         toast.error(result.message ?? "Could not send OTP. Please try again.");
         return;
       }
       if (role === "STUDENT") {
-        await submitStudentApplication(submitApplicationFn, identity, { phone });
+        await submitStudentApplication(submitApplicationFn, identity, {
+          phone,
+          turnstileToken: applicationCaptcha.token,
+        });
       }
       navigate({ to: "/verify-otp", search: { phone } });
     } catch (err) {
+      authCaptcha.reset();
+      applicationCaptcha.reset();
       console.error("sendPhoneOtp (signup) failed:", err);
       const message =
         err instanceof Error && err.message ? err.message : "Could not send OTP. Please try again.";
@@ -732,11 +777,17 @@ function PhoneCredentialsForm({
           <p className="text-xs text-muted-foreground">{t("auth.phoneHelp")}</p>
         )}
       </div>
+      <TurnstileWidget key={authCaptcha.key} onToken={authCaptcha.setToken} />
+      {role === "STUDENT" ? (
+        <TurnstileWidget key={applicationCaptcha.key} onToken={applicationCaptcha.setToken} />
+      ) : null}
       <StepButtons
         onBack={onBack}
         nextLabel={t("auth.sendCode")}
         submitting={submitting}
-        disabled={!phoneValid}
+        disabled={
+          !phoneValid || !authCaptcha.token || (role === "STUDENT" && !applicationCaptcha.token)
+        }
       />
     </form>
   );

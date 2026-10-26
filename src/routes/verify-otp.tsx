@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { OtpInput } from "@/components/auth/OtpInput";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
@@ -39,6 +40,7 @@ function VerifyOtpPage() {
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(OTP_RESEND_COOLDOWN_SECONDS);
   const [resending, setResending] = useState(false);
+  const captcha = useCaptchaToken();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -51,6 +53,10 @@ function VerifyOtpPage() {
     const parsed = otpCodeSchema.safeParse(value);
     if (!parsed.success) {
       setInlineError(parsed.error.issues[0]?.message ?? "Enter the 6-digit code");
+      return;
+    }
+    if (!captcha.token) {
+      setInlineError("Complete the captcha to continue.");
       return;
     }
     setVerifying(true);
@@ -89,8 +95,10 @@ function VerifyOtpPage() {
         phone,
         token: value,
         type: "sms",
+        options: { captchaToken: captcha.token },
       });
       if (error) {
+        captcha.reset();
         setInlineError(error.message);
         return;
       }
@@ -108,6 +116,7 @@ function VerifyOtpPage() {
       }
       navigate({ to: "/post-login" });
     } catch (err) {
+      captcha.reset();
       toast.error(err instanceof Error ? err.message : "Verification failed. Please try again.");
     } finally {
       setVerifying(false);
@@ -116,16 +125,23 @@ function VerifyOtpPage() {
 
   const handleResend = async () => {
     if (cooldown > 0 || resending) return;
+    if (!captcha.token) {
+      toast.error("Complete the captcha to resend the code.");
+      return;
+    }
     setResending(true);
     try {
-      const result = await sendPhoneOtp({ data: { phone } });
+      const result = await sendPhoneOtp({ data: { phone, captchaToken: captcha.token } });
       if (!result.ok) {
+        captcha.reset();
         toast.error(result.message ?? "Could not resend the code.");
         return;
       }
+      captcha.reset();
       toast.success("A new code has been sent.");
       setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
     } catch (err) {
+      captcha.reset();
       console.error("resend OTP failed:", err);
       toast.error(err instanceof Error && err.message ? err.message : "Could not resend the code.");
     } finally {
@@ -155,6 +171,7 @@ function VerifyOtpPage() {
             {inlineError}
           </p>
         ) : null}
+        <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
         <Button
           type="button"
           className="min-h-11 w-full"

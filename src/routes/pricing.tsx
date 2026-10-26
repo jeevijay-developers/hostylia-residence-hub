@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import { ArrowRight, Check, Sparkles, ShieldCheck, Headphones, Layers } from "lucide-react";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
@@ -16,6 +17,25 @@ import {
   TestimonialCard,
 } from "@/components/site/HtmlMockups";
 
+const faqs = [
+  {
+    q: "How is Hostylia priced?",
+    a: "Hostylia is priced per student per month, with plans for hostels of every size.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "Yes — book a demo and we'll configure a trial environment for your property.",
+  },
+  {
+    q: "Do you support multiple properties?",
+    a: "Absolutely. Multi-property owners get portfolio-wide roll-ups on Enterprise.",
+  },
+  {
+    q: "Which payment methods are supported?",
+    a: "UPI, cards, net-banking, cash and cheque — all auto-reconciled.",
+  },
+];
+
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
@@ -30,9 +50,20 @@ export const Route = createFileRoute("/pricing")({
         property: "og:description",
         content: "Transparent pricing that scales with your residence.",
       },
-      { property: "og:url", content: "/pricing" },
+      { property: "og:url", content: canonicalUrl("/pricing") },
+      {
+        "script:ld+json": {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.q,
+            acceptedAnswer: { "@type": "Answer", text: faq.a },
+          })),
+        },
+      },
     ],
-    links: [{ rel: "canonical", href: "/pricing" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/pricing") }],
   }),
   component: PricingPage,
 });
@@ -77,25 +108,6 @@ const plans = [
   },
 ];
 
-const faqs = [
-  {
-    q: "How is Hostylia priced?",
-    a: "Hostylia is priced per student per month, with plans for hostels of every size.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: "Yes — book a demo and we'll configure a trial environment for your property.",
-  },
-  {
-    q: "Do you support multiple properties?",
-    a: "Absolutely. Multi-property owners get portfolio-wide roll-ups on Enterprise.",
-  },
-  {
-    q: "Which payment methods are supported?",
-    a: "UPI, cards, net-banking, cash and cheque — all auto-reconciled.",
-  },
-];
-
 function PricingPage() {
   return (
     <div className="bg-section-dark">
@@ -111,7 +123,7 @@ function PricingPage() {
             {plans.map((p) => (
               <div
                 key={p.name}
-                className={`card-lift rounded-2xl border p-7 ${p.featured ? "border-gold/60 bg-gradient-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
+                className={`card-lift rounded-2xl border p-7 ${p.featured ? "border-gold/60 bg-linear-to-b from-[color-mix(in_oklab,var(--card)_85%,transparent)] to-card" : "border-dark-border bg-card"}`}
               >
                 {p.featured && (
                   <div className="mb-3 inline-block rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-navy">
@@ -127,7 +139,7 @@ function PricingPage() {
                 <ul className="mt-5 space-y-2 text-sm">
                   {p.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-foreground/90">
-                      <Check size={14} className="text-[color:var(--trust-green)]" /> {f}
+                      <Check size={14} className="text-trust-green" /> {f}
                     </li>
                   ))}
                 </ul>

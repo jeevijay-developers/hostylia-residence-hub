@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -37,8 +37,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { usePropertyStore } from "@/stores/property-store";
-import { useAttendance, useStudentsInProperty } from "@/lib/ops";
+import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrls } from "@/lib/avatar";
@@ -57,11 +58,26 @@ const STATUS_LABEL: Record<Status, string> = {
 };
 const STATUSES = Object.keys(STATUS_LABEL) as Status[];
 
+function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
+  return (
+    <Avatar className="h-10 w-10 shrink-0 border border-border">
+      {url ? <AvatarImage src={url} alt={name} /> : null}
+      <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+        {name.trim()[0]?.toUpperCase() ?? "S"}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 function AdminAttendancePage() {
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const dateInputRef = useRef<HTMLInputElement>(null);
-  const studentsQ = useStudentsInProperty(propertyId);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    setPage(0);
+  }, [propertyId]);
+  const studentsQ = useStudentsInProperty(propertyId, { page });
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
@@ -85,8 +101,10 @@ function AdminAttendancePage() {
     [overrides, currentMap],
   );
 
+  const studentRows = studentsQ.data?.rows ?? [];
+  const studentTotal = studentsQ.data?.total ?? 0;
   const roster = useMemo(() => {
-    return (studentsQ.data ?? []).map((s) => {
+    return studentRows.map((s) => {
       const activeAllocation = (s.allocations ?? []).find((a) => a.status === "ACTIVE") ?? null;
       return {
         ...s,
@@ -94,7 +112,7 @@ function AdminAttendancePage() {
         blockName: activeAllocation?.blocks?.name ?? null,
       };
     });
-  }, [studentsQ.data]);
+  }, [studentRows]);
 
   const rooms = useMemo(
     () =>
@@ -124,9 +142,20 @@ function AdminAttendancePage() {
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, ON_LEAVE: 0 };
-    for (const s of roster) counts[effective(s.id)]++;
-    return { total: roster.length, ...counts };
-  }, [roster, effective]);
+    const seen = new Set<string>();
+    for (const a of attendanceQ.data ?? []) {
+      const status = (overrides[a.student_id] ?? a.status) as Status;
+      if (status in counts) counts[status] += 1;
+      seen.add(a.student_id);
+    }
+    for (const s of roster) {
+      if (seen.has(s.id)) continue;
+      counts[effective(s.id)] += 1;
+      seen.add(s.id);
+    }
+    counts.PRESENT += Math.max(0, studentTotal - seen.size);
+    return { total: studentTotal, ...counts };
+  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -236,7 +265,7 @@ function AdminAttendancePage() {
           <Button
             onClick={() => saveMut.mutate()}
             disabled={saveMut.isPending}
-            className="flex-1 sm:flex-none shrink-0 justify-center bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-gradient-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-1.5 sm:gap-2 cursor-pointer"
+            className="flex-1 sm:flex-none shrink-0 justify-center bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-9 px-4 text-xs sm:h-11 sm:px-6 sm:text-sm rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center gap-1.5 sm:gap-2 cursor-pointer"
           >
             {saveMut.isPending ? (
               <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-primary-foreground dark:text-slate-950" />
@@ -375,12 +404,7 @@ function AdminAttendancePage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="h-10 w-10 shrink-0 border border-border">
-                      <AvatarImage src={avatarUrl} alt={s.full_name} />
-                      <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
-                        {s.full_name.trim()[0]?.toUpperCase() ?? "S"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <StudentRosterAvatar url={avatarUrl} name={s.full_name} />
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground text-sm truncate">
                         {s.full_name}
@@ -446,17 +470,25 @@ function AdminAttendancePage() {
               </div>
             );
           })}
-          {studentsQ.data?.length === 0 && (
+          {studentTotal === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">
               No active students in this property.
             </div>
           )}
-          {(studentsQ.data?.length ?? 0) > 0 && filteredRoster.length === 0 && (
+          {studentTotal > 0 && filteredRoster.length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">
               No students match your filters.
             </div>
           )}
         </div>
+      )}
+      {studentTotal > 0 && (
+        <PaginationBar
+          page={page}
+          pageSize={STUDENTS_IN_PROPERTY_PAGE_SIZE}
+          total={studentTotal}
+          onPageChange={setPage}
+        />
       )}
 
       {/* Delete Record Dialog */}

@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { submitPublicAdmission } from "@/lib/student.functions";
 import { publicAdmissionSchema, type PublicAdmissionInput } from "@/schemas/student";
 
@@ -24,7 +25,8 @@ interface Props {
 
 export function AdmissionForm({ propertySlug, onSuccess }: Props) {
   const submit = useServerFn(submitPublicAdmission);
-  const [form, setForm] = useState<PublicAdmissionInput>({
+  const captcha = useCaptchaToken();
+  const [form, setForm] = useState<Omit<PublicAdmissionInput, "turnstileToken">>({
     property_slug: propertySlug,
     full_name: "",
     phone: "",
@@ -45,12 +47,19 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
       toast.success(`Application submitted. Reference: ${res.admission_number}`);
       onSuccess(res.admission_number);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to submit"),
+    onError: (e) => {
+      captcha.reset();
+      toast.error(e instanceof Error ? e.message : "Failed to submit");
+    },
   });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = publicAdmissionSchema.safeParse(form);
+    if (!captcha.token) {
+      toast.error("Complete the verification check before submitting.");
+      return;
+    }
+    const parsed = publicAdmissionSchema.safeParse({ ...form, turnstileToken: captcha.token });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
@@ -58,7 +67,7 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
     mut.mutate(parsed.data);
   }
 
-  const set = <K extends keyof PublicAdmissionInput>(k: K, v: PublicAdmissionInput[K]) =>
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
   return (
@@ -190,7 +199,12 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         </div>
       </section>
 
-      <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={mut.isPending}>
+      <TurnstileWidget key={captcha.key} onToken={captcha.setToken} />
+      <Button
+        type="submit"
+        className="min-h-11 w-full sm:w-auto"
+        disabled={mut.isPending || !captcha.token}
+      >
         {mut.isPending ? "Submitting…" : "Submit application"}
       </Button>
     </form>

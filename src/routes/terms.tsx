@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalUrl } from "@/lib/site";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { LegalCompanyCard, LegalSection, LegalTocNav } from "@/components/site/LegalLayout";
 
@@ -33,9 +34,9 @@ export const Route = createFileRoute("/terms")({
       },
       { property: "og:title", content: "Terms & Conditions — Hostylia" },
       { property: "og:description", content: "The agreement that governs your use of Hostylia." },
-      { property: "og:url", content: "/terms" },
+      { property: "og:url", content: canonicalUrl("/terms") },
     ],
-    links: [{ rel: "canonical", href: "/terms" }],
+    links: [{ rel: "canonical", href: canonicalUrl("/terms") }],
   }),
   component: TermsPage,
 });

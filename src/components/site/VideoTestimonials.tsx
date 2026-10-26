@@ -83,12 +83,12 @@ function VideoCard({ t }: { t: Testimonial }) {
   return (
     <figure className="group relative">
       {/* Glow */}
-      <div className="pointer-events-none absolute -inset-3 rounded-[2.75rem] bg-gradient-to-br from-[color:var(--brand-blue)]/20 via-soft-teal/15 to-gold/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute -inset-3 rounded-[2.75rem] bg-linear-to-br from-brand-blue/20 via-soft-teal/15 to-gold/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
 
       {/* Phone frame — pinned dark regardless of page theme, same reasoning as
           HtmlMockups.tsx's PhoneFrame (a device mockup with a black video
           screen, not page chrome). */}
-      <div className="dark relative mx-auto w-full max-w-[260px] rounded-[2.25rem] border border-dark-border bg-[color:var(--navy)] p-2 shadow-2xl">
+      <div className="dark relative mx-auto w-full max-w-65 rounded-[2.25rem] border border-dark-border bg-navy p-2 shadow-2xl">
         <div className="relative overflow-hidden rounded-[1.85rem] border border-dark-border bg-black">
           <div className="relative aspect-[9/16]">
             <video
@@ -112,7 +112,7 @@ function VideoCard({ t }: { t: Testimonial }) {
             </div>
 
             {/* Bottom gradient + caption */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-black/85 via-black/40 to-transparent p-4">
               <div className="text-[11px] font-semibold text-soft-teal">{t.role}</div>
               <div className="text-sm font-extrabold text-white">{t.name}</div>
             </div>
@@ -122,7 +122,7 @@ function VideoCard({ t }: { t: Testimonial }) {
               <button
                 onClick={toggle}
                 aria-label="Play testimonial"
-                className="absolute inset-0 z-20 grid place-items-center bg-gradient-to-b from-black/10 via-black/20 to-black/40 transition-opacity hover:bg-black/30"
+                className="absolute inset-0 z-20 grid place-items-center bg-linear-to-b from-black/10 via-black/20 to-black/40 transition-opacity hover:bg-black/30"
               >
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-gold text-navy shadow-2xl ring-4 ring-white/20 transition-transform group-hover:scale-110">
                   <Play size={22} className="ml-0.5" fill="currentColor" />

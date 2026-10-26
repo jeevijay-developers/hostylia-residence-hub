@@ -3,23 +3,43 @@
 // and registers a documents row. WhatsApp/email delivery is stubbed with a
 // TODO — Phase 2 flagged Twilio as pending manual setup, so no real
 // provider is wired.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
     const { payment_id } = await req.json();
     if (!payment_id) return json({ error: "payment_id required" }, 400, cors);
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const authz = req.headers.get("Authorization") ?? "";
+    const token = /^Bearer\s+(\S+)$/i.exec(authz)?.[1];
+    if (!token) return json({ error: "Unauthorized" }, 401, cors);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      return json({ error: "Server misconfigured" }, 500, cors);
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: userRes, error: userErr } = await userClient.auth.getUser(token);
+    const userId = userRes?.user?.id;
+    if (userErr || !userId) return json({ error: "Unauthorized" }, 401, cors);
+
+    const access = await receiptAccess(userClient, userId, String(payment_id));
+    if (!access.ok) return json({ error: access.error }, access.status, cors);
+
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     const { data: pay, error } = await admin
       .from("payments")
@@ -93,6 +113,9 @@ Deno.serve(async (req) => {
         email?: string;
       }) => {
         await admin.functions.invoke("send-notification", {
+          headers: {
+            "x-hostylia-internal": Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "",
+          },
           body: {
             channel: opts.channel,
             templateKey: "payment_receipt",
@@ -131,6 +154,88 @@ Deno.serve(async (req) => {
     return json({ error: e instanceof Error ? e.message : "Internal" }, 500, cors);
   }
 });
+
+type ReceiptAccess = { ok: true } | { ok: false; status: number; error: string };
+
+/**
+ * Caller JWT only. A platform super admin is allowed before any payment read.
+ * Everyone else must be able to see the payment under RLS, and must be the
+ * student, a fee-paying linked guardian, or hostel admin / accountant for
+ * that property. The service role loads the receipt only after this returns ok.
+ */
+async function receiptAccess(
+  userClient: SupabaseClient,
+  userId: string,
+  paymentId: string,
+): Promise<ReceiptAccess> {
+  const { data: superAdmin } = await userClient.rpc("is_super_admin", { _user_id: userId });
+  if (superAdmin === true) return { ok: true };
+
+  const { data: pay, error } = await userClient
+    .from("payments")
+    .select("student_id, tenant_id, property_id")
+    .eq("id", paymentId)
+    .maybeSingle();
+  if (error) return { ok: false, status: 500, error: "Internal" };
+  if (!pay) return { ok: false, status: 404, error: "Payment not found" };
+
+  const { data: owns, error: ownsErr } = await userClient.rpc("is_owning_student", {
+    _user_id: userId,
+    _student_id: pay.student_id,
+  });
+  if (owns === true) return { ok: true };
+  if (ownsErr) {
+    const { data: studentRows, error: studentErr } = await userClient
+      .from("students")
+      .select("id")
+      .eq("id", pay.student_id)
+      .eq("profile_id", userId)
+      .limit(1);
+    if (studentErr) return { ok: false, status: 500, error: "Internal" };
+    if (studentRows && studentRows.length > 0) return { ok: true };
+  }
+
+  const { data: guardianRows, error: guardianErr } = await userClient
+    .from("guardians")
+    .select("id")
+    .eq("profile_id", userId)
+    .is("deleted_at", null)
+    .limit(1);
+  if (guardianErr) return { ok: false, status: 500, error: "Internal" };
+  const guardian = guardianRows?.[0];
+  if (guardian) {
+    const { data: link, error: linkErr } = await userClient
+      .from("student_guardians")
+      .select("can_pay_fees, portal_access_enabled, unlinked_at")
+      .eq("guardian_id", guardian.id)
+      .eq("student_id", pay.student_id)
+      .maybeSingle();
+    if (linkErr) return { ok: false, status: 500, error: "Internal" };
+    if (
+      link &&
+      link.portal_access_enabled &&
+      link.unlinked_at == null &&
+      link.can_pay_fees
+    ) {
+      return { ok: true };
+    }
+  }
+
+  const { data: roles, error: rolesErr } = await userClient
+    .from("role_assignments")
+    .select("property_id")
+    .eq("user_id", userId)
+    .eq("tenant_id", pay.tenant_id)
+    .eq("is_active", true)
+    .in("role", ["HOSTEL_ADMIN", "ACCOUNTANT"]);
+  if (rolesErr) return { ok: false, status: 500, error: "Internal" };
+  const staffAllowed = (roles ?? []).some(
+    (row) => row.property_id == null || row.property_id === pay.property_id,
+  );
+  if (staffAllowed) return { ok: true };
+
+  return { ok: false, status: 403, error: "Forbidden" };
+}
 
 function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {

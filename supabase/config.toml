@@ -31,12 +31,10 @@ auth_token = "placeholder_not_used_when_sms_hook_enabled"
 # unscoped `supabase config push` would otherwise silently reset to the
 # CLI's local-dev template defaults.
 [auth]
-# Production site — every Auth email's {{ .SiteURL }}/{{ .ConfirmationURL }}
-# is built from this (password reset, signup confirmation, phone-OTP-adjacent
-# emails). Was still the local-dev placeholder; fixed so no production auth
-# email ever embeds a localhost link. localhost:8080 kept in
-# additional_redirect_urls only so `bun run dev` still works for local testing.
-site_url = "https://hostylia-residence-hub.vercel.app"
+# Canonical origin. Apex already 308s to www — do not point site_url at the apex.
+# Auth email {{ .SiteURL }} / {{ .ConfirmationURL }} are built from this.
+# Apex, www, the Vercel host, and local dev stay allowed as redirect targets.
+site_url = "https://www.hostylia.com"
 additional_redirect_urls = ["https://hostylia-residence-hub.vercel.app/**", "https://hostylia.com/**", "https://www.hostylia.com/**", "http://localhost:8080/**"]
 
 [auth.mfa.totp]
@@ -75,3 +73,8 @@ content_path = "./supabase/templates/confirmation.html"
 [auth.email.template.email_change]
 subject = "Confirm your new email address"
 content_path = "./supabase/templates/email_change.html"
+
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(TURNSTILE_SECRET_KEY)"

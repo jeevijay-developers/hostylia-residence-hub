@@ -91,6 +91,15 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2",
+    "dompurify": "3.4.17",
+    "source-map-js": "1.2.2",
+    "shell-quote": "1.12.0",
+    "launch-editor": "2.14.2",
+    "seroval": "1.6.12",
+    "seroval-plugins": "1.6.12"
   }
 }

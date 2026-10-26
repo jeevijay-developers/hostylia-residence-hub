@@ -80,11 +80,11 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    // Sign-in below uses email+password, not phone+password — the Supabase
-    // project's Phone auth provider is disabled (pending DLT approval), which
-    // rejects any phone-based sign-in including password grants keyed by
-    // phone. Email stays fixed/synthetic; testPhone is only used to find/link
-    // the guardian row so the dashboard resolves the right student.
+    // Phone auth is disabled (pending DLT approval), so the test account is
+    // keyed by a fixed synthetic email. testPhone is only used to find/link
+    // the guardian row so the dashboard resolves the right student. The
+    // session itself is minted with the service role below — not a password
+    // grant — because captcha rejects a password grant that has no token.
     const testEmail = "dev-test-parent@hostylia.local";
 
     try {
@@ -106,13 +106,20 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
         }
         user = created.user;
       } else {
-        // Keep the account's password/confirmation/email in sync
-        await admin.auth.admin.updateUserById(user.id, {
+        // Keep the account's password/confirmation/email in sync. This is the
+        // admin API, not a captcha-gated password grant.
+        const { error: updateErr } = await admin.auth.admin.updateUserById(user.id, {
           email: testEmail,
           password: testPassword,
           email_confirm: true,
           phone_confirm: true,
         });
+        if (updateErr) {
+          return {
+            ok: false as const,
+            message: `Could not prepare test account: ${updateErr.message}`,
+          };
+        }
       }
 
       // Ensure the test user has a guardian row so they reach the Parent Dashboard
@@ -158,28 +165,35 @@ export const devParentTestLogin = createServerFn({ method: "POST" })
         }
       }
 
-      const anon = createClient<Database>(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_PUBLISHABLE_KEY!,
-        { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-      );
-      const { data: signInData, error: signInErr } = await anon.auth.signInWithPassword({
+      // Password grants are captcha-gated and this path has no Turnstile token.
+      // Mint the session with the service role instead: admin generateLink does
+      // not send mail, and exchanging its hashed token is not a password grant.
+      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: "magiclink",
         email: testEmail,
-        password: testPassword,
       });
-      if (signInErr || !signInData.session) {
-        return { ok: false as const, message: signInErr?.message ?? "Test sign-in failed." };
+      const tokenHash = linkData?.properties?.hashed_token;
+      if (linkErr || !tokenHash) {
+        return { ok: false as const, message: linkErr?.message ?? "Test sign-in failed." };
+      }
+
+      const { data: sessionData, error: sessionErr } = await admin.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: tokenHash,
+      });
+      if (sessionErr || !sessionData.session) {
+        return { ok: false as const, message: sessionErr?.message ?? "Test sign-in failed." };
       }
 
       return {
         ok: true as const,
         session: {
-          access_token: signInData.session.access_token,
-          refresh_token: signInData.session.refresh_token,
+          access_token: sessionData.session.access_token,
+          refresh_token: sessionData.session.refresh_token,
         },
       };
     } catch (err) {
-      console.error("devParentTestLogin: unexpected failure", err);
+      console.error("devParentTestLogin: unexpected failure");
       return {
         ok: false as const,
         message: err instanceof Error ? err.message : "Test login failed unexpectedly.",

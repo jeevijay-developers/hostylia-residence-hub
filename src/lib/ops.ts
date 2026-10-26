@@ -29,22 +29,49 @@ export function useAttendance(propertyId: string | null, date: string) {
   });
 }
 
-export function useStudentsInProperty(propertyId: string | null) {
+export const STUDENTS_IN_PROPERTY_PAGE_SIZE = 50;
+
+/** Strip characters that would break a PostgREST `.or()` ilike list. */
+function ilikeToken(value: string): string {
+  return value.replace(/[%_,.()]/g, "").trim();
+}
+
+/**
+ * Active students in a property, one page at a time.
+ * `total` is the exact filtered count (for PaginationBar), not `rows.length`.
+ */
+export function useStudentsInProperty(
+  propertyId: string | null,
+  options?: { page?: number; pageSize?: number; search?: string },
+) {
+  const page = options?.page ?? 0;
+  const pageSize = options?.pageSize ?? STUDENTS_IN_PROPERTY_PAGE_SIZE;
+  const search = options?.search?.trim() ?? "";
   return useQuery({
-    queryKey: ["students-in-property", propertyId],
+    queryKey: ["students-in-property", propertyId, page, pageSize, search],
     enabled: !!propertyId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!propertyId) return { rows: [], total: 0 };
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      let query = supabase
         .from("students")
         .select(
           "id, full_name, admission_number, photo_path, status, allocations(status, room_id, block_id, beds(code), rooms(room_number), blocks(name))",
+          { count: "exact" },
         )
-        .eq("property_id", propertyId!)
+        .eq("property_id", propertyId)
         .eq("status", "ACTIVE")
         .is("deleted_at", null)
-        .order("full_name");
+        .order("full_name")
+        .range(from, to);
+      const token = ilikeToken(search);
+      if (token) {
+        query = query.or(`full_name.ilike.%${token}%,admission_number.ilike.%${token}%`);
+      }
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data ?? [];
+      return { rows: data ?? [], total: count ?? 0 };
     },
   });
 }

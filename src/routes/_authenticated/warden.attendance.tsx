@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
-import { useAttendance, useStudentsInProperty } from "@/lib/ops";
+import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
 
@@ -48,6 +48,17 @@ export const Route = createFileRoute("/_authenticated/warden/attendance")({
     </StaffModuleGuard>
   ),
 });
+
+function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
+  return (
+    <Avatar className="h-10 w-10 shrink-0">
+      {url ? <AvatarImage src={url} alt={name} /> : null}
+      <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
+        {name.trim()[0]?.toUpperCase() ?? "S"}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 type Status = "PRESENT" | "ABSENT" | "LATE" | "ON_LEAVE";
 const STATUS_LABEL: Record<Status, string> = {
@@ -75,7 +86,11 @@ function WardenAttendancePage() {
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const studentsQ = useStudentsInProperty(propertyId);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    setPage(0);
+  }, [propertyId]);
+  const studentsQ = useStudentsInProperty(propertyId, { page });
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
@@ -102,8 +117,10 @@ function WardenAttendancePage() {
     [overrides, currentMap],
   );
 
+  const studentRows = studentsQ.data?.rows ?? [];
+  const studentTotal = studentsQ.data?.total ?? 0;
   const roster = useMemo(() => {
-    return (studentsQ.data ?? []).map((s) => {
+    return studentRows.map((s) => {
       const activeAllocation = (s.allocations ?? []).find((a) => a.status === "ACTIVE") ?? null;
       return {
         ...s,
@@ -111,7 +128,7 @@ function WardenAttendancePage() {
         blockName: activeAllocation?.blocks?.name ?? null,
       };
     });
-  }, [studentsQ.data]);
+  }, [studentRows]);
 
   const rooms = useMemo(
     () =>
@@ -141,9 +158,20 @@ function WardenAttendancePage() {
 
   const summary = useMemo(() => {
     const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
-    for (const s of roster) counts[effective(s.id)]++;
-    return { total: roster.length, ...counts };
-  }, [roster, effective]);
+    const seen = new Set<string>();
+    for (const a of attendanceQ.data ?? []) {
+      const status = (overrides[a.student_id] ?? a.status) as Status;
+      if (status in counts) counts[status] += 1;
+      seen.add(a.student_id);
+    }
+    for (const s of roster) {
+      if (seen.has(s.id)) continue;
+      counts[effective(s.id)] += 1;
+      seen.add(s.id);
+    }
+    counts.PRESENT += Math.max(0, studentTotal - seen.size);
+    return { total: studentTotal, ...counts };
+  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -213,7 +241,7 @@ function WardenAttendancePage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-44 rounded-full border-border bg-card pl-9 pr-9 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+            className="w-44 rounded-full border-border bg-card pl-9 pr-9 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -294,12 +322,7 @@ function WardenAttendancePage() {
               )}
             >
               <CollapsibleTrigger className="flex w-full items-center gap-3 text-left">
-                <Avatar className="h-10 w-10 shrink-0">
-                  <AvatarImage src={avatarUrl} alt={s.full_name} />
-                  <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
-                    {s.full_name.trim()[0]?.toUpperCase() ?? "S"}
-                  </AvatarFallback>
-                </Avatar>
+                <StudentRosterAvatar url={avatarUrl} name={s.full_name} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{s.full_name}</div>
                   <div className="truncate text-xs text-muted-foreground">
@@ -383,17 +406,25 @@ function WardenAttendancePage() {
             </Collapsible>
           );
         })}
-        {studentsQ.data?.length === 0 && (
+        {studentTotal === 0 && (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
             No active students in this property.
           </div>
         )}
-        {(studentsQ.data?.length ?? 0) > 0 && filteredRoster.length === 0 && (
+        {studentTotal > 0 && filteredRoster.length === 0 && (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
             No students match your filters.
           </div>
         )}
       </div>
+      {studentTotal > 0 && (
+        <PaginationBar
+          page={page}
+          pageSize={STUDENTS_IN_PROPERTY_PAGE_SIZE}
+          total={studentTotal}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

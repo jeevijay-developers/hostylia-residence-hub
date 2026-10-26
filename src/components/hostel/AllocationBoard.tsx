@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowRightLeft,
@@ -19,6 +19,7 @@ import {
 import { useResolvedRole } from "@/lib/user-role";
 import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
+import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +66,13 @@ const OPEN_ALLOCATION_STATUSES = [
   "MOVE_OUT_INSPECTION",
 ];
 
+const BEDS_PAGE_SIZE = 48;
+const ALLOCATION_STUDENTS_PAGE_SIZE = 20;
+
+function ilikeToken(value: string): string {
+  return value.replace(/[%_,.()]/g, "").trim();
+}
+
 /**
  * Lives outside src/routes so it can be imported from both
  * admin.allocations.tsx and warden.allocations.tsx without either route
@@ -93,6 +101,30 @@ export function AllocationBoard({
   const activePropertyId = usePropertyStore((s) => s.activePropertyId);
   const effectiveProp = propertyIdOverride !== undefined ? propertyIdOverride : activePropertyId;
   const qc = useQueryClient();
+  const [bedPage, setBedPage] = useState(0);
+  const [bedSearch, setBedSearch] = useState("");
+  const [debouncedBedSearch, setDebouncedBedSearch] = useState("");
+  const [studentPage, setStudentPage] = useState(0);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [debouncedStudentSearch, setDebouncedStudentSearch] = useState("");
+
+  useEffect(() => {
+    if (bedSearch === debouncedBedSearch) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedBedSearch(bedSearch);
+      setBedPage(0);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [bedSearch, debouncedBedSearch]);
+
+  useEffect(() => {
+    if (studentSearch === debouncedStudentSearch) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedStudentSearch(studentSearch);
+      setStudentPage(0);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [studentSearch, debouncedStudentSearch]);
 
   // Admin always has the Rooms/Beds page (its own route is HOSTEL_ADMIN-only
   // regardless of permissions); a Warden needs the `rooms_beds_view`
@@ -108,34 +140,110 @@ export function AllocationBoard({
   const structureTo = isAdmin ? "/admin/properties/$id/structure" : "/warden/rooms-beds";
 
   const bedsQ = useQuery({
-    queryKey: ["allocation-beds", effectiveProp],
+    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
     enabled: !!effectiveProp,
-    queryFn: async (): Promise<BedTile[]> => {
-      const { data: beds } = await supabase
-        .from("beds")
-        .select("id, code, status, rooms(room_number)")
-        .eq("property_id", effectiveProp!)
-        .is("deleted_at", null)
-        .order("code");
-
-      const { data: occupied } = await supabase
-        .from("allocations")
-        .select("bed_id, students(full_name)")
-        .eq("property_id", effectiveProp!)
-        .in("status", ["ACTIVE", "NOTICE_GIVEN"]);
-      const occupantByBed = new Map<string, string>();
-      (occupied ?? []).forEach((a) => {
-        const name = (a.students as { full_name: string } | null)?.full_name;
-        if (name) occupantByBed.set(a.bed_id, name);
+    queryFn: async () => {
+      const emptyCounts: Record<BedTile["status"], number> = {
+        VACANT: 0,
+        OCCUPIED: 0,
+        MAINTENANCE: 0,
+        BLOCKED: 0,
+      };
+      if (!effectiveProp) return { beds: [] as BedTile[], total: 0, counts: emptyCounts };
+      const statuses = ["VACANT", "OCCUPIED", "MAINTENANCE", "BLOCKED"] as const;
+      const countResults = await Promise.all(
+        statuses.map((status) =>
+          supabase
+            .from("beds")
+            .select("id", { count: "exact", head: true })
+            .eq("property_id", effectiveProp)
+            .eq("status", status)
+            .is("deleted_at", null),
+        ),
+      );
+      const counts = { ...emptyCounts };
+      statuses.forEach((status, i) => {
+        const result = countResults[i];
+        if (!result || result.error) throw result?.error ?? new Error("Could not count beds");
+        counts[status] = result.count ?? 0;
       });
 
-      return (beds ?? []).map((b) => ({
-        id: b.id,
-        code: b.code,
-        status: b.status as BedTile["status"],
-        occupantName: occupantByBed.get(b.id) ?? null,
-        roomNumber: (b.rooms as { room_number: string } | null)?.room_number ?? null,
-      }));
+      let bedQuery = supabase
+        .from("beds")
+        .select("id, code, status, rooms(room_number)", { count: "exact" })
+        .eq("property_id", effectiveProp)
+        .is("deleted_at", null)
+        .order("code")
+        .range(bedPage * BEDS_PAGE_SIZE, bedPage * BEDS_PAGE_SIZE + BEDS_PAGE_SIZE - 1);
+      const token = ilikeToken(debouncedBedSearch);
+      if (!token) {
+        bedQuery = bedQuery.eq("status", "VACANT");
+      } else {
+        const [roomRes, nameRes] = await Promise.all([
+          supabase
+            .from("rooms")
+            .select("id")
+            .eq("property_id", effectiveProp)
+            .ilike("room_number", `%${token}%`)
+            .limit(100),
+          supabase
+            .from("students")
+            .select("id")
+            .eq("property_id", effectiveProp)
+            .ilike("full_name", `%${token}%`)
+            .is("deleted_at", null)
+            .limit(50),
+        ]);
+        if (roomRes.error) throw roomRes.error;
+        if (nameRes.error) throw nameRes.error;
+        const roomIds = (roomRes.data ?? []).map((room) => room.id);
+        const studentIds = (nameRes.data ?? []).map((student) => student.id);
+        let occupantBedIds: string[] = [];
+        if (studentIds.length) {
+          const { data: allocs, error: allocErr } = await supabase
+            .from("allocations")
+            .select("bed_id")
+            .eq("property_id", effectiveProp)
+            .in("student_id", studentIds)
+            .in("status", ["ACTIVE", "NOTICE_GIVEN"]);
+          if (allocErr) throw allocErr;
+          occupantBedIds = (allocs ?? []).map((row) => row.bed_id);
+        }
+        const parts = [`code.ilike.%${token}%`];
+        if (roomIds.length) parts.push(`room_id.in.(${roomIds.join(",")})`);
+        if (occupantBedIds.length) parts.push(`id.in.(${occupantBedIds.join(",")})`);
+        bedQuery = bedQuery.or(parts.join(","));
+      }
+      const { data: beds, error, count } = await bedQuery;
+      if (error) throw error;
+
+      const bedIds = (beds ?? []).map((bed) => bed.id);
+      const occupantByBed = new Map<string, string>();
+      if (bedIds.length) {
+        const { data: occupied, error: occErr } = await supabase
+          .from("allocations")
+          .select("bed_id, students(full_name)")
+          .eq("property_id", effectiveProp)
+          .in("bed_id", bedIds)
+          .in("status", ["ACTIVE", "NOTICE_GIVEN"]);
+        if (occErr) throw occErr;
+        (occupied ?? []).forEach((a) => {
+          const name = (a.students as { full_name: string } | null)?.full_name;
+          if (name) occupantByBed.set(a.bed_id, name);
+        });
+      }
+
+      return {
+        beds: (beds ?? []).map((b) => ({
+          id: b.id,
+          code: b.code,
+          status: b.status as BedTile["status"],
+          occupantName: occupantByBed.get(b.id) ?? null,
+          roomNumber: (b.rooms as { room_number: string } | null)?.room_number ?? null,
+        })),
+        total: count ?? 0,
+        counts,
+      };
     },
   });
 
@@ -145,17 +253,28 @@ export function AllocationBoard({
   // the Swap flow below instead of a second allocation). Excludes
   // MOVED_OUT/ARCHIVED/REJECTED, which need re-admission, not allocation.
   const studentsQ = useQuery({
-    queryKey: ["allocation-eligible-students", effectiveProp],
+    queryKey: ["allocation-eligible-students", effectiveProp, studentPage, debouncedStudentSearch],
     enabled: !!effectiveProp,
     queryFn: async () => {
-      const { data } = await supabase
+      if (!effectiveProp) return { rows: [], total: 0 };
+      let query = supabase
         .from("students")
-        .select("id, full_name, admission_number, status")
-        .eq("property_id", effectiveProp!)
+        .select("id, full_name, admission_number, status", { count: "exact" })
+        .eq("property_id", effectiveProp)
         .in("status", ["APPLICANT", "VERIFIED", "ACTIVE", "NOTICE_GIVEN"])
         .is("deleted_at", null)
-        .order("full_name");
-      return data ?? [];
+        .order("full_name")
+        .range(
+          studentPage * ALLOCATION_STUDENTS_PAGE_SIZE,
+          studentPage * ALLOCATION_STUDENTS_PAGE_SIZE + ALLOCATION_STUDENTS_PAGE_SIZE - 1,
+        );
+      const token = ilikeToken(debouncedStudentSearch);
+      if (token) {
+        query = query.or(`full_name.ilike.%${token}%,admission_number.ilike.%${token}%`);
+      }
+      const { data, error, count } = await query;
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0 };
     },
   });
 
@@ -211,6 +330,20 @@ export function AllocationBoard({
 
   const [selectedBed, setSelectedBed] = useState<BedTile | null>(null);
   const [studentId, setStudentId] = useState(initialStudentId ?? "");
+  const selectedOnPage = (studentsQ.data?.rows ?? []).some((s) => s.id === studentId);
+  const selectedStudentQ = useQuery({
+    queryKey: ["allocation-selected-student", studentId],
+    enabled: !!studentId && !selectedOnPage,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("students")
+        .select("id, full_name, admission_number, status")
+        .eq("id", studentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [feePlanId, setFeePlanId] = useState("");
   const [rent, setRent] = useState<number>(500000);
@@ -356,7 +489,11 @@ export function AllocationBoard({
         <>
           <BedGrid
             variant="expanded"
-            beds={bedsQ.data ?? []}
+            beds={bedsQ.data?.beds ?? []}
+            statusCounts={bedsQ.data?.counts}
+            queryValue={bedSearch}
+            onQueryChange={setBedSearch}
+            serverFiltered
             onSelect={(b) => {
               if (b.status === "VACANT") {
                 setSelectedBed(b);
@@ -365,6 +502,14 @@ export function AllocationBoard({
               setViewBed(b);
             }}
           />
+          {(bedsQ.data?.total ?? 0) > 0 && (
+            <PaginationBar
+              page={bedPage}
+              pageSize={BEDS_PAGE_SIZE}
+              total={bedsQ.data?.total ?? 0}
+              onPageChange={setBedPage}
+            />
+          )}
 
           <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center">
             <div className="flex items-start gap-3">
@@ -407,22 +552,31 @@ export function AllocationBoard({
                   >
                     {studentId
                       ? (() => {
-                          const selected = (studentsQ.data ?? []).find((s) => s.id === studentId);
+                          const selected =
+                            (studentsQ.data?.rows ?? []).find((s) => s.id === studentId) ??
+                            selectedStudentQ.data ??
+                            null;
                           return selected
                             ? `${selected.full_name} • ${selected.admission_number}`
-                            : "Select applicant";
+                            : "Selected student";
                         })()
                       : "Select applicant"}
                     <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
-                  <Command>
-                    <CommandInput placeholder="Search by name or admission no…" />
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Search by name or admission no…"
+                      value={studentSearch}
+                      onValueChange={setStudentSearch}
+                    />
                     <CommandList>
-                      <CommandEmpty>No applicant found.</CommandEmpty>
+                      <CommandEmpty>
+                        {studentsQ.isLoading ? "Loading…" : "No applicant found."}
+                      </CommandEmpty>
                       <CommandGroup>
-                        {(studentsQ.data ?? []).map((s) => (
+                        {(studentsQ.data?.rows ?? []).map((s) => (
                           <CommandItem
                             key={s.id}
                             value={`${s.full_name} ${s.admission_number}`}
@@ -447,6 +601,14 @@ export function AllocationBoard({
                         ))}
                       </CommandGroup>
                     </CommandList>
+                    {(studentsQ.data?.total ?? 0) > ALLOCATION_STUDENTS_PAGE_SIZE && (
+                      <PaginationBar
+                        page={studentPage}
+                        pageSize={ALLOCATION_STUDENTS_PAGE_SIZE}
+                        total={studentsQ.data?.total ?? 0}
+                        onPageChange={setStudentPage}
+                      />
+                    )}
                   </Command>
                 </PopoverContent>
               </Popover>

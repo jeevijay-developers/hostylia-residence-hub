@@ -287,7 +287,7 @@ export function Topbar({
       {!isAutoThemeRole && <ThemeToggle />}
       {!isStudent && (
         <NotificationBell
-          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-none")}
+          className={cn((isWarden || isParent || isAccountant) && "-order-1 lg:order-0")}
         />
       )}
       {isWarden && <MessagesPanel />}
@@ -325,7 +325,7 @@ export function Topbar({
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[190px] p-2">
+            <DropdownMenuContent align="end" className="min-w-47.5 p-2">
               <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
                 <Link
                   to={
