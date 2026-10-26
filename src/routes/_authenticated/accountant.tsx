@@ -27,7 +27,12 @@ function AccountantLayout() {
   const moduleFilter = (item: NavItem) => !item.module || canModule(item.module);
   const navItems = (SIDEBAR_NAV.ACCOUNTANT ?? []).filter(moduleFilter);
   const bottomItems = (BOTTOM_NAV.ACCOUNTANT ?? []).filter(moduleFilter);
-  const moreItems = (MORE_NAV.ACCOUNTANT ?? []).filter(moduleFilter);
+  // Deposit Ledger now lives on the bottom bar; the rest of the former "More"
+  // list moves into the mobile hamburger drawer (same permission filter).
+  const bottomTargets = new Set(bottomItems.map((i) => i.to));
+  const drawerItems = (MORE_NAV.ACCOUNTANT ?? [])
+    .filter(moduleFilter)
+    .filter((i) => !bottomTargets.has(i.to));
   const rawCenter = CENTER_NAV.ACCOUNTANT;
   const centerItem =
     rawCenter && (!rawCenter.module || canModule(rawCenter.module)) ? rawCenter : undefined;
@@ -38,9 +43,8 @@ function AccountantLayout() {
       navItems={navItems}
       hideMobileNavTrigger
       mobileHeaderScrollsWithContent
-      mobileBottomNav={
-        <StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={moreItems} />
-      }
+      mobileProfileMenuItems={drawerItems}
+      mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} />}
     >
       <Outlet />
     </DesktopShell>

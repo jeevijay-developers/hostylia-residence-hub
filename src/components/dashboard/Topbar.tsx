@@ -316,7 +316,7 @@ export function Topbar({
         )}
         {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
           <>
-          {isWarden && (
+          {(isWarden || isAccountant) && (
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <button
@@ -333,7 +333,7 @@ export function Topbar({
                 </SheetHeader>
                 <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-8">
                   <Link
-                    to="/warden/profile"
+                    to={isAccountant ? "/accountant/profile" : "/warden/profile"}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
                   >
@@ -374,7 +374,7 @@ export function Topbar({
                 aria-label="Account menu"
                 className={cn(
                   "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
-                  isWarden && "max-lg:hidden",
+                  (isWarden || isAccountant) && "max-lg:hidden",
                 )}
               >
                 {avatarUrl ? (

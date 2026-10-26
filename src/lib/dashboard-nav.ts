@@ -164,6 +164,7 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },
     { label: "Students", to: "/accountant/students", icon: Users },
     { label: "Invoices", to: "/accountant/invoices", icon: FileText, module: "invoices_view" },
+    { label: "Refunds", to: "/accountant/refunds", icon: Receipt, module: "refunds" },
   ],
   WARDEN: [
     { label: "Brief", to: "/warden/daily-brief", icon: ClipboardList },
