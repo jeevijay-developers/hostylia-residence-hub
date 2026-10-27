@@ -1230,7 +1230,15 @@ function AdminStaffPage() {
         },
       }),
     onSuccess: (out) => {
-      if (out.resent) {
+      if (!out.email_sent) {
+        // The staff record exists, but the email did not go out — say so
+        // instead of reporting success.
+        toast.error(
+          `Staff added, but the invitation email could not be sent: ${out.email_error}. Use Resend invite once fixed.`,
+        );
+        // Dialog stays open so submitting again retries as a resend.
+        qc.invalidateQueries({ queryKey: ["staff", tenantId] });
+      } else if (out.resent) {
         toast.success("Invitation already pending — resent it.");
       } else {
         toast.success(
@@ -1267,7 +1275,10 @@ function AdminStaffPage() {
   const resend = useMutation({
     mutationFn: (id: string) =>
       resendFn({ data: { tenant_id: tenantId!, role_assignment_id: id } }),
-    onSuccess: () => toast.success("Invitation resent"),
+    onSuccess: (out) => {
+      if (out.ok) toast.success("Invitation resent");
+      else toast.error(out.message || "Could not resend invitation");
+    },
     onError: (e) => toast.error(errorMessage(e, "Could not resend invitation")),
   });
 

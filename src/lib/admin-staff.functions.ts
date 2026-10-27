@@ -274,6 +274,26 @@ async function sendStaffInviteNotificationInner(
 }
 
 /**
+ * Like `sendStaffInviteNotification`, but reports the outcome instead of
+ * swallowing it — the invite email is the point of inviting staff, so the
+ * admin must be told when it did not go out. The staff record is already
+ * saved by the time this runs; a failure here never rolls it back.
+ */
+async function sendStaffInviteReporting(
+  supabase: any,
+  args: Parameters<typeof sendStaffInviteNotification>[1],
+) {
+  try {
+    await sendStaffInviteNotificationInner(supabase, args);
+    return { email_sent: true as const, email_error: null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not send the invitation email";
+    console.error("staff invite: notification failed", e);
+    return { email_sent: false as const, email_error: message };
+  }
+}
+
+/**
  * Invite Warden/Accountant. Creates the tenant_membership as INVITED and
  * the role_assignment as `is_active: false` — a PENDING invitation, not
  * live access. `role_assignments.is_active` is exactly what every RLS
@@ -381,7 +401,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
         // fire-and-forget) matters specifically because this app runs on
         // Cloudflare Workers: an un-awaited promise can be killed the moment
         // the response is sent, silently dropping the invite notification.
-        await sendStaffInviteNotification(supabase, {
+        const sent = await sendStaffInviteReporting(supabase, {
           inviteeId,
           email,
           phone,
@@ -390,7 +410,12 @@ export const inviteStaff = createServerFn({ method: "POST" })
           propertyId: data.property_id,
           referenceId: existing.id,
         });
-        return { role_assignment_id: existing.id, invitee_id: inviteeId, resent: true as const };
+        return {
+          role_assignment_id: existing.id,
+          invitee_id: inviteeId,
+          resent: true as const,
+          ...sent,
+        };
       }
       throw new Error("This email is already registered.");
     }
@@ -476,7 +501,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
     // (tenant_membership + role_assignment above are committed); this only
     // waits for the invite notification job to be queued, not for it to be
     // delivered, and can never fail or meaningfully slow down this response.
-    await sendStaffInviteNotification(supabase, {
+    const sent = await sendStaffInviteReporting(supabase, {
       inviteeId,
       email,
       phone,
@@ -486,7 +511,7 @@ export const inviteStaff = createServerFn({ method: "POST" })
       referenceId: ra.id,
     });
 
-    return { role_assignment_id: ra.id, invitee_id: inviteeId, resent: false as const };
+    return { role_assignment_id: ra.id, invitee_id: inviteeId, resent: false as const, ...sent };
   });
 
 /**
