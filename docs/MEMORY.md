@@ -254,3 +254,9 @@ Lighthouse on the local dev server, mobile form factor, `throttling-method=provi
 Skipped, on purpose: edge functions not deployed; auth config not pushed;  videos not recompressed; code splitting unavailable; migration filename matches applied version 20261023093212.
 
 _End of Memory.md_
+
+## 2026-10-29 — KYC review notifications + rejection reason display
+- What: `fn_notify_student_kyc_review` trigger on `documents` (migration `20261029110000_kyc_review_student_notifications.sql`) inserts one IN_APP `KYC_APPROVED`/`KYC_REJECTED` notification to the owning student's profile on each VERIFIED/REJECTED status change (idempotency key = doc + status + verified_at). Payload carries document type, status and the admin-entered reason. Student profile KYC dialog now lists each document with status, rejection reason and a Re-upload action (preselects the doc type in `KycUploadForm`).
+- Decision: trigger (not a server fn) because reviews are direct client `documents` UPDATEs from two components and `dispatchNotification` needs `INTERNAL_FUNCTION_SECRET`; mirrors `fn_notify_admins_complaint_resolved`.
+- Interaction: the student KYC gate hid all notifications from unverified students; the notifications read policy now exempts `KYC_APPROVED`/`KYC_REJECTED` so a locked student can read why they were rejected.
+- Known: SQL tests added to `supabase/tests/rls_tests.sql` but not executed (no local Docker; `supabase` CLI blocked by SMS hook config). Migration not yet applied.

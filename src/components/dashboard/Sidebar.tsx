@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useKycLockedToast } from "@/lib/kyc";
 import type { NavItem } from "@/lib/dashboard-nav";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { BrandLockup } from "@/components/BrandLockup";
@@ -16,6 +17,7 @@ interface SidebarProps {
 export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const showLockedToast = useKycLockedToast();
 
   return (
     <aside
@@ -59,6 +61,25 @@ export function Sidebar({ items, showPropertySwitcher, tenantId }: SidebarProps)
         {items.map((item) => {
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
           const Icon = item.icon;
+          if (item.locked) {
+            return (
+              <button
+                key={item.to}
+                type="button"
+                aria-disabled="true"
+                onClick={showLockedToast}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground/70 transition hover:bg-muted",
+                  collapsed && "justify-center px-2",
+                )}
+                title={collapsed ? `${item.label} (locked)` : undefined}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+                {!collapsed && <Lock className="ml-auto h-3.5 w-3.5 shrink-0" />}
+              </button>
+            );
+          }
           return (
             <Link
               key={item.to}

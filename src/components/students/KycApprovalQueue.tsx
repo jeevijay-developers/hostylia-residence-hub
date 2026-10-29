@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { KycDocumentViewButton } from "@/components/students/KycDocumentViewButton";
 import { useResolvedRole } from "@/lib/user-role";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -147,6 +148,7 @@ function KycQueueRow({ doc }: { doc: PendingKycDoc }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        <KycDocumentViewButton documentId={doc.id} documentType={doc.document_type} />
         <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">

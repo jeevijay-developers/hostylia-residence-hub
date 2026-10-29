@@ -39,6 +39,12 @@ export interface NavItem {
    * view by default, so there's no permission gap to gate on).
    */
   module?: string;
+  /**
+   * Rendered as a visible-but-disabled entry (lock icon). Clicking it shows
+   * the lock message instead of navigating. Student KYC gate only — set by
+   * student.tsx, never in the static nav config below.
+   */
+  locked?: boolean;
 }
 
 /**

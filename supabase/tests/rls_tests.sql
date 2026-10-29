@@ -828,4 +828,105 @@ SELECT pg_temp.assume('00000000-0000-0000-0000-000000000001'); -- SUPER_ADMIN
 SELECT pg_temp.assert_eq((SELECT count(*) FROM storage.objects WHERE bucket_id = 'avatars' AND name LIKE '00000000-0000-0000-0000-000000000020/%'), 1, 'Super admin sees an avatar');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION — Student KYC gate (20261029100000_student_kyc_verified_gate.sql)
+-- Student 01 owns seeded gate pass da01 and complaints; the seed gives every
+-- student one VERIFIED KYC document. Each state below flips that document's
+-- status (as the superuser, between role switches) and re-checks access.
+-- Profile (students row + KYC documents) must stay readable in every state.
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, KYC VERIFIED
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'KYC verified: student sees own gate passes');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.complaints WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'KYC verified: student sees own complaints');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'KYC verified: student sees published notices');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notifications WHERE recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'KYC verified: student sees own notifications');
+RESET ROLE;
+
+UPDATE public.documents SET verification_status = 'PENDING'
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, KYC PENDING
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC pending: gate passes blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.complaints WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC pending: complaints blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC pending: invoices blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.attendance WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC pending: attendance blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 0, 'KYC pending: notices blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.mess_menus), 0, 'KYC pending: mess menus blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE recipient_user_id='00000000-0000-0000-0000-000000000020'), 0, 'KYC pending: notifications blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE profile_id='00000000-0000-0000-0000-000000000020'), 1, 'KYC pending: own profile row still readable');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.documents WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001'), 1, 'KYC pending: own KYC documents still readable');
+SELECT pg_temp.assert_throws($$INSERT INTO public.gate_passes (tenant_id, property_id, student_id, pass_number, reason, out_at, expected_in_at, status, requires_parent_approval, qr_token_hash, created_by) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','','x', now(), now()+interval '1 day','PENDING_WARDEN', false, repeat('a',64),'00000000-0000-0000-0000-000000000020')$$, 'KYC pending: cannot create gate pass');
+RESET ROLE;
+
+UPDATE public.documents SET verification_status = 'REJECTED', rejection_reason = 'blurry'
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, KYC REJECTED
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC rejected: gate passes blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.complaints WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC rejected: complaints blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 0, 'KYC rejected: notices blocked');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.documents WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001'), 1, 'KYC rejected: own KYC documents still readable (re-upload path)');
+RESET ROLE;
+
+-- One verified + one still-pending document is NOT verified.
+UPDATE public.documents SET verification_status = 'VERIFIED', rejection_reason = NULL
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+INSERT INTO public.documents (tenant_id, property_id, owner_type, owner_id, document_type, storage_bucket, storage_path, original_filename, mime_type, size_bytes, status, verification_status)
+  VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','STUDENT','11111111-1111-1111-1111-111111110001','COLLEGE_ID','kyc-documents','kyc-gate-test/second.pdf','second.pdf','application/pdf',1,'AVAILABLE','PENDING');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, mixed
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 0, 'KYC partly verified: still blocked');
+RESET ROLE;
+
+-- Approval of the last document restores access automatically.
+UPDATE public.documents SET verification_status = 'VERIFIED'
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01, all verified
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'KYC verified again: gate passes restored');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'KYC verified again: notices restored');
+RESET ROLE;
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION — KYC review notifications (20261029110000_kyc_review_student_notifications.sql)
+-- Student 01's seeded KYC document is VERIFIED. Rejecting then approving it
+-- (as the superuser, standing in for the staff UPDATE) must notify only
+-- Student 01, once per review action, and the notice must stay readable while
+-- the student is locked out of everything else.
+-- =============================================================================
+BEGIN;
+UPDATE public.documents SET verification_status = 'REJECTED', rejection_reason = 'Photo is blurry',
+    verified_at = now()
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='KYC_REJECTED' AND recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'KYC reject: exactly one notification to the student');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='KYC_REJECTED' AND payload->>'rejection_reason'='Photo is blurry' AND payload->>'document_type' IS NOT NULL AND payload->>'body' LIKE '%Photo is blurry%'), 1, 'KYC reject: notification carries document type and the entered reason');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type IN ('KYC_REJECTED','KYC_APPROVED') AND recipient_user_id IS DISTINCT FROM '00000000-0000-0000-0000-000000000020'), 0, 'KYC reject: nobody else is notified');
+
+-- Re-saving the same status (e.g. editing the reason) is not a new review action.
+UPDATE public.documents SET verification_status = 'REJECTED', rejection_reason = 'Still blurry'
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='KYC_REJECTED' AND recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'KYC reject: no duplicate on same-status update');
+
+-- Locked (rejected) student still reads the KYC notice, but not other notifications.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='KYC_REJECTED'), 1, 'KYC rejected: student can read the rejection notice');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type NOT IN ('KYC_REJECTED','KYC_APPROVED')), 0, 'KYC rejected: other notifications stay gated');
+RESET ROLE;
+-- A different student cannot see it.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000021');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type IN ('KYC_REJECTED','KYC_APPROVED')), 0, 'KYC notice is not visible to another student');
+RESET ROLE;
+
+UPDATE public.documents SET verification_status = 'VERIFIED', rejection_reason = NULL, verified_at = now()
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='KYC_APPROVED' AND recipient_user_id='00000000-0000-0000-0000-000000000020' AND payload->>'verification_status'='VERIFIED'), 1, 'KYC approve: exactly one approval notification with status');
+ROLLBACK;
+
+-- Staff are never subject to the student KYC gate, even when a student's KYC is pending.
+BEGIN;
+UPDATE public.documents SET verification_status = 'PENDING'
+  WHERE owner_type='STUDENT' AND owner_id='11111111-1111-1111-1111-111111110001';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.gate_passes WHERE student_id='11111111-1111-1111-1111-111111110001'), 1, 'HOSTEL_ADMIN unaffected by student KYC gate');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'HOSTEL_ADMIN still reads notices');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

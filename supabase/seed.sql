@@ -193,6 +193,19 @@ VALUES
   -- Tenant B student
   ('22222222-2222-2222-2222-222222220001','22222222-2222-2222-2222-222222222222','22222222-2222-2222-2222-22222222a001','00000000-0000-0000-0000-000000000101','ADMB-0001','Student B01','MALE','+911000000101','ACTIVE',now()-interval '20 days');
 
+-- Every seeded student starts with VERIFIED KYC. Student-facing modules are
+-- gated on is_student_kyc_verified() (20261029100000_student_kyc_verified_gate.sql),
+-- so without this the student-self RLS tests would all see zero rows. The KYC
+-- gate tests in rls_tests.sql flip this document's status inside a transaction.
+INSERT INTO public.documents
+  (tenant_id, property_id, owner_type, owner_id, document_type, storage_bucket, storage_path,
+   original_filename, mime_type, size_bytes, status, verification_status)
+SELECT s.tenant_id, s.property_id, 'STUDENT', s.id, 'AADHAAR', 'kyc-documents',
+       s.tenant_id || '/' || s.property_id || '/students/' || s.id || '/seed-aadhaar.pdf',
+       'seed-aadhaar.pdf', 'application/pdf', 1, 'AVAILABLE', 'VERIFIED'
+FROM public.students s
+WHERE s.profile_id IS NOT NULL AND s.property_id IS NOT NULL;
+
 -- ---------- Guardians + student_guardians (mixed permissions) -----------
 INSERT INTO public.guardians (id, tenant_id, profile_id, full_name, phone, email) VALUES
   ('11111111-1111-1111-1111-11111111d001','11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000040','Parent 01','+911000000040','parent01@hostylia.test'),

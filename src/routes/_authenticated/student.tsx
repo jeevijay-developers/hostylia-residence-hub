@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
@@ -6,6 +6,8 @@ import { DesktopShell } from "@/components/dashboard/DesktopShell";
 import { StudentBottomNav } from "@/components/dashboard/StudentBottomNav";
 import { SIDEBAR_NAV, BOTTOM_NAV, CENTER_NAV, type NavItem } from "@/lib/dashboard-nav";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
+import { KycLockedPanel } from "@/components/students/KycLockedPanel";
+import { isKycGatedStudentPath, useKycComplete } from "@/lib/kyc";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions, type StudentModule } from "@/lib/staff-scope";
@@ -53,15 +55,36 @@ function StudentLayout() {
   });
 
   const pending = gateQ.data?.pending ?? false;
+
+  // KYC gate: until verified, every module entry stays visible but locked, and
+  // every route except Home/Profile renders a lock panel instead of the page.
+  // Fails closed while loading or on error. RLS (is_student_kyc_verified) is
+  // the real boundary — this is the UX layer on top of it.
+  const studentId = gateQ.data?.studentId ?? null;
+  const kyc = useKycComplete(studentId);
+  const kycLocked = !!studentId && !kyc.complete;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const routeBlocked = kycLocked && isKycGatedStudentPath(pathname);
+  // Nav locks only once the status is known, so verified students don't see a
+  // lock flash on load; the route itself stays blocked until then.
+  const lockIfNeeded = (item: NavItem): NavItem =>
+    kycLocked && !kyc.isLoading && item.module ? { ...item, locked: true } : item;
+
   const moduleFilter = (item: NavItem) =>
     !item.module || canModule(item.module as StudentModule, "view");
-  const navItems: NavItem[] = pending ? [] : (SIDEBAR_NAV.STUDENT ?? []).filter(moduleFilter);
-  const bottomItems: NavItem[] = pending ? [] : (BOTTOM_NAV.STUDENT ?? []).filter(moduleFilter);
+  const navItems: NavItem[] = pending
+    ? []
+    : (SIDEBAR_NAV.STUDENT ?? []).filter(moduleFilter).map(lockIfNeeded);
+  const bottomItems: NavItem[] = pending
+    ? []
+    : (BOTTOM_NAV.STUDENT ?? []).filter(moduleFilter).map(lockIfNeeded);
   const rawCenter = CENTER_NAV.STUDENT;
   const centerItem: NavItem | undefined =
-    pending || !rawCenter || (rawCenter.module && !canModule(rawCenter.module as StudentModule, "view"))
+    pending ||
+    !rawCenter ||
+    (rawCenter.module && !canModule(rawCenter.module as StudentModule, "view"))
       ? undefined
-      : rawCenter;
+      : lockIfNeeded(rawCenter);
 
   return (
     <DesktopShell
@@ -87,6 +110,14 @@ function StudentLayout() {
             }
           />
         </div>
+      ) : routeBlocked ? (
+        kyc.isLoading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <KycLockedPanel status={kyc.status} />
+        )
       ) : (
         <Outlet />
       )}

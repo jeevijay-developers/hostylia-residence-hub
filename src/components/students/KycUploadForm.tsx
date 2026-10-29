@@ -29,6 +29,8 @@ interface Props {
    * Once any document is PENDING or VERIFIED the whole form locks; a
    * REJECTED-only history re-opens it for a fresh submission. */
   existingDocs?: ExistingDoc[];
+  /** Preselected type, e.g. the rejected document being re-uploaded. */
+  initialDocType?: string;
   onUploaded?: () => void;
 }
 
@@ -39,9 +41,12 @@ export function KycUploadForm({
   propertyId,
   studentId,
   existingDocs = [],
+  initialDocType,
   onUploaded,
 }: Props) {
-  const [docType, setDocType] = useState("AADHAAR");
+  const [docType, setDocType] = useState(
+    initialDocType && DOC_TYPES.includes(initialDocType) ? initialDocType : "AADHAAR",
+  );
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);

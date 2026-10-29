@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { KycDocumentViewButton } from "@/components/students/KycDocumentViewButton";
 import { useResolvedRole } from "@/lib/user-role";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -230,6 +231,7 @@ function KycDocRow({
         <Badge variant="outline" className={DOC_STATUS_STYLE[doc.verification_status] ?? ""}>
           {doc.verification_status.replace(/_/g, " ")}
         </Badge>
+        <KycDocumentViewButton documentId={doc.id} documentType={doc.document_type} />
         {showActions && (
           <>
             <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
