@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Bed, CheckCircle2, LayoutGrid, List, Search, Wrench, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export type BedStatus = "VACANT" | "OCCUPIED" | "BLOCKED" | "MAINTENANCE";
@@ -92,6 +93,12 @@ interface BedGridProps {
   beds: BedTile[];
   onSelect?: (bed: BedTile) => void;
   /**
+   * Expanded grid only. When provided, every VACANT bed card shows an Allocate
+   * button (bottom-right, always visible — no hover dependency). Other statuses
+   * never get one. Omit to keep cards exactly as before.
+   */
+  onAllocate?: (bed: BedTile) => void;
+  /**
    * "compact" (default) keeps the dense pill-legend layout used when nesting a
    * grid inside a room row (property structure editor). "expanded" adds stat
    * cards, a search box and a grid/list toggle for a standalone board page.
@@ -113,6 +120,7 @@ interface BedGridProps {
 export function BedGrid({
   beds,
   onSelect,
+  onAllocate,
   variant = "compact",
   statusCounts,
   queryValue,
@@ -275,6 +283,52 @@ export function BedGrid({
             const title = b.occupantName
               ? `${b.code} — ${meta.label} — ${b.occupantName}`
               : `${b.code} — ${meta.label}`;
+            if (b.status === "VACANT" && onAllocate) {
+              // The card-click button is stretched over the whole card (::after) so the
+              // card behaves exactly as before; Allocate is a sibling above it, not a
+              // nested button (invalid HTML), so it never triggers the card click.
+              return (
+                <div
+                  key={b.id}
+                  className={cn(
+                    "relative flex flex-col gap-3 rounded-2xl border-2 bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                    meta.border,
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSelect?.(b)}
+                    title={title}
+                    className="flex flex-col items-center gap-2 text-center outline-none after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                  >
+                    <span
+                      className={cn("grid h-9 w-9 place-items-center rounded-full", meta.badge)}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="font-display text-base font-semibold tabular-nums text-foreground">
+                      {b.code}
+                    </span>
+                  </button>
+                  <div className="mt-auto flex items-center justify-between gap-2">
+                    <span
+                      className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", meta.badge)}
+                    >
+                      {meta.label}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="relative z-10 h-10 shrink-0 px-3 sm:h-9"
+                      aria-label={`Allocate bed ${b.code}`}
+                      onClick={() => onAllocate(b)}
+                    >
+                      Allocate
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <button
                 key={b.id}

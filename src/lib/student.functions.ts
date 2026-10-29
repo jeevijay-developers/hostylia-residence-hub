@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
+import { validateKycFile } from "@/schemas/student";
 import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
 import { dispatchNotification } from "@/lib/dispatch-notification";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -945,6 +946,18 @@ export const registerDocument = createServerFn({ method: "POST" })
   .validator((data) => registerDocSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Per-document-type format/size rules (AADHAAR/COLLEGE_ID: JPG, PNG, PDF;
+    // PHOTO: JPG, PNG; OTHER: whatever the bucket allows). The same rules are
+    // enforced at the database by fn_validate_kyc_document, which also covers
+    // direct inserts that never reach this function.
+    if (data.owner_type === "STUDENT" && data.storage_bucket === "kyc-documents") {
+      const invalid = validateKycFile(
+        { name: data.original_filename, type: data.mime_type, size: data.size_bytes },
+        data.document_type,
+      );
+      if (invalid) throw new Error(invalid);
+    }
 
     const { data: doc, error } = await supabase
       .from("documents")

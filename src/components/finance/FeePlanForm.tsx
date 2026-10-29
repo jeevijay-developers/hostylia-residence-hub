@@ -138,7 +138,7 @@ export function FeePlanForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField icon={Calendar} label="Due day (1–28)" htmlFor="fee-plan-due-day">
+        <FormField icon={Calendar} label="Invoice generation day (1–28)" htmlFor="fee-plan-due-day">
           <Input
             id="fee-plan-due-day"
             type="number"
@@ -156,7 +156,7 @@ export function FeePlanForm({
             {...form.register("grace_period_days", { valueAsNumber: true })}
           />
         </FormField>
-        <FormField icon={Calendar} label="Effective from" htmlFor="fee-plan-effective-from">
+        <FormField icon={Calendar} label="Plan starts from" htmlFor="fee-plan-effective-from">
           <Input
             id="fee-plan-effective-from"
             type="date"
@@ -241,7 +241,13 @@ export function FeePlanForm({
                   // fields elsewhere in this codebase. Never show raw paise.
                   value={form.watch(`components.${i}.amount_paise`) / 100}
                   onChange={(e) => {
-                    const rupees = parseFloat(e.target.value);
+                    // A cleared field snaps back to the default 0, and a number input then
+                    // keeps "05" as typed (React sees it as equal to 5) — so typing over the
+                    // 0 gave 05000. Drop leading zeros in the field itself; "0.5" and a lone
+                    // "0" are left alone.
+                    const cleaned = e.target.value.replace(/^(-?)0+(?=\d)/, "$1");
+                    if (cleaned !== e.target.value) e.target.value = cleaned;
+                    const rupees = parseFloat(cleaned);
                     form.setValue(
                       `components.${i}.amount_paise`,
                       Number.isFinite(rupees) ? Math.round(rupees * 100) : 0,

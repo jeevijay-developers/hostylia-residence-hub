@@ -494,6 +494,8 @@ export function AllocationBoard({
             queryValue={bedSearch}
             onQueryChange={setBedSearch}
             serverFiltered
+            // Same dialog the card click opens for a VACANT bed, for that exact bed.
+            onAllocate={setSelectedBed}
             onSelect={(b) => {
               if (b.status === "VACANT") {
                 setSelectedBed(b);
@@ -686,6 +688,10 @@ export function AllocationBoard({
                       id="sd"
                       type="date"
                       value={startDate}
+                      // The native picker icon follows the browser colour scheme, which the app
+                      // never sets — so it rendered dark-on-dark in the dark theme. Same picker,
+                      // just a scheme that matches the theme.
+                      className="[color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       onChange={(e) => setStartDate(e.target.value)}
                     />
                   </div>
@@ -695,7 +701,14 @@ export function AllocationBoard({
                       id="rent"
                       type="number"
                       value={rent / 100}
-                      onChange={(e) => setRent(Math.round(+e.target.value * 100))}
+                      onChange={(e) => {
+                        // A number input keeps "05" as typed (React sees it as equal to 5), so
+                        // typing over the default 0 produced 05000. Drop leading zeros in the
+                        // field itself ("0.5" and a lone "0" are left alone).
+                        const cleaned = e.target.value.replace(/^(-?)0+(?=\d)/, "$1");
+                        if (cleaned !== e.target.value) e.target.value = cleaned;
+                        setRent(Math.round(+cleaned * 100));
+                      }}
                     />
                   </div>
                   <div>

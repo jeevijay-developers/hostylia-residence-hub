@@ -141,3 +141,104 @@ export const studentStaffProfileEditSchema = studentSelfProfileSchema.extend({
   student_id: z.string().uuid(),
 });
 export type StudentStaffProfileEditInput = z.infer<typeof studentStaffProfileEditSchema>;
+
+/**
+ * KYC upload rules. The hard limits live in the `kyc-documents` bucket
+ * (private, file_size_limit 5 MB, allowed_mime_types jpeg/png/webp/pdf — see
+ * 20261023093212_force_rls_private_avatars_and_vault_header.sql); the per-type
+ * narrowing below is enforced client-side, in `registerDocument`, and by the
+ * `fn_validate_kyc_document` insert trigger (20261029120000). Keep all four in
+ * sync. A matching extension/MIME/size only proves the file is a plausible
+ * image/PDF — authenticity is still decided by the Admin/Warden review.
+ */
+export const kycDocumentTypeEnum = z.enum(["AADHAAR", "COLLEGE_ID", "PHOTO", "OTHER"]);
+export type KycDocumentType = z.infer<typeof kycDocumentTypeEnum>;
+
+export const KYC_MAX_FILE_BYTES = 5 * 1024 * 1024;
+export const KYC_MAX_FILE_LABEL = "5 MB";
+
+const KYC_MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  pdf: "application/pdf",
+};
+
+export const KYC_DOCUMENT_RULES: Record<
+  KycDocumentType,
+  { extensions: readonly string[]; mimeTypes: readonly string[]; label: string }
+> = {
+  AADHAAR: {
+    extensions: ["jpg", "jpeg", "png", "pdf"],
+    mimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+    label: "JPG, PNG or PDF",
+  },
+  COLLEGE_ID: {
+    extensions: ["jpg", "jpeg", "png", "pdf"],
+    mimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+    label: "JPG, PNG or PDF",
+  },
+  PHOTO: {
+    extensions: ["jpg", "jpeg", "png"],
+    mimeTypes: ["image/jpeg", "image/png"],
+    label: "JPG or PNG",
+  },
+  // Flexible: whatever the bucket's own policy accepts.
+  OTHER: {
+    extensions: ["jpg", "jpeg", "png", "webp", "pdf"],
+    mimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+    label: "JPG, PNG, WebP or PDF",
+  },
+};
+
+/** "JPG, PNG or PDF" for a valid type; the bucket-wide list otherwise. */
+export function kycFormatsLabel(documentType: string): string {
+  const parsed = kycDocumentTypeEnum.safeParse(documentType);
+  return KYC_DOCUMENT_RULES[parsed.success ? parsed.data : "OTHER"].label;
+}
+
+function kycFileExtension(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  return dot < 0 ? "" : fileName.slice(dot + 1).toLowerCase();
+}
+
+/** Some browsers/OS pickers report an empty `File.type`; fall back to the extension. */
+export function resolveKycMimeType(fileName: string, reportedType: string): string {
+  if (reportedType) return reportedType.toLowerCase();
+  return KYC_MIME_BY_EXTENSION[kycFileExtension(fileName)] ?? "";
+}
+
+/**
+ * Returns a user-facing error, or null when the document type and file are
+ * acceptable. Checks the type enum, then extension, MIME type, that the two
+ * agree, and size. Used by the upload form and by `registerDocument`.
+ */
+export function validateKycFile(
+  file: { name: string; type: string; size: number },
+  documentType: string,
+): string | null {
+  const parsed = kycDocumentTypeEnum.safeParse(documentType);
+  if (!parsed.success) {
+    return `Invalid document type. Choose one of: ${kycDocumentTypeEnum.options.join(", ")}.`;
+  }
+  const rule = KYC_DOCUMENT_RULES[parsed.data];
+  const allowed = `Allowed formats for ${parsed.data.replace(/_/g, " ")}: ${rule.label}, up to ${KYC_MAX_FILE_LABEL}.`;
+
+  const ext = kycFileExtension(file.name);
+  const mime = resolveKycMimeType(file.name, file.type);
+  if (!rule.extensions.includes(ext)) {
+    return `"${file.name}" has an unsupported file extension. ${allowed}`;
+  }
+  if (!rule.mimeTypes.includes(mime)) {
+    return `This file's format (${mime || "unknown"}) is not allowed. ${allowed}`;
+  }
+  if (KYC_MIME_BY_EXTENSION[ext] !== mime) {
+    return `The file extension (.${ext}) does not match its format (${mime}). ${allowed}`;
+  }
+  if (file.size <= 0) return "This file is empty.";
+  if (file.size > KYC_MAX_FILE_BYTES) {
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is ${KYC_MAX_FILE_LABEL}. ${allowed}`;
+  }
+  return null;
+}

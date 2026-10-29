@@ -260,3 +260,14 @@ _End of Memory.md_
 - Decision: trigger (not a server fn) because reviews are direct client `documents` UPDATEs from two components and `dispatchNotification` needs `INTERNAL_FUNCTION_SECRET`; mirrors `fn_notify_admins_complaint_resolved`.
 - Interaction: the student KYC gate hid all notifications from unverified students; the notifications read policy now exempts `KYC_APPROVED`/`KYC_REJECTED` so a locked student can read why they were rejected.
 - Known: SQL tests added to `supabase/tests/rls_tests.sql` but not executed (no local Docker; `supabase` CLI blocked by SMS hook config). Migration not yet applied.
+
+## 2026-10-29 — Student KYC camera / upload flow
+- Root cause: "Camera" only clicked a hidden `<input capture>`; on desktop that is just the file picker (no webcam, no preview, no error states). Rewrote `KycUploadForm`: touch devices keep the native camera via `capture`, desktops get a `getUserMedia` live preview with Capture/Retake/Cancel/Upload; denied/unavailable/unsupported shows a message plus an explicit "Choose File" button (never auto-opens the picker).
+- Validation: shared limits/validator in `src/schemas/student.ts` (`validateKycFile`, mirrors the `kyc-documents` bucket: 5 MB, jpeg/png/webp/pdf); enforced client-side before upload and in `registerDocument` for the kyc bucket. Bucket limits themselves already enforced by storage. No migration.
+- Not verified in a real browser (camera hardware / mobile) — needs manual pass.
+
+## 2026-10-29 — KYC document-type validation
+- Verified live `kyc-documents` bucket: private, 5 MB, jpeg/png/webp/pdf (unchanged). All existing STUDENT KYC rows already satisfy the new rules.
+- Rules: AADHAAR/COLLEGE_ID = JPG/PNG/PDF; PHOTO = JPG/PNG; OTHER = bucket-wide (adds WebP); document_type is an enum. Extension, MIME, ext↔MIME agreement and size are checked in `validateKycFile` (`src/schemas/student.ts`, used by `KycUploadForm` incl. camera captures and by `registerDocument`).
+- Why a migration: `documents student self insert` lets a student insert rows directly, bypassing the server fn. `20261029120000_kyc_document_validation.sql` adds INSERT-only trigger `fn_validate_kyc_document` (also checks the stored object's real MIME/size when present). Existing rows untouched. Keep `KYC_DOCUMENT_RULES` and the trigger in sync.
+- Format checks do not prove authenticity; Admin/Warden review unchanged. Trigger + SQL tests not yet executed (no local DB).
