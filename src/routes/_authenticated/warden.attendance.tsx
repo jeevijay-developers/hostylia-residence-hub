@@ -4,17 +4,7 @@ import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  CalendarDays,
-  CheckCheck,
-  ChevronDown,
-  Clock,
-  Loader2,
-  Save,
-  Search,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { CalendarDays, CheckCheck, ChevronDown, Loader2, Save, Search } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,11 +23,28 @@ import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
 import { useStudentsOnApprovedLeave } from "@/lib/leave";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
-import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
+import {
+  STUDENTS_IN_PROPERTY_PAGE_SIZE,
+  useActiveRoomNumbers,
+  useAttendance,
+  useStudentsInProperty,
+} from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useAvatarUrls } from "@/lib/avatar";
-import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
+import { cn, getErrorMessage, toneClasses, toneTextClasses } from "@/lib/utils";
+import {
+  ATTENDANCE_STATUSES,
+  ATTENDANCE_STATUS_LABEL,
+  ATTENDANCE_STATUS_TONE,
+  MANUAL_ATTENDANCE_STATUSES,
+  summarizeAttendance,
+  type AttendanceStatus,
+} from "@/lib/attendance-status";
+import {
+  ATTENDANCE_STATUS_ICON,
+  AttendanceSummaryCards,
+} from "@/components/attendance/AttendanceSummaryCards";
 
 // Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
 // Shared with the Accountant attendance route, which reuses this page.
@@ -65,26 +72,11 @@ function StudentRosterAvatar({ url, name }: { url: string | undefined; name: str
   );
 }
 
-type Status = "PRESENT" | "ABSENT" | "LATE" | "ON_LEAVE";
-const STATUS_LABEL: Record<Status, string> = {
-  PRESENT: "Present",
-  ABSENT: "Absent",
-  LATE: "Late",
-  ON_LEAVE: "Leave",
-};
-const STATUS_TONE: Record<Status, SemanticTone> = {
-  PRESENT: "success",
-  ABSENT: "destructive",
-  LATE: "warning",
-  ON_LEAVE: "info",
-};
-const STATUS_ICON: Record<Status, typeof UserCheck> = {
-  PRESENT: UserCheck,
-  ABSENT: UserX,
-  LATE: Clock,
-  ON_LEAVE: CalendarDays,
-};
-const STATUSES = Object.keys(STATUS_LABEL) as Status[];
+type Status = AttendanceStatus;
+const STATUS_LABEL = ATTENDANCE_STATUS_LABEL;
+const STATUS_TONE = ATTENDANCE_STATUS_TONE;
+const STATUS_ICON = ATTENDANCE_STATUS_ICON;
+const STATUSES = ATTENDANCE_STATUSES;
 
 export function WardenAttendancePage() {
   const role = useResolvedRole();
@@ -92,18 +84,30 @@ export function WardenAttendancePage() {
   const propertyId = propQ.data ?? null;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(0);
+  const [roomFilter, setRoomFilter] = useState("ALL");
   useEffect(() => {
     setPage(0);
+    setRoomFilter("ALL");
   }, [propertyId]);
-  const studentsQ = useStudentsInProperty(propertyId, { page });
+  useEffect(() => {
+    setPage(0);
+  }, [roomFilter]);
+  // The room filter is applied in the database, so a selected room lists all of
+  // its active students across pages; the options come from their own query.
+  const studentsQ = useStudentsInProperty(propertyId, {
+    page,
+    roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
+  });
+  const roomsQ = useActiveRoomNumbers(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
-  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<typeof attendanceSearchSchema>;
+  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<
+    typeof attendanceSearchSchema
+  >;
   const [statusFilter, setStatusFilter] = useState(initialStatus ?? "ALL");
-  const [roomFilter, setRoomFilter] = useState("ALL");
 
   // Local overrides (student_id -> Status / remark text)
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
@@ -142,16 +146,11 @@ export function WardenAttendancePage() {
     });
   }, [studentRows]);
 
-  const rooms = useMemo(
-    () =>
-      Array.from(new Set(roster.map((s) => s.roomNumber).filter((r): r is string => !!r))).sort(),
-    [roster],
-  );
+  const rooms = roomsQ.data ?? [];
 
   const filteredRoster = useMemo(() => {
     let list = roster;
     if (statusFilter !== "ALL") list = list.filter((s) => effective(s.id) === statusFilter);
-    if (roomFilter !== "ALL") list = list.filter((s) => s.roomNumber === roomFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -162,28 +161,23 @@ export function WardenAttendancePage() {
       );
     }
     return list;
-  }, [roster, statusFilter, roomFilter, search, effective]);
+  }, [roster, statusFilter, search, effective]);
 
   // One signed-URL request for every visible student's photo, instead of one
   // per row.
   const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
-  const summary = useMemo(() => {
-    const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
-    const seen = new Set<string>();
-    for (const a of attendanceQ.data ?? []) {
-      const status = (overrides[a.student_id] ?? a.status) as Status;
-      if (status in counts) counts[status] += 1;
-      seen.add(a.student_id);
-    }
-    for (const s of roster) {
-      if (seen.has(s.id)) continue;
-      counts[effective(s.id)] += 1;
-      seen.add(s.id);
-    }
-    counts.PRESENT += Math.max(0, studentTotal - seen.size);
-    return { total: studentTotal, ...counts };
-  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
+  const summary = useMemo(
+    () =>
+      summarizeAttendance({
+        rows: attendanceQ.data ?? [],
+        overrides,
+        roster,
+        effective,
+        studentTotal,
+      }),
+    [attendanceQ.data, effective, overrides, roster, studentTotal],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -280,6 +274,16 @@ export function WardenAttendancePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All rooms</SelectItem>
+            {roomsQ.isLoading && (
+              <SelectItem value="__loading" disabled>
+                Loading rooms…
+              </SelectItem>
+            )}
+            {roomsQ.isError && (
+              <SelectItem value="__error" disabled>
+                Couldn't load rooms
+              </SelectItem>
+            )}
             {rooms.map((r) => (
               <SelectItem key={r} value={r}>
                 {r}
@@ -311,11 +315,7 @@ export function WardenAttendancePage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <AttendanceStat icon={UserCheck} label="Present" value={summary.PRESENT} tone="success" />
-        <AttendanceStat icon={UserX} label="Absent" value={summary.ABSENT} tone="destructive" />
-        <AttendanceStat icon={Clock} label="Late" value={summary.LATE} tone="warning" />
-      </div>
+      <AttendanceSummaryCards summary={summary} />
 
       <div className="space-y-3">
         {filteredRoster.map((s) => {
@@ -387,7 +387,7 @@ export function WardenAttendancePage() {
                   className="gap-2"
                   disabled={isLeaveLocked}
                 >
-                  {STATUSES.filter((v) => v !== "ON_LEAVE").map((v) => {
+                  {MANUAL_ATTENDANCE_STATUSES.map((v) => {
                     const StatusIcon = STATUS_ICON[v];
                     const optionTone = STATUS_TONE[v];
                     const selected = st === v;
@@ -449,48 +449,6 @@ export function WardenAttendancePage() {
           onPageChange={setPage}
         />
       )}
-    </div>
-  );
-}
-
-function AttendanceStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof UserCheck;
-  label: string;
-  value: number;
-  tone: SemanticTone;
-}) {
-  return (
-    <div className={cn("relative overflow-hidden rounded-2xl p-4", toneClasses[tone])}>
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 120 40"
-        preserveAspectRatio="none"
-        className={cn("absolute inset-x-0 bottom-0 h-10 w-full opacity-30", toneTextClasses[tone])}
-      >
-        <path
-          d="M0 28 C 15 16, 30 36, 45 24 S 75 12, 90 26 S 110 32, 120 20 L 120 40 L 0 40 Z"
-          fill="currentColor"
-        />
-      </svg>
-      <div className="relative flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-card",
-            toneTextClasses[tone],
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      <p className="relative mt-3 text-sm font-medium text-muted-foreground">{label}</p>
-      <p className={cn("relative font-display text-3xl font-bold", toneTextClasses[tone])}>
-        {value}
-      </p>
     </div>
   );
 }

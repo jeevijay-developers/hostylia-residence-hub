@@ -3,18 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import {
-  Calendar as CalendarIcon,
-  CheckCheck,
-  Loader2,
-  Save,
-  Search,
-  Trash2,
-  UserCheck,
-  UserMinus,
-  Users,
-  UserX,
-} from "lucide-react";
+import { Calendar as CalendarIcon, CheckCheck, Loader2, Save, Search, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -39,26 +28,37 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { usePropertyStore } from "@/stores/property-store";
-import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
+import {
+  STUDENTS_IN_PROPERTY_PAGE_SIZE,
+  useActiveRoomNumbers,
+  useAttendance,
+  useStudentsInProperty,
+} from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import {
+  AttendanceStatusBadge,
+  AttendanceSummaryCards,
+} from "@/components/attendance/AttendanceSummaryCards";
+import {
+  ATTENDANCE_STATUSES,
+  ATTENDANCE_STATUS_LABEL,
+  summarizeAttendance,
+  type AttendanceStatus,
+} from "@/lib/attendance-status";
 import { useStudentsOnApprovedLeave } from "@/lib/leave";
 
 export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
 });
 
-type Status = "PRESENT" | "ABSENT" | "ON_LEAVE";
-const STATUS_LABEL: Record<Status, string> = {
-  PRESENT: "Present",
-  ABSENT: "Absent",
-  ON_LEAVE: "On leave",
-};
-const STATUSES = Object.keys(STATUS_LABEL) as Status[];
+type Status = AttendanceStatus;
+const STATUS_LABEL = ATTENDANCE_STATUS_LABEL;
+const STATUSES = ATTENDANCE_STATUSES;
 
 function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
   return (
@@ -76,17 +76,27 @@ function AdminAttendancePage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const dateInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(0);
+  const [roomFilter, setRoomFilter] = useState("ALL");
   useEffect(() => {
     setPage(0);
+    setRoomFilter("ALL");
   }, [propertyId]);
-  const studentsQ = useStudentsInProperty(propertyId, { page });
+  useEffect(() => {
+    setPage(0);
+  }, [roomFilter]);
+  // The room filter is applied in the database, so a selected room lists all of
+  // its active students across pages; the options come from their own query.
+  const studentsQ = useStudentsInProperty(propertyId, {
+    page,
+    roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
+  });
+  const roomsQ = useActiveRoomNumbers(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [roomFilter, setRoomFilter] = useState("ALL");
 
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
   const [remarks, setRemarks] = useState<Record<string, string>>({});
@@ -123,16 +133,11 @@ function AdminAttendancePage() {
     });
   }, [studentRows]);
 
-  const rooms = useMemo(
-    () =>
-      Array.from(new Set(roster.map((s) => s.roomNumber).filter((r): r is string => !!r))).sort(),
-    [roster],
-  );
+  const rooms = roomsQ.data ?? [];
 
   const filteredRoster = useMemo(() => {
     let list = roster;
     if (statusFilter !== "ALL") list = list.filter((s) => effective(s.id) === statusFilter);
-    if (roomFilter !== "ALL") list = list.filter((s) => s.roomNumber === roomFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -143,28 +148,23 @@ function AdminAttendancePage() {
       );
     }
     return list;
-  }, [roster, statusFilter, roomFilter, search, effective]);
+  }, [roster, statusFilter, search, effective]);
 
   // One signed-URL request for every visible student's photo, instead of one
   // per row.
   const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
-  const summary = useMemo(() => {
-    const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, ON_LEAVE: 0 };
-    const seen = new Set<string>();
-    for (const a of attendanceQ.data ?? []) {
-      const status = (overrides[a.student_id] ?? a.status) as Status;
-      if (status in counts) counts[status] += 1;
-      seen.add(a.student_id);
-    }
-    for (const s of roster) {
-      if (seen.has(s.id)) continue;
-      counts[effective(s.id)] += 1;
-      seen.add(s.id);
-    }
-    counts.PRESENT += Math.max(0, studentTotal - seen.size);
-    return { total: studentTotal, ...counts };
-  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
+  const summary = useMemo(
+    () =>
+      summarizeAttendance({
+        rows: attendanceQ.data ?? [],
+        overrides,
+        roster,
+        effective,
+        studentTotal,
+      }),
+    [attendanceQ.data, effective, overrides, roster, studentTotal],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -292,66 +292,7 @@ function AdminAttendancePage() {
         </div>
       </div>
 
-      {/* Daily Metrics Summary Row */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-xl">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-500/10">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Total
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {summary.total}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
-              <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Present
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {summary.PRESENT}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
-              <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Absent
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">
-                {summary.ABSENT}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-sm shadow-rose-500/10">
-              <UserMinus className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                On leave
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
-                {summary.ON_LEAVE}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AttendanceSummaryCards summary={summary} />
 
       {/* Search and Filters */}
       <div className="space-y-2 sm:space-y-3">
@@ -384,6 +325,16 @@ function AdminAttendancePage() {
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
               <SelectItem value="ALL">All rooms</SelectItem>
+              {roomsQ.isLoading && (
+                <SelectItem value="__loading" disabled>
+                  Loading rooms…
+                </SelectItem>
+              )}
+              {roomsQ.isError && (
+                <SelectItem value="__error" disabled>
+                  Couldn't load rooms
+                </SelectItem>
+              )}
               {rooms.map((r) => (
                 <SelectItem key={r} value={r}>
                   Room {r}
@@ -430,6 +381,9 @@ function AdminAttendancePage() {
                         {s.roomNumber ? ` · Room ${s.roomNumber}` : ""}
                         {s.blockName ? ` · ${s.blockName}` : ""}
                       </div>
+                      {st === "ON_LEAVE" && (
+                        <AttendanceStatusBadge status="ON_LEAVE" className="mt-1" />
+                      )}
                       {saved && (
                         <div className="mt-1">
                           <Badge

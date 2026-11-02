@@ -109,6 +109,7 @@ export function LeaveRequestsPanel({ studentId }: { studentId: string }) {
           <Input
             id="leave-start"
             type="date"
+            className="scheme-light dark:scheme-dark"
             min={today}
             value={startDate}
             onChange={(e) => {
@@ -122,6 +123,7 @@ export function LeaveRequestsPanel({ studentId }: { studentId: string }) {
           <Input
             id="leave-end"
             type="date"
+            className="scheme-light dark:scheme-dark"
             min={startDate}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}

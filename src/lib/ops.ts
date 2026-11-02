@@ -42,22 +42,28 @@ function ilikeToken(value: string): string {
  */
 export function useStudentsInProperty(
   propertyId: string | null,
-  options?: { page?: number; pageSize?: number; search?: string },
+  options?: { page?: number; pageSize?: number; search?: string; roomNumber?: string },
 ) {
   const page = options?.page ?? 0;
   const pageSize = options?.pageSize ?? STUDENTS_IN_PROPERTY_PAGE_SIZE;
   const search = options?.search?.trim() ?? "";
+  const roomNumber = options?.roomNumber ?? "";
   return useQuery({
-    queryKey: ["students-in-property", propertyId, page, pageSize, search],
+    queryKey: ["students-in-property", propertyId, page, pageSize, search, roomNumber],
     enabled: !!propertyId,
     queryFn: async () => {
       if (!propertyId) return { rows: [], total: 0 };
       const from = page * pageSize;
       const to = from + pageSize - 1;
+      // A room filter is applied in the database (inner joins), so every
+      // matching student is reachable through normal pagination — not just the
+      // ones on the current page.
       let query = supabase
         .from("students")
         .select(
-          "id, full_name, admission_number, photo_path, status, allocations(status, room_id, block_id, beds(code), rooms(room_number), blocks(name))",
+          roomNumber
+            ? "id, full_name, admission_number, photo_path, status, allocations!inner(status, room_id, block_id, beds(code), rooms!inner(room_number), blocks(name))"
+            : "id, full_name, admission_number, photo_path, status, allocations(status, room_id, block_id, beds(code), rooms(room_number), blocks(name))",
           { count: "exact" },
         )
         .eq("property_id", propertyId)
@@ -65,6 +71,11 @@ export function useStudentsInProperty(
         .is("deleted_at", null)
         .order("full_name")
         .range(from, to);
+      if (roomNumber) {
+        query = query
+          .eq("allocations.status", "ACTIVE")
+          .eq("allocations.rooms.room_number", roomNumber);
+      }
       const token = ilikeToken(search);
       if (token) {
         query = query.or(`full_name.ilike.%${token}%,admission_number.ilike.%${token}%`);
@@ -72,6 +83,34 @@ export function useStudentsInProperty(
       const { data, error, count } = await query;
       if (error) throw error;
       return { rows: data ?? [], total: count ?? 0 };
+    },
+  });
+}
+
+/**
+ * Distinct room numbers in a property that currently hold at least one ACTIVE
+ * allocation — vacant rooms and rooms with no active student are excluded.
+ * Independent of student pagination: one row per room (the nested allocation
+ * is capped at 1), so it never loads the student list.
+ */
+export function useActiveRoomNumbers(propertyId: string | null) {
+  return useQuery({
+    queryKey: ["active-room-numbers", propertyId],
+    enabled: !!propertyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("room_number, allocations!inner(id)")
+        .eq("property_id", propertyId ?? "")
+        .is("deleted_at", null)
+        .eq("allocations.status", "ACTIVE")
+        .is("allocations.deleted_at", null)
+        .limit(1, { foreignTable: "allocations" })
+        .order("room_number");
+      if (error) throw error;
+      // room_number is unique per property (uniq_rooms_property_number_active);
+      // the Set is a cheap guard against a duplicate label ever reaching the UI.
+      return Array.from(new Set((data ?? []).map((r) => r.room_number)));
     },
   });
 }
