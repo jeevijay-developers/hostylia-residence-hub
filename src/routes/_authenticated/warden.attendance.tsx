@@ -23,9 +23,10 @@ import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
 import { useStudentsOnApprovedLeave } from "@/lib/leave";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { RoomSelector } from "@/components/attendance/RoomSelector";
 import {
   STUDENTS_IN_PROPERTY_PAGE_SIZE,
-  useActiveRoomNumbers,
+  useAttendanceRoomCounts,
   useAttendance,
   useStudentsInProperty,
 } from "@/lib/ops";
@@ -98,7 +99,7 @@ export function WardenAttendancePage() {
     page,
     roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
   });
-  const roomsQ = useActiveRoomNumbers(propertyId);
+  const roomsQ = useAttendanceRoomCounts(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
@@ -145,8 +146,6 @@ export function WardenAttendancePage() {
       };
     });
   }, [studentRows]);
-
-  const rooms = roomsQ.data ?? [];
 
   const filteredRoster = useMemo(() => {
     let list = roster;
@@ -215,6 +214,7 @@ export function WardenAttendancePage() {
       setOverrides({});
       setRemarks({});
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to save attendance")),
   });
@@ -268,29 +268,16 @@ export function WardenAttendancePage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={roomFilter} onValueChange={setRoomFilter}>
-          <SelectTrigger className="w-36 shrink-0 rounded-full border-border bg-card">
-            <SelectValue placeholder="Room" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All rooms</SelectItem>
-            {roomsQ.isLoading && (
-              <SelectItem value="__loading" disabled>
-                Loading rooms…
-              </SelectItem>
-            )}
-            {roomsQ.isError && (
-              <SelectItem value="__error" disabled>
-                Couldn't load rooms
-              </SelectItem>
-            )}
-            {rooms.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <RoomSelector
+          rooms={roomsQ.data}
+          isLoading={roomsQ.isLoading}
+          isError={roomsQ.isError}
+          total={summary.total}
+          value={roomFilter}
+          onChange={setRoomFilter}
+          onOpen={() => void roomsQ.refetch()}
+          className="w-48 shrink-0 rounded-full border-border bg-card"
+        />
       </div>
 
       <div className="flex gap-2">

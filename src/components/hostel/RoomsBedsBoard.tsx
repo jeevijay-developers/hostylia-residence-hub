@@ -25,10 +25,18 @@ import {
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { BedGrid, type BedStatus } from "@/components/hostel/BedGrid";
 import { CsvImportModal } from "@/components/hostel/CsvImportModal";
+import { sortFloors } from "@/lib/floor-order";
+import {
+  blockCodeKey,
+  blockFormSchema,
+  blockNameKey,
+  floorFormSchema,
+  normalizeBlockName,
+} from "@/schemas/hostel";
 
 /**
  * Lives outside src/routes so it can be imported from both
@@ -109,7 +117,8 @@ export function RoomsBedsBoard({
       if (beds.error) throw beds.error;
       return {
         blocks: blocks.data,
-        floors: floors.data,
+        // Logical order (Basement, Ground, First … Terrace) — display only.
+        floors: sortFloors(floors.data),
         rooms: rooms.data,
         beds: beds.data,
       };
@@ -253,6 +262,7 @@ export function RoomsBedsBoard({
             onOpenChange={setAddBlockOpen}
             tenantId={tenantId}
             propertyId={propertyId}
+            existingBlocks={blocks}
             onDone={refetch}
           />
           <AddFloorDialog
@@ -490,23 +500,44 @@ function AddBlockDialog({
   onOpenChange,
   tenantId,
   propertyId,
+  existingBlocks,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   tenantId: string;
   propertyId: string;
+  existingBlocks: { name: string; code: string | null }[];
   onDone: () => void;
 }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [errors, setErrors] = useState<{ name?: string; code?: string }>({});
+
+  // The unique indexes (uniq_blocks_property_name_norm_active /
+  // uniq_blocks_property_code_norm_active) are the real guard; this only turns
+  // their violation — or an obvious clash with the list on screen — into a
+  // message on the right field instead of a generic database error.
+  function duplicateErrors(): { name?: string; code?: string } {
+    const found: { name?: string; code?: string } = {};
+    const nameKey = blockNameKey(name);
+    const codeKey = blockCodeKey(code);
+    if (existingBlocks.some((b) => blockNameKey(b.name) === nameKey)) {
+      found.name = "A block with this name already exists in this property.";
+    }
+    if (codeKey && existingBlocks.some((b) => blockCodeKey(b.code) === codeKey)) {
+      found.code = "A block with this code already exists in this property.";
+    }
+    return found;
+  }
+
   const mut = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("blocks").insert({
         tenant_id: tenantId,
         property_id: propertyId,
-        name: name.trim(),
-        code: code.trim() || null,
+        name: normalizeBlockName(name),
+        code: blockCodeKey(code) === null ? null : code.trim(),
       });
       if (error) throw error;
     },
@@ -516,30 +547,87 @@ function AddBlockDialog({
       onOpenChange(false);
       setName("");
       setCode("");
+      setErrors({});
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => {
+      const err = e as { code?: string; message?: string; details?: string };
+      const text = `${err.message ?? ""} ${err.details ?? ""}`;
+      if (err.code === "23505" || text.includes("duplicate key")) {
+        if (text.includes("uniq_blocks_property_code_norm_active")) {
+          setErrors({ code: "A block with this code already exists in this property." });
+        } else {
+          setErrors({ name: "A block with this name already exists in this property." });
+        }
+        return;
+      }
+      toast.error(getErrorMessage(e, "Couldn't add the block"));
+    },
   });
+
+  function submit() {
+    const parsed = blockFormSchema.safeParse({ name: normalizeBlockName(name), code: code.trim() });
+    if (!parsed.success) {
+      const next: { name?: string; code?: string } = {};
+      for (const issue of parsed.error.issues) {
+        if (issue.path[0] === "name") next.name = "Block Name is required (up to 80 characters).";
+        if (issue.path[0] === "code") next.code = "Block Code can be at most 20 characters.";
+      }
+      setErrors(next);
+      return;
+    }
+    const dupes = duplicateErrors();
+    setErrors(dupes);
+    if (dupes.name || dupes.code) return;
+    mut.mutate();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) setErrors({});
+        onOpenChange(v);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add block</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Label htmlFor="block-name">Block Name</Label>
+            <Input
+              id="block-name"
+              value={name}
+              placeholder="Block A, Block-1, Girls Block"
+              aria-invalid={!!errors.name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors({ ...errors, name: undefined });
+              }}
+            />
+            {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
           </div>
           <div>
-            <Label>Code (optional)</Label>
-            <Input value={code} onChange={(e) => setCode(e.target.value)} />
+            <Label htmlFor="block-code">Block Code (Optional)</Label>
+            <Input
+              id="block-code"
+              value={code}
+              placeholder="A, B1, G1"
+              aria-invalid={!!errors.code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                if (errors.code) setErrors({ ...errors, code: undefined });
+              }}
+            />
+            {errors.code && <p className="mt-1 text-sm text-destructive">{errors.code}</p>}
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
+          <Button onClick={submit} disabled={!name.trim() || mut.isPending}>
             <Plus className="h-4 w-4" /> Add
           </Button>
         </DialogFooter>
@@ -564,7 +652,10 @@ function AddFloorDialog({
   onDone: () => void;
 }) {
   const [name, setName] = useState("");
-  const [num, setNum] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  // Only the name is collected. floor_number stays an optional legacy column
+  // (still written by CSV import and read by student pages) and is left null
+  // here; floor order comes from the name (see lib/floor-order.ts).
   const mut = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("floors").insert({
@@ -572,7 +663,6 @@ function AddFloorDialog({
         property_id: propertyId,
         block_id: blockId,
         name: name.trim(),
-        floor_number: num ? Number(num) : null,
       });
       if (error) throw error;
     },
@@ -581,35 +671,57 @@ function AddFloorDialog({
       onDone();
       onOpenChange(false);
       setName("");
-      setNum("");
+      setError(null);
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) =>
+      setError(
+        getErrorMessage(e, "Couldn't add the floor", "A floor with this name already exists here."),
+      ),
   });
+
+  function submit() {
+    const parsed = floorFormSchema.shape.name.safeParse(name);
+    if (!parsed.success) {
+      setError("Floor Name is required (up to 80 characters).");
+      return;
+    }
+    setError(null);
+    mut.mutate();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) setError(null);
+        onOpenChange(v);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add floor</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Name</Label>
+            <Label htmlFor="floor-name">Floor Name</Label>
             <Input
+              id="floor-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ground / First / …"
+              placeholder="Ground Floor, First Floor, Second Floor, Basement, Terrace"
+              aria-invalid={!!error}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError(null);
+              }}
             />
-          </div>
-          <div>
-            <Label>Floor number (optional)</Label>
-            <Input type="number" value={num} onChange={(e) => setNum(e.target.value)} />
+            {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending}>
+          <Button onClick={submit} disabled={!name.trim() || mut.isPending}>
             <Plus className="h-4 w-4" /> Add
           </Button>
         </DialogFooter>

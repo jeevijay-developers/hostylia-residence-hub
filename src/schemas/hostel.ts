@@ -32,6 +32,24 @@ export const propertyFormSchema = z.object({
 });
 export type PropertyFormInput = z.infer<typeof propertyFormSchema>;
 
+// Normalization mirrors uniq_blocks_property_name_norm_active /
+// uniq_blocks_property_code_norm_active (20261102120000): the database is the
+// authority, these only give instant, field-level feedback and consistent CSV
+// matching.
+/** Trim and collapse runs of whitespace to one space (stored form). */
+export function normalizeBlockName(name: string): string {
+  return name.replace(/\s+/g, " ").trim();
+}
+/** Case-insensitive, whitespace-normalized key for comparing block names. */
+export function blockNameKey(name: string): string {
+  return normalizeBlockName(name).toLowerCase();
+}
+/** Case-insensitive key for a block code; blank means "no code". */
+export function blockCodeKey(code: string | null | undefined): string | null {
+  const c = (code ?? "").trim().toLowerCase();
+  return c === "" ? null : c;
+}
+
 export const blockFormSchema = z.object({
   name: z.string().trim().min(1).max(80),
   code: z.string().trim().max(20).optional().or(z.literal("")),

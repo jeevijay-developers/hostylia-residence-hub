@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { csvRowSchema, type CsvRow } from "@/schemas/hostel";
+import { blockNameKey, csvRowSchema, normalizeBlockName, type CsvRow } from "@/schemas/hostel";
 import { subscriptionCancellationSchema } from "@/schemas/subscription";
 
 /**
@@ -31,34 +31,46 @@ export const bulkImportStructure = createServerFn({ method: "POST" })
     const floorCache = new Map<string, string>(); // `${blockId}|${floorName}` -> floor id
     const errors: { row: number; error: string }[] = [];
 
+    // Existing live blocks of the property, keyed by normalized name.
+    async function findBlockId(key: string): Promise<string | null> {
+      const { data: existing, error } = await supabase
+        .from("blocks")
+        .select("id, name")
+        .eq("property_id", property_id)
+        .is("deleted_at", null);
+      if (error) throw new Error(`block: ${error.message}`);
+      return (existing ?? []).find((b) => blockNameKey(b.name) === key)?.id ?? null;
+    }
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       try {
-        const blockName = (row.block_name ?? "").trim();
+        // Blocks match case-insensitively with whitespace normalized — the same
+        // rule the database enforces — so "block a" reuses "Block A" instead of
+        // trying to create a duplicate.
+        const blockName = normalizeBlockName(row.block_name ?? "");
+        const blockKey = blockNameKey(blockName);
         let blockId: string | null = null;
         if (blockName) {
-          if (blockCache.has(blockName)) {
-            blockId = blockCache.get(blockName)!;
+          if (blockCache.has(blockKey)) {
+            blockId = blockCache.get(blockKey)!;
           } else {
-            const { data: existing } = await supabase
-              .from("blocks")
-              .select("id")
-              .eq("property_id", property_id)
-              .eq("name", blockName)
-              .is("deleted_at", null)
-              .maybeSingle();
-            if (existing) {
-              blockId = existing.id;
-            } else {
+            blockId = await findBlockId(blockKey);
+            if (!blockId) {
               const { data: ins, error: bErr } = await supabase
                 .from("blocks")
                 .insert({ tenant_id, property_id, name: blockName })
                 .select("id")
                 .single();
-              if (bErr) throw new Error(`block: ${bErr.message}`);
-              blockId = ins.id;
+              if (bErr) {
+                // Lost a race to a concurrent insert of the same block: reuse it.
+                blockId = bErr.code === "23505" ? await findBlockId(blockKey) : null;
+                if (!blockId) throw new Error(`block: ${bErr.message}`);
+              } else {
+                blockId = ins.id;
+              }
             }
-            blockCache.set(blockName, blockId);
+            blockCache.set(blockKey, blockId);
           }
         }
 

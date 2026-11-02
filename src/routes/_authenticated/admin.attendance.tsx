@@ -30,7 +30,7 @@ import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { usePropertyStore } from "@/stores/property-store";
 import {
   STUDENTS_IN_PROPERTY_PAGE_SIZE,
-  useActiveRoomNumbers,
+  useAttendanceRoomCounts,
   useAttendance,
   useStudentsInProperty,
 } from "@/lib/ops";
@@ -40,6 +40,7 @@ import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { RoomSelector } from "@/components/attendance/RoomSelector";
 import {
   AttendanceStatusBadge,
   AttendanceSummaryCards,
@@ -90,7 +91,7 @@ function AdminAttendancePage() {
     page,
     roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
   });
-  const roomsQ = useActiveRoomNumbers(propertyId);
+  const roomsQ = useAttendanceRoomCounts(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
@@ -132,8 +133,6 @@ function AdminAttendancePage() {
       };
     });
   }, [studentRows]);
-
-  const rooms = roomsQ.data ?? [];
 
   const filteredRoster = useMemo(() => {
     let list = roster;
@@ -202,6 +201,7 @@ function AdminAttendancePage() {
       setOverrides({});
       setRemarks({});
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to save attendance")),
   });
@@ -215,6 +215,7 @@ function AdminAttendancePage() {
       toast.success("Attendance record deleted");
       setPendingDelete(null);
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to delete attendance record")),
   });
@@ -319,29 +320,16 @@ function AdminAttendancePage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={roomFilter} onValueChange={setRoomFilter}>
-            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm">
-              <SelectValue placeholder="Room" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border text-foreground">
-              <SelectItem value="ALL">All rooms</SelectItem>
-              {roomsQ.isLoading && (
-                <SelectItem value="__loading" disabled>
-                  Loading rooms…
-                </SelectItem>
-              )}
-              {roomsQ.isError && (
-                <SelectItem value="__error" disabled>
-                  Couldn't load rooms
-                </SelectItem>
-              )}
-              {rooms.map((r) => (
-                <SelectItem key={r} value={r}>
-                  Room {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RoomSelector
+            rooms={roomsQ.data}
+            isLoading={roomsQ.isLoading}
+            isError={roomsQ.isError}
+            total={summary.total}
+            value={roomFilter}
+            onChange={setRoomFilter}
+            onOpen={() => void roomsQ.refetch()}
+            className="w-full bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm"
+          />
         </div>
       </div>
 

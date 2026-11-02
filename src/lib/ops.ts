@@ -3,6 +3,8 @@ import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { z } from "zod";
+import { attendanceRoomCountSchema } from "@/schemas/attendance";
 
 export type AttendanceRow = Database["public"]["Tables"]["attendance"]["Row"];
 export type GatePassRow = Database["public"]["Tables"]["gate_passes"]["Row"];
@@ -74,6 +76,7 @@ export function useStudentsInProperty(
       if (roomNumber) {
         query = query
           .eq("allocations.status", "ACTIVE")
+          .is("allocations.deleted_at", null)
           .eq("allocations.rooms.room_number", roomNumber);
       }
       const token = ilikeToken(search);
@@ -88,29 +91,29 @@ export function useStudentsInProperty(
 }
 
 /**
- * Distinct room numbers in a property that currently hold at least one ACTIVE
- * allocation — vacant rooms and rooms with no active student are excluded.
- * Independent of student pagination: one row per room (the nested allocation
- * is capped at 1), so it never loads the student list.
+ * Occupied rooms of a property with their eligible-student counts, from the
+ * SECURITY INVOKER attendance_room_counts() RPC (rooms x allocations x students
+ * under the caller's own RLS). Independent of student pagination, so the list
+ * never changes when the roster page does. Short staleTime plus refetch-on-open
+ * (see RoomSelector) keeps counts fresh as allocations / move-outs change.
  */
-export function useActiveRoomNumbers(propertyId: string | null) {
+export function useAttendanceRoomCounts(propertyId: string | null) {
   return useQuery({
-    queryKey: ["active-room-numbers", propertyId],
+    queryKey: ["attendance-room-counts", propertyId],
     enabled: !!propertyId,
+    staleTime: 15_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("room_number, allocations!inner(id)")
-        .eq("property_id", propertyId ?? "")
-        .is("deleted_at", null)
-        .eq("allocations.status", "ACTIVE")
-        .is("allocations.deleted_at", null)
-        .limit(1, { foreignTable: "allocations" })
-        .order("room_number");
-      if (error) throw error;
-      // room_number is unique per property (uniq_rooms_property_number_active);
-      // the Set is a cheap guard against a duplicate label ever reaching the UI.
-      return Array.from(new Set((data ?? []).map((r) => r.room_number)));
+      // Not in the generated types until types.ts is regenerated after
+      // 20261102110000 is applied; rows are validated with Zod instead.
+      const { data, error } = await supabase.rpc(
+        "attendance_room_counts" as never,
+        { p_property_id: propertyId ?? "" } as never,
+      );
+      if (error) throw new Error(error.message);
+      return z
+        .array(attendanceRoomCountSchema)
+        .parse(data ?? [])
+        .sort((x, y) => x.room_number.localeCompare(y.room_number, undefined, { numeric: true }));
     },
   });
 }
