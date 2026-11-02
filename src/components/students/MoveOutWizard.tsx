@@ -115,6 +115,9 @@ export function MoveOutWizard({ studentId, area, canInitiateRefund }: MoveOutWiz
         ["students-list"],
         ["move-out-notices"],
         ["deposit-ledger"],
+        // The bed is freed: refresh bed lists / status counts on Allocations and Structure.
+        ["allocation-beds"],
+        ["structure"],
       ]) {
         qc.invalidateQueries({ queryKey: key });
       }

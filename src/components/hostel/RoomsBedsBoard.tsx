@@ -27,7 +27,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { BedGrid, type BedStatus } from "@/components/hostel/BedGrid";
+import { BedGrid, type BedStatus, type BedTile } from "@/components/hostel/BedGrid";
+import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
 import { CsvImportModal } from "@/components/hostel/CsvImportModal";
 import { sortFloors } from "@/lib/floor-order";
 import {
@@ -35,8 +36,16 @@ import {
   blockFormSchema,
   blockNameKey,
   floorFormSchema,
+  fixedCapacityForType,
   normalizeBlockName,
+  resolveRoomCapacity,
+  roomCreateSchema,
+  roomTypeEnum,
+  rupeesToPaise,
+  type RoomType,
 } from "@/schemas/hostel";
+import { useServerFn } from "@tanstack/react-start";
+import { createRoomWithBeds } from "@/lib/hostel.functions";
 
 /**
  * Lives outside src/routes so it can be imported from both
@@ -46,19 +55,22 @@ import {
  * Admin call site (which passes none of these) keeps its unconditional
  * Add Block/Floor/Room + CSV import access exactly as before — only the
  * Warden rooms/beds route passes an explicit, permission-derived value.
- * There's no Edit/Delete action in this page's UI today (status changes and
- * removal aren't implemented here), so `rooms_beds_edit`/`rooms_beds_delete`
- * have nothing to gate yet — View (page access) and Create are the only
- * verbs this board actually exposes.
+ * `canManageBedStatus` (default `true`, Admin) gates the bed "Manage status"
+ * action; the Warden route passes its `rooms_beds_edit` permission. The
+ * database enforces the same rule, this only hides the affordance. There's no
+ * room edit/delete action here, so `rooms_beds_delete` still has nothing to gate.
  */
 export function RoomsBedsBoard({
   propertyId,
   canCreate = true,
+  canManageBedStatus = true,
 }: {
   propertyId: string;
   canCreate?: boolean;
+  canManageBedStatus?: boolean;
 }) {
   const qc = useQueryClient();
+  const [statusBed, setStatusBed] = useState<BedTile | null>(null);
   const [addBlockOpen, setAddBlockOpen] = useState(false);
   const [addFloorOpen, setAddFloorOpen] = useState(false);
   const [addRoomOpen, setAddRoomOpen] = useState(false);
@@ -106,7 +118,7 @@ export function RoomsBedsBoard({
           .order("room_number"),
         supabase
           .from("beds")
-          .select("id, room_id, code, status")
+          .select("id, room_id, code, status, notes, maintenance_until")
           .eq("property_id", propertyId)
           .is("deleted_at", null)
           .order("code"),
@@ -127,6 +139,8 @@ export function RoomsBedsBoard({
 
   function refetch() {
     qc.invalidateQueries({ queryKey: ["structure", propertyId] });
+    // Allocations page shows this property's bed list + status summary.
+    qc.invalidateQueries({ queryKey: ["allocation-beds"] });
   }
 
   if (propertyQ.isError || treeQ.isError) {
@@ -196,6 +210,7 @@ export function RoomsBedsBoard({
             rooms={rooms}
             beds={beds}
             canCreate={canCreate}
+            onSelectBed={canManageBedStatus ? setStatusBed : undefined}
             onAddFloor={() => {
               setFloorParentBlock(b.id);
               setAddFloorOpen(true);
@@ -242,6 +257,7 @@ export function RoomsBedsBoard({
                     rooms={rooms.filter((r) => r.floor_id === f.id)}
                     beds={beds}
                     canCreate={canCreate}
+                    onSelectBed={canManageBedStatus ? setStatusBed : undefined}
                     onAddRoom={() => {
                       setRoomParentFloor(f.id);
                       setRoomParentBlock(null);
@@ -254,6 +270,15 @@ export function RoomsBedsBoard({
           </Card>
         )}
       </div>
+
+      {canManageBedStatus && (
+        <BedStatusDialog
+          bed={statusBed}
+          open={!!statusBed}
+          onOpenChange={(v) => !v && setStatusBed(null)}
+          onDone={refetch}
+        />
+      )}
 
       {canCreate && (
         <>
@@ -276,10 +301,9 @@ export function RoomsBedsBoard({
           <AddRoomDialog
             open={addRoomOpen}
             onOpenChange={setAddRoomOpen}
-            tenantId={tenantId}
-            propertyId={propertyId}
             floorId={roomParentFloor}
-            blockId={roomParentBlock}
+            floorName={floors.find((f) => f.id === roomParentFloor)?.name ?? ""}
+            blockName={blocks.find((b) => b.id === roomParentBlock)?.name ?? null}
             onDone={refetch}
           />
           <CsvImportModal
@@ -312,6 +336,7 @@ interface Room {
   floor_id: string;
   block_id: string | null;
   room_number: string;
+  room_type: string;
   capacity: number;
   status: string;
 }
@@ -320,6 +345,8 @@ interface Bed {
   room_id: string;
   code: string;
   status: string;
+  notes: string | null;
+  maintenance_until: string | null;
 }
 
 const ROOM_STATUS_TONE: Record<string, string> = {
@@ -342,12 +369,21 @@ function RoomStatusBadge({ status }: { status: string }) {
   );
 }
 
+function RoomTypeBadge({ type }: { type: string }) {
+  return (
+    <Badge variant="outline" className="shrink-0 rounded-full border-border bg-card font-semibold">
+      {type}
+    </Badge>
+  );
+}
+
 function BlockCard({
   block,
   floors,
   rooms,
   beds,
   canCreate,
+  onSelectBed,
   onAddFloor,
   onAddRoom,
 }: {
@@ -356,6 +392,7 @@ function BlockCard({
   rooms: Room[];
   beds: Bed[];
   canCreate: boolean;
+  onSelectBed?: (bed: BedTile) => void;
   onAddFloor: () => void;
   onAddRoom: (floorId: string) => void;
 }) {
@@ -395,6 +432,7 @@ function BlockCard({
               rooms={rooms.filter((r) => r.floor_id === f.id)}
               beds={beds}
               canCreate={canCreate}
+              onSelectBed={onSelectBed}
               onAddRoom={() => onAddRoom(f.id)}
             />
           ))
@@ -409,12 +447,14 @@ function FloorRow({
   rooms,
   beds,
   canCreate,
+  onSelectBed,
   onAddRoom,
 }: {
   floor: Floor;
   rooms: Room[];
   beds: Bed[];
   canCreate: boolean;
+  onSelectBed?: (bed: BedTile) => void;
   onAddRoom: () => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -463,7 +503,13 @@ function FloorRow({
           rooms.map((r) => {
             const rBeds = beds
               .filter((b) => b.room_id === r.id)
-              .map((b) => ({ ...b, status: b.status as BedStatus }));
+              .map((b) => ({
+                ...b,
+                status: b.status as BedStatus,
+                roomNumber: r.room_number,
+                notes: b.notes,
+                maintenanceUntil: b.maintenance_until,
+              }));
             return (
               <div
                 key={r.id}
@@ -481,9 +527,12 @@ function FloorRow({
                       </span>
                     </span>
                   </span>
-                  <RoomStatusBadge status={r.status} />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <RoomTypeBadge type={r.room_type} />
+                    <RoomStatusBadge status={r.status} />
+                  </div>
                 </div>
-                <BedGrid beds={rBeds} />
+                <BedGrid beds={rBeds} onSelect={onSelectBed} />
               </div>
             );
           })
@@ -569,8 +618,8 @@ function AddBlockDialog({
     if (!parsed.success) {
       const next: { name?: string; code?: string } = {};
       for (const issue of parsed.error.issues) {
-        if (issue.path[0] === "name") next.name = "Block Name is required (up to 80 characters).";
-        if (issue.path[0] === "code") next.code = "Block Code can be at most 20 characters.";
+        if (issue.path[0] === "name") next.name ??= issue.message;
+        if (issue.path[0] === "code") next.code ??= issue.message;
       }
       setErrors(next);
       return;
@@ -682,7 +731,7 @@ function AddFloorDialog({
   function submit() {
     const parsed = floorFormSchema.shape.name.safeParse(name);
     if (!parsed.success) {
-      setError("Floor Name is required (up to 80 characters).");
+      setError(parsed.error.issues[0]?.message ?? "Floor Name is required");
       return;
     }
     setError(null);
@@ -730,87 +779,154 @@ function AddFloorDialog({
   );
 }
 
+/**
+ * Same fields and rules as one CSV row (Block → Floor → Room Number, Type,
+ * Capacity, Base Rent): the shared roomCreateSchema validates here and on the
+ * server, and the room + its beds are created by fn_create_room_with_beds, the
+ * same database function the CSV import uses. Block and Floor are fixed by the
+ * floor this dialog was opened from.
+ */
 function AddRoomDialog({
   open,
   onOpenChange,
-  tenantId,
-  propertyId,
   floorId,
-  blockId,
+  floorName,
+  blockName,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  tenantId: string;
-  propertyId: string;
   floorId: string | null;
-  blockId: string | null;
+  floorName: string;
+  blockName: string | null;
   onDone: () => void;
 }) {
+  const createFn = useServerFn(createRoomWithBeds);
   const [number, setNumber] = useState("");
-  const [type, setType] = useState("DOUBLE");
-  const [capacity, setCapacity] = useState("2");
+  const [type, setType] = useState<RoomType>("DOUBLE");
+  // Only used for DORM/CUSTOM; SINGLE/DOUBLE/TRIPLE derive capacity from the type.
+  const [capacity, setCapacity] = useState("");
   const [rent, setRent] = useState("");
+  const [errors, setErrors] = useState<{ number?: string; capacity?: string; rent?: string }>({});
+  const fixedCapacity = fixedCapacityForType(type);
+
+  function reset() {
+    setNumber("");
+    setCapacity("");
+    setRent("");
+    setErrors({});
+  }
+
   const mut = useMutation({
-    mutationFn: async () => {
-      if (!floorId) throw new Error("No floor selected");
-      const capN = Math.max(1, Number(capacity));
-      const { data: room, error } = await supabase
-        .from("rooms")
-        .insert({
-          tenant_id: tenantId,
-          property_id: propertyId,
-          block_id: blockId,
-          floor_id: floorId,
-          room_number: number.trim(),
-          room_type: type,
-          capacity: capN,
-          base_rent_paise: rent ? Math.round(Number(rent) * 100) : null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      // Auto-generate beds B1..BN
-      const beds = Array.from({ length: capN }, (_, k) => ({
-        tenant_id: tenantId,
-        property_id: propertyId,
-        block_id: blockId,
-        floor_id: floorId,
-        room_id: room.id,
-        code: `B${k + 1}`,
-      }));
-      const { error: bErr } = await supabase.from("beds").insert(beds);
-      if (bErr) throw bErr;
-    },
+    mutationFn: async (input: {
+      floor_id: string;
+      room_number: string;
+      room_type: RoomType;
+      capacity: number | null;
+      base_rent_paise: number | null;
+    }) => createFn({ data: input }),
     onSuccess: () => {
       toast.success("Room + beds added");
       onDone();
       onOpenChange(false);
-      setNumber("");
-      setCapacity("2");
-      setRent("");
+      reset();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => {
+      const message = e instanceof Error ? e.message : "Couldn't add the room";
+      if (/already exists/i.test(message)) setErrors({ number: message });
+      else toast.error(message);
+    },
   });
+
+  function submit() {
+    if (!floorId) return;
+    const rentNum = rent.trim() === "" ? null : Number(rent);
+    const parsed = roomCreateSchema.safeParse({
+      floor_id: floorId,
+      room_number: number,
+      room_type: type,
+      capacity: fixedCapacity !== null || capacity.trim() === "" ? null : Number(capacity),
+      base_rent_paise:
+        rentNum !== null && Number.isFinite(rentNum) && rentNum >= 0
+          ? rupeesToPaise(rentNum)
+          : null,
+    });
+    const next: { number?: string; capacity?: string; rent?: string } = {};
+    if (rentNum !== null && (!Number.isFinite(rentNum) || rentNum < 0)) {
+      next.rent = "Base Rent must be 0 or more";
+    }
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        if (issue.path[0] === "room_number") next.number ??= issue.message;
+        if (issue.path[0] === "capacity") next.capacity ??= issue.message;
+      }
+    }
+    setErrors(next);
+    if (!parsed.success || next.rent) return;
+    const resolved = resolveRoomCapacity(parsed.data.room_type, parsed.data.capacity);
+    if (!resolved.ok) {
+      setErrors({ capacity: resolved.error });
+      return;
+    }
+    mut.mutate({
+      floor_id: parsed.data.floor_id,
+      room_number: parsed.data.room_number,
+      room_type: parsed.data.room_type,
+      capacity: resolved.capacity,
+      base_rent_paise: parsed.data.base_rent_paise ?? null,
+    });
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) setErrors({});
+        onOpenChange(v);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add room</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label>Room number</Label>
-            <Input value={number} onChange={(e) => setNumber(e.target.value)} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="room-block">Block</Label>
+              <Input id="room-block" value={blockName ?? "No block"} readOnly disabled />
+            </div>
+            <div>
+              <Label htmlFor="room-floor">Floor</Label>
+              <Input id="room-floor" value={floorName} readOnly disabled />
+            </div>
           </div>
           <div>
-            <Label>Type</Label>
-            <Select value={type} onValueChange={setType}>
+            <Label htmlFor="room-number">Room Number</Label>
+            <Input
+              id="room-number"
+              value={number}
+              aria-invalid={!!errors.number}
+              onChange={(e) => {
+                setNumber(e.target.value);
+                setErrors((p) => ({ ...p, number: undefined }));
+              }}
+            />
+            {errors.number && <p className="mt-1 text-sm text-destructive">{errors.number}</p>}
+          </div>
+          <div>
+            <Label>Room Type</Label>
+            <Select
+              value={type}
+              onValueChange={(v) => {
+                setType(v as RoomType);
+                setErrors((p) => ({ ...p, capacity: undefined }));
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {["SINGLE", "DOUBLE", "TRIPLE", "DORM", "CUSTOM"].map((t) => (
+                {roomTypeEnum.options.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>
@@ -820,17 +936,45 @@ function AddRoomDialog({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label>Capacity</Label>
+              <Label htmlFor="room-capacity">Capacity</Label>
               <Input
+                id="room-capacity"
                 type="number"
                 min={1}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
+                max={50}
+                value={fixedCapacity !== null ? String(fixedCapacity) : capacity}
+                readOnly={fixedCapacity !== null}
+                disabled={fixedCapacity !== null}
+                placeholder={fixedCapacity !== null ? undefined : "Number of beds"}
+                aria-invalid={!!errors.capacity}
+                onChange={(e) => {
+                  setCapacity(e.target.value);
+                  setErrors((p) => ({ ...p, capacity: undefined }));
+                }}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {fixedCapacity !== null
+                  ? `${type} rooms always have capacity ${fixedCapacity}.`
+                  : `Required for ${type} rooms (1–50).`}
+              </p>
+              {errors.capacity && (
+                <p className="mt-1 text-sm text-destructive">{errors.capacity}</p>
+              )}
             </div>
             <div>
-              <Label>Base rent (₹)</Label>
-              <Input type="number" min={0} value={rent} onChange={(e) => setRent(e.target.value)} />
+              <Label htmlFor="room-rent">Base Rent (₹)</Label>
+              <Input
+                id="room-rent"
+                type="number"
+                min={0}
+                value={rent}
+                aria-invalid={!!errors.rent}
+                onChange={(e) => {
+                  setRent(e.target.value);
+                  setErrors((p) => ({ ...p, rent: undefined }));
+                }}
+              />
+              {errors.rent && <p className="mt-1 text-sm text-destructive">{errors.rent}</p>}
             </div>
           </div>
         </div>
@@ -838,7 +982,7 @@ function AddRoomDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => mut.mutate()} disabled={!number.trim() || mut.isPending}>
+          <Button onClick={submit} disabled={!number.trim() || !floorId || mut.isPending}>
             <Plus className="h-4 w-4" /> Add room + beds
           </Button>
         </DialogFooter>

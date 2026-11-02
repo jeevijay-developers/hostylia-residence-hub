@@ -22,5 +22,11 @@ function WardenRoomsBedsPage() {
       </p>
     );
 
-  return <RoomsBedsBoard propertyId={propertyId} canCreate={can("rooms_beds_create")} />;
+  return (
+    <RoomsBedsBoard
+      propertyId={propertyId}
+      canCreate={can("rooms_beds_create")}
+      canManageBedStatus={can("rooms_beds_edit")}
+    />
+  );
 }

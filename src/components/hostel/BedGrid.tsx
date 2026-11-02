@@ -3,6 +3,7 @@ import { Bed, CheckCircle2, LayoutGrid, List, Search, Wrench, XCircle } from "lu
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { describeBedRestriction, formatBedLabel } from "@/lib/bed-label";
 
 export type BedStatus = "VACANT" | "OCCUPIED" | "BLOCKED" | "MAINTENANCE";
 
@@ -14,6 +15,17 @@ export interface BedTile {
   occupantName?: string | null;
   /** Room number this bed belongs to, if known — searchable alongside the bed code. */
   roomNumber?: string | null;
+  /** Remark for a MAINTENANCE / BLOCKED bed (beds.notes). */
+  notes?: string | null;
+  /** Expected completion (ISO timestamp) for a MAINTENANCE bed. */
+  maintenanceUntil?: string | null;
+}
+
+/** Tooltip text: "Room 1 - B1 — Maintenance — <occupant | remark>". */
+function bedTitle(b: BedTile, statusLabel: string): string {
+  const detail = b.occupantName ?? describeBedRestriction(b);
+  const base = `${formatBedLabel(b.roomNumber, b.code)} — ${statusLabel}`;
+  return detail ? `${base} — ${detail}` : base;
 }
 
 const STATUS_META: Record<BedStatus, { className: string; label: string; Icon: typeof Bed }> = {
@@ -280,9 +292,7 @@ export function BedGrid({
           {visibleBeds.map((b) => {
             const meta = STATUS_CARD_META[b.status];
             const Icon = meta.Icon;
-            const title = b.occupantName
-              ? `${b.code} — ${meta.label} — ${b.occupantName}`
-              : `${b.code} — ${meta.label}`;
+            const title = bedTitle(b, meta.label);
             if (b.status === "VACANT" && onAllocate) {
               // The card-click button is stretched over the whole card (::after) so the
               // card behaves exactly as before; Allocate is a sibling above it, not a
@@ -307,7 +317,7 @@ export function BedGrid({
                       <Icon className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="font-display text-base font-semibold tabular-nums text-foreground">
-                      {b.code}
+                      {formatBedLabel(b.roomNumber, b.code)}
                     </span>
                   </button>
                   <div className="mt-auto flex items-center justify-between gap-2">
@@ -320,7 +330,7 @@ export function BedGrid({
                       type="button"
                       size="sm"
                       className="relative z-10 h-10 shrink-0 px-3 sm:h-9"
-                      aria-label={`Allocate bed ${b.code}`}
+                      aria-label={`Allocate bed ${formatBedLabel(b.roomNumber, b.code)}`}
                       onClick={() => onAllocate(b)}
                     >
                       Allocate
@@ -344,7 +354,7 @@ export function BedGrid({
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <span className="font-display text-base font-semibold tabular-nums text-foreground">
-                  {b.code}
+                  {formatBedLabel(b.roomNumber, b.code)}
                 </span>
                 <span
                   className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", meta.badge)}
@@ -356,6 +366,11 @@ export function BedGrid({
                     {b.occupantName}
                   </span>
                 ) : null}
+                {describeBedRestriction(b) ? (
+                  <span className="w-full truncate text-xs text-muted-foreground">
+                    {describeBedRestriction(b)}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -365,9 +380,7 @@ export function BedGrid({
           {visibleBeds.map((b) => {
             const meta = STATUS_CARD_META[b.status];
             const Icon = meta.Icon;
-            const title = b.occupantName
-              ? `${b.code} — ${meta.label} — ${b.occupantName}`
-              : `${b.code} — ${meta.label}`;
+            const title = bedTitle(b, meta.label);
             return (
               <button
                 key={b.id}
@@ -386,11 +399,16 @@ export function BedGrid({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-display text-sm font-semibold tabular-nums text-foreground">
-                    {b.code}
+                    {formatBedLabel(b.roomNumber, b.code)}
                   </span>
                   {b.occupantName ? (
                     <span className="block truncate text-xs text-muted-foreground">
                       {b.occupantName}
+                    </span>
+                  ) : null}
+                  {describeBedRestriction(b) ? (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {describeBedRestriction(b)}
                     </span>
                   ) : null}
                 </span>
@@ -416,9 +434,7 @@ function BedTileGrid({ beds, onSelect }: { beds: BedTile[]; onSelect?: (bed: Bed
     <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6">
       {beds.map((b) => {
         const { className, Icon, label } = STATUS_META[b.status];
-        const title = b.occupantName
-          ? `${b.code} — ${label} — ${b.occupantName}`
-          : `${b.code} — ${label}`;
+        const title = bedTitle(b, label);
         return (
           <button
             key={b.id}
@@ -430,10 +446,15 @@ function BedTileGrid({ beds, onSelect }: { beds: BedTile[]; onSelect?: (bed: Bed
             )}
           >
             <Icon className="h-4 w-4" aria-hidden />
-            <span className="tabular-nums">{b.code}</span>
+            <span className="tabular-nums">{formatBedLabel(b.roomNumber, b.code)}</span>
             {b.occupantName ? (
               <span className="max-w-full truncate text-[10px] font-normal opacity-80">
                 {b.occupantName}
+              </span>
+            ) : null}
+            {describeBedRestriction(b) ? (
+              <span className="max-w-full truncate text-[10px] font-normal opacity-80">
+                {describeBedRestriction(b)}
               </span>
             ) : null}
           </button>

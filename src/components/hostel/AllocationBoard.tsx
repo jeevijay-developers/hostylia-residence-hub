@@ -13,12 +13,15 @@ import {
   HelpCircle,
   LayoutGrid,
   Lightbulb,
+  Settings2,
   User,
 } from "lucide-react";
 
 import { useResolvedRole } from "@/lib/user-role";
 import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
+import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
+import { describeBedRestriction, formatBedLabel } from "@/lib/bed-label";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +91,7 @@ export function AllocationBoard({
   propertyIdOverride,
   canCreate = true,
   canEdit = true,
+  canManageBedStatus = true,
 }: {
   initialStudentId?: string;
   propertyIdOverride?: string | null;
@@ -97,6 +101,8 @@ export function AllocationBoard({
   /** Gates the "Swap" action (move an existing allocation to another bed) —
    * matches the `allocations_edit` permission key. */
   canEdit?: boolean;
+  /** Gates "Manage status" (maintenance / blocked) — matches `rooms_beds_edit`. */
+  canManageBedStatus?: boolean;
 } = {}) {
   const activePropertyId = usePropertyStore((s) => s.activePropertyId);
   const effectiveProp = propertyIdOverride !== undefined ? propertyIdOverride : activePropertyId;
@@ -139,38 +145,55 @@ export function AllocationBoard({
   const canManageStructure = isAdmin || canWarden("rooms_beds_view");
   const structureTo = isAdmin ? "/admin/properties/$id/structure" : "/warden/rooms-beds";
 
-  const bedsQ = useQuery({
-    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
+  // Status summary: counted in the database for the WHOLE property (every block,
+  // floor and room), independent of the vacant/search bed list and its page. Same
+  // filter as Property Structure (property_id, not soft-deleted), so the totals
+  // match it. Always refetched when the page is opened, and invalidated together
+  // with the list (the key shares the "allocation-beds" prefix) after allocation,
+  // swap, move-out or a bed-status change.
+  const countsQ = useQuery({
+    queryKey: ["allocation-beds", "counts", effectiveProp],
     enabled: !!effectiveProp,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
-      const emptyCounts: Record<BedTile["status"], number> = {
+      const counts: Record<BedTile["status"], number> = {
         VACANT: 0,
         OCCUPIED: 0,
         MAINTENANCE: 0,
         BLOCKED: 0,
       };
-      if (!effectiveProp) return { beds: [] as BedTile[], total: 0, counts: emptyCounts };
       const statuses = ["VACANT", "OCCUPIED", "MAINTENANCE", "BLOCKED"] as const;
-      const countResults = await Promise.all(
+      const results = await Promise.all(
         statuses.map((status) =>
           supabase
             .from("beds")
             .select("id", { count: "exact", head: true })
-            .eq("property_id", effectiveProp)
+            .eq("property_id", effectiveProp!)
             .eq("status", status)
             .is("deleted_at", null),
         ),
       );
-      const counts = { ...emptyCounts };
       statuses.forEach((status, i) => {
-        const result = countResults[i];
+        const result = results[i];
         if (!result || result.error) throw result?.error ?? new Error("Could not count beds");
         counts[status] = result.count ?? 0;
       });
+      return counts;
+    },
+  });
+
+  const bedsQ = useQuery({
+    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
+    enabled: !!effectiveProp,
+    queryFn: async () => {
+      if (!effectiveProp) return { beds: [] as BedTile[], total: 0 };
 
       let bedQuery = supabase
         .from("beds")
-        .select("id, code, status, rooms(room_number)", { count: "exact" })
+        .select("id, code, status, notes, maintenance_until, rooms(room_number)", {
+          count: "exact",
+        })
         .eq("property_id", effectiveProp)
         .is("deleted_at", null)
         .order("code")
@@ -239,10 +262,11 @@ export function AllocationBoard({
           code: b.code,
           status: b.status as BedTile["status"],
           occupantName: occupantByBed.get(b.id) ?? null,
+          notes: b.notes,
+          maintenanceUntil: b.maintenance_until,
           roomNumber: (b.rooms as { room_number: string } | null)?.room_number ?? null,
         })),
         total: count ?? 0,
-        counts,
       };
     },
   });
@@ -279,6 +303,7 @@ export function AllocationBoard({
   });
 
   const [viewBed, setViewBed] = useState<BedTile | null>(null);
+  const [statusBed, setStatusBed] = useState<BedTile | null>(null);
   const bedDetailQ = useQuery({
     queryKey: ["bed-allocation-detail", viewBed?.id],
     enabled: !!viewBed && viewBed.status === "OCCUPIED",
@@ -412,7 +437,9 @@ export function AllocationBoard({
       });
     },
     onSuccess: () => {
-      toast.success(`Student moved to bed ${selectedBed?.code}`);
+      toast.success(
+        `Student moved to bed ${selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}`,
+      );
       qc.invalidateQueries({ queryKey: ["allocation-beds"] });
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
       qc.invalidateQueries({ queryKey: ["student-open-allocation"] });
@@ -490,7 +517,7 @@ export function AllocationBoard({
           <BedGrid
             variant="expanded"
             beds={bedsQ.data?.beds ?? []}
-            statusCounts={bedsQ.data?.counts}
+            statusCounts={countsQ.data}
             queryValue={bedSearch}
             onQueryChange={setBedSearch}
             serverFiltered
@@ -539,7 +566,10 @@ export function AllocationBoard({
       <Dialog open={!!selectedBed} onOpenChange={(v) => !v && closeAllocateDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Allocate bed {selectedBed?.code}</DialogTitle>
+            <DialogTitle>
+              Allocate bed{" "}
+              {selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -626,14 +656,13 @@ export function AllocationBoard({
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <Info
                     label="Current bed"
-                    value={
-                      (
-                        openAllocationQ.data.beds as {
-                          code: string;
-                          rooms: { room_number: string } | null;
-                        } | null
-                      )?.code ?? "—"
-                    }
+                    value={(() => {
+                      const cur = openAllocationQ.data.beds as {
+                        code: string;
+                        rooms: { room_number: string } | null;
+                      } | null;
+                      return cur ? formatBedLabel(cur.rooms?.room_number, cur.code) : "—";
+                    })()}
                   />
                   <Info
                     label="Room"
@@ -654,8 +683,9 @@ export function AllocationBoard({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  To move them to bed {selectedBed?.code}, use Swap — this keeps their existing
-                  agreement, invoices, and payment history intact.
+                  To move them to bed{" "}
+                  {selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}, use
+                  Swap — this keeps their existing agreement, invoices, and payment history intact.
                 </p>
               </div>
             ) : (
@@ -728,6 +758,18 @@ export function AllocationBoard({
             <Button variant="ghost" onClick={closeAllocateDialog}>
               Cancel
             </Button>
+            {canManageBedStatus && selectedBed && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const bed = selectedBed;
+                  closeAllocateDialog();
+                  setStatusBed(bed);
+                }}
+              >
+                <Settings2 className="h-4 w-4" /> Manage status
+              </Button>
+            )}
             {openAllocationQ.data ? (
               canEdit ? (
                 <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
@@ -754,16 +796,33 @@ export function AllocationBoard({
         </DialogContent>
       </Dialog>
 
+      {canManageBedStatus && (
+        <BedStatusDialog
+          bed={statusBed}
+          open={!!statusBed}
+          onOpenChange={(v) => !v && setStatusBed(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+            qc.invalidateQueries({ queryKey: ["structure"] });
+          }}
+        />
+      )}
+
       <Dialog open={!!viewBed} onOpenChange={(v) => !v && setViewBed(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Bed {viewBed?.code}</DialogTitle>
+            <DialogTitle>
+              Bed {viewBed ? formatBedLabel(viewBed.roomNumber, viewBed.code) : ""}
+            </DialogTitle>
           </DialogHeader>
           {viewBed?.status !== "OCCUPIED" ? (
             <p className="text-sm text-muted-foreground">
               This bed is currently{" "}
-              <span className="font-medium">{viewBed?.status.toLowerCase()}</span>. Manage its
-              status from Manage rooms & beds.
+              <span className="font-medium">{viewBed?.status.toLowerCase()}</span>
+              {viewBed && describeBedRestriction(viewBed)
+                ? ` — ${describeBedRestriction(viewBed)}`
+                : ""}
+              .
             </p>
           ) : bedDetailQ.isLoading ? (
             <Skeleton className="h-24 w-full" />
@@ -801,6 +860,17 @@ export function AllocationBoard({
             <Button variant="ghost" onClick={() => setViewBed(null)}>
               Close
             </Button>
+            {canManageBedStatus && viewBed && viewBed.status !== "OCCUPIED" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatusBed(viewBed);
+                  setViewBed(null);
+                }}
+              >
+                <Settings2 className="h-4 w-4" /> Manage status
+              </Button>
+            )}
             {viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
               <>
                 <Button asChild variant="outline">

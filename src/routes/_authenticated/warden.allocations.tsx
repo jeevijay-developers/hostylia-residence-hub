@@ -51,6 +51,7 @@ function WardenAllocationsPage() {
         propertyIdOverride={propQ.data ?? null}
         canCreate={can("allocations_create")}
         canEdit={can("allocations_edit")}
+        canManageBedStatus={can("rooms_beds_edit")}
       />
     </div>
   );
