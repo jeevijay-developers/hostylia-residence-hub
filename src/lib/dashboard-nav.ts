@@ -147,6 +147,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
+    { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
     { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
     { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
     {
@@ -246,10 +247,7 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     },
     { label: "Reports", to: "/warden/reports", icon: FileBarChart, module: "reports_view" },
   ],
-  STUDENT: [
-    { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
-    { label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" },
-  ],
+  STUDENT: [{ label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" }],
 };
 
 /**

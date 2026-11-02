@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { LeaveRequestsPanel } from "@/components/attendance/LeaveRequestsPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { AttendanceHistoryList } from "@/components/parent/AttendanceHistoryList";
 import { MonthlyAttendanceReport } from "@/components/parent/MonthlyAttendanceReport";
@@ -19,6 +20,7 @@ function StudentAttendancePage() {
         {student.data?.id ? (
           <>
             <MonthlyAttendanceReport studentId={student.data.id} />
+            <LeaveRequestsPanel studentId={student.data.id} />
             <AttendanceHistoryList
               studentId={student.data.id}
               emptyTitle="No attendance recorded yet"

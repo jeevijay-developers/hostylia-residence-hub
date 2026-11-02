@@ -55,6 +55,7 @@ export function WardenStudentsRoute() {
       effectiveProperty={propertyId}
       canCreate={can("students_create")}
       canDelete={can("students_delete")}
+      canMoveOut={can("allocations_edit")}
       initialStatusFilter={status}
     />
   );

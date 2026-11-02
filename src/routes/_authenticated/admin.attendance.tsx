@@ -45,6 +45,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
+import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { useStudentsOnApprovedLeave } from "@/lib/leave";
 
 export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
@@ -96,9 +98,16 @@ function AdminAttendancePage() {
       m[a.student_id] = { id: a.id, status: a.status as Status, notes: a.notes };
     return m;
   }, [attendanceQ.data]);
+  // Approved leave is derived from leave requests, never marked by hand: those
+  // students always read "On leave" for the date and are locked below.
+  const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
+  const onApprovedLeave = onLeaveQ.data;
   const effective = useCallback(
-    (id: string): Status => overrides[id] ?? currentMap[id]?.status ?? "PRESENT",
-    [overrides, currentMap],
+    (id: string): Status =>
+      onApprovedLeave?.has(id)
+        ? "ON_LEAVE"
+        : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -163,14 +172,17 @@ function AdminAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      const missingRemark = roster.find(
+      // On Leave rows (approved leave, or a legacy mark) are never re-sent.
+      const markable = roster.filter((s) => effective(s.id) !== "ON_LEAVE");
+      const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
       );
       if (missingRemark) {
         throw new Error(`Add a remark for ${missingRemark.full_name} before saving`);
       }
-      const entries = roster.map((s) => {
+      if (markable.length === 0) return;
+      const entries = markable.map((s) => {
         const status = effective(s.id);
         return {
           student_id: s.id,
@@ -211,6 +223,7 @@ function AdminAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
+      if (effective(s.id) === "ON_LEAVE") continue; // never overwrite leave
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -230,6 +243,8 @@ function AdminAttendancePage() {
     <div className="space-y-6 sm:space-y-8 max-w-6xl pb-10 overflow-x-hidden">
       {/* Monthly Attendance Summary Panel */}
       <AttendanceReportPanel propertyId={propertyId} totalStudentsTile />
+
+      <LeaveReviewPanel propertyId={propertyId} />
 
       {/* Controls Bar for Daily Attendance */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
@@ -389,7 +404,8 @@ function AdminAttendancePage() {
           {filteredRoster.map((s) => {
             const st = effective(s.id);
             const saved = currentMap[s.id];
-            const needsRemark = st !== "PRESENT";
+            const isLeaveLocked = onApprovedLeave?.has(s.id) ?? false;
+            const needsRemark = st !== "PRESENT" && st !== "ON_LEAVE";
             const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
             const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
             return (
@@ -431,13 +447,16 @@ function AdminAttendancePage() {
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <Select
                       value={st}
+                      disabled={isLeaveLocked}
                       onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                     >
                       <SelectTrigger className="w-36 bg-background border-border text-foreground rounded-xl h-10 text-sm font-semibold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border text-foreground">
-                        {STATUSES.map((v) => (
+                        {/* On leave is derived from approved leave requests — it is only
+                            listed so an existing On leave row can display its value. */}
+                        {STATUSES.filter((v) => v !== "ON_LEAVE" || st === "ON_LEAVE").map((v) => (
                           <SelectItem key={v} value={v}>
                             {STATUS_LABEL[v]}
                           </SelectItem>
@@ -445,7 +464,7 @@ function AdminAttendancePage() {
                       </SelectContent>
                     </Select>
 
-                    {saved && (
+                    {saved && !isLeaveLocked && (
                       <Button
                         size="icon"
                         variant="ghost"

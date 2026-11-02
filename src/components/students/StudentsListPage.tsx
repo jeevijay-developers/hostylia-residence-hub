@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
+import { MoveOutNoticesPanel } from "@/components/students/MoveOutNoticesPanel";
 import { deleteStudent } from "@/lib/student.functions";
 
 const AVATAR_COLOR_PAIRS = [
@@ -127,6 +128,10 @@ export interface StudentsListPageProps {
   /** Preselects the status filter (e.g. deep-linking from a dashboard KPI
    * card) — defaults to "ALL" (today's unchanged behavior) when omitted. */
   initialStatusFilter?: string;
+  /** Shows the Move-out Notices section and its Review action. Defaults to true
+   * for Admin; Warden passes its real allocations_edit grant. Never shown on
+   * the Accountant view. */
+  canMoveOut?: boolean;
 }
 
 /**
@@ -146,13 +151,16 @@ export function StudentsListPage({
   canCreate,
   canDelete,
   initialStatusFilter,
+  canMoveOut = true,
 }: StudentsListPageProps) {
   // Scopes the mobile status+search row-merge below to Warden only (its
   // property switcher never renders, so that grid cell sits empty) — Admin's
   // multi-property mobile row is untouched.
   const isWarden = viewBasePath !== "/admin/students";
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    !isWarden && initialStatusFilter === "ARCHIVED" ? "ALL" : (initialStatusFilter ?? "ALL"),
+  );
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(0);
@@ -369,7 +377,7 @@ export function StudentsListPage({
                 <SelectItem value="ACTIVE">Active</SelectItem>
                 <SelectItem value="NOTICE_GIVEN">Notice given</SelectItem>
                 <SelectItem value="MOVED_OUT">Moved out</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
+                {isWarden && <SelectItem value="ARCHIVED">Archived</SelectItem>}
               </SelectContent>
             </Select>
 
@@ -383,6 +391,15 @@ export function StudentsListPage({
           {!isWarden && searchBox}
         </div>
       </div>
+
+      {viewBasePath !== "/accountant/students" && tenantId && effectiveProperty && (
+        <MoveOutNoticesPanel
+          tenantId={tenantId}
+          propertyId={effectiveProperty}
+          area={isWarden ? "warden" : "admin"}
+          canReview={canMoveOut}
+        />
+      )}
 
       {/* Dashboard Stats KPI Cards */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">

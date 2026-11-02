@@ -955,4 +955,185 @@ SELECT pg_temp.assert_ge((SELECT count(*) FROM public.gate_passes WHERE student_
 SELECT pg_temp.assert_ge((SELECT count(*) FROM public.notices WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 1, 'HOSTEL_ADMIN still reads notices');
 ROLLBACK;
 
+-- =============================================================================
+-- SECTION — Move-out / Give Notice workflow (20261030100000_move_out_notice_workflow.sql)
+-- Fixtures (seed.sql): alloc a1 = Student 01 (profile ..020, Block A, ACTIVE),
+-- a2 = Student 02 (profile ..021, invoice e02 balance 615000), a4 = Student 04
+-- (profile ..023). Warden A (..011) = Block A, Warden B (..012) = Block B.
+-- =============================================================================
+CREATE OR REPLACE FUNCTION pg_temp.assume_service() RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('role','service_role',true);
+  PERFORM set_config('request.jwt.claims', json_build_object('role','service_role')::text, true);
+END $$;
+
+-- 1) Student gives notice for own ACTIVE allocation: NOTICE_GIVEN, bed stays OCCUPIED,
+--    notice details stored, admin + student notified.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1',
+  (now() AT TIME ZONE 'Asia/Kolkata')::date + 7, 'Course finished', 'Leaving after exams');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a1' AND status='NOTICE_GIVEN' AND notice_given_at IS NOT NULL AND notice_reason='Course finished' AND requested_move_out_date IS NOT NULL AND closed_at IS NULL), 1, 'give_notice stores notice, allocation NOTICE_GIVEN and not closed');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e001' AND status='OCCUPIED'), 1, 'give_notice keeps bed OCCUPIED');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-111111110001' AND status='NOTICE_GIVEN'), 1, 'give_notice syncs student status');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='MOVE_OUT_NOTICE_SUBMITTED' AND recipient_user_id='00000000-0000-0000-0000-000000000010'), 1, 'admin notified of notice');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='MOVE_OUT_NOTICE_SUBMITTED' AND recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'student gets confirmation');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='MOVE_OUT_NOTICE_SUBMITTED' AND tenant_id<>'11111111-1111-1111-1111-111111111111'), 0, 'notice notifications are tenant-scoped');
+-- 3) duplicate notice prevented
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020');
+SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 9, 'Again please', NULL)$$, 'duplicate notice rejected');
+ROLLBACK;
+
+-- 2) Student cannot give notice for another student's allocation; invalid input rejected
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a2', (now() AT TIME ZONE 'Asia/Kolkata')::date + 7, 'Not mine', NULL)$$, 'student cannot give notice for another student');
+SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date - 3, 'Past date', NULL)$$, 'notice date in the past rejected');
+SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 7, '  ', NULL)$$, 'blank reason rejected');
+-- direct writes stay blocked
+SELECT pg_temp.assert_throws($$UPDATE public.students SET status='NOTICE_GIVEN' WHERE id='11111111-1111-1111-1111-111111110001'$$, 'student cannot set own status directly');
+SELECT pg_temp.assert_eq((WITH u AS (UPDATE public.allocations SET status='NOTICE_GIVEN' WHERE id='11111111-1111-1111-1111-1111111100a1' RETURNING 1) SELECT count(*) FROM u), 0, 'student cannot update allocations directly');
+-- Parent / student cannot run move-out or activation
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'student cannot complete_move_out');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'parent cannot complete_move_out');
+SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 7, 'Parent attempt', NULL)$$, 'parent cannot give notice');
+RESET ROLE;
+SELECT pg_temp.assume_anon();
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'anon cannot complete_move_out');
+RESET ROLE;
+-- Malformed JWT claims fail closed
+SELECT set_config('role','authenticated',true);
+SELECT set_config('request.jwt.claims','not-json',true);
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'malformed claims cannot complete_move_out');
+ROLLBACK;
+
+-- 6) Authorization matrix for complete_move_out (+ 8 activate_allocation)
+BEGIN;
+UPDATE public.allocations SET status='PENDING_PAYMENT' WHERE id IN ('11111111-1111-1111-1111-1111111100a4','11111111-1111-1111-1111-1111111100a5');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000023'); -- Student 04
+SELECT pg_temp.assert_throws($$SELECT public.activate_allocation('11111111-1111-1111-1111-1111111100a4')$$, 'student cannot activate_allocation');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a4' AND status='PENDING_PAYMENT'), 1, 'allocation still PENDING_PAYMENT after student attempt');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent
+SELECT pg_temp.assert_throws($$SELECT public.activate_allocation('11111111-1111-1111-1111-1111111100a4')$$, 'parent cannot activate_allocation');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant (payments_create default)
+SELECT public.activate_allocation('11111111-1111-1111-1111-1111111100a4');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a4' AND status='ACTIVE'), 1, 'payment staff can activate_allocation');
+SELECT pg_temp.assume_service();
+SELECT public.activate_allocation('11111111-1111-1111-1111-1111111100a5'); -- Razorpay webhook path
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a5' AND status='ACTIVE'), 1, 'service_role can activate_allocation (webhook)');
+ROLLBACK;
+
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100'); -- Admin of Tenant B
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'cross-tenant admin cannot complete_move_out');
+SELECT pg_temp.assert_throws($$SELECT public.move_out_settlement('11111111-1111-1111-1111-1111111100a1')$$, 'cross-tenant admin cannot view settlement');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden A, no allocations_edit by default
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'warden without allocations_edit cannot complete_move_out');
+RESET ROLE;
+UPDATE public.role_assignments SET permissions = '{"allocations_edit": true}'::jsonb
+  WHERE user_id IN ('00000000-0000-0000-0000-000000000011','00000000-0000-0000-0000-000000000012');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000012'); -- Warden B has the permission but Block B scope
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'warden of another block cannot complete_move_out');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 3)$$, 'future move-out date rejected');
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100c1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'CLOSED allocation cannot be moved out again');
+RESET ROLE;
+ROLLBACK;
+
+-- 7/11/12/13) Authorized warden completes move-out: invoice-wise deposit deduction capped at the
+-- real ledger balance, bed released once, notifications, second call rejected.
+BEGIN;
+INSERT INTO public.deposit_ledger_entries (tenant_id, property_id, student_id, allocation_id, entry_type, amount_paise, direction, reference_type, description)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-1111111100a1','DEPOSIT_RECEIVED',1500000,'CREDIT','ALLOCATION','test deposit');
+INSERT INTO public.invoices (id, tenant_id, property_id, student_id, allocation_id, invoice_number, issue_date, due_date, status, subtotal_paise, total_paise, paid_paise, balance_paise)
+VALUES ('11111111-1111-1111-1111-111111110e91','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-1111111100a1','INV-MO-0001', current_date - 20, current_date - 10, 'OVERDUE', 200000, 200000, 0, 200000);
+UPDATE public.role_assignments SET permissions = '{"allocations_edit": true}'::jsonb WHERE user_id = '00000000-0000-0000-0000-000000000011';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020');
+SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 1, 'Course finished', NULL);
+RESET ROLE;
+-- earliest_move_out_date counts from notice_given_at and does not drift between calls
+UPDATE public.allocations SET notice_period_days = 30, notice_given_at = now() - interval '10 days' WHERE id='11111111-1111-1111-1111-1111111100a1';
+SELECT pg_temp.assert_eq((SELECT (public.earliest_move_out_date('11111111-1111-1111-1111-1111111100a1') = (((now() - interval '10 days') AT TIME ZONE 'Asia/Kolkata')::date + 30))::int), 1, 'earliest_move_out_date starts from notice_given_at');
+SELECT pg_temp.assert_eq((SELECT (public.earliest_move_out_date('11111111-1111-1111-1111-1111111100a1') = public.earliest_move_out_date('11111111-1111-1111-1111-1111111100a1'))::int), 1, 'earliest_move_out_date is stable across calls');
+UPDATE public.allocations SET notice_period_days = 0 WHERE id='11111111-1111-1111-1111-1111111100a1';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011'); -- Warden A (Block A, allocations_edit)
+SELECT pg_temp.assert_eq((public.move_out_settlement('11111111-1111-1111-1111-1111111100a1')->>'planned_deduction_paise')::bigint, 200000, 'settlement previews invoice-wise deduction');
+SELECT pg_temp.assert_eq((public.move_out_settlement('11111111-1111-1111-1111-1111111100a1')->>'refundable_paise')::bigint, 1300000, 'settlement refundable = balance - deduction');
+SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date);
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a1' AND status='CLOSED' AND closed_at IS NOT NULL), 1, 'move-out closes allocation');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-111111110001' AND status='MOVED_OUT'), 1, 'move-out sets student MOVED_OUT');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e001' AND status='VACANT'), 1, 'move-out releases bed');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e91' AND balance_paise=0 AND status='PAID' AND deposit_adjusted_paise=200000 AND paid_paise=0), 1, 'invoice settled from deposit (no fake payment)');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.payments WHERE invoice_id='11111111-1111-1111-1111-111111110e91'), 0, 'no payment row invented for deposit settlement');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.deposit_ledger_entries WHERE allocation_id='11111111-1111-1111-1111-1111111100a1' AND entry_type='DEDUCTION' AND amount_paise=200000 AND reference_id='11111111-1111-1111-1111-111111110e91'), 1, 'one invoice-wise DEDUCTION entry');
+SELECT pg_temp.assert_eq((SELECT SUM(CASE WHEN direction='CREDIT' THEN amount_paise ELSE -amount_paise END)::bigint FROM public.deposit_ledger_entries WHERE allocation_id='11111111-1111-1111-1111-1111111100a1'), 1300000, 'deposit ledger balance after deduction');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='MOVE_OUT_COMPLETED' AND recipient_user_id IN ('00000000-0000-0000-0000-000000000020','00000000-0000-0000-0000-000000000010')), 2, 'move-out completion notifies student and admin');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'second move-out call rejected (no double deduction / bed release)');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.deposit_ledger_entries WHERE allocation_id='11111111-1111-1111-1111-1111111100a1' AND entry_type='DEDUCTION'), 1, 'still exactly one DEDUCTION after retry');
+-- Deposit refund runs through maker-checker: initiator cannot approve own refund; amounts capped at ledger balance
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- Accountant initiates
+INSERT INTO public.refunds (tenant_id, property_id, student_id, payment_id, refund_number, amount_paise, reason, mode, status, initiated_by, allocation_id, requires_deposit_clearance)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-11111111af01','', 700000, 'Deposit refund at move-out','BANK_TRANSFER','PENDING_VERIFICATION','00000000-0000-0000-0000-000000000013','11111111-1111-1111-1111-1111111100a1', true);
+SELECT pg_temp.assert_throws($$INSERT INTO public.refunds (tenant_id, property_id, student_id, payment_id, refund_number, amount_paise, reason, mode, status, initiated_by, allocation_id, requires_deposit_clearance) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-11111111af01','', 600000, 'Too much','BANK_TRANSFER','PENDING_VERIFICATION','00000000-0000-0000-0000-000000000013','11111111-1111-1111-1111-1111111100a1', true)$$, 'deposit refunds in flight cannot exceed ledger balance / payment');
+SELECT pg_temp.assert_throws($$INSERT INTO public.refunds (tenant_id, property_id, student_id, payment_id, refund_number, amount_paise, reason, mode, status, initiated_by, allocation_id, requires_deposit_clearance) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-11111111af03','', 1000, 'Wrong payment owner','BANK_TRANSFER','PENDING_VERIFICATION','00000000-0000-0000-0000-000000000013','11111111-1111-1111-1111-1111111100a1', true)$$, 'deposit refund must use the student''s own payment');
+RESET ROLE;
+SELECT pg_temp.assert_throws($$UPDATE public.refunds SET status='APPROVED', approved_by=initiated_by WHERE requires_deposit_clearance AND allocation_id='11111111-1111-1111-1111-1111111100a1'$$, 'refund initiator cannot approve own deposit refund');
+-- Deposit debit can never exceed the real ledger balance
+SELECT pg_temp.assert_throws($$INSERT INTO public.deposit_ledger_entries (tenant_id, property_id, student_id, allocation_id, entry_type, amount_paise, direction, description) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110001','11111111-1111-1111-1111-1111111100a1','DEDUCTION', 9999999, 'DEBIT', 'overdraw')$$, 'ledger DEDUCTION beyond balance rejected');
+ROLLBACK;
+
+-- 12/13) Dues exceed deposit: deduction capped at balance, remainder stays outstanding on the invoice,
+-- and cannot be collected twice (payment capped at remaining balance).
+BEGIN;
+INSERT INTO public.deposit_ledger_entries (tenant_id, property_id, student_id, allocation_id, entry_type, amount_paise, direction, reference_type, description)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110002','11111111-1111-1111-1111-1111111100a2','DEPOSIT_RECEIVED',100000,'CREDIT','ALLOCATION','small deposit');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a2', (now() AT TIME ZONE 'Asia/Kolkata')::date);
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT balance_paise FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e02'), 515000, 'shortfall stays outstanding on the invoice');
+SELECT pg_temp.assert_eq((SELECT deposit_adjusted_paise FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e02'), 100000, 'only the real deposit balance was applied');
+SELECT pg_temp.assert_eq((SELECT SUM(CASE WHEN direction='CREDIT' THEN amount_paise ELSE -amount_paise END)::bigint FROM public.deposit_ledger_entries WHERE allocation_id='11111111-1111-1111-1111-1111111100a2'), 0, 'ledger balance never negative');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013');
+SELECT pg_temp.assert_throws($$SELECT public.record_manual_payment('11111111-1111-1111-1111-111111110e02','CASH',515001,NULL,NULL,NULL)$$, 'cannot collect more than the remaining balance');
+SELECT public.record_manual_payment('11111111-1111-1111-1111-111111110e02','CASH',515000,NULL,NULL,NULL);
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e02' AND balance_paise=0 AND status='PAID'), 1, 'invoice PAID once shortfall is collected (deposit adjustment honoured by recompute)');
+ROLLBACK;
+
+-- 15) A failure part-way through move-out leaves nothing half-applied.
+BEGIN;
+INSERT INTO public.deposit_ledger_entries (tenant_id, property_id, student_id, allocation_id, entry_type, amount_paise, direction, reference_type, description)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-111111110002','11111111-1111-1111-1111-1111111100a2','DEPOSIT_RECEIVED',100000,'CREDIT','ALLOCATION','small deposit');
+CREATE FUNCTION public.zz_fail_moved_out() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN IF NEW.status = 'MOVED_OUT' THEN RAISE EXCEPTION 'simulated failure'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER zz_fail_moved_out BEFORE UPDATE ON public.students FOR EACH ROW EXECUTE FUNCTION public.zz_fail_moved_out();
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a2', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'move-out failure is raised');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a2' AND status='ACTIVE'), 1, 'failed move-out leaves allocation ACTIVE');
+SELECT pg_temp.assert_eq((SELECT balance_paise FROM public.invoices WHERE id='11111111-1111-1111-1111-111111110e02'), 615000, 'failed move-out leaves invoice untouched');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.deposit_ledger_entries WHERE allocation_id='11111111-1111-1111-1111-1111111100a2' AND entry_type='DEDUCTION'), 0, 'failed move-out writes no ledger deduction');
+ROLLBACK;
+
+-- service_role may complete a move-out (automation path)
+BEGIN;
+SELECT pg_temp.assume_service();
+SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a3', (now() AT TIME ZONE 'Asia/Kolkata')::date);
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a3' AND status='CLOSED'), 1, 'service_role can complete_move_out');
+ROLLBACK;
+
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

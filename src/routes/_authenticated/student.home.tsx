@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
   Bed,
   Bell,
@@ -10,6 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { AttendanceLeaveSummary } from "@/components/attendance/AttendanceLeaveSummary";
+import { GiveNoticeAction, MoveOutNoticeStatusCard } from "@/components/students/GiveNotice";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,6 +95,9 @@ function StudentHomePage() {
               label="Room / Bed"
               value={`${bed.room?.room_number ?? "—"} / ${bed.code}`}
               caption="Your allocation"
+              action={
+                allocQ.data?.id ? <GiveNoticeAction allocationId={allocQ.data.id} /> : undefined
+              }
             />
           )}
           {kycComplete && can("finance", "view") && <FeesCard studentId={studentId} />}
@@ -99,6 +105,12 @@ function StudentHomePage() {
           {kycComplete && can("mess", "view") && <MessCard propertyId={propertyId} />}
         </div>
       )}
+
+      {studentId && kycComplete && can("attendance", "view") && (
+        <AttendanceLeaveSummary studentId={studentId} />
+      )}
+
+      {allocQ.data?.id && <MoveOutNoticeStatusCard allocationId={allocQ.data.id} />}
 
       {/* Notice content is KYC-gated: no board (or preview) until verified. */}
       {kycComplete && (
@@ -150,12 +162,14 @@ function HomeStatCard({
   value,
   caption,
   to,
+  action,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
   caption: string;
   to?: string;
+  action?: ReactNode;
 }) {
   const content = (
     <>
@@ -163,6 +177,7 @@ function HomeStatCard({
       <span className="mt-3 block text-xs text-muted-foreground">{label}</span>
       <span className="mt-0.5 block truncate text-xl font-bold text-foreground">{value}</span>
       <span className="mt-0.5 block text-xs text-muted-foreground">{caption}</span>
+      {action}
     </>
   );
   const className = "block rounded-2xl border border-border bg-card p-4";

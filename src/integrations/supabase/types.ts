@@ -136,6 +136,10 @@ export type Database = {
           floor_id: string
           id: string
           lock_in_until: string | null
+          notice_given_at: string | null
+          notice_reason: string | null
+          notice_remarks: string | null
+          requested_move_out_date: string | null
           notice_period_days: number
           property_id: string
           rent_snapshot_paise: number
@@ -165,6 +169,10 @@ export type Database = {
           floor_id: string
           id?: string
           lock_in_until?: string | null
+          notice_given_at?: string | null
+          notice_reason?: string | null
+          notice_remarks?: string | null
+          requested_move_out_date?: string | null
           notice_period_days?: number
           property_id: string
           rent_snapshot_paise: number
@@ -194,6 +202,10 @@ export type Database = {
           floor_id?: string
           id?: string
           lock_in_until?: string | null
+          notice_given_at?: string | null
+          notice_reason?: string | null
+          notice_remarks?: string | null
+          requested_move_out_date?: string | null
           notice_period_days?: number
           property_id?: string
           rent_snapshot_paise?: number
@@ -1783,6 +1795,7 @@ export type Database = {
           currency: string
           deleted_at: string | null
           deleted_by: string | null
+          deposit_adjusted_paise: number
           discount_paise: number
           due_date: string
           fee_plan_id: string | null
@@ -1819,6 +1832,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          deposit_adjusted_paise?: number
           discount_paise?: number
           due_date: string
           fee_plan_id?: string | null
@@ -1855,6 +1869,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          deposit_adjusted_paise?: number
           discount_paise?: number
           due_date?: string
           fee_plan_id?: string | null
@@ -3032,6 +3047,8 @@ export type Database = {
       refunds: {
         Row: {
           amount_paise: number
+          allocation_id: string | null
+          requires_deposit_clearance: boolean
           approved_at: string | null
           approved_by: string | null
           completed_at: string | null
@@ -3056,6 +3073,8 @@ export type Database = {
         }
         Insert: {
           amount_paise: number
+          allocation_id?: string | null
+          requires_deposit_clearance?: boolean
           approved_at?: string | null
           approved_by?: string | null
           completed_at?: string | null
@@ -3080,6 +3099,8 @@ export type Database = {
         }
         Update: {
           amount_paise?: number
+          allocation_id?: string | null
+          requires_deposit_clearance?: boolean
           approved_at?: string | null
           approved_by?: string | null
           completed_at?: string | null
@@ -4748,6 +4769,19 @@ export type Database = {
       complete_move_out: {
         Args: { p_actual_end_date: string; p_allocation_id: string }
         Returns: undefined
+      }
+      give_notice: {
+        Args: {
+          p_allocation_id: string
+          p_reason: string
+          p_remarks?: string
+          p_requested_move_out_date: string
+        }
+        Returns: Database["public"]["Tables"]["allocations"]["Row"]
+      }
+      move_out_settlement: {
+        Args: { p_allocation_id: string }
+        Returns: Json
       }
       earliest_move_out_date: {
         Args: { p_allocation_id: string }

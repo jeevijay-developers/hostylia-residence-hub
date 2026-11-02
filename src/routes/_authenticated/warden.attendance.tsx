@@ -31,6 +31,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
+import { useStudentsOnApprovedLeave } from "@/lib/leave";
+import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
 import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
@@ -115,9 +117,16 @@ export function WardenAttendancePage() {
       m[a.student_id] = { status: a.status as Status, notes: a.notes };
     return m;
   }, [attendanceQ.data]);
+  // Approved leave is derived from leave requests, never marked by hand: those
+  // students always read "On Leave" for the date and are locked below.
+  const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
+  const onApprovedLeave = onLeaveQ.data;
   const effective = useCallback(
-    (id: string): Status => overrides[id] ?? currentMap[id]?.status ?? "PRESENT",
-    [overrides, currentMap],
+    (id: string): Status =>
+      onApprovedLeave?.has(id)
+        ? "ON_LEAVE"
+        : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -182,14 +191,17 @@ export function WardenAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      const missingRemark = roster.find(
+      // On Leave rows (approved leave, or a legacy mark) are never re-sent.
+      const markable = roster.filter((s) => effective(s.id) !== "ON_LEAVE");
+      const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
       );
       if (missingRemark) {
         throw new Error(`Add a remark for ${missingRemark.full_name} before saving`);
       }
-      const entries = roster.map((s) => {
+      if (markable.length === 0) return;
+      const entries = markable.map((s) => {
         const status = effective(s.id);
         return {
           student_id: s.id,
@@ -217,6 +229,7 @@ export function WardenAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
+      if (effective(s.id) === "ON_LEAVE") continue; // never overwrite leave
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -226,6 +239,7 @@ export function WardenAttendancePage() {
 
   return (
     <div className="space-y-4">
+      <LeaveReviewPanel propertyId={propertyId} />
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -307,7 +321,8 @@ export function WardenAttendancePage() {
         {filteredRoster.map((s) => {
           const st = effective(s.id);
           const saved = currentMap[s.id];
-          const needsRemark = st !== "PRESENT";
+          const isLeaveLocked = st === "ON_LEAVE";
+          const needsRemark = st !== "PRESENT" && !isLeaveLocked;
           const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
           const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
           const missingRemark = needsRemark && !remarkValue.trim();
@@ -361,10 +376,16 @@ export function WardenAttendancePage() {
               </div>
 
               <CollapsibleContent className="mt-3 space-y-3">
+                {isLeaveLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    On approved leave — attendance for this date is set by the leave request.
+                  </p>
+                )}
                 <RadioGroup
                   value={st}
                   onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                   className="gap-2"
+                  disabled={isLeaveLocked}
                 >
                   {STATUSES.filter((v) => v !== "ON_LEAVE").map((v) => {
                     const StatusIcon = STATUS_ICON[v];

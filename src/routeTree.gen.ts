@@ -125,6 +125,7 @@ import { Route as AuthenticatedParentProfileIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedParentProfileChangePasswordRouteImport } from './routes/_authenticated/parent.profile.change-password'
 import { Route as AuthenticatedParentProfileEditRouteImport } from './routes/_authenticated/parent.profile.edit'
 import { Route as AuthenticatedSuperAdminTenantsNewRouteImport } from './routes/_authenticated/super-admin.tenants.new'
+import { Route as AuthenticatedWardenMoveOutIdRouteImport } from './routes/_authenticated/warden.move-out.$id'
 import { Route as AuthenticatedWardenProfileIndexRouteImport } from './routes/_authenticated/warden.profile.index'
 import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './routes/_authenticated/warden.profile.change-password'
 import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
@@ -796,6 +797,12 @@ const AuthenticatedSuperAdminTenantsNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedSuperAdminTenantsRoute,
   } as any)
+const AuthenticatedWardenMoveOutIdRoute =
+  AuthenticatedWardenMoveOutIdRouteImport.update({
+    id: '/move-out/$id',
+    path: '/move-out/$id',
+    getParentRoute: () => AuthenticatedWardenRoute,
+  } as any)
 const AuthenticatedWardenProfileIndexRoute =
   AuthenticatedWardenProfileIndexRouteImport.update({
     id: '/profile/',
@@ -966,6 +973,7 @@ export interface FileRoutesByFullPath {
   '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
   '/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
+  '/warden/move-out/$id': typeof AuthenticatedWardenMoveOutIdRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
@@ -1087,6 +1095,7 @@ export interface FileRoutesByTo {
   '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
   '/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
+  '/warden/move-out/$id': typeof AuthenticatedWardenMoveOutIdRoute
   '/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
@@ -1216,6 +1225,7 @@ export interface FileRoutesById {
   '/_authenticated/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/_authenticated/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
   '/_authenticated/super-admin/tenants/new': typeof AuthenticatedSuperAdminTenantsNewRoute
+  '/_authenticated/warden/move-out/$id': typeof AuthenticatedWardenMoveOutIdRoute
   '/_authenticated/warden/profile/change-password': typeof AuthenticatedWardenProfileChangePasswordRoute
   '/_authenticated/warden/profile/edit': typeof AuthenticatedWardenProfileEditRoute
   '/_authenticated/warden/students/$id': typeof AuthenticatedWardenStudentsIdRoute
@@ -1345,6 +1355,7 @@ export interface FileRouteTypes {
     | '/parent/profile/change-password'
     | '/parent/profile/edit'
     | '/super-admin/tenants/new'
+    | '/warden/move-out/$id'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/warden/students/$id'
@@ -1466,6 +1477,7 @@ export interface FileRouteTypes {
     | '/parent/profile/change-password'
     | '/parent/profile/edit'
     | '/super-admin/tenants/new'
+    | '/warden/move-out/$id'
     | '/warden/profile/change-password'
     | '/warden/profile/edit'
     | '/warden/students/$id'
@@ -1594,6 +1606,7 @@ export interface FileRouteTypes {
     | '/_authenticated/parent/profile/change-password'
     | '/_authenticated/parent/profile/edit'
     | '/_authenticated/super-admin/tenants/new'
+    | '/_authenticated/warden/move-out/$id'
     | '/_authenticated/warden/profile/change-password'
     | '/_authenticated/warden/profile/edit'
     | '/_authenticated/warden/students/$id'
@@ -2456,6 +2469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperAdminTenantsNewRouteImport
       parentRoute: typeof AuthenticatedSuperAdminTenantsRoute
     }
+    '/_authenticated/warden/move-out/$id': {
+      id: '/_authenticated/warden/move-out/$id'
+      path: '/move-out/$id'
+      fullPath: '/warden/move-out/$id'
+      preLoaderRoute: typeof AuthenticatedWardenMoveOutIdRouteImport
+      parentRoute: typeof AuthenticatedWardenRoute
+    }
     '/_authenticated/warden/profile/': {
       id: '/_authenticated/warden/profile/'
       path: '/profile'
@@ -2872,6 +2892,7 @@ interface AuthenticatedWardenRouteChildren {
   AuthenticatedWardenRevenueRoute: typeof AuthenticatedWardenRevenueRoute
   AuthenticatedWardenRoomsBedsRoute: typeof AuthenticatedWardenRoomsBedsRoute
   AuthenticatedWardenStudentsRoute: typeof AuthenticatedWardenStudentsRouteWithChildren
+  AuthenticatedWardenMoveOutIdRoute: typeof AuthenticatedWardenMoveOutIdRoute
   AuthenticatedWardenProfileChangePasswordRoute: typeof AuthenticatedWardenProfileChangePasswordRoute
   AuthenticatedWardenProfileEditRoute: typeof AuthenticatedWardenProfileEditRoute
   AuthenticatedWardenProfileIndexRoute: typeof AuthenticatedWardenProfileIndexRoute
@@ -2896,6 +2917,7 @@ const AuthenticatedWardenRouteChildren: AuthenticatedWardenRouteChildren = {
   AuthenticatedWardenRoomsBedsRoute: AuthenticatedWardenRoomsBedsRoute,
   AuthenticatedWardenStudentsRoute:
     AuthenticatedWardenStudentsRouteWithChildren,
+  AuthenticatedWardenMoveOutIdRoute: AuthenticatedWardenMoveOutIdRoute,
   AuthenticatedWardenProfileChangePasswordRoute:
     AuthenticatedWardenProfileChangePasswordRoute,
   AuthenticatedWardenProfileEditRoute: AuthenticatedWardenProfileEditRoute,

@@ -511,7 +511,33 @@ export const bulkMarkAttendance = createServerFn({ method: "POST" })
       .eq("id", data.property_id)
       .maybeSingle();
     if (!prop) throw new Error("Property not found");
-    const rows = data.entries.map((e) => ({
+    // Students on APPROVED leave for this date are locked: their attendance is
+    // derived from the leave request (see fn_apply_leave_to_attendance), so any
+    // entry for them — including "Mark all Present" — is dropped here instead of
+    // overwriting it. fn_attendance_guard_leave() enforces the same in the DB.
+    const { data: leaveRows, error: leaveErr } = await (
+      supabase.from("leave_requests" as never) as unknown as LeaveLookup
+    )
+      .select("student_id")
+      .eq("property_id", data.property_id)
+      .eq("status", "APPROVED")
+      .lte("start_date", data.attendance_date)
+      .gte("end_date", data.attendance_date)
+      .in(
+        "student_id",
+        data.entries.map((e) => e.student_id),
+      );
+    if (leaveErr) throw new Error(leaveErr.message);
+    const onLeave = new Set((leaveRows ?? []).map((r) => r.student_id));
+    const entries = data.entries.filter((e) => !onLeave.has(e.student_id));
+
+    // On Leave is never set by hand — only an approved leave request creates it.
+    if (entries.some((e) => e.status === "ON_LEAVE")) {
+      throw new Error("On Leave can only be set through an approved leave request");
+    }
+    if (entries.length === 0) return { inserted: 0, skipped_on_leave: onLeave.size };
+
+    const rows = entries.map((e) => ({
       tenant_id: prop.tenant_id,
       property_id: data.property_id,
       block_id: data.block_id ?? null,
@@ -527,5 +553,18 @@ export const bulkMarkAttendance = createServerFn({ method: "POST" })
       .from("attendance")
       .upsert(rows, { onConflict: "student_id,attendance_date,session" });
     if (error) throw new Error(error.message);
-    return { inserted: rows.length };
+    return { inserted: rows.length, skipped_on_leave: onLeave.size };
   });
+
+// leave_requests is not in the generated types until types.ts is regenerated
+// after 20261102100000 is applied; minimal hand-typed builder for this lookup.
+interface LeaveLookup {
+  select(columns: string): LeaveLookup;
+  eq(column: string, value: string): LeaveLookup;
+  lte(column: string, value: string): LeaveLookup;
+  gte(column: string, value: string): LeaveLookup;
+  in(
+    column: string,
+    values: string[],
+  ): PromiseLike<{ data: { student_id: string }[] | null; error: { message: string } | null }>;
+}

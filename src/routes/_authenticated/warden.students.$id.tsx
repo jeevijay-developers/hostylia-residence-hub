@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BedDouble,
   Cake,
+  DoorOpen,
   GraduationCap,
   Link2,
   Loader2,
@@ -157,6 +158,15 @@ export function WardenStudentDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <StudentStatusBadge status={s.status} />
+            {!isAccountantView &&
+              can("allocations_edit") &&
+              (s.status === "ACTIVE" || s.status === "NOTICE_GIVEN") && (
+                <Button asChild variant="outline">
+                  <Link to="/warden/move-out/$id" params={{ id }}>
+                    <DoorOpen className="h-4 w-4" /> Move out
+                  </Link>
+                </Button>
+              )}
             {!s.profile_id && (
               <Button
                 variant="outline"

@@ -242,3 +242,34 @@ export function validateKycFile(
   }
   return null;
 }
+
+export const giveNoticeSchema = z.object({
+  allocation_id: z.string().uuid(),
+  requested_move_out_date: z.string().date(),
+  reason: z.string().trim().min(3, "Please tell us why you are leaving").max(500),
+  remarks: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+export type GiveNoticeInput = z.infer<typeof giveNoticeSchema>;
+
+// Shape returned by the move_out_settlement RPC (invoice-wise dues vs. the
+// real deposit ledger balance). Parsed at the trust boundary instead of cast.
+export const moveOutSettlementSchema = z.object({
+  allocation_id: z.string().uuid(),
+  deposit_balance_paise: z.number(),
+  total_dues_paise: z.number(),
+  planned_deduction_paise: z.number(),
+  shortfall_paise: z.number(),
+  refund_in_flight_paise: z.number(),
+  refundable_paise: z.number(),
+  invoices: z.array(
+    z.object({
+      id: z.string().uuid(),
+      invoice_number: z.string(),
+      due_date: z.string(),
+      status: z.string(),
+      balance_paise: z.number(),
+      deduct_paise: z.number(),
+    }),
+  ),
+});
+export type MoveOutSettlement = z.infer<typeof moveOutSettlementSchema>;

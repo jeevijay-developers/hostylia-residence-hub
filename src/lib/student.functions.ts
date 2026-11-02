@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
-import { validateKycFile } from "@/schemas/student";
+import { giveNoticeSchema, moveOutSettlementSchema, validateKycFile } from "@/schemas/student";
 import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
 import { dispatchNotification } from "@/lib/dispatch-notification";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -315,10 +315,12 @@ async function provisionStudentPortalAccount(
     // even though createStudentManual itself allows Warden — same blind spot
     // confirmStudentAdmission already works around with the service-role client.
     const nowIso = new Date().toISOString();
-    const { error: mErr } = await supabaseAdmin.from("tenant_memberships").upsert(
-      { tenant_id: student.tenant_id, user_id: inviteeId, status: "ACTIVE", joined_at: nowIso },
-      { onConflict: "tenant_id,user_id" },
-    );
+    const { error: mErr } = await supabaseAdmin
+      .from("tenant_memberships")
+      .upsert(
+        { tenant_id: student.tenant_id, user_id: inviteeId, status: "ACTIVE", joined_at: nowIso },
+        { onConflict: "tenant_id,user_id" },
+      );
     if (mErr) throw new Error(mErr.message);
 
     const { error: rErr } = await supabaseAdmin.from("role_assignments").insert({
@@ -909,18 +911,83 @@ export const deleteStudent = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Student submits a move-out notice. ACTIVE -> NOTICE_GIVEN only; the
+ * give_notice RPC verifies the allocation belongs to the caller, enforces a
+ * single notice and the notice-period/lock-in minimum date, notifies staff,
+ * and leaves the allocation open and the bed OCCUPIED.
+ */
+export const giveNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => giveNoticeSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("give_notice", {
+      p_allocation_id: data.allocation_id,
+      p_requested_move_out_date: data.requested_move_out_date,
+      p_reason: data.reason,
+      p_remarks: data.remarks || undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const previewMoveOut = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => z.object({ allocation_id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const [{ data: eDate }, { data: refund }] = await Promise.all([
+    const [{ data: eDate }, { data: refund }, settlementRes] = await Promise.all([
       supabase.rpc("earliest_move_out_date", { p_allocation_id: data.allocation_id }),
       supabase.rpc("provisional_refund_paise", { p_allocation_id: data.allocation_id }),
+      supabase.rpc("move_out_settlement", { p_allocation_id: data.allocation_id }),
     ]);
+
+    // The invoice-wise settlement is only available to staff who may move the
+    // allocation out (or manage refunds); everyone else just gets the two
+    // legacy figures, exactly as before.
+    const parsed = settlementRes.error
+      ? null
+      : moveOutSettlementSchema.safeParse(settlementRes.data);
+    const settlement = parsed?.success ? parsed.data : null;
+
+    // Real, captured payments of this allocation's invoices that still have
+    // room for a refund — a deposit refund must hang off one of these
+    // (refunds.payment_id is NOT NULL; no payment rows are ever invented).
+    let refundPayments: { id: string; payment_number: string; remaining_paise: number }[] = [];
+    if (settlement && settlement.refundable_paise > 0) {
+      const { data: pays } = await supabase
+        .from("payments")
+        .select("id, payment_number, amount_paise, paid_at, invoice:invoices!inner(allocation_id)")
+        .eq("invoice.allocation_id", data.allocation_id)
+        .eq("status", "CAPTURED")
+        .order("paid_at", { ascending: true });
+      const ids = (pays ?? []).map((p) => p.id);
+      const { data: existing } = ids.length
+        ? await supabase
+            .from("refunds")
+            .select("payment_id, amount_paise")
+            .in("payment_id", ids)
+            .not("status", "in", "(REJECTED,CANCELLED,FAILED)")
+        : { data: [] as { payment_id: string; amount_paise: number }[] };
+      const used = new Map<string, number>();
+      for (const r of existing ?? []) {
+        used.set(r.payment_id, (used.get(r.payment_id) ?? 0) + r.amount_paise);
+      }
+      refundPayments = (pays ?? [])
+        .map((p) => ({
+          id: p.id,
+          payment_number: p.payment_number,
+          remaining_paise: p.amount_paise - (used.get(p.id) ?? 0),
+        }))
+        .filter((p) => p.remaining_paise > 0);
+    }
+
     return {
       earliest_move_out_date: eDate as string | null,
       provisional_refund_paise: (refund as number | null) ?? 0,
+      settlement,
+      refund_payments: refundPayments,
     };
   });
 

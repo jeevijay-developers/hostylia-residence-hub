@@ -336,6 +336,12 @@ export const initiateRefund = createServerFn({ method: "POST" })
     if (pErr || !pay) throw new Error("Payment not found");
     if (data.amount_paise > pay.amount_paise) throw new Error("Refund exceeds payment");
 
+    // Move-out deposit refunds go Warden clearance -> Admin approval; plain
+    // refunds keep entering PENDING_APPROVAL exactly as before.
+    const initialStatus = data.requires_deposit_clearance
+      ? "PENDING_VERIFICATION"
+      : "PENDING_APPROVAL";
+
     const { data: ref, error } = await supabase
       .from("refunds")
       .insert({
@@ -347,8 +353,10 @@ export const initiateRefund = createServerFn({ method: "POST" })
         amount_paise: data.amount_paise,
         reason: data.reason,
         mode: data.mode,
-        status: "PENDING_APPROVAL",
+        status: initialStatus,
         initiated_by: userId,
+        allocation_id: data.allocation_id ?? null,
+        requires_deposit_clearance: data.requires_deposit_clearance ?? false,
       })
       .select("id, refund_number")
       .single();
@@ -366,7 +374,8 @@ export const initiateRefund = createServerFn({ method: "POST" })
         amount_paise: data.amount_paise,
         reason: data.reason,
         mode: data.mode,
-        status: "PENDING_APPROVAL",
+        status: initialStatus,
+        allocation_id: data.allocation_id ?? null,
         refund_number: ref.refund_number,
       },
     });

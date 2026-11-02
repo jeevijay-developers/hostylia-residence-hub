@@ -82,6 +82,11 @@ export const initiateRefundSchema = z.object({
   amount_paise: z.number().int().min(1),
   reason: z.string().trim().min(3).max(500),
   mode: refundModeEnum,
+  // Move-out deposit refunds: tie the refund to the allocation so the DB guards
+  // (fn_refunds_guard_deposit) cap it at the real ledger balance and route it
+  // through Warden clearance -> Admin approval -> processing.
+  allocation_id: z.string().uuid().optional(),
+  requires_deposit_clearance: z.boolean().optional(),
 });
 
 export const approveRefundSchema = z.object({
