@@ -40,6 +40,7 @@ import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
 import { RoomSelector } from "@/components/attendance/RoomSelector";
 import {
   AttendanceStatusBadge,
@@ -52,6 +53,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/attendance-status";
 import { useStudentsOnApprovedLeave } from "@/lib/leave";
+import { formatGateTime, useStudentsOnOutPass } from "@/lib/out-pass";
 
 export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
@@ -113,12 +115,19 @@ function AdminAttendancePage() {
   // students always read "On leave" for the date and are locked below.
   const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
   const onApprovedLeave = onLeaveQ.data;
+  // Out-Pass is derived from the gate records (actual OUT scan, no IN scan yet):
+  // never marked by hand, never saved as an attendance row, leave wins over it.
+  const outPassQ = useStudentsOnOutPass(propertyId, date);
+  const outPass = outPassQ.data;
+  const outPassIds = useMemo(() => new Set(outPass?.keys() ?? []), [outPass]);
   const effective = useCallback(
     (id: string): Status =>
       onApprovedLeave?.has(id)
         ? "ON_LEAVE"
-        : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
-    [overrides, currentMap, onApprovedLeave],
+        : outPass?.has(id)
+          ? "OUT_PASS"
+          : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave, outPass],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -161,8 +170,9 @@ function AdminAttendancePage() {
         roster,
         effective,
         studentTotal,
+        outPass: outPassIds,
       }),
-    [attendanceQ.data, effective, overrides, roster, studentTotal],
+    [attendanceQ.data, effective, overrides, roster, studentTotal, outPassIds],
   );
 
   const saveMut = useMutation({
@@ -171,8 +181,12 @@ function AdminAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      // On Leave rows (approved leave, or a legacy mark) are never re-sent.
-      const markable = roster.filter((s) => effective(s.id) !== "ON_LEAVE");
+      // On Leave rows (approved leave, or a legacy mark) and Out-Pass students
+      // (derived from the gate records) are never re-sent.
+      const markable = roster.filter((s) => {
+        const e = effective(s.id);
+        return e !== "ON_LEAVE" && e !== "OUT_PASS";
+      });
       const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
@@ -224,7 +238,7 @@ function AdminAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
-      if (effective(s.id) === "ON_LEAVE") continue; // never overwrite leave
+      if (effective(s.id) === "ON_LEAVE" || effective(s.id) === "OUT_PASS") continue; // never overwrite leave / Out-Pass
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -246,6 +260,8 @@ function AdminAttendancePage() {
       <AttendanceReportPanel propertyId={propertyId} totalStudentsTile />
 
       <LeaveReviewPanel propertyId={propertyId} />
+
+      <OverdueOutPassAlerts propertyId={propertyId} />
 
       {/* Controls Bar for Daily Attendance */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
@@ -343,8 +359,9 @@ function AdminAttendancePage() {
           {filteredRoster.map((s) => {
             const st = effective(s.id);
             const saved = currentMap[s.id];
-            const isLeaveLocked = onApprovedLeave?.has(s.id) ?? false;
-            const needsRemark = st !== "PRESENT" && st !== "ON_LEAVE";
+            const outPassInfo = outPass?.get(s.id);
+            const isLeaveLocked = (onApprovedLeave?.has(s.id) ?? false) || st === "OUT_PASS";
+            const needsRemark = st !== "PRESENT" && st !== "ON_LEAVE" && st !== "OUT_PASS";
             const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
             const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
             return (
@@ -372,6 +389,18 @@ function AdminAttendancePage() {
                       {st === "ON_LEAVE" && (
                         <AttendanceStatusBadge status="ON_LEAVE" className="mt-1" />
                       )}
+                      {st === "OUT_PASS" && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <AttendanceStatusBadge status="OUT_PASS" />
+                          {outPassInfo && (
+                            <span className="text-[11px] text-muted-foreground">
+                              Left {formatGateTime(outPassInfo.out_at, outPassInfo.tz)} · due back{" "}
+                              {formatGateTime(outPassInfo.expected_in_at, outPassInfo.tz)}
+                              {outPassInfo.is_overdue ? " · overdue" : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {saved && (
                         <div className="mt-1">
                           <Badge
@@ -398,7 +427,11 @@ function AdminAttendancePage() {
                       <SelectContent className="bg-card border-border text-foreground">
                         {/* On leave is derived from approved leave requests — it is only
                             listed so an existing On leave row can display its value. */}
-                        {STATUSES.filter((v) => v !== "ON_LEAVE" || st === "ON_LEAVE").map((v) => (
+                        {STATUSES.filter(
+                          (v) =>
+                            (v !== "ON_LEAVE" || st === "ON_LEAVE") &&
+                            (v !== "OUT_PASS" || st === "OUT_PASS"),
+                        ).map((v) => (
                           <SelectItem key={v} value={v}>
                             {STATUS_LABEL[v]}
                           </SelectItem>

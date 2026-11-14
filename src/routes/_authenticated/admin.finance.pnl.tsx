@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ExportButton } from "@/components/reports/ExportButton";
 import { RevenueCollectionsSummary } from "@/components/finance/RevenueCollectionsSummary";
 import { RefundApprovalList } from "@/components/finance/RefundApprovalList";
+import { RefundHistoryPanel } from "@/components/finance/RefundHistoryPanel";
 import { getRevenueCollectionsSummary } from "@/lib/finance.functions";
 import { formatInr } from "@/lib/finance";
 import { usePropertyStore } from "@/stores/property-store";
@@ -82,6 +83,7 @@ function RevenueCollectionsPage() {
       />
       <RevenueCollectionsSummary propertyId={propertyId} />
       <RefundApprovalList propertyId={propertyId} />
+      <RefundHistoryPanel propertyId={propertyId} canProcess />
     </div>
   );
 }

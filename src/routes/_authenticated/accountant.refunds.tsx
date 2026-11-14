@@ -24,7 +24,7 @@ function AccRefundsPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
       <RefundRequestForm propertyId={propertyId} />
-      <RefundHistoryPanel propertyId={propertyId} />
+      <RefundHistoryPanel propertyId={propertyId} canProcess />
     </div>
   );
 }

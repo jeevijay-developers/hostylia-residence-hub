@@ -131,7 +131,8 @@ export const getSlaComplianceReport = createServerFn({ method: "POST" })
 
 /**
  * Monthly attendance summary, one row per student, for a given calendar
- * month. Reads v_attendance_monthly_summary (security_invoker — RLS on
+ * month. Reads fn_attendance_monthly_report (falls back to
+ * v_attendance_monthly_summary; both security_invoker — RLS on
  * `attendance` applies: Admin gets the whole property, Warden gets their
  * assigned property/block only, since `att_warden_write` is FOR ALL and
  * already gates SELECT). `.eq("property_id", ...)` further narrows within
@@ -142,12 +143,35 @@ export const getAttendanceReport = createServerFn({ method: "POST" })
   .validator((d) => monthlyAttendanceFilter.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: rows, error } = await supabase
-      .from("v_attendance_monthly_summary" as never)
-      .select("*")
-      .eq("property_id", data.property_id)
-      .eq("month", data.month);
-    if (error) throw new Error(error.message);
+    // Admin / Warden report: fn_attendance_monthly_report adds gate-derived Out-Pass
+    // (separate category, out of the percentage denominator) on top of the same
+    // rules as the view. Student / Parent reports keep reading the view unchanged.
+    // If the function is not deployed yet, fall back to the view so the report
+    // still loads exactly as before.
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+    };
+    const withOutPass = await rpcClient.rpc("fn_attendance_monthly_report", {
+      p_property_id: data.property_id,
+      p_month: data.month,
+    });
+    let rows: unknown[] | null = withOutPass.data;
+    if (withOutPass.error) {
+      console.warn(
+        "[attendance report] Out-Pass report unavailable, using the plain view",
+        withOutPass.error.message,
+      );
+      const { data: viewRows, error } = await supabase
+        .from("v_attendance_monthly_summary" as never)
+        .select("*")
+        .eq("property_id", data.property_id)
+        .eq("month", data.month);
+      if (error) throw new Error(error.message);
+      rows = viewRows as unknown[] | null;
+    }
 
     const studentIds = Array.from(
       new Set((rows ?? []).map((r: any) => r.student_id).filter(Boolean)),

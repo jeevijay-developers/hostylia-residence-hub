@@ -22,7 +22,9 @@ import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
 import { useStudentsOnApprovedLeave } from "@/lib/leave";
+import { formatGateTime, useStudentsOnOutPass } from "@/lib/out-pass";
 import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
 import { RoomSelector } from "@/components/attendance/RoomSelector";
 import {
   STUDENTS_IN_PROPERTY_PAGE_SIZE,
@@ -50,7 +52,7 @@ import {
 // Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
 // Shared with the Accountant attendance route, which reuses this page.
 export const attendanceSearchSchema = z.object({
-  status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
+  status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE", "OUT_PASS"]).optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
@@ -126,12 +128,19 @@ export function WardenAttendancePage() {
   // students always read "On Leave" for the date and are locked below.
   const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
   const onApprovedLeave = onLeaveQ.data;
+  // Out-Pass is derived from the gate records (actual OUT scan, no IN scan yet):
+  // never marked by hand, never saved as an attendance row, leave wins over it.
+  const outPassQ = useStudentsOnOutPass(propertyId, date);
+  const outPass = outPassQ.data;
+  const outPassIds = useMemo(() => new Set(outPass?.keys() ?? []), [outPass]);
   const effective = useCallback(
     (id: string): Status =>
       onApprovedLeave?.has(id)
         ? "ON_LEAVE"
-        : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
-    [overrides, currentMap, onApprovedLeave],
+        : outPass?.has(id)
+          ? "OUT_PASS"
+          : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave, outPass],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -174,8 +183,9 @@ export function WardenAttendancePage() {
         roster,
         effective,
         studentTotal,
+        outPass: outPassIds,
       }),
-    [attendanceQ.data, effective, overrides, roster, studentTotal],
+    [attendanceQ.data, effective, overrides, roster, studentTotal, outPassIds],
   );
 
   const saveMut = useMutation({
@@ -184,8 +194,12 @@ export function WardenAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      // On Leave rows (approved leave, or a legacy mark) are never re-sent.
-      const markable = roster.filter((s) => effective(s.id) !== "ON_LEAVE");
+      // On Leave rows (approved leave, or a legacy mark) and Out-Pass students
+      // (derived from the gate records) are never re-sent.
+      const markable = roster.filter((s) => {
+        const e = effective(s.id);
+        return e !== "ON_LEAVE" && e !== "OUT_PASS";
+      });
       const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
@@ -223,7 +237,7 @@ export function WardenAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
-      if (effective(s.id) === "ON_LEAVE") continue; // never overwrite leave
+      if (effective(s.id) === "ON_LEAVE" || effective(s.id) === "OUT_PASS") continue; // never overwrite leave / Out-Pass
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -234,6 +248,7 @@ export function WardenAttendancePage() {
   return (
     <div className="space-y-4">
       <LeaveReviewPanel propertyId={propertyId} />
+      <OverdueOutPassAlerts propertyId={propertyId} />
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -309,7 +324,9 @@ export function WardenAttendancePage() {
           const st = effective(s.id);
           const saved = currentMap[s.id];
           const isLeaveLocked = st === "ON_LEAVE";
-          const needsRemark = st !== "PRESENT" && !isLeaveLocked;
+          const isOutPass = st === "OUT_PASS";
+          const outPassInfo = outPass?.get(s.id);
+          const needsRemark = st !== "PRESENT" && !isLeaveLocked && !isOutPass;
           const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
           const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
           const missingRemark = needsRemark && !remarkValue.trim();
@@ -368,11 +385,20 @@ export function WardenAttendancePage() {
                     On approved leave — attendance for this date is set by the leave request.
                   </p>
                 )}
+                {isOutPass && (
+                  <p className="text-xs text-muted-foreground">
+                    Out on a gate pass
+                    {outPassInfo
+                      ? ` — left ${formatGateTime(outPassInfo.out_at, outPassInfo.tz)}, due back ${formatGateTime(outPassInfo.expected_in_at, outPassInfo.tz)}${outPassInfo.is_overdue ? " (overdue)" : ""}`
+                      : ""}
+                    . Counted as Out-Pass until the return is scanned at the gate.
+                  </p>
+                )}
                 <RadioGroup
                   value={st}
                   onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                   className="gap-2"
-                  disabled={isLeaveLocked}
+                  disabled={isLeaveLocked || isOutPass}
                 >
                   {MANUAL_ATTENDANCE_STATUSES.map((v) => {
                     const StatusIcon = STATUS_ICON[v];

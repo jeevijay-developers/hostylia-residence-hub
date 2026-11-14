@@ -41,10 +41,13 @@ export function FeePlansPanel({
   propertyId,
   canCreate = true,
   canEdit = true,
+  backFallbackTo,
 }: {
   propertyId: string;
   canCreate?: boolean;
   canEdit?: boolean;
+  /** Passed through to the form: shows its Back button (see FeePlanForm). */
+  backFallbackTo?: string;
 }) {
   const qc = useQueryClient();
   const deleteFn = useServerFn(deleteOrDeactivateFeePlan);
@@ -91,6 +94,7 @@ export function FeePlansPanel({
           propertyId={propertyId}
           plan={editingPlan ?? undefined}
           onSaved={() => setEditingPlan(null)}
+          backFallbackTo={backFallbackTo}
         />
       ) : (
         <p className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">

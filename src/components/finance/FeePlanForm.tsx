@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   ArrowRight,
   Calendar,
   ClipboardList,
@@ -61,13 +63,24 @@ export function FeePlanForm({
   propertyId,
   plan,
   onSaved,
+  backFallbackTo,
 }: {
   propertyId: string;
   /** Present in edit mode — prefills the form and edits this plan in place. */
   plan?: FeePlanFormInput;
   onSaved?: () => void;
+  /** Shows a Back button above the heading. Goes to the previous page; if there is no
+   * history to go back to (e.g. the page was opened directly), goes here instead. */
+  backFallbackTo?: string;
 }) {
   const qc = useQueryClient();
+  const router = useRouter();
+  const navigate = useNavigate();
+  const canGoBack = useCanGoBack();
+  const goBack = () => {
+    if (canGoBack) router.history.back();
+    else navigate({ to: (backFallbackTo ?? "/") as never });
+  };
   const submit = useServerFn(upsertFeePlan);
   const isEdit = !!plan?.id;
   const form = useForm<FeePlanFormInput>({
@@ -102,6 +115,11 @@ export function FeePlanForm({
       onSubmit={form.handleSubmit((v) => m.mutate(v as FeePlanFormInput))}
       className="space-y-6 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6"
     >
+      {backFallbackTo && (
+        <Button type="button" variant="ghost" size="sm" className="-ml-2" onClick={goBack}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+      )}
       <div className="flex items-center gap-3 border-b border-border/80 pb-4">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-accent/15 text-neutral-accent shadow-tone-glow">
           <ClipboardList className="h-5 w-5" />
@@ -116,7 +134,11 @@ export function FeePlanForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField icon={User} label="Name" htmlFor="fee-plan-name" error={errors.name?.message}>
-          <Input id="fee-plan-name" placeholder="e.g. Standard Rent Plan" {...form.register("name")} />
+          <Input
+            id="fee-plan-name"
+            placeholder="e.g. Standard Rent Plan"
+            {...form.register("name")}
+          />
         </FormField>
         <FormField icon={Tag} label="Code" htmlFor="fee-plan-code" error={errors.code?.message}>
           <Input id="fee-plan-code" placeholder="e.g. STD-RENT" {...form.register("code")} />

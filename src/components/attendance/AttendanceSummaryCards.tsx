@@ -1,4 +1,12 @@
-import { CalendarDays, Clock, UserCheck, Users, UserX, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  DoorOpen,
+  UserCheck,
+  Users,
+  UserX,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   ATTENDANCE_STATUS_LABEL,
@@ -13,6 +21,7 @@ export const ATTENDANCE_STATUS_ICON: Record<AttendanceStatus, LucideIcon> = {
   ABSENT: UserX,
   LATE: Clock,
   ON_LEAVE: CalendarDays,
+  OUT_PASS: DoorOpen,
 };
 
 /** Status + icon pill (never colour alone) — used on student records. */
@@ -80,12 +89,12 @@ function SummaryCard({
   );
 }
 
-/** Identical Admin + Warden day summary: Total, Present, Absent, Late, On Leave. */
+/** Identical Admin + Warden day summary: Total, Present, Absent, Late, On Leave, Out-Pass. */
 export function AttendanceSummaryCards({ summary }: { summary: AttendanceSummary }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <SummaryCard icon={Users} label="Total Students" value={summary.total} tone="primary" />
-      {(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"] as const).map((s) => (
+      {(["PRESENT", "ABSENT", "LATE", "ON_LEAVE", "OUT_PASS"] as const).map((s) => (
         <SummaryCard
           key={s}
           icon={ATTENDANCE_STATUS_ICON[s]}

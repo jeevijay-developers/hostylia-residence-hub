@@ -17,7 +17,7 @@ function FeePlansPage() {
 
   return (
     <div className="space-y-6">
-      <FeePlansPanel propertyId={propertyId} />
+      <FeePlansPanel propertyId={propertyId} backFallbackTo="/admin/finance" />
     </div>
   );
 }

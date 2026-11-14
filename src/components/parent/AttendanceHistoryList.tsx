@@ -14,7 +14,7 @@ type AttendanceRecord = Tables<"attendance">;
 
 // Only these statuses carry a reason worth surfacing — matches the
 // requirement (notes are mandatory) enforced in bulkMarkAttendance's schema.
-const REASON_STATUSES = ["ABSENT", "ON_LEAVE"];
+const REASON_STATUSES = ["ABSENT", "ON_LEAVE", "LATE"];
 
 export function AttendanceHistoryList({
   studentId,
@@ -76,7 +76,9 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
               ? "secondary"
               : record.status === "ABSENT"
                 ? "destructive"
-                : "outline"
+                : record.status === "LATE"
+                  ? "warning"
+                  : "outline"
           }
         >
           {record.status}

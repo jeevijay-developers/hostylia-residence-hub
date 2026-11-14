@@ -76,6 +76,7 @@ import {
   isExpectedYearValid,
 } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
 import { cn, getErrorMessage } from "@/lib/utils";
 
 // Lets the Daily Brief's Visitors Today card open the visitors tab scoped to today.
@@ -416,6 +417,8 @@ export function WardenGatePage() {
           />
         </div>
       </div>
+
+      <OverdueOutPassAlerts propertyId={propertyId} />
 
       <Tabs value={tab} onValueChange={setTab}>
         <div className="overflow-x-auto border-b border-border">

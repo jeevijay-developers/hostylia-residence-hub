@@ -387,7 +387,9 @@ export const scanGatePass = createServerFn({ method: "POST" })
             .is("unlinked_at", null);
           for (const row of guardianRows ?? []) {
             if (!row.can_view_gate_events) continue;
-            const phone = (row as { guardians?: { phone?: string | null } }).guardians?.phone?.trim();
+            const phone = (
+              row as { guardians?: { phone?: string | null } }
+            ).guardians?.phone?.trim();
             if (!phone) continue;
             await dispatchNotification(supabase, {
               channel: "SMS",
@@ -529,7 +531,11 @@ export const bulkMarkAttendance = createServerFn({ method: "POST" })
       );
     if (leaveErr) throw new Error(leaveErr.message);
     const onLeave = new Set((leaveRows ?? []).map((r) => r.student_id));
-    const entries = data.entries.filter((e) => !onLeave.has(e.student_id));
+    // Out-Pass is derived from the gate records and never saved as an attendance
+    // row (that would duplicate / fabricate it), so any such entry is dropped.
+    const entries = data.entries.filter(
+      (e) => !onLeave.has(e.student_id) && e.status !== "OUT_PASS",
+    );
 
     // On Leave is never set by hand — only an approved leave request creates it.
     if (entries.some((e) => e.status === "ON_LEAVE")) {

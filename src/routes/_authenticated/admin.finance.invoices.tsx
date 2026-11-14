@@ -37,7 +37,12 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
+import {
+  formatInr,
+  INVOICE_FILTER_OPTIONS,
+  INVOICE_STATUS_TONE,
+  type InvoiceStatus,
+} from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv-export";
 import {
   listPropertyInvoices,
@@ -53,18 +58,6 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/admin/finance/invoices")({
   component: AdminInvoicesPage,
 });
-
-const STATUSES = [
-  "ALL",
-  "DRAFT",
-  "ISSUED",
-  "PARTIALLY_PAID",
-  "PAID",
-  "OVERDUE",
-  "VOID",
-  "PARTIALLY_REFUNDED",
-  "REFUNDED",
-];
 
 const INVOICES_PAGE_SIZE = 20;
 
@@ -198,9 +191,9 @@ function AdminInvoicesPage() {
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          {STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {s}
+          {INVOICE_FILTER_OPTIONS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
           ))}
         </SelectContent>
