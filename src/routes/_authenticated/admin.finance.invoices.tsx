@@ -581,7 +581,7 @@ function InvoiceDetailDialog({
               </span>
               <span>Paid</span>
               <span className="text-right text-foreground">{formatInr(row.paid_paise)}</span>
-              <span>Balance</span>
+              <span>Remaining Balance</span>
               <span className="text-right text-foreground">{formatInr(row.balance_paise)}</span>
             </div>
 

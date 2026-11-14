@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { ChevronDown, ClipboardList, FileEdit, MessageSquare } from "lucide-react";
 import { ComplaintForm } from "@/components/complaints/ComplaintForm";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
@@ -15,6 +16,8 @@ import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/student/complaints")({
+  // `complaintId` lets a notification jump straight to that complaint.
+  validateSearch: z.object({ complaintId: z.string().uuid().optional() }),
   component: StudentComplaintsPage,
 });
 
@@ -23,6 +26,7 @@ function StudentComplaintsPage() {
   const student = useStudentSelf();
   const { can } = useStudentPermissions();
   const canWrite = can("complaints", "edit");
+  const { complaintId } = Route.useSearch();
   const complaints = useComplaints({
     propertyId: student.data?.property_id,
     studentId: student.data?.id,
@@ -60,6 +64,7 @@ function StudentComplaintsPage() {
               complaint={c}
               userId={role.data?.userId ?? null}
               canWrite={canWrite}
+              highlightId={complaintId}
             />
           ))}
           {complaints.data && complaints.data.length === 0 && (
@@ -75,16 +80,27 @@ function StudentComplaintItem({
   complaint,
   userId,
   canWrite,
+  highlightId,
 }: {
   complaint: ComplaintWithRelations;
   userId: string | null;
   canWrite: boolean;
+  highlightId?: string;
 }) {
-  const [statusOpen, setStatusOpen] = useState(false);
+  const isHighlighted = complaint.id === highlightId;
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [statusOpen, setStatusOpen] = useState(isHighlighted);
   const [conversationOpen, setConversationOpen] = useState(false);
 
+  useEffect(() => {
+    if (isHighlighted) {
+      setStatusOpen(true);
+      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
+
   return (
-    <div className="space-y-3">
+    <div ref={rowRef} className="space-y-3">
       <ComplaintCard
         complaint={complaint}
         actions={

@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Layers,
   Package,
+  PlayCircle,
   RotateCcw,
   UserPlus,
 } from "lucide-react";
@@ -73,17 +74,9 @@ export const Route = createFileRoute("/_authenticated/admin/complaints")({
 type StaffListItem = Awaited<ReturnType<typeof listStaff>>[number];
 type WardenRow = StaffListItem & { role: "WARDEN" };
 
-const STATUSES = [
-  "ALL",
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "WAITING_FOR_STUDENT",
-  "RESOLVED",
-  "CLOSED",
-  "REOPENED",
-  "CANCELLED",
-];
+// WAITING_FOR_STUDENT / CANCELLED have no workflow that enters them, so they are not offered as
+// filters (existing rows keep the status and still show under ALL).
+const STATUSES = ["ALL", "OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED", "REOPENED"];
 
 function useBlocks(propertyId: string | null | undefined) {
   return useQuery({
@@ -301,6 +294,21 @@ function AdminComplaintRow({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Resolve failed"),
   });
 
+  const startWorking = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("complaints")
+        .update({ status: "IN_PROGRESS" })
+        .eq("id", complaint.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Work started");
+      qc.invalidateQueries({ queryKey: ["complaints"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not start work"),
+  });
+
   const reopen = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -324,7 +332,13 @@ function AdminComplaintRow({
     "WAITING_FOR_STUDENT",
     "REOPENED",
   ].includes(complaint.status);
-  const canReopen = ["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
+  const canStartWorking = complaint.status === "ASSIGNED";
+  // CLOSED is terminal. RESOLVED can be reopened only inside the 48h window (the database enforces it).
+  const canReopen =
+    complaint.status === "CANCELLED" ||
+    (complaint.status === "RESOLVED" &&
+      complaint.reopen_until != null &&
+      new Date(complaint.reopen_until).getTime() > Date.now());
   // Once resolved/closed/cancelled, a stale sla_breached_at (set before
   // resolution and never cleared) shouldn't keep showing this as a live red
   // alert — mirrors slaMeta()'s own "done" gating for the SlaBadge/accent.
@@ -389,6 +403,17 @@ function AdminComplaintRow({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+            )}
+            {canStartWorking && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl font-semibold"
+                onClick={() => startWorking.mutate()}
+                disabled={startWorking.isPending}
+              >
+                <PlayCircle className="h-4 w-4" /> Start Working
+              </Button>
             )}
             {canResolve && (
               <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>

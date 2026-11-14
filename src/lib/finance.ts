@@ -84,6 +84,25 @@ export type PaymentStatus =
   | "PARTIALLY_REFUNDED"
   | "REFUNDED";
 
+/** Friendly payment status labels (stored values are unchanged). */
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  CREATED: "Created",
+  PENDING: "Pending",
+  AUTHORIZED: "Authorized",
+  CAPTURED: "Successful",
+  FAILED: "Failed",
+  CANCELLED: "Cancelled",
+  PARTIALLY_REFUNDED: "Partially refunded",
+  REFUNDED: "Refunded",
+};
+
+/** Money actually received: ONLY CAPTURED payments count. Failed/pending/cancelled never do. */
+export function sumReceivedPaise(
+  payments: ReadonlyArray<{ status: string; amount_paise: number }>,
+) {
+  return payments.reduce((sum, p) => (p.status === "CAPTURED" ? sum + p.amount_paise : sum), 0);
+}
+
 export const PAYMENT_STATUS_TONE: Record<PaymentStatus, string> = {
   CREATED: "bg-muted text-muted-foreground",
   PENDING: "bg-warning/10 text-warning",

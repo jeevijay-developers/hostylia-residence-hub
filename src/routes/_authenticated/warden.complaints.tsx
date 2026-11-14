@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,11 +38,18 @@ import {
   complaintStatusEnum,
   resolutionSchema,
   wardenStatusOptions,
+  COMPLAINT_STATUS_TRANSITIONS,
+  UNSUPPORTED_COMPLAINT_STATUSES,
+  type ComplaintStatus,
 } from "@/schemas/complaint";
 
 // Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
 // Shared with the Accountant complaints route, which reuses this page.
-export const complaintsSearchSchema = z.object({ status: z.literal("PENDING").optional() });
+// `complaintId` lets a notification open that complaint's details directly.
+export const complaintsSearchSchema = z.object({
+  status: z.literal("PENDING").optional(),
+  complaintId: z.string().uuid().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/warden/complaints")({
   validateSearch: complaintsSearchSchema,
@@ -62,7 +69,13 @@ const PENDING_COMPLAINT_STATUSES = [
   "REOPENED",
 ];
 
-const STATUS_FILTER_OPTIONS = ["ALL", "PENDING", ...complaintStatusEnum.options];
+const STATUS_FILTER_OPTIONS = [
+  "ALL",
+  "PENDING",
+  ...complaintStatusEnum.options.filter(
+    (s) => !(UNSUPPORTED_COMPLAINT_STATUSES as readonly string[]).includes(s),
+  ),
+];
 const PRIORITY_FILTER_OPTIONS = ["ALL", ...complaintPriorityEnum.options];
 
 export function WardenComplaintsPage() {
@@ -73,7 +86,7 @@ export function WardenComplaintsPage() {
   const categoriesQ = useComplaintCategories(propertyId);
 
   const [search, setSearch] = useState("");
-  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<
+  const { status: initialStatus, complaintId } = useSearch({ strict: false }) as z.infer<
     typeof complaintsSearchSchema
   >;
   const [status, setStatus] = useState(initialStatus ?? "ALL");
@@ -87,6 +100,17 @@ export function WardenComplaintsPage() {
     () => (all.data ?? []).filter((c) => !c.assigned_to || c.assigned_to === userId),
     [all.data, userId],
   );
+
+  // Open the complaint a notification pointed at, once the list has loaded.
+  const openedFromLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!complaintId || openedFromLink.current === complaintId) return;
+    const match = scoped.find((c) => c.id === complaintId);
+    if (match) {
+      openedFromLink.current = complaintId;
+      setActiveComplaint(match);
+    }
+  }, [complaintId, scoped]);
 
   const list = useMemo(() => {
     let l = scoped;
@@ -216,7 +240,16 @@ function ComplaintDetailsDialog({
 
   const resolvedByQ = useResolvedByLabel(complaint.resolved_by);
 
-  const statusOptions = Array.from(new Set([complaint.status, ...wardenStatusOptions]));
+  // Only transitions the server accepts from the current status (plus the current one, so the
+  // select always shows where the complaint is now).
+  const allowedNext = COMPLAINT_STATUS_TRANSITIONS[complaint.status as ComplaintStatus] ?? [];
+  const statusOptions = Array.from(
+    new Set([
+      complaint.status,
+      ...wardenStatusOptions.filter((s) => (allowedNext as readonly string[]).includes(s)),
+    ]),
+  );
+  const canStartWorking = complaint.status === "ASSIGNED";
 
   const updateStatus = useMutation({
     mutationFn: async () => {
@@ -246,6 +279,22 @@ function ComplaintDetailsDialog({
       qc.invalidateQueries({ queryKey: ["complaints"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Could not update status")),
+  });
+
+  const startWorking = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("complaints")
+        .update({ status: "IN_PROGRESS" })
+        .eq("id", complaint.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Work started");
+      setStatus("IN_PROGRESS");
+      qc.invalidateQueries({ queryKey: ["complaints"] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "Could not start work")),
   });
 
   return (
@@ -306,15 +355,29 @@ function ComplaintDetailsDialog({
                   rows={3}
                 />
               )}
-              <Button
-                size="sm"
-                disabled={
-                  updateStatus.isPending || (status === complaint.status && status !== "RESOLVED")
-                }
-                onClick={() => updateStatus.mutate()}
-              >
-                Save status
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {canStartWorking && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={startWorking.isPending || updateStatus.isPending}
+                    onClick={() => startWorking.mutate()}
+                  >
+                    Start Working
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  disabled={
+                    updateStatus.isPending ||
+                    startWorking.isPending ||
+                    (status === complaint.status && status !== "RESOLVED")
+                  }
+                  onClick={() => updateStatus.mutate()}
+                >
+                  Save status
+                </Button>
+              </div>
             </div>
           )}
 

@@ -45,7 +45,7 @@ export function InvoiceTable({
               <th className="px-3 py-3 sm:px-6 sm:py-4">Due</th>
               <th className="px-3 py-3 sm:px-6 sm:py-4">Status</th>
               <th className="px-3 py-3 text-right sm:px-6 sm:py-4">Total</th>
-              <th className="px-3 py-3 text-right sm:px-6 sm:py-4">Balance</th>
+              <th className="px-3 py-3 text-right sm:px-6 sm:py-4">Remaining Balance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">

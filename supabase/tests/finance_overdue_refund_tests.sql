@@ -6,6 +6,7 @@
 -- Prereqs:  supabase db reset   (migrations + seed.sql)
 -- Run:      psql -v ON_ERROR_STOP=1 -f supabase/tests/finance_overdue_refund_tests.sql
 --
+-- Requires migrations 20261109090000 AND 20261110090000.
 -- NOTE: this file has NOT been executed against a real Postgres. The same scenarios (plus timezone,
 -- retry, replay, deposit-ledger and backfill cases) were run in-process on PGlite; see docs/MEMORY.md.
 -- Fixture ids/roles below follow the seed used by rls_tests.sql; adjust if your seed differs.
@@ -122,7 +123,9 @@ SELECT pg_temp.assert_text((SELECT status FROM public.refunds WHERE id = '999999
 SELECT pg_temp.assert_eq((SELECT refunded_paise FROM public.invoices
   WHERE id = '99999999-0000-0000-0000-0000000000f1'), 4000, 'refunded_paise = 4000 (counted once despite replay)');
 SELECT pg_temp.assert_text((SELECT status FROM public.invoices WHERE id = '99999999-0000-0000-0000-0000000000f1'),
-  'PARTIALLY_REFUNDED', 'invoice PARTIALLY_REFUNDED');
+  'OVERDUE', 'partially refunded + balance + past due (migration 20261110090000) -> OVERDUE, not PARTIALLY_REFUNDED');
+SELECT pg_temp.assert_eq((SELECT balance_paise FROM public.invoices
+  WHERE id = '99999999-0000-0000-0000-0000000000f1'), 4000, 'balance re-opens by the refunded amount (total - (paid - refunded))');
 SELECT pg_temp.assert_eq((SELECT paid_paise FROM public.invoices
   WHERE id = '99999999-0000-0000-0000-0000000000f1'), 10000, 'paid_paise stays the gross captured amount');
 SELECT pg_temp.assert_text((SELECT status FROM public.payments WHERE id = '99999999-0000-0000-0000-0000000000e1'),
