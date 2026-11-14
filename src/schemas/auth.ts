@@ -29,6 +29,36 @@ export const indianMobileSchema = z
   .trim()
   .regex(/^(?:\+?91)?[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number");
 
+export const INDIAN_MOBILE_MESSAGE =
+  "Enter a valid 10-digit Indian mobile number (starting with 6–9, +91 optional)";
+
+/**
+ * The one Indian-mobile rule, shared by the browser and the server: exactly 10
+ * digits starting with 6–9, with an optional "+91" / "91" country code and
+ * nothing else (no foreign codes, letters, spaces or symbols). Returns the
+ * canonical "+91XXXXXXXXXX", or null when the value is not a valid number.
+ */
+export function normalizeIndianMobile(input: string): string | null {
+  const match = /^(?:\+?91)?([6-9]\d{9})$/.exec(input.trim());
+  return match ? `+91${match[1]}` : null;
+}
+
+/** Zod field for an Indian mobile: validates with normalizeIndianMobile and outputs "+91XXXXXXXXXX". */
+export function indianMobileField(requiredMessage: string) {
+  return z
+    .string()
+    .trim()
+    .min(1, requiredMessage)
+    .transform((value, ctx) => {
+      const normalized = normalizeIndianMobile(value);
+      if (!normalized) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: INDIAN_MOBILE_MESSAGE });
+        return z.NEVER;
+      }
+      return normalized;
+    });
+}
+
 /**
  * Sanitizes phone input as the user types — used as an `onChange` filter so
  * invalid characters (letters, symbols, extra digits) never make it into

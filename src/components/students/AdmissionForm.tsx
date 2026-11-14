@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWidget";
 import { submitPublicAdmission } from "@/lib/student.functions";
+import { sanitizePhoneKeystroke } from "@/schemas/auth";
 import { publicAdmissionSchema, type PublicAdmissionInput } from "@/schemas/student";
 
 interface Props {
@@ -23,10 +24,85 @@ interface Props {
   onSuccess: (admissionNumber: string) => void;
 }
 
+type FormValues = Omit<PublicAdmissionInput, "turnstileToken">;
+// Every text field that can show an error, in the order they appear on the page
+// (so "focus the first invalid field" lands on the topmost one).
+type FieldKey =
+  | "full_name"
+  | "phone"
+  | "email"
+  | "date_of_birth"
+  | "academic_institute"
+  | "course_name"
+  | "academic_year"
+  | "guardian_name"
+  | "guardian_phone"
+  | "guardian_relationship";
+const FIELD_ORDER: FieldKey[] = [
+  "full_name",
+  "phone",
+  "email",
+  "date_of_birth",
+  "academic_institute",
+  "course_name",
+  "academic_year",
+  "guardian_name",
+  "guardian_phone",
+  "guardian_relationship",
+];
+const FIELD_IDS: Record<FieldKey, string> = {
+  full_name: "fn",
+  phone: "ph",
+  email: "em",
+  date_of_birth: "dob",
+  academic_institute: "ai",
+  course_name: "cn",
+  academic_year: "ay",
+  guardian_name: "gn",
+  guardian_phone: "gp",
+  guardian_relationship: "gr",
+};
+type FieldErrors = Partial<Record<FieldKey, string>>;
+
+/** Validates one field with the SAME rule the server applies (publicAdmissionSchema). */
+function validateField(key: FieldKey, value: string | undefined): string | null {
+  const result = publicAdmissionSchema.shape[key].safeParse(value ?? "");
+  return result.success ? null : (result.error.issues[0]?.message ?? "Invalid value");
+}
+
+/** Maps a server rejection (Zod issues as JSON, or a duplicate-student message) onto fields. */
+function serverFieldErrors(message: string): FieldErrors {
+  const errors: FieldErrors = {};
+  try {
+    const issues: unknown = JSON.parse(message);
+    if (Array.isArray(issues)) {
+      for (const issue of issues as { path?: unknown[]; message?: string }[]) {
+        const key = issue.path?.[0];
+        if (typeof key === "string" && key in FIELD_IDS && issue.message) {
+          errors[key as FieldKey] ??= issue.message;
+        }
+      }
+    }
+  } catch {
+    if (/phone number/i.test(message)) errors.phone = message;
+    else if (/email address/i.test(message)) errors.email = message;
+  }
+  return errors;
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <p id={`${id}-error`} role="alert" className="mt-1 text-sm text-destructive">
+      {message}
+    </p>
+  ) : null;
+}
+
 export function AdmissionForm({ propertySlug, onSuccess }: Props) {
   const submit = useServerFn(submitPublicAdmission);
   const captcha = useCaptchaToken();
-  const [form, setForm] = useState<Omit<PublicAdmissionInput, "turnstileToken">>({
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [form, setForm] = useState<FormValues>({
     property_slug: propertySlug,
     full_name: "",
     phone: "",
@@ -49,12 +125,38 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
     },
     onError: (e) => {
       captcha.reset();
-      toast.error(e instanceof Error ? e.message : "Failed to submit");
+      const message = e instanceof Error ? e.message : "Failed to submit";
+      const fieldErrors = serverFieldErrors(message);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        const first = FIELD_ORDER.find((k) => fieldErrors[k]);
+        if (first) focusField(first);
+        toast.error("Please correct the highlighted fields.");
+        return;
+      }
+      toast.error(message);
     },
   });
 
+  function focusField(key: FieldKey) {
+    const el = document.getElementById(FIELD_IDS[key]);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const next: FieldErrors = {};
+    for (const key of FIELD_ORDER) {
+      const error = validateField(key, form[key]);
+      if (error) next[key] = error;
+    }
+    setErrors(next);
+    const firstInvalid = FIELD_ORDER.find((k) => next[k]);
+    if (firstInvalid) {
+      focusField(firstInvalid);
+      return;
+    }
     if (!captcha.token) {
       toast.error("Complete the verification check before submitting.");
       return;
@@ -64,54 +166,69 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
     }
+    // parsed.data carries the normalized "+91XXXXXXXXXX" phone numbers.
     mut.mutate(parsed.data);
   }
 
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+  const set = <K extends keyof FormValues>(k: K, v: FormValues[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  // Props shared by every validated text field: validates as the user types and on
+  // blur, shows the message under the field, and clears it the moment it is corrected.
+  function field(key: FieldKey, transform: (v: string) => string = (v) => v) {
+    const error = errors[key];
+    return {
+      id: FIELD_IDS[key],
+      value: form[key] ?? "",
+      "aria-invalid": error ? true : undefined,
+      "aria-describedby": error ? `${FIELD_IDS[key]}-error` : undefined,
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = transform(e.target.value);
+        set(key, value);
+        setErrors((prev) => ({ ...prev, [key]: validateField(key, value) ?? undefined }));
+      },
+      onBlur: () =>
+        setErrors((prev) => ({ ...prev, [key]: validateField(key, form[key]) ?? undefined })),
+    };
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <section className="space-y-4">
         <h2 className="font-display text-lg font-semibold">Student details</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="fn">Full name *</Label>
-            <Input
-              id="fn"
-              value={form.full_name}
-              onChange={(e) => set("full_name", e.target.value)}
-              required
-            />
+            <Input {...field("full_name")} aria-required />
+            <FieldError id="fn" message={errors.full_name} />
           </div>
           <div>
-            <Label htmlFor="ph">Phone (with +91) *</Label>
+            <Label htmlFor="ph">Phone (+91 optional) *</Label>
             <Input
-              id="ph"
+              {...field("phone", sanitizePhoneKeystroke)}
               inputMode="tel"
-              placeholder="+919999999999"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              required
+              autoComplete="tel"
+              placeholder="9876543210"
+              aria-required
             />
+            <FieldError id="ph" message={errors.phone} />
           </div>
           <div>
             <Label htmlFor="em">Email</Label>
-            <Input
-              id="em"
-              type="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-            />
+            <Input {...field("email")} type="email" />
+            <FieldError id="em" message={errors.email} />
           </div>
           <div>
             <Label htmlFor="dob">Date of birth</Label>
             <Input
-              id="dob"
+              {...field("date_of_birth")}
               type="date"
-              value={form.date_of_birth}
-              onChange={(e) => set("date_of_birth", e.target.value)}
+              // Chrome draws the native picker icon dark unless told otherwise, so it vanished on
+              // the dark field. Pin the icon to dark (light scheme) and invert it in the dark
+              // theme — fully opaque and clickable in both. Only this field is touched.
+              className="[color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:invert"
             />
+            <FieldError id="dob" message={errors.date_of_birth} />
           </div>
           <div>
             <Label>Gender</Label>
@@ -137,28 +254,18 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="ai">Institute</Label>
-            <Input
-              id="ai"
-              value={form.academic_institute}
-              onChange={(e) => set("academic_institute", e.target.value)}
-            />
+            <Input {...field("academic_institute")} />
+            <FieldError id="ai" message={errors.academic_institute} />
           </div>
           <div>
             <Label htmlFor="cn">Course</Label>
-            <Input
-              id="cn"
-              value={form.course_name}
-              onChange={(e) => set("course_name", e.target.value)}
-            />
+            <Input {...field("course_name")} />
+            <FieldError id="cn" message={errors.course_name} />
           </div>
           <div>
             <Label htmlFor="ay">Academic year</Label>
-            <Input
-              id="ay"
-              placeholder="2026-27"
-              value={form.academic_year}
-              onChange={(e) => set("academic_year", e.target.value)}
-            />
+            <Input {...field("academic_year")} placeholder="2026-27" />
+            <FieldError id="ay" message={errors.academic_year} />
           </div>
         </div>
       </section>
@@ -168,33 +275,28 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="gn">Guardian name *</Label>
-            <Input
-              id="gn"
-              value={form.guardian_name}
-              onChange={(e) => set("guardian_name", e.target.value)}
-              required
-            />
+            <Input {...field("guardian_name")} aria-required />
+            <FieldError id="gn" message={errors.guardian_name} />
           </div>
           <div>
-            <Label htmlFor="gp">Guardian phone *</Label>
+            <Label htmlFor="gp">Guardian phone (+91 optional) *</Label>
             <Input
-              id="gp"
+              {...field("guardian_phone", sanitizePhoneKeystroke)}
               inputMode="tel"
-              placeholder="+919999999999"
-              value={form.guardian_phone}
-              onChange={(e) => set("guardian_phone", e.target.value)}
-              required
+              autoComplete="off"
+              placeholder="9876543210"
+              aria-required
             />
+            <FieldError id="gp" message={errors.guardian_phone} />
           </div>
           <div>
             <Label htmlFor="gr">Relationship *</Label>
             <Input
-              id="gr"
+              {...field("guardian_relationship")}
               placeholder="Parent / Guardian / Sibling"
-              value={form.guardian_relationship}
-              onChange={(e) => set("guardian_relationship", e.target.value)}
-              required
+              aria-required
             />
+            <FieldError id="gr" message={errors.guardian_relationship} />
           </div>
         </div>
       </section>

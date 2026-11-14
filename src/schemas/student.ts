@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { phoneSchema as authPhoneSchema, emailSchema } from "@/schemas/auth";
+import { phoneSchema as authPhoneSchema, emailSchema, indianMobileField } from "@/schemas/auth";
 import { addressSchema, bloodGroupSchema } from "@/schemas/profile";
 
 const phoneSchema = authPhoneSchema;
@@ -25,19 +25,54 @@ export const allocationStatusEnum = z.enum([
   "CANCELLED",
 ]);
 
+// Both phone fields are Indian mobiles and are normalized to "+91XXXXXXXXXX" — the
+// same rule runs in the form (field-by-field) and in submitPublicAdmission.
 export const publicAdmissionSchema = z.object({
   property_slug: z.string().trim().min(2).max(80),
-  full_name: z.string().trim().min(2).max(120),
-  phone: phoneSchema,
-  email: z.string().trim().email().max(255).optional().or(z.literal("")),
-  date_of_birth: z.string().date().optional().or(z.literal("")),
+  full_name: z
+    .string()
+    .trim()
+    .min(2, "Enter the student's full name (at least 2 characters)")
+    .max(120, "Name can be at most 120 characters"),
+  phone: indianMobileField("Student phone number is required"),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .max(255, "Email can be at most 255 characters")
+    .optional()
+    .or(z.literal("")),
+  date_of_birth: z.string().date("Enter a valid date of birth").optional().or(z.literal("")),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  academic_institute: z.string().trim().max(160).optional().or(z.literal("")),
-  course_name: z.string().trim().max(160).optional().or(z.literal("")),
-  academic_year: z.string().trim().max(40).optional().or(z.literal("")),
-  guardian_name: z.string().trim().min(2).max(120),
-  guardian_phone: phoneSchema,
-  guardian_relationship: z.string().trim().min(2).max(60),
+  academic_institute: z
+    .string()
+    .trim()
+    .max(160, "Institute can be at most 160 characters")
+    .optional()
+    .or(z.literal("")),
+  course_name: z
+    .string()
+    .trim()
+    .max(160, "Course can be at most 160 characters")
+    .optional()
+    .or(z.literal("")),
+  academic_year: z
+    .string()
+    .trim()
+    .max(40, "Academic year can be at most 40 characters")
+    .optional()
+    .or(z.literal("")),
+  guardian_name: z
+    .string()
+    .trim()
+    .min(2, "Enter the guardian's name (at least 2 characters)")
+    .max(120, "Name can be at most 120 characters"),
+  guardian_phone: indianMobileField("Guardian phone number is required"),
+  guardian_relationship: z
+    .string()
+    .trim()
+    .min(2, "Enter the relationship (e.g. Parent, Guardian)")
+    .max(60, "Relationship can be at most 60 characters"),
   turnstileToken: z.string().trim().min(1).max(2048),
 });
 export type PublicAdmissionInput = z.infer<typeof publicAdmissionSchema>;
@@ -273,3 +308,19 @@ export const moveOutSettlementSchema = z.object({
   ),
 });
 export type MoveOutSettlement = z.infer<typeof moveOutSettlementSchema>;
+
+/**
+ * Identity keys for duplicate-student detection. They MUST mirror the database
+ * (public.normalize_phone and lower(btrim(email)) in the student guard trigger):
+ * phone = digits only, last 10 when there are at least 10; email = trimmed,
+ * lower-cased. Blank / digit-less values have no key and are never compared.
+ */
+export function studentPhoneKey(phone: string | null | undefined): string | null {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits === "") return null;
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+export function studentEmailKey(email: string | null | undefined): string | null {
+  const key = (email ?? "").trim().toLowerCase();
+  return key === "" ? null : key;
+}
