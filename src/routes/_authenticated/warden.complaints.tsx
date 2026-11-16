@@ -37,6 +37,7 @@ import {
   complaintPriorityEnum,
   complaintStatusEnum,
   resolutionSchema,
+  resolutionSummaryError,
   wardenStatusOptions,
   COMPLAINT_STATUS_TRANSITIONS,
   UNSUPPORTED_COMPLAINT_STATUSES,
@@ -224,19 +225,27 @@ export function WardenComplaintsPage() {
   );
 }
 
-function ComplaintDetailsDialog({
+// Shared with the Admin complaints page. `showStatusControls` defaults to true (Warden UI unchanged);
+// Admin passes false because it keeps its own Assign / Start Working / Resolve / Reopen actions.
+export function ComplaintDetailsDialog({
   complaint,
   userId,
   onOpenChange,
+  showStatusControls = true,
 }: {
   complaint: ComplaintWithRelations;
   userId: string | null;
   onOpenChange: (open: boolean) => void;
+  showStatusControls?: boolean;
 }) {
   const qc = useQueryClient();
   const { can } = useStaffPermissions();
   const [status, setStatus] = useState<string>(complaint.status);
   const [resolutionSummary, setResolutionSummary] = useState(complaint.resolution_summary ?? "");
+  const [summaryTouched, setSummaryTouched] = useState(false);
+  // Validated on every change; only matters while the RESOLVED status is selected.
+  const summaryError = status === "RESOLVED" ? resolutionSummaryError(resolutionSummary) : null;
+  const showSummaryError = summaryTouched && summaryError !== null;
 
   const resolvedByQ = useResolvedByLabel(complaint.resolved_by);
 
@@ -256,7 +265,9 @@ function ComplaintDetailsDialog({
       if (status === "RESOLVED") {
         const parsed = resolutionSchema.safeParse({ resolution_summary: resolutionSummary });
         if (!parsed.success)
-          throw new Error(parsed.error.issues[0]?.message ?? "Resolution notes are required");
+          throw new Error(
+            resolutionSummaryError(resolutionSummary) ?? "Resolution notes are required",
+          );
         const { error } = await supabase
           .from("complaints")
           .update({
@@ -332,7 +343,7 @@ function ComplaintDetailsDialog({
             )
           )}
 
-          {can("complaints") && (
+          {showStatusControls && can("complaints") && (
             <div className="space-y-2 rounded-md border border-border p-3">
               <Label className="text-xs">Status</Label>
               <Select value={status} onValueChange={setStatus}>
@@ -348,12 +359,26 @@ function ComplaintDetailsDialog({
                 </SelectContent>
               </Select>
               {status === "RESOLVED" && (
-                <Textarea
-                  placeholder="Resolution notes (required)"
-                  value={resolutionSummary}
-                  onChange={(e) => setResolutionSummary(e.target.value)}
-                  rows={3}
-                />
+                <div className="space-y-1.5">
+                  <Textarea
+                    placeholder="Example: Water leakage repaired and plumbing issue fixed."
+                    aria-label="Resolution summary (required)"
+                    value={resolutionSummary}
+                    onChange={(e) => {
+                      setResolutionSummary(e.target.value);
+                      setSummaryTouched(true);
+                    }}
+                    onBlur={() => setSummaryTouched(true)}
+                    rows={3}
+                    aria-invalid={showSummaryError}
+                    aria-describedby={showSummaryError ? "resolve-summary-error" : undefined}
+                  />
+                  {showSummaryError && (
+                    <p id="resolve-summary-error" role="alert" className="text-xs text-destructive">
+                      {summaryError}
+                    </p>
+                  )}
+                </div>
               )}
               <div className="flex flex-wrap gap-2">
                 {canStartWorking && (
@@ -371,9 +396,13 @@ function ComplaintDetailsDialog({
                   disabled={
                     updateStatus.isPending ||
                     startWorking.isPending ||
+                    summaryError !== null ||
                     (status === complaint.status && status !== "RESOLVED")
                   }
-                  onClick={() => updateStatus.mutate()}
+                  onClick={() => {
+                    setSummaryTouched(true);
+                    updateStatus.mutate();
+                  }}
                 >
                   Save status
                 </Button>

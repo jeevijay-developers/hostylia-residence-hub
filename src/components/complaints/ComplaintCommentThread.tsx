@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/utils";
 import { useComplaintComments, type ComplaintWithRelations } from "@/lib/complaint";
 import { complaintCommentSchema } from "@/schemas/complaint";
+
+const ROLE_BADGE: Record<string, { label: string; className: string }> = {
+  STUDENT: { label: "Student", className: "border-border bg-muted text-muted-foreground" },
+  WARDEN: { label: "Warden", className: "border-transparent bg-info/10 text-info" },
+  ADMIN: { label: "Admin", className: "border-transparent bg-primary/10 text-primary" },
+};
 
 export function ComplaintCommentThread({
   complaint,
@@ -58,8 +65,18 @@ export function ComplaintCommentThread({
         {(commentsQ.data ?? []).map((m) => (
           <div key={m.id} className="rounded-md border border-border p-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">
-                {m.is_anonymous_author ? "Anonymous student" : (m.author_full_name ?? "User")}
+              <span className="flex items-center gap-1.5">
+                <span className="font-medium text-foreground">
+                  {m.is_anonymous_author ? "Anonymous student" : (m.author_full_name ?? "User")}
+                </span>
+                {m.author_role && ROLE_BADGE[m.author_role] && (
+                  <Badge
+                    variant="outline"
+                    className={`px-1.5 py-0 text-[10px] ${ROLE_BADGE[m.author_role].className}`}
+                  >
+                    {ROLE_BADGE[m.author_role].label}
+                  </Badge>
+                )}
               </span>
               <span className="text-muted-foreground">
                 {m.created_at ? new Date(m.created_at).toLocaleString() : ""}

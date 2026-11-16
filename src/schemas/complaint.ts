@@ -24,9 +24,39 @@ export const complaintFormSchema = z.object({
 });
 export type ComplaintFormInput = z.infer<typeof complaintFormSchema>;
 
+export const RESOLUTION_SUMMARY_MIN_LENGTH = 3;
+export const RESOLUTION_SUMMARY_MAX_LENGTH = 2000;
+export const RESOLUTION_SUMMARY_ERROR =
+  "Please enter at least 3 characters for the resolution summary.";
+
+// Length is counted in characters (code points), exactly like the database check, so an emoji is
+// one character on both sides.
+function summaryLength(value: string): number {
+  return Array.from(value.trim()).length;
+}
+
+/** True when the trimmed summary is long enough to resolve a complaint (whitespace never counts). */
+export function isValidResolutionSummary(value: string): boolean {
+  return summaryLength(value) >= RESOLUTION_SUMMARY_MIN_LENGTH;
+}
+
 export const resolutionSchema = z.object({
-  resolution_summary: z.string().trim().min(3).max(2000),
+  resolution_summary: z
+    .string()
+    .trim()
+    .max(
+      RESOLUTION_SUMMARY_MAX_LENGTH,
+      `The resolution summary is too long (maximum ${RESOLUTION_SUMMARY_MAX_LENGTH} characters).`,
+    )
+    // refine() must come last: it returns a ZodEffects, which has no .max()
+    .refine((v) => Array.from(v).length >= RESOLUTION_SUMMARY_MIN_LENGTH, RESOLUTION_SUMMARY_ERROR),
 });
+
+/** First user-friendly validation message for a summary, or null when it is valid. Never raw Zod/JSON. */
+export function resolutionSummaryError(value: string): string | null {
+  const parsed = resolutionSchema.safeParse({ resolution_summary: value });
+  return parsed.success ? null : (parsed.error.issues[0]?.message ?? RESOLUTION_SUMMARY_ERROR);
+}
 
 export const ratingSchema = z.object({
   rating: z.number().int().min(1).max(5),
@@ -50,7 +80,7 @@ export const COMPLAINT_STATUS_TRANSITIONS: Record<ComplaintStatus, readonly Comp
   REOPENED: ["ASSIGNED", "IN_PROGRESS", "RESOLVED"],
   WAITING_FOR_STUDENT: ["IN_PROGRESS", "RESOLVED"],
   RESOLVED: ["REOPENED", "CLOSED"],
-  CANCELLED: ["REOPENED"],
+  CANCELLED: [],
   CLOSED: [],
 };
 

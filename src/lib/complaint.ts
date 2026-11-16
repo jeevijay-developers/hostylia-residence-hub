@@ -257,8 +257,14 @@ export function useResolvedByLabel(resolvedBy: string | null | undefined) {
   });
 }
 
+/**
+ * `author_role` is the sender's role as verified by the database (stored by a trigger at insert time,
+ * derived for historical rows) — see 20261117090000. It is not in the generated view type yet.
+ */
 export type ComplaintCommentWithAuthor =
-  Database["public"]["Views"]["v_complaint_comments_feed"]["Row"];
+  Database["public"]["Views"]["v_complaint_comments_feed"]["Row"] & {
+    author_role?: "STUDENT" | "WARDEN" | "ADMIN" | null;
+  };
 
 /**
  * Reads from `v_complaint_comments_feed` (see the 20260819120000 migration)
@@ -278,12 +284,12 @@ export function useComplaintComments(complaintId: string | null) {
       const { data, error } = await supabase
         .from("v_complaint_comments_feed")
         .select(
-          "id, tenant_id, property_id, complaint_id, author_user_id, body, created_at, is_anonymous_author, author_full_name",
+          "id, tenant_id, property_id, complaint_id, author_user_id, body, created_at, is_anonymous_author, author_full_name, author_role",
         )
         .eq("complaint_id", complaintId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ComplaintCommentWithAuthor[];
+      return (data ?? []) as unknown as ComplaintCommentWithAuthor[];
     },
   });
 }

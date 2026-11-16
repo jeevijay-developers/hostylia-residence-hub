@@ -43,7 +43,8 @@ export function NotificationBell({ className }: { className?: string }) {
       if (p.audience === "WARDEN") navigate({ to: "/warden/complaints", search: { complaintId } });
       else if (p.audience === "STUDENT")
         navigate({ to: "/student/complaints", search: { complaintId } });
-      else if (p.audience === "PARENT") navigate({ to: "/parent/complaints" });
+      else if (p.audience === "PARENT")
+        navigate({ to: "/parent/complaints", search: { complaintId } });
       else navigate({ to: "/admin/complaints", search: { complaintId } });
     } else if (typeof ticketId === "string") {
       if (!n.read_at) void markNotificationRead(n.id);

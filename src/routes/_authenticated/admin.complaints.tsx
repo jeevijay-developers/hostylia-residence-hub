@@ -7,8 +7,7 @@ import { z } from "zod";
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronDown,
-  Clock,
+  Eye,
   LayoutGrid,
   Layers,
   Package,
@@ -19,14 +18,8 @@ import {
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
-import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -52,8 +45,10 @@ import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaff } from "@/lib/admin-staff.functions";
-import { resolutionSchema } from "@/schemas/complaint";
-import { cn } from "@/lib/utils";
+import { resolutionSchema, resolutionSummaryError } from "@/schemas/complaint";
+// Same details view the Warden dashboard uses (description, student, category/priority, resolution,
+// timeline, comments) — reused, not duplicated.
+import { ComplaintDetailsDialog } from "./warden.complaints";
 
 const complaintsSearchSchema = z.object({
   // Deep-link target for the "View complaint →" toast action fired when a
@@ -219,6 +214,10 @@ function AdminComplaintRow({
   const [assignee, setAssignee] = useState<string>("");
   const [resolveOpen, setResolveOpen] = useState(false);
   const [summary, setSummary] = useState("");
+  const [summaryTouched, setSummaryTouched] = useState(false);
+  // Validated on every change; shown once the user has interacted so an untouched modal isn't red.
+  const summaryError = resolutionSummaryError(summary);
+  const showSummaryError = summaryTouched && summaryError !== null;
   const [detailsOpen, setDetailsOpen] = useState(isHighlighted);
 
   useEffect(() => {
@@ -273,12 +272,14 @@ function AdminComplaintRow({
 
   const resolve = useMutation({
     mutationFn: async () => {
-      const parsed = resolutionSchema.parse({ resolution_summary: summary });
+      // Friendly message instead of a raw ZodError (whose message is a JSON dump).
+      const parsed = resolutionSchema.safeParse({ resolution_summary: summary });
+      if (!parsed.success) throw new Error(resolutionSummaryError(summary) ?? "Invalid summary");
       const { error } = await supabase
         .from("complaints")
         .update({
           status: "RESOLVED",
-          resolution_summary: parsed.resolution_summary,
+          resolution_summary: parsed.data.resolution_summary,
           resolved_at: new Date().toISOString(),
           resolved_by: userId,
         })
@@ -289,6 +290,7 @@ function AdminComplaintRow({
       toast.success("Marked resolved");
       setResolveOpen(false);
       setSummary("");
+      setSummaryTouched(false);
       qc.invalidateQueries({ queryKey: ["complaints"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Resolve failed"),
@@ -333,12 +335,12 @@ function AdminComplaintRow({
     "REOPENED",
   ].includes(complaint.status);
   const canStartWorking = complaint.status === "ASSIGNED";
-  // CLOSED is terminal. RESOLVED can be reopened only inside the 48h window (the database enforces it).
+  // CLOSED and CANCELLED are terminal. Only a RESOLVED complaint can be reopened, and only inside
+  // the 48h window (the database enforces both rules).
   const canReopen =
-    complaint.status === "CANCELLED" ||
-    (complaint.status === "RESOLVED" &&
-      complaint.reopen_until != null &&
-      new Date(complaint.reopen_until).getTime() > Date.now());
+    complaint.status === "RESOLVED" &&
+    complaint.reopen_until != null &&
+    new Date(complaint.reopen_until).getTime() > Date.now();
   // Once resolved/closed/cancelled, a stale sla_breached_at (set before
   // resolution and never cleared) shouldn't keep showing this as a live red
   // alert — mirrors slaMeta()'s own "done" gating for the SlaBadge/accent.
@@ -357,6 +359,14 @@ function AdminComplaintRow({
         identityVisibility="full"
         actions={
           <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-xl font-semibold"
+              onClick={() => setDetailsOpen(true)}
+            >
+              <Eye className="h-4 w-4" /> View Details
+            </Button>
             {canAssign && (
               <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
                 <DialogTrigger asChild>
@@ -416,7 +426,13 @@ function AdminComplaintRow({
               </Button>
             )}
             {canResolve && (
-              <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+              <Dialog
+                open={resolveOpen}
+                onOpenChange={(open) => {
+                  setResolveOpen(open);
+                  if (!open) setSummaryTouched(false);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" className="rounded-xl font-semibold">
                     <CheckCircle2 className="h-4 w-4" /> Resolve
@@ -426,14 +442,38 @@ function AdminComplaintRow({
                   <DialogHeader>
                     <DialogTitle>Resolve complaint</DialogTitle>
                   </DialogHeader>
-                  <Textarea
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    rows={4}
-                    placeholder="What was done to resolve this?"
-                  />
+                  <div className="space-y-1.5">
+                    <Textarea
+                      value={summary}
+                      onChange={(e) => {
+                        setSummary(e.target.value);
+                        setSummaryTouched(true);
+                      }}
+                      onBlur={() => setSummaryTouched(true)}
+                      rows={4}
+                      placeholder="Example: Water leakage repaired and plumbing issue fixed."
+                      aria-label="Resolution summary"
+                      aria-invalid={showSummaryError}
+                      aria-describedby={showSummaryError ? "resolve-summary-error" : undefined}
+                    />
+                    {showSummaryError && (
+                      <p
+                        id="resolve-summary-error"
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {summaryError}
+                      </p>
+                    )}
+                  </div>
                   <DialogFooter>
-                    <Button onClick={() => resolve.mutate()} disabled={resolve.isPending}>
+                    <Button
+                      onClick={() => {
+                        setSummaryTouched(true);
+                        if (summaryError === null) resolve.mutate();
+                      }}
+                      disabled={resolve.isPending || summaryError !== null}
+                    >
                       <CheckCircle2 className="h-4 w-4" /> Mark resolved
                     </Button>
                   </DialogFooter>
@@ -454,25 +494,14 @@ function AdminComplaintRow({
           </>
         }
       />
-      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <div className="rounded-xl border border-border/80 bg-card shadow-sm">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground"
-            >
-              <Clock className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden="true" />
-              <span className="flex-1 text-left">Timeline details</span>
-              <ChevronDown
-                className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", detailsOpen && "rotate-180")}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="border-t border-border px-4 py-3">
-            <ComplaintTimeline complaint={complaint} />
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      {detailsOpen && (
+        <ComplaintDetailsDialog
+          complaint={complaint}
+          userId={userId}
+          showStatusControls={false}
+          onOpenChange={setDetailsOpen}
+        />
+      )}
     </div>
   );
 }

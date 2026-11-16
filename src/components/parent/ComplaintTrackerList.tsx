@@ -1,3 +1,4 @@
+import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ComplaintCard } from "@/components/parent/ComplaintCard";
@@ -11,7 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
  * simply fetches; if the guardian flag is off, the parent page frame
  * hides the section entirely (per `requirePermission`).
  */
-export function ComplaintTrackerList({ studentId }: { studentId: string }) {
+export function ComplaintTrackerList({
+  studentId,
+  highlightId,
+}: {
+  studentId: string;
+  highlightId?: string;
+}) {
   const { t } = useTranslation();
   const q = useComplaints({ studentId });
 
@@ -44,8 +51,23 @@ export function ComplaintTrackerList({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-3">
       {list.map((c) => (
-        <ComplaintCard key={c.id} complaint={c} />
+        <HighlightedRow key={c.id} active={c.id === highlightId}>
+          <ComplaintCard complaint={c} />
+        </HighlightedRow>
       ))}
+    </div>
+  );
+}
+
+/** Scrolls to and outlines the complaint a notification pointed at; no effect otherwise. */
+function HighlightedRow({ active, children }: { active: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [active]);
+  return (
+    <div ref={ref} className={active ? "rounded-2xl ring-2 ring-primary/40" : undefined}>
+      {children}
     </div>
   );
 }

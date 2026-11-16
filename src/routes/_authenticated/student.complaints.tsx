@@ -90,11 +90,13 @@ function StudentComplaintItem({
   const isHighlighted = complaint.id === highlightId;
   const rowRef = useRef<HTMLDivElement>(null);
   const [statusOpen, setStatusOpen] = useState(isHighlighted);
-  const [conversationOpen, setConversationOpen] = useState(false);
+  // A notification deep link (?complaintId=) opens the conversation as well as the status.
+  const [conversationOpen, setConversationOpen] = useState(isHighlighted);
 
   useEffect(() => {
     if (isHighlighted) {
       setStatusOpen(true);
+      setConversationOpen(true);
       rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isHighlighted]);

@@ -430,6 +430,13 @@ function renderTemplate(key: string, vars: Record<string, unknown>): string {
     complaint_sla_breach_warden_subject: "SLA Breach — Complaint {{complaint_number}}",
     complaint_sla_breach_admin: "Complaint {{complaint_number}} SLA breach (property).",
     complaint_sla_breach_admin_subject: "SLA Breach — Complaint {{complaint_number}}",
+    complaint_message:
+      "{{sender_name}} ({{sender_role}}) sent a message on complaint {{complaint_number}} ({{complaint_title}}): {{message_preview}}",
+    complaint_message_subject:
+      "New message on complaint {{complaint_number}} from {{sender_name}} ({{sender_role}})",
+    complaint_resolved_submitter:
+      "Your complaint {{complaint_number}} ({{complaint_title}}) is now {{status_label}}. Resolution: {{resolution_summary}} If the issue is not fixed, you can reopen the complaint within 48 hours.",
+    complaint_resolved_submitter_subject: "Complaint {{complaint_number}} — {{status_label}}",
     fee_reminder_student:
       "Invoice {{invoice_number}} due {{due_date}} — balance ₹{{balance_rupees}}.",
     fee_reminder_student_subject: "Fee Reminder — Invoice {{invoice_number}} due {{due_date}}",
