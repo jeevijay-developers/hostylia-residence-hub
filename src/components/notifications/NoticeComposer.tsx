@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Eye,
@@ -31,7 +31,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { publishNotice, cancelNotice, editNotice } from "@/lib/notice.functions";
+import {
+  publishNotice,
+  cancelNotice,
+  editNotice,
+  getNoticeChannelAvailability,
+} from "@/lib/notice.functions";
 import { useTenantNotices, type NoticeRow } from "@/lib/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -50,6 +55,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, toneClasses } from "@/lib/utils";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import {
+  CustomAudiencePicker,
+  type AudienceBlockOption,
+  type AudienceStudentOption,
+} from "@/components/notifications/CustomAudiencePicker";
+import { previewNoticeAudience } from "@/lib/notice-audience.functions";
+import { formatIstDate, formatIstDateTime, istInputToIso, nowIstInput } from "@/lib/ist";
+import { effectiveNoticeStatus, useNowTick } from "@/lib/notice-time";
+import { SchedulePicker } from "@/components/notifications/SchedulePicker";
 
 const CHANNELS = [
   { key: "IN_APP", label: "In-app", icon: Smartphone },
@@ -58,7 +72,10 @@ const CHANNELS = [
   { key: "EMAIL", label: "Email", icon: Mail },
 ] as const;
 
-const AUDIENCES = ["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS"] as const;
+const AUDIENCES = ["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS", "CUSTOM"] as const;
+const AUDIENCE_LABEL: Partial<Record<(typeof AUDIENCES)[number], string>> = {
+  CUSTOM: "Custom audience",
+};
 
 const STATUS_TONE: Record<string, keyof typeof toneClasses> = {
   PUBLISHED: "warning",
@@ -77,19 +94,92 @@ export function NoticeComposer({ propertyId }: Props) {
   const publishFn = useServerFn(publishNotice);
   const cancelFn = useServerFn(cancelNotice);
 
-  // Provider config surface — currently the platform has no Twilio secrets; hard-code false.
-  // A future settings page can expose /rest/v1/rpc('provider_status') to flip this live.
-  const providerConfigured = { SMS: false, WHATSAPP: false, EMAIL: false, IN_APP: true };
+  const availabilityFn = useServerFn(getNoticeChannelAvailability);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState<"NORMAL" | "IMPORTANT" | "URGENT">("NORMAL");
   const [audience, setAudience] = useState<(typeof AUDIENCES)[number]>("ALL");
   const [channels, setChannels] = useState<string[]>(["IN_APP"]);
+  // What the admin types is Indian Standard Time ("YYYY-MM-DDTHH:mm"), whatever the device's timezone;
+  // it is converted to the exact UTC instant only when sent.
   const [publishAt, setPublishAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const publishAtIso = publishAt ? istInputToIso(publishAt) : null;
+  const expiresAtIso = expiresAt ? istInputToIso(expiresAt) : null;
+  const nowTick = useNowTick(30_000);
+  let timeError: string | null = null;
+  if (publishAt && !publishAtIso) timeError = "Enter a valid schedule date and time (IST).";
+  else if (publishAtIso && Date.parse(publishAtIso) <= nowTick) {
+    timeError = "The schedule time must be in the future (IST).";
+  } else if (expiresAt && !expiresAtIso) {
+    timeError = "Enter a valid expiry date and time (IST).";
+  } else if (expiresAtIso && Date.parse(expiresAtIso) <= nowTick) {
+    timeError = "The expiry time must be in the future (IST).";
+  } else if (expiresAtIso && publishAtIso && Date.parse(expiresAtIso) <= Date.parse(publishAtIso)) {
+    timeError = "The expiry time must be after the schedule time (IST).";
+  }
+  const [listView, setListView] = useState<"active" | "history">("active");
   const [showAll, setShowAll] = useState(false);
+  const [customStudents, setCustomStudents] = useState<AudienceStudentOption[]>([]);
+  const [customBlocks, setCustomBlocks] = useState<AudienceBlockOption[]>([]);
 
   const tenantId = usePropertyTenantId(propertyId);
+
+  // Which channels the platform can really deliver, asked of the server (which asks the sender). The
+  // browser only gets booleans + a reason; nothing here is hardcoded.
+  const availabilityQ = useQuery({
+    queryKey: ["notice-channel-availability", tenantId],
+    enabled: !!tenantId,
+    staleTime: 60_000,
+    queryFn: () => availabilityFn({ data: { tenant_id: tenantId! } }),
+  });
+  // A custom selection belongs to one property.
+  useEffect(() => {
+    setCustomStudents([]);
+    setCustomBlocks([]);
+  }, [propertyId]);
+
+  // The real recipient count, resolved by the server exactly as publishing will (blocks expanded,
+  // duplicates removed, eligibility and property scope checked).
+  const previewFn = useServerFn(previewNoticeAudience);
+  const customStudentIds = customStudents.map((s) => s.id);
+  const customBlockIds = customBlocks.map((b) => b.id);
+  const previewQ = useQuery({
+    queryKey: [
+      "notice-audience-preview",
+      tenantId,
+      propertyId,
+      [...customStudentIds].sort().join(","),
+      [...customBlockIds].sort().join(","),
+    ],
+    enabled:
+      audience === "CUSTOM" &&
+      !!tenantId &&
+      (customStudentIds.length > 0 || customBlockIds.length > 0),
+    staleTime: 15_000,
+    retry: false,
+    queryFn: () =>
+      previewFn({
+        data: {
+          tenant_id: tenantId!,
+          property_id: propertyId,
+          student_ids: customStudentIds,
+          block_ids: customBlockIds,
+        },
+      }),
+  });
+
+  // In-app never depends on a provider; every other channel is enabled only when the server says so.
+  const channelState = (key: string): { enabled: boolean; reason: string | null } => {
+    if (key === "IN_APP") return { enabled: true, reason: null };
+    if (availabilityQ.isPending) return { enabled: false, reason: "Checking provider status…" };
+    const a = availabilityQ.data?.[key as "SMS" | "WHATSAPP" | "EMAIL"];
+    if (!a) return { enabled: false, reason: "Could not verify provider status" };
+    return { enabled: a.available, reason: a.reason };
+  };
+  // A selected channel that is (or becomes) unavailable is never submitted.
+  const activeChannels = channels.filter((c) => channelState(c).enabled);
   const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
   const sortedNotices = useMemo(
     () =>
@@ -98,7 +188,17 @@ export function NoticeComposer({ propertyId }: Props) {
       ),
     [notices],
   );
-  const visibleNotices = showAll ? sortedNotices : sortedNotices.slice(0, 5);
+  // Active = drafts, scheduled and live notices. History = expired and cancelled ones, kept for reference.
+  const listedNotices = useMemo(
+    () =>
+      sortedNotices.filter((n) => {
+        const status = effectiveNoticeStatus(n, nowTick);
+        const inHistory = status === "EXPIRED" || status === "CANCELLED";
+        return listView === "history" ? inHistory : !inHistory;
+      }),
+    [sortedNotices, listView, nowTick],
+  );
+  const visibleNotices = showAll ? listedNotices : listedNotices.slice(0, 5);
 
   const [viewingNotice, setViewingNotice] = useState<NoticeRow | null>(null);
   const [editingNotice, setEditingNotice] = useState<NoticeRow | null>(null);
@@ -145,25 +245,63 @@ export function NoticeComposer({ propertyId }: Props) {
           body,
           priority,
           audience_type: audience,
-          channels: channels as ("IN_APP" | "SMS" | "WHATSAPP" | "EMAIL")[],
-          publish_at: publishAt || null,
-          publish_now: !publishAt,
+          channels: activeChannels as ("IN_APP" | "SMS" | "WHATSAPP" | "EMAIL")[],
+          publish_at: publishAtIso,
+          publish_now: !publishAtIso,
+          expires_at: expiresAtIso,
+          ...(audience === "CUSTOM"
+            ? { custom_student_ids: customStudentIds, custom_block_ids: customBlockIds }
+            : {}),
         },
       });
     },
     onSuccess: (r) => {
-      toast.success(
-        `Notice created${r.dispatched ? ` — ${r.dispatched} notification(s) dispatched` : ""}`,
-      );
+      const label = (ch: string) => CHANNELS.find((c) => c.key === ch)?.label ?? ch;
+      const skippedNote = r.skipped.length
+        ? `Skipped (no contact on file): ${r.skipped.map((s) => `${label(s.channel)} ${s.count}`).join(", ")}`
+        : undefined;
+      if (r.failures.length > 0) {
+        // The notice exists, but some notifications could not be queued: say which and why.
+        toast.warning(
+          `Notice created, but ${r.failed} notification(s) could not be sent${r.dispatched ? ` (${r.dispatched} queued)` : ""}`,
+          {
+            description: [
+              r.failures.map((f) => `${label(f.channel)}: ${f.reason} (${f.count})`).join(" · "),
+              skippedNote,
+            ]
+              .filter(Boolean)
+              .join(" — "),
+          },
+        );
+      } else {
+        toast.success(
+          `Notice created${r.dispatched ? ` — ${r.dispatched} notification(s) dispatched` : ""}`,
+          skippedNote ? { description: skippedNote } : undefined,
+        );
+      }
       setTitle("");
       setBody("");
       setPublishAt("");
+      setExpiresAt("");
+      setCustomStudents([]);
+      setCustomBlocks([]);
       qc.invalidateQueries({ queryKey: ["notices"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      // The refusal may mean provider status changed since the page loaded.
+      qc.invalidateQueries({ queryKey: ["notice-channel-availability"] });
+    },
   });
 
-  const canSubmit = title.trim().length >= 3 && body.trim().length >= 3 && channels.length > 0;
+  const customReady =
+    audience !== "CUSTOM" || (previewQ.isSuccess && (previewQ.data?.count ?? 0) > 0);
+  const canSubmit =
+    title.trim().length >= 3 &&
+    body.trim().length >= 3 &&
+    activeChannels.length > 0 &&
+    customReady &&
+    !timeError;
 
   return (
     <div className="grid w-full max-w-full gap-6 overflow-x-hidden">
@@ -224,26 +362,42 @@ export function NoticeComposer({ propertyId }: Props) {
                 <SelectContent>
                   {AUDIENCES.map((a) => (
                     <SelectItem key={a} value={a}>
-                      {a}
+                      {AUDIENCE_LABEL[a] ?? a}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+          {audience === "CUSTOM" && (
+            <CustomAudiencePicker
+              tenantId={tenantId}
+              propertyId={propertyId}
+              students={customStudents}
+              blocks={customBlocks}
+              onStudentsChange={setCustomStudents}
+              onBlocksChange={setCustomBlocks}
+              preview={{
+                isLoading: previewQ.isFetching,
+                error: previewQ.isError ? previewQ.error.message : null,
+                count: previewQ.data?.count ?? null,
+                duplicates: previewQ.data?.duplicates ?? 0,
+              }}
+            />
+          )}
           <div>
             <Label>Channels</Label>
             <TooltipProvider>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {CHANNELS.map((c) => {
-                  const enabled = providerConfigured[c.key as keyof typeof providerConfigured];
-                  const selected = channels.includes(c.key);
+                  const { enabled, reason } = channelState(c.key);
+                  const selected = enabled && channels.includes(c.key);
                   const Icon = c.icon;
                   const button = (
                     <button
                       key={c.key}
                       type="button"
-                      disabled={!enabled && c.key !== "IN_APP"}
+                      disabled={!enabled}
                       onClick={() =>
                         setChannels((prev) =>
                           prev.includes(c.key) ? prev.filter((x) => x !== c.key) : [...prev, c.key],
@@ -265,9 +419,7 @@ export function NoticeComposer({ propertyId }: Props) {
                       <TooltipTrigger asChild>
                         <span>{button}</span>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        Provider not configured. Add Twilio/Resend secrets to enable.
-                      </TooltipContent>
+                      <TooltipContent>{reason ?? "Provider not configured"}</TooltipContent>
                     </Tooltip>
                   ) : (
                     button
@@ -276,17 +428,31 @@ export function NoticeComposer({ propertyId }: Props) {
               </div>
             </TooltipProvider>
           </div>
-          <div>
-            <Label htmlFor="notice-schedule">Schedule (optional)</Label>
-            <Input
-              id="notice-schedule"
-              className="mt-1.5 scheme-dark"
-              type="datetime-local"
-              value={publishAt}
-              onChange={(e) =>
-                setPublishAt(e.target.value ? new Date(e.target.value).toISOString() : "")
-              }
-            />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="notice-schedule">Schedule (optional, IST)</Label>
+              <SchedulePicker id="notice-schedule" value={publishAt} onChange={setPublishAt} />
+            </div>
+            <div>
+              <Label htmlFor="notice-expiry">Expires (optional, IST)</Label>
+              <Input
+                id="notice-expiry"
+                className="mt-1.5 scheme-dark"
+                type="datetime-local"
+                min={publishAt || nowIstInput(new Date(nowTick))}
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                aria-invalid={!!timeError}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              Times are in Indian Standard Time (IST), whatever your device&apos;s timezone.
+            </p>
+            {timeError && (
+              <p role="alert" className="text-xs text-destructive sm:col-span-2">
+                {timeError}
+              </p>
+            )}
           </div>
           <Button
             onClick={() => publish.mutate()}
@@ -306,19 +472,37 @@ export function NoticeComposer({ propertyId }: Props) {
             <Files className="h-4 w-4 shrink-0 text-primary" />
             <h2 className="truncate font-display font-semibold text-foreground">Recent notices</h2>
           </div>
-          {sortedNotices.length > 5 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={() => setShowAll((v) => !v)}
-            >
-              {showAll ? "Show less" : "View all"}
-            </Button>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {(["active", "history"] as const).map((v) => (
+              <Button
+                key={v}
+                variant={listView === v ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={listView === v}
+                onClick={() => {
+                  setListView(v);
+                  setShowAll(false);
+                }}
+              >
+                {v === "active" ? "Active" : "History"}
+              </Button>
+            ))}
+            {listedNotices.length > 5 && (
+              <Button variant="outline" size="sm" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? "Show less" : "View all"}
+              </Button>
+            )}
+          </div>
         </div>
-        {sortedNotices.length === 0 ? (
-          <EmptyState title="No notices yet" description="Published notices will appear here." />
+        {listedNotices.length === 0 ? (
+          listView === "history" ? (
+            <EmptyState
+              title="No expired or cancelled notices"
+              description="Expired and cancelled notices are kept here."
+            />
+          ) : (
+            <EmptyState title="No notices yet" description="Published notices will appear here." />
+          )
         ) : (
           <ul className="space-y-3">
             {visibleNotices.map((n: NoticeRow) => (
@@ -337,15 +521,17 @@ export function NoticeComposer({ propertyId }: Props) {
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground sm:text-xs">
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        {new Date(n.created_at).toLocaleDateString(undefined, {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {formatIstDate(n.created_at)}
                       </span>
                       {n.status === "SCHEDULED" && n.publish_at && (
                         <span className="break-words">
-                          Scheduled for {new Date(n.publish_at).toLocaleString()}
+                          Scheduled for {formatIstDateTime(n.publish_at)}
+                        </span>
+                      )}
+                      {n.expires_at && (
+                        <span className="break-words">
+                          {effectiveNoticeStatus(n, nowTick) === "EXPIRED" ? "Expired" : "Expires"}{" "}
+                          {formatIstDateTime(n.expires_at)}
                         </span>
                       )}
                     </div>
@@ -355,10 +541,10 @@ export function NoticeComposer({ propertyId }: Props) {
                       variant="outline"
                       className={cn(
                         "rounded-full border-transparent px-1.5 py-0.5 text-[9px] sm:px-2.5 sm:py-1 sm:text-[11px]",
-                        toneClasses[STATUS_TONE[n.status] ?? "muted"],
+                        toneClasses[STATUS_TONE[effectiveNoticeStatus(n, nowTick)] ?? "muted"],
                       )}
                     >
-                      {n.status}
+                      {effectiveNoticeStatus(n, nowTick)}
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -411,10 +597,12 @@ export function NoticeComposer({ propertyId }: Props) {
                   variant="outline"
                   className={cn(
                     "rounded-full border-transparent",
-                    toneClasses[STATUS_TONE[viewingNotice.status] ?? "muted"],
+                    toneClasses[
+                      STATUS_TONE[effectiveNoticeStatus(viewingNotice, nowTick)] ?? "muted"
+                    ],
                   )}
                 >
-                  {viewingNotice.status}
+                  {effectiveNoticeStatus(viewingNotice, nowTick)}
                 </Badge>
                 <span>{viewingNotice.priority}</span>
                 <span>{viewingNotice.audience_type}</span>
@@ -422,7 +610,15 @@ export function NoticeComposer({ propertyId }: Props) {
               </div>
               {viewingNotice.published_at && (
                 <p className="text-xs text-muted-foreground">
-                  Published {new Date(viewingNotice.published_at).toLocaleString()}
+                  Published {formatIstDateTime(viewingNotice.published_at)}
+                </p>
+              )}
+              {viewingNotice.expires_at && (
+                <p className="text-xs text-muted-foreground">
+                  {effectiveNoticeStatus(viewingNotice, nowTick) === "EXPIRED"
+                    ? "Expired"
+                    : "Expires"}{" "}
+                  {formatIstDateTime(viewingNotice.expires_at)}
                 </p>
               )}
             </div>
