@@ -58,6 +58,32 @@ export function resolutionSummaryError(value: string): string | null {
   return parsed.success ? null : (parsed.error.issues[0]?.message ?? RESOLUTION_SUMMARY_ERROR);
 }
 
+export const REOPEN_OVERRIDE_REASON_MIN_LENGTH = 10;
+export const REOPEN_OVERRIDE_REASON_MAX_LENGTH = 1000;
+export const REOPEN_OVERRIDE_REASON_ERROR = `Please enter at least ${REOPEN_OVERRIDE_REASON_MIN_LENGTH} characters explaining why this complaint is being reopened.`;
+
+/** Mandatory reason for an Admin reopen override (the database enforces the same rule). */
+export const reopenOverrideSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .max(
+      REOPEN_OVERRIDE_REASON_MAX_LENGTH,
+      `The reason is too long (maximum ${REOPEN_OVERRIDE_REASON_MAX_LENGTH} characters).`,
+    )
+    // refine() must come last: it returns a ZodEffects, which has no .max()
+    .refine(
+      (v) => Array.from(v).length >= REOPEN_OVERRIDE_REASON_MIN_LENGTH,
+      REOPEN_OVERRIDE_REASON_ERROR,
+    ),
+});
+
+/** First user-friendly validation message for an override reason, or null when it is valid. */
+export function reopenOverrideReasonError(value: string): string | null {
+  const parsed = reopenOverrideSchema.safeParse({ reason: value });
+  return parsed.success ? null : (parsed.error.issues[0]?.message ?? REOPEN_OVERRIDE_REASON_ERROR);
+}
+
 export const ratingSchema = z.object({
   rating: z.number().int().min(1).max(5),
   rating_comment: z.string().trim().max(1000).optional().or(z.literal("")),

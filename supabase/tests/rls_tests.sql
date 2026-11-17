@@ -255,11 +255,15 @@ ROLLBACK;
 
 -- =============================================================================
 -- SECTION 10 — Complaint reopen window guard
+-- Staff no longer reopen directly (the student does, inside the window; an Admin holding the
+-- dedicated override permission uses fn_admin_reopen_complaint — see complaint_reopen_override_tests.sql).
 -- =============================================================================
 BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
--- cp05 has reopen_until = now()+44h → within window, should succeed
-UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05';
+-- cp05 has reopen_until = now()+44h → within window, but Admin A has no override permission
+SELECT pg_temp.assert_throws(
+  $sql$UPDATE public.complaints SET status='REOPENED' WHERE id='11111111-1111-1111-1111-11111111ca05'$sql$,
+  'Admin cannot directly reopen a RESOLVED complaint, even inside the 48h window');
 -- Force reopen_until into the past and try again → must fail
 UPDATE public.complaints SET status='RESOLVED', resolved_at=now()-interval '3 days', reopen_until=now()-interval '1 day' WHERE id='11111111-1111-1111-1111-11111111ca05';
 SELECT pg_temp.assert_throws(

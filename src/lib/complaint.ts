@@ -294,6 +294,46 @@ export function useComplaintComments(complaintId: string | null) {
   });
 }
 
+type LooseRpc = (
+  fn: string,
+  args: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+// can_override_reopen_complaint / fn_admin_reopen_complaint (20261120090000) are not in the generated
+// types until they are regenerated, so they are called through this narrow, explicit signature.
+const callRpc: LooseRpc = (fn, args) => (supabase as unknown as { rpc: LooseRpc }).rpc(fn, args);
+
+/**
+ * Whether the signed-in Admin holds the dedicated reopen-override permission (decided by the database,
+ * per property). Only asked for RESOLVED/CLOSED complaints; shared by every row of a property via one key.
+ * This only decides whether the button shows - fn_admin_reopen_complaint enforces it again.
+ */
+export function useCanOverrideReopen(
+  complaint: Pick<ComplaintRow, "tenant_id" | "property_id" | "status">,
+) {
+  return useQuery({
+    queryKey: ["complaint-reopen-override-permission", complaint.tenant_id, complaint.property_id],
+    enabled: complaint.status === "RESOLVED" || complaint.status === "CLOSED",
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await callRpc("can_override_reopen_complaint", {
+        _tenant_id: complaint.tenant_id,
+        _property_id: complaint.property_id,
+      });
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
+  });
+}
+
+/** Exceptional Admin reopen: permission, reason and eligibility are all enforced in the database. */
+export async function reopenComplaintWithOverride(complaintId: string, reason: string) {
+  const { error } = await callRpc("fn_admin_reopen_complaint", {
+    p_complaint_id: complaintId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
+}
+
 function formatMinutes(m: number): string {
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);

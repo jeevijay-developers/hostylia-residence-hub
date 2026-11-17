@@ -68,10 +68,13 @@ SELECT pg_temp.assert_fails($$UPDATE public.complaints SET status = 'CANCELLED' 
 SELECT pg_temp.assert_fails($$UPDATE public.complaints SET status = 'REOPENED' WHERE id = '77777777-0000-0000-0000-0000000000a4'$$, 'CLOSED cannot be reopened');
 SELECT pg_temp.assert_fails($$UPDATE public.complaints SET status = 'REOPENED' WHERE id = '77777777-0000-0000-0000-0000000000a3'$$, 'reopen after the 48h window');
 
--- 3. reopen inside the window still works
-UPDATE public.complaints SET status = 'REOPENED' WHERE id = '77777777-0000-0000-0000-0000000000a2';
+-- 3. reopening is the student's (inside the window) or the audited Admin override's: a session with
+--    no student behind it (this superuser session = service role / direct SQL) is rejected, even inside
+--    the window. The student and override paths are covered in complaint_reopen_override_tests.sql.
+SELECT pg_temp.assert_fails($$UPDATE public.complaints SET status = 'REOPENED' WHERE id = '77777777-0000-0000-0000-0000000000a2'$$,
+  'RESOLVED -> REOPENED without a student or an override');
 SELECT pg_temp.assert_text((SELECT status FROM public.complaints WHERE id = '77777777-0000-0000-0000-0000000000a2'),
-  'REOPENED', 'RESOLVED -> REOPENED inside the window');
+  'RESOLVED', 'the complaint stays RESOLVED');
 
 -- 4. an end-user session cannot close, even after the window
 SELECT pg_temp.mk('77777777-0000-0000-0000-0000000000a6', 'RESOLVED', now() - interval '1 hour');

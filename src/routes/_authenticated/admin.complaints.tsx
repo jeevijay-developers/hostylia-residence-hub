@@ -21,6 +21,16 @@ import { ComplaintCard } from "@/components/complaints/ComplaintCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -39,13 +49,20 @@ import {
   useComplaints,
   useComplaintCategories,
   OPEN_COMPLAINT_STATUSES,
+  reopenComplaintWithOverride,
+  useCanOverrideReopen,
   type ComplaintWithRelations,
 } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaff } from "@/lib/admin-staff.functions";
-import { resolutionSchema, resolutionSummaryError } from "@/schemas/complaint";
+import {
+  reopenOverrideReasonError,
+  reopenOverrideSchema,
+  resolutionSchema,
+  resolutionSummaryError,
+} from "@/schemas/complaint";
 // Same details view the Warden dashboard uses (description, student, category/priority, resolution,
 // timeline, comments) — reused, not duplicated.
 import { ComplaintDetailsDialog } from "./warden.complaints";
@@ -219,6 +236,13 @@ function AdminComplaintRow({
   const summaryError = resolutionSummaryError(summary);
   const showSummaryError = summaryTouched && summaryError !== null;
   const [detailsOpen, setDetailsOpen] = useState(isHighlighted);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideConfirmOpen, setOverrideConfirmOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideTouched, setOverrideTouched] = useState(false);
+  const overrideError = reopenOverrideReasonError(overrideReason);
+  const showOverrideError = overrideTouched && overrideError !== null;
+  const canOverrideQ = useCanOverrideReopen(complaint);
 
   useEffect(() => {
     if (isHighlighted) {
@@ -311,19 +335,28 @@ function AdminComplaintRow({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not start work"),
   });
 
-  const reopen = useMutation({
+  // Exceptional reopen. The permission, the mandatory reason and the eligibility (RESOLVED/CLOSED,
+  // never CANCELLED) are enforced by fn_admin_reopen_complaint; this only mirrors them for UX.
+  const reopenOverride = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("complaints")
-        .update({ status: "REOPENED" })
-        .eq("id", complaint.id);
-      if (error) throw new Error(error.message);
+      const parsed = reopenOverrideSchema.safeParse({ reason: overrideReason });
+      if (!parsed.success)
+        throw new Error(reopenOverrideReasonError(overrideReason) ?? "Invalid reason");
+      await reopenComplaintWithOverride(complaint.id, parsed.data.reason);
     },
     onSuccess: () => {
-      toast.success("Complaint reopened");
+      toast.success("Complaint reopened (override recorded)");
+      setOverrideConfirmOpen(false);
+      setOverrideOpen(false);
+      setOverrideReason("");
+      setOverrideTouched(false);
       qc.invalidateQueries({ queryKey: ["complaints"] });
+      qc.invalidateQueries({ queryKey: ["complaint-comments", complaint.id] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Reopen failed"),
+    onError: (e) => {
+      setOverrideConfirmOpen(false);
+      toast.error(e instanceof Error ? e.message : "Reopen override failed");
+    },
   });
 
   const canAssign = !["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
@@ -335,12 +368,11 @@ function AdminComplaintRow({
     "REOPENED",
   ].includes(complaint.status);
   const canStartWorking = complaint.status === "ASSIGNED";
-  // CLOSED and CANCELLED are terminal. Only a RESOLVED complaint can be reopened, and only inside
-  // the 48h window (the database enforces both rules).
-  const canReopen =
-    complaint.status === "RESOLVED" &&
-    complaint.reopen_until != null &&
-    new Date(complaint.reopen_until).getTime() > Date.now();
+  // There is no regular Admin "Reopen": the student reopens RESOLVED complaints inside 48h. An Admin
+  // with the dedicated override permission may reopen a RESOLVED/CLOSED complaint (never CANCELLED).
+  const showReopenOverride =
+    (complaint.status === "RESOLVED" || complaint.status === "CLOSED") &&
+    canOverrideQ.data === true;
   // Once resolved/closed/cancelled, a stale sla_breached_at (set before
   // resolution and never cleared) shouldn't keep showing this as a live red
   // alert — mirrors slaMeta()'s own "done" gating for the SlaBadge/accent.
@@ -480,16 +512,107 @@ function AdminComplaintRow({
                 </DialogContent>
               </Dialog>
             )}
-            {canReopen && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-xl font-semibold"
-                onClick={() => reopen.mutate()}
-                disabled={reopen.isPending}
-              >
-                <RotateCcw className="h-4 w-4" /> Reopen
-              </Button>
+            {showReopenOverride && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl font-semibold"
+                  onClick={() => setOverrideOpen(true)}
+                >
+                  <RotateCcw className="h-4 w-4" /> Reopen Override
+                </Button>
+                <Dialog
+                  open={overrideOpen}
+                  onOpenChange={(open) => {
+                    setOverrideOpen(open);
+                    if (!open) setOverrideTouched(false);
+                  }}
+                >
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Reopen override</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                      This is an exceptional action outside the student&apos;s 48-hour reopen
+                      window. Your name, the time and your reason are recorded in the complaint
+                      history.
+                    </p>
+                    <div className="space-y-1.5">
+                      <Textarea
+                        value={overrideReason}
+                        onChange={(e) => {
+                          setOverrideReason(e.target.value);
+                          setOverrideTouched(true);
+                        }}
+                        onBlur={() => setOverrideTouched(true)}
+                        rows={4}
+                        placeholder="Why is this complaint being reopened?"
+                        aria-label="Reason for reopen override (required)"
+                        aria-invalid={showOverrideError}
+                        aria-describedby={showOverrideError ? "override-reason-error" : undefined}
+                      />
+                      {showOverrideError && (
+                        <p
+                          id="override-reason-error"
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {overrideError}
+                        </p>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => {
+                          setOverrideTouched(true);
+                          if (overrideError === null) {
+                            setOverrideOpen(false);
+                            setOverrideConfirmOpen(true);
+                          }
+                        }}
+                        disabled={overrideError !== null}
+                      >
+                        Continue
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <AlertDialog
+                  open={overrideConfirmOpen}
+                  onOpenChange={(open) => {
+                    if (reopenOverride.isPending) return;
+                    setOverrideConfirmOpen(open);
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reopen this complaint?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {complaint.complaint_number} will return to Reopened status. The override
+                        and your reason will be recorded in its history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        disabled={reopenOverride.isPending}
+                        onClick={() => setOverrideOpen(true)}
+                      >
+                        Back
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={reopenOverride.isPending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          reopenOverride.mutate();
+                        }}
+                      >
+                        Confirm reopen override
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </>
         }
