@@ -9,6 +9,23 @@
  */
 import { nowIstInput } from "@/lib/ist";
 
+/**
+ * What "now" means for the picker: a real instant, or an IST wall-clock string used directly as the
+ * earliest-allowed moment (slots at or before it cannot be chosen). The string form lets the Expires
+ * picker require "after the scheduled publish time" with exactly the same rules as "after now".
+ */
+export type Clock = Date | string;
+
+function clockToIst(clock: Clock): string {
+  return typeof clock === "string" ? clock : nowIstInput(clock);
+}
+
+/** The effective lower bound: the later of "now" and an optional IST value ("" / invalid are ignored). */
+export function floorClock(now: Date, notBefore?: string): Clock {
+  const current = nowIstInput(now);
+  return notBefore && VALUE.test(notBefore) && notBefore > current ? notBefore : now;
+}
+
 export const MINUTE_STEP = 5;
 export const MINUTES = Array.from({ length: 60 / MINUTE_STEP }, (_, i) => i * MINUTE_STEP);
 export type Period = "AM" | "PM";
@@ -56,18 +73,18 @@ export function dayFromYmd(s: string): Date {
 }
 
 /** Today's date in IST. */
-export function todayIst(now: Date = new Date()): string {
-  return nowIstInput(now).slice(0, 10);
+export function todayIst(now: Clock = new Date()): string {
+  return clockToIst(now).slice(0, 10);
 }
 
 /** True when the slot is not strictly after the current IST minute (so it cannot be scheduled). */
-export function isSlotPast(v: PickerValue, now: Date = new Date()): boolean {
-  return buildPickerValue(v) <= nowIstInput(now);
+export function isSlotPast(v: PickerValue, now: Clock = new Date()): boolean {
+  return buildPickerValue(v) <= clockToIst(now);
 }
 
 /** The first 5-minute slot strictly after "now" (IST); may fall on the next day. */
-export function nextSlotAfter(now: Date = new Date()): PickerValue {
-  const cur = nowIstInput(now); // "YYYY-MM-DDTHH:mm"
+export function nextSlotAfter(now: Clock = new Date()): PickerValue {
+  const cur = clockToIst(now); // "YYYY-MM-DDTHH:mm"
   const date = cur.slice(0, 10);
   const total = Number(cur.slice(11, 13)) * 60 + Number(cur.slice(14, 16));
   const next = (Math.floor(total / MINUTE_STEP) + 1) * MINUTE_STEP;
@@ -80,7 +97,7 @@ export function nextSlotAfter(now: Date = new Date()): PickerValue {
 }
 
 /** Is any slot still available on this day (IST)? False for past days and for a day whose last slot is gone. */
-export function isDayDisabled(date: string, now: Date = new Date()): boolean {
+export function isDayDisabled(date: string, now: Clock = new Date()): boolean {
   const today = todayIst(now);
   if (date < today) return true;
   if (date > today) return false;
@@ -88,13 +105,13 @@ export function isDayDisabled(date: string, now: Date = new Date()): boolean {
 }
 
 /** Time to pre-fill when a date is first chosen: 9:00 am on a future day, the next free slot today. */
-export function defaultTimeFor(date: string, now: Date = new Date()): PickerValue {
+export function defaultTimeFor(date: string, now: Clock = new Date()): PickerValue {
   const nine: PickerValue = { date, hour24: 9, minute: 0 };
   return isSlotPast(nine, now) ? nextSlotAfter(now) : nine;
 }
 
 /** Keeps a chosen slot valid: if it is in the past (today), moves it to the next free slot. */
-export function clampToFuture(v: PickerValue, now: Date = new Date()): PickerValue {
+export function clampToFuture(v: PickerValue, now: Clock = new Date()): PickerValue {
   return isSlotPast(v, now) ? nextSlotAfter(now) : v;
 }
 
@@ -103,7 +120,7 @@ export function isHourDisabled(
   date: string,
   hour12: number,
   period: Period,
-  now: Date = new Date(),
+  now: Clock = new Date(),
 ): boolean {
   return isSlotPast({ date, hour24: to24Hour(hour12, period), minute: 60 - MINUTE_STEP }, now);
 }
@@ -113,13 +130,13 @@ export function isMinuteDisabled(
   hour12: number,
   period: Period,
   minute: number,
-  now: Date = new Date(),
+  now: Clock = new Date(),
 ): boolean {
   return isSlotPast({ date, hour24: to24Hour(hour12, period), minute }, now);
 }
 
 /** AM / PM is selectable if its last slot of the day is still in the future. */
-export function isPeriodDisabled(date: string, period: Period, now: Date = new Date()): boolean {
+export function isPeriodDisabled(date: string, period: Period, now: Clock = new Date()): boolean {
   return isSlotPast({ date, hour24: period === "AM" ? 11 : 23, minute: 60 - MINUTE_STEP }, now);
 }
 

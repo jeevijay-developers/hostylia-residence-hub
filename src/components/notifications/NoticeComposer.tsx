@@ -61,7 +61,7 @@ import {
   type AudienceStudentOption,
 } from "@/components/notifications/CustomAudiencePicker";
 import { previewNoticeAudience } from "@/lib/notice-audience.functions";
-import { formatIstDate, formatIstDateTime, istInputToIso, nowIstInput } from "@/lib/ist";
+import { formatIstDate, formatIstDateTime, istInputToIso } from "@/lib/ist";
 import { effectiveNoticeStatus, useNowTick } from "@/lib/notice-time";
 import { SchedulePicker } from "@/components/notifications/SchedulePicker";
 
@@ -431,18 +431,24 @@ export function NoticeComposer({ propertyId }: Props) {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="notice-schedule">Schedule (optional, IST)</Label>
-              <SchedulePicker id="notice-schedule" value={publishAt} onChange={setPublishAt} />
+              <SchedulePicker
+                id="notice-schedule"
+                value={publishAt}
+                onChange={setPublishAt}
+                placeholder="Select schedule date & time (IST)"
+                pickerLabel="schedule date and time"
+              />
             </div>
             <div>
               <Label htmlFor="notice-expiry">Expires (optional, IST)</Label>
-              <Input
+              <SchedulePicker
                 id="notice-expiry"
-                className="mt-1.5 scheme-dark"
-                type="datetime-local"
-                min={publishAt || nowIstInput(new Date(nowTick))}
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-                aria-invalid={!!timeError}
+                onChange={setExpiresAt}
+                placeholder="Select expiry date & time (IST)"
+                pickerLabel="expiry date and time"
+                notBefore={publishAt}
+                invalid={!!timeError}
               />
             </div>
             <p className="text-xs text-muted-foreground sm:col-span-2">

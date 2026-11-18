@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isRangeValid, isoDateSchema } from "@/lib/report-range";
 
 const propertyFilter = z.object({
   property_id: z.string().uuid(),
@@ -87,6 +88,163 @@ export const getAgingReport = createServerFn({ method: "POST" })
       total_outstanding_paise: totalOutstanding,
       dso_days: dso,
     };
+  });
+
+/* --------------------------------------------------------------------------------------------------
+ * DSO & Aging (admin): Collection Rate, Overdue Invoices, aging buckets and list - all aggregated in the
+ * database (fn_collection_report / fn_aging_buckets / fn_aging_invoices, migration 20261123090000), so no
+ * invoice is dropped by a row limit. They run with the caller's rights (SECURITY INVOKER), so RLS and the
+ * property permissions apply exactly as for every other report query.
+ * ------------------------------------------------------------------------------------------------ */
+
+const collectionFilter = z
+  .object({
+    property_id: z.string().uuid(),
+    // Inclusive range on invoices.issue_date; omitted / null = unbounded on that side.
+    from: isoDateSchema.nullable().optional(),
+    to: isoDateSchema.nullable().optional(),
+  })
+  .refine((v) => isRangeValid(v.from, v.to), "The start date must not be after the end date");
+
+export interface CollectionReport {
+  /** The property-local "today" used to decide what is overdue. */
+  as_of: string;
+  eligible_invoice_count: number;
+  billed_paise: number;
+  received_paise: number;
+  refunded_paise: number;
+  collected_paise: number;
+  collection_rate_pct: number;
+  pending_paise: number;
+  due_unpaid_count: number;
+  overdue_count: number;
+  overdue_balance_paise: number;
+  overdue_pct: number;
+}
+
+interface RpcClient {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+async function callRpc<T>(
+  supabase: unknown,
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<T[]> {
+  const { data, error } = await (supabase as RpcClient).rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as T[];
+}
+
+export const getCollectionReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => collectionFilter.parse(d))
+  .handler(async ({ data, context }): Promise<CollectionReport> => {
+    const rows = await callRpc<Record<string, unknown>>(context.supabase, "fn_collection_report", {
+      p_property_id: data.property_id,
+      p_from: data.from ?? null,
+      p_to: data.to ?? null,
+    });
+    const r = rows[0] ?? {};
+    const n = (k: string) => Number(r[k] ?? 0);
+    return {
+      as_of: String(r.as_of ?? ""),
+      eligible_invoice_count: n("eligible_invoice_count"),
+      billed_paise: n("billed_paise"),
+      received_paise: n("received_paise"),
+      refunded_paise: n("refunded_paise"),
+      collected_paise: n("collected_paise"),
+      collection_rate_pct: n("collection_rate_pct"),
+      pending_paise: n("pending_paise"),
+      due_unpaid_count: n("due_unpaid_count"),
+      overdue_count: n("overdue_count"),
+      overdue_balance_paise: n("overdue_balance_paise"),
+      overdue_pct: n("overdue_pct"),
+    };
+  });
+
+/** Aging buckets (same view and rules as before), summed over EVERY unpaid invoice of the property. */
+export const getAgingBuckets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => propertyFilter.parse(d))
+  .handler(async ({ data, context }) => {
+    const rows = await callRpc<{ aging_bucket: string; balance_paise: number | string }>(
+      context.supabase,
+      "fn_aging_buckets",
+      { p_property_id: data.property_id },
+    );
+    const aging_paise: Record<string, number> = { current: 0, "0-30": 0, "31-60": 0, "60+": 0 };
+    for (const r of rows) aging_paise[r.aging_bucket] = Number(r.balance_paise);
+    return { aging_paise };
+  });
+
+export interface AgingInvoice {
+  id: string;
+  invoice_number: string;
+  student_name: string | null;
+  due_date: string;
+  days_overdue: number;
+  aging_bucket: string;
+  balance_paise: number;
+  status: string;
+}
+
+async function fetchAgingPage(
+  supabase: unknown,
+  propertyId: string,
+  page: number,
+  pageSize: number,
+) {
+  const rows = await callRpc<Record<string, unknown>>(supabase, "fn_aging_invoices", {
+    p_property_id: propertyId,
+    p_limit: pageSize,
+    p_offset: page * pageSize,
+  });
+  return {
+    total: rows.length > 0 ? Number(rows[0].total_count) : 0,
+    rows: rows.map((r): AgingInvoice => ({
+      id: String(r.id),
+      invoice_number: String(r.invoice_number),
+      student_name: r.student_name == null ? null : String(r.student_name),
+      due_date: String(r.due_date),
+      days_overdue: Number(r.days_overdue),
+      aging_bucket: String(r.aging_bucket),
+      balance_paise: Number(r.balance_paise),
+      status: String(r.status),
+    })),
+  };
+}
+
+const agingPageFilter = z.object({
+  property_id: z.string().uuid(),
+  page: z.number().int().min(0).default(0),
+  pageSize: z.number().int().min(1).max(100).default(25),
+});
+
+/** One page of the unpaid-invoice list plus the exact total (server-side pagination). */
+export const listAgingInvoices = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => agingPageFilter.parse(d))
+  .handler(async ({ data, context }) =>
+    fetchAgingPage(context.supabase, data.property_id, data.page, data.pageSize),
+  );
+
+/** Every unpaid invoice (for CSV / PDF export), fetched page by page - never truncated. */
+export const exportAgingInvoices = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => propertyFilter.parse(d))
+  .handler(async ({ data, context }) => {
+    const all: AgingInvoice[] = [];
+    const size = 1000;
+    for (let page = 0; ; page++) {
+      const { rows, total } = await fetchAgingPage(context.supabase, data.property_id, page, size);
+      all.push(...rows);
+      if (all.length >= total || rows.length === 0) break;
+    }
+    return all;
   });
 
 /**

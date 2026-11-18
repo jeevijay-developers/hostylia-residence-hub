@@ -3,7 +3,8 @@ import { CalendarClock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
   clampToFuture,
   dayFromYmd,
   defaultTimeFor,
+  floorClock,
   isDayDisabled,
   isHourDisabled,
   isMinuteDisabled,
@@ -42,20 +44,42 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** Text shown in the field while empty. */
+  placeholder?: string;
+  /** What is being picked, for the icon button's accessible name ("schedule date and time"). */
+  pickerLabel?: string;
+  /**
+   * Earliest allowed moment as an IST value (e.g. the scheduled publish time for an expiry). Slots at or
+   * before it - and before "now" - cannot be chosen.
+   */
+  notBefore?: string;
+  invalid?: boolean;
 }
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
- * Calendar + hour / minute / AM-PM selector for the Notice Composer's Schedule field. Everything is in
- * IST (Asia/Kolkata) whatever the device's timezone; past days and past times cannot be chosen. The value
- * it reports is the same IST string the composer already converts to a UTC instant when publishing.
+ * Date/time field for the Notice Composer (used for both Schedule and Expires). The field itself only
+ * DISPLAYS the chosen value; the picker (calendar + hour / minute / AM-PM) opens only from the calendar
+ * icon button, never from clicking or focusing the text. Everything is in IST (Asia/Kolkata) whatever the
+ * device's timezone; past days and past times cannot be chosen. The value it reports is the same IST
+ * string the composer already converts to a UTC instant when publishing.
  */
-export function SchedulePicker({ id, value, onChange, disabled }: Props) {
+export function SchedulePicker({
+  id,
+  value,
+  onChange,
+  disabled,
+  placeholder = "Select date & time (IST)",
+  pickerLabel = "date and time",
+  notBefore,
+  invalid,
+}: Props) {
   const [open, setOpen] = useState(false);
   const nowMs = useNowTick(30_000);
-  const now = new Date(nowMs);
+  // The earliest selectable moment: "now" (IST), or a later notBefore value. All rules below use it.
+  const now = floorClock(new Date(nowMs), notBefore);
   const parsed = parsePickerValue(value);
   const iso = value ? istInputToIso(value) : null;
   const today = todayIst(now);
@@ -92,23 +116,31 @@ export function SchedulePicker({ id, value, onChange, disabled }: Props) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn(
-            "mt-1.5 w-full justify-start gap-2 font-normal",
-            !iso && "text-muted-foreground",
-          )}
-        >
-          <CalendarClock className="h-4 w-4 shrink-0" />
-          <span className="truncate">
-            {iso ? formatIstDateTime(iso) : "Pick date & time (IST)"}
-          </span>
-        </Button>
-      </PopoverTrigger>
+      <PopoverAnchor asChild>
+        <div className="relative mt-1.5">
+          <Input
+            id={id}
+            readOnly
+            value={iso ? formatIstDateTime(iso) : ""}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-invalid={invalid}
+            className={cn("cursor-default truncate pr-12", iso && "text-foreground")}
+          />
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              disabled={disabled}
+              aria-label={`Open calendar to pick ${pickerLabel}`}
+              className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg border-input bg-card text-foreground hover:bg-muted"
+            >
+              <CalendarClock className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </PopoverTrigger>
+        </div>
+      </PopoverAnchor>
       <PopoverContent
         align="start"
         collisionPadding={8}

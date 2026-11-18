@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveInvoiceFilter } from "@/lib/finance";
+import { isRangeValid, isoDateSchema } from "@/lib/report-range";
 import {
   feePlanFormSchema,
   recordPaymentSchema,
@@ -647,6 +648,47 @@ export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
   });
 
 /**
+ * The property's own calendar date ("YYYY-MM-DD", properties.timezone, default Asia/Kolkata): the clock the
+ * daily OVERDUE job and the Reports overdue count (fn_collection_report) both use.
+ */
+async function propertyLocalToday(supabase: unknown, propertyId: string): Promise<string> {
+  const client = supabase as {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (
+          c: string,
+          v: string,
+        ) => {
+          maybeSingle: () => PromiseLike<{ data: { timezone?: string | null } | null }>;
+        };
+      };
+    };
+  };
+  const { data } = await client
+    .from("properties")
+    .select("timezone")
+    .eq("id", propertyId)
+    .maybeSingle();
+  const format = (timeZone: string) => {
+    const p: Record<string, string> = {};
+    for (const part of new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date())) {
+      p[part.type] = part.value;
+    }
+    return `${p.year}-${p.month}-${p.day}`;
+  };
+  try {
+    return format(data?.timezone || "Asia/Kolkata");
+  } catch {
+    return format("Asia/Kolkata");
+  }
+}
+
+/**
  * Fetch invoices + student names for a property (staff view).
  */
 export const listPropertyInvoices = createServerFn({ method: "POST" })
@@ -657,12 +699,21 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
         property_id: z.string().uuid(),
         status: z.string().optional(),
         search: z.string().optional(),
+        // Reports drill-down: past-due invoices that still carry a balance (the Overdue Invoices KPI),
+        // optionally limited to an issue-date range. Same predicate as fn_collection_report.
+        overdue: z.boolean().optional(),
+        issue_from: isoDateSchema.optional(),
+        issue_to: isoDateSchema.optional(),
         page: z.number().int().min(0).default(0),
         // Capped well above the UI's own page size (20) so a bulk CSV export
         // can request everything in one call without needing a separate
         // "export" endpoint, while still bounding the worst case.
         pageSize: z.number().int().min(1).max(5000).default(20),
       })
+      .refine(
+        (v) => isRangeValid(v.issue_from, v.issue_to),
+        "The start date must not be after the end date",
+      )
       .parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -699,7 +750,17 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
     // flips past-due invoices daily and fn_recompute_invoice keeps them OVERDUE. "OUTSTANDING"
     // is the dashboard's Total Outstanding link: anything still carrying a balance.
     const filter = resolveInvoiceFilter(data.status);
-    if (filter.kind === "outstanding") {
+    if (data.issue_from) q = q.gte("issue_date", data.issue_from);
+    if (data.issue_to) q = q.lte("issue_date", data.issue_to);
+    if (data.overdue) {
+      // Everything the Overdue Invoices KPI counts: due date before the property's today, balance still
+      // positive (partially paid included), and not DRAFT / VOID / PAID / fully REFUNDED.
+      const today = await propertyLocalToday(supabase, data.property_id);
+      q = q
+        .gt("balance_paise", 0)
+        .lt("due_date", today)
+        .not("status", "in", "(DRAFT,VOID,PAID,REFUNDED)");
+    } else if (filter.kind === "outstanding") {
       q = q.gt("balance_paise", 0).not("status", "in", "(PAID,VOID,REFUNDED)");
     } else if (filter.kind === "status") {
       q = q.eq("status", filter.status);

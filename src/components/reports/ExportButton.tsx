@@ -1,4 +1,5 @@
 import { ChevronDown, Download } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +18,11 @@ interface Props<Row extends Record<string, unknown>> {
   rows: Row[];
   columns: CsvColumn<Row>[];
   disabled?: boolean;
+  /**
+   * When the on-screen `rows` are only one page of a server-paginated list, supply this to fetch the
+   * complete data set at export time. `rows` then only decides whether the button is enabled.
+   */
+  loadRows?: () => Promise<Row[]>;
 }
 
 /**
@@ -34,8 +40,16 @@ export function ExportButton<Row extends Record<string, unknown>>({
   rows,
   columns,
   disabled,
+  loadRows,
 }: Props<Row>) {
   const isDisabled = disabled || rows.length === 0;
+  const exportRows = async (write: (all: Row[]) => void) => {
+    try {
+      write(loadRows ? await loadRows() : rows);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not export the report");
+    }
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -46,11 +60,15 @@ export function ExportButton<Row extends Record<string, unknown>>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => downloadCsv(`${filename}.csv`, toCsv(rows, columns))}>
+        <DropdownMenuItem
+          onSelect={() => exportRows((all) => downloadCsv(`${filename}.csv`, toCsv(all, columns)))}
+        >
           Export as CSV
         </DropdownMenuItem>
         <DropdownMenuItem
-          onSelect={() => downloadPdf(`${filename}.pdf`, title ?? filename, rows, columns)}
+          onSelect={() =>
+            exportRows((all) => downloadPdf(`${filename}.pdf`, title ?? filename, all, columns))
+          }
         >
           Export as PDF
         </DropdownMenuItem>

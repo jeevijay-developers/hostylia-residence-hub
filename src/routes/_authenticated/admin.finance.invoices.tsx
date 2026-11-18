@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown, Download, Plus, ReceiptText } from "lucide-react";
+import { AlertTriangle, Check, ChevronsUpDown, Download, Plus, ReceiptText } from "lucide-react";
 
 import { InvoiceTable, type InvoiceRow } from "@/components/finance/InvoiceTable";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
@@ -44,6 +44,7 @@ import {
   type InvoiceStatus,
 } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv-export";
+import { formatRange, invoiceScopeSearchSchema } from "@/lib/report-range";
 import {
   listPropertyInvoices,
   createManualInvoice,
@@ -56,6 +57,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/finance/invoices")({
+  // ?scope=overdue&from=&to= : opened from Reports > Overdue Invoices with the period it was counted for.
+  validateSearch: invoiceScopeSearchSchema,
   component: AdminInvoicesPage,
 });
 
@@ -84,14 +87,24 @@ function AdminInvoicesPage() {
   const [page, setPage] = useState(0);
   const [exporting, setExporting] = useState(false);
 
+  // Reports drill-down: overdue invoices (past due, balance still owed) for the report's period.
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const overdueScope = search.scope === "overdue";
+  const scopeFilter = overdueScope
+    ? { overdue: true, issue_from: search.from, issue_to: search.to }
+    : {};
+  useEffect(() => setPage(0), [overdueScope, search.from, search.to]);
+
   const q = useQuery({
-    queryKey: ["invoices", propertyId, status, page],
+    queryKey: ["invoices", propertyId, status, page, overdueScope, search.from, search.to],
     enabled: !!propertyId,
     queryFn: () =>
       listFn({
         data: {
           property_id: propertyId!,
-          status: status === "ALL" ? undefined : status,
+          status: status === "ALL" || overdueScope ? undefined : status,
+          ...scopeFilter,
           page,
           pageSize: INVOICES_PAGE_SIZE,
         },
@@ -113,7 +126,8 @@ function AdminInvoicesPage() {
       const all = await listFn({
         data: {
           property_id: propertyId,
-          status: status === "ALL" ? undefined : status,
+          status: status === "ALL" || overdueScope ? undefined : status,
+          ...scopeFilter,
           page: 0,
           // Matches listPropertyInvoices' validator cap (max 5000) — this
           // was previously 10000, which failed validation on every export
@@ -180,8 +194,35 @@ function AdminInvoicesPage() {
         }
       />
 
+      {overdueScope && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
+        >
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span>
+              Overdue invoices: past their due date with an outstanding balance
+              {search.from && search.to
+                ? `, issued ${formatRange({ from: search.from, to: search.to })}`
+                : ""}
+              {q.data ? ` (${total})` : ""}
+            </span>
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => navigate({ to: "/admin/finance/invoices", search: {} })}
+          >
+            Clear filter
+          </Button>
+        </div>
+      )}
+
       <Select
         value={status}
+        disabled={overdueScope}
         onValueChange={(v) => {
           setStatus(v);
           setPage(0);

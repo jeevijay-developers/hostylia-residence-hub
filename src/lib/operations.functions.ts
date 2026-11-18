@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dispatchNotification } from "@/lib/dispatch-notification";
+import { formatGateTime } from "@/lib/gate-time";
 
 // --- token helpers (Web Crypto, Worker-safe) ---
 async function sha256Hex(input: string): Promise<string> {
@@ -263,6 +264,36 @@ const scanSchema = z.object({
   device_id: z.string().optional(),
 });
 
+/**
+ * Active wardens who may be told about a late entry on this pass: WARDEN role assignments in the pass's tenant
+ * that cover its property (property-wide or this property) and its block (all blocks or this block) - the same
+ * scope rule as warden_can_write_scope. Read with the server client because a warden's own session cannot read
+ * other wardens' assignments. Never throws: a lookup failure just means no warden is notified.
+ */
+async function listPropertyWardenIds(gp: {
+  tenant_id: string;
+  property_id: string;
+  block_id: string | null;
+}): Promise<string[]> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const wardens = supabaseAdmin
+      .from("role_assignments")
+      .select("user_id")
+      .eq("tenant_id", gp.tenant_id)
+      .eq("role", "WARDEN")
+      .eq("is_active", true)
+      .or(`property_id.is.null,property_id.eq.${gp.property_id}`);
+    const { data } = gp.block_id
+      ? await wardens.or(`block_id.is.null,block_id.eq.${gp.block_id}`)
+      : await wardens.is("block_id", null);
+    return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))];
+  } catch (e) {
+    console.warn("[scanGatePass] warden lookup failed", e);
+    return [];
+  }
+}
+
 export const scanGatePass = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => scanSchema.parse(d))
@@ -339,17 +370,17 @@ export const scanGatePass = createServerFn({ method: "POST" })
         });
       }
 
-      // Late entry → notify warden
-      if (data.direction === "IN" && gp.warden_approved_by) {
-        const { data: latestEvent } = await supabase
+      // Late entry → notify the property's wardens. Eligible: this student IN event, which the curfew
+      // trigger marked late (whether or not the pass has an approving warden). Everything is keyed on the
+      // gate event id, so processing the same scan again never notifies twice.
+      if (data.direction === "IN") {
+        const { data: lateEvent } = await supabase
           .from("gate_events")
-          .select("is_late")
-          .eq("gate_pass_id", gp.id)
-          .eq("direction", "IN")
-          .order("event_at", { ascending: false })
-          .limit(1)
+          .select("id, is_late")
+          .eq("tenant_id", gp.tenant_id)
+          .eq("idempotency_key", idem)
           .maybeSingle();
-        if (latestEvent?.is_late) {
+        if (lateEvent?.is_late) {
           const { data: student } = await supabase
             .from("students")
             .select("full_name, phone")
@@ -357,29 +388,28 @@ export const scanGatePass = createServerFn({ method: "POST" })
             .maybeSingle();
           const { data: property } = await supabase
             .from("properties")
-            .select("name")
+            .select("name, timezone")
             .eq("id", gp.property_id)
             .maybeSingle();
-          const time = new Date().toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          const time = formatGateTime(new Date(), property?.timezone);
           const lateVars = {
             name: student?.full_name ?? "Student",
             property: property?.name ?? "hostel",
             time,
             pass_number: gp.pass_number,
           };
-          await dispatchNotification(supabase, {
-            channel: "IN_APP",
-            templateKey: "late_entry",
-            recipient: { userId: gp.warden_approved_by },
-            variables: lateVars,
-            eventType: "LATE_ENTRY",
-            tenantId: gp.tenant_id,
-            propertyId: gp.property_id,
-            referenceId: `${gp.id}-late-${bucket}`,
-          });
+          for (const wardenId of await listPropertyWardenIds(gp)) {
+            await dispatchNotification(supabase, {
+              channel: "IN_APP",
+              templateKey: "late_entry",
+              recipient: { userId: wardenId },
+              variables: lateVars,
+              eventType: "LATE_ENTRY",
+              tenantId: gp.tenant_id,
+              propertyId: gp.property_id,
+              referenceId: `${lateEvent.id}-late`,
+            });
+          }
           const { data: guardianRows } = await supabase
             .from("student_guardians")
             .select("can_view_gate_events, guardians(phone)")
@@ -399,7 +429,7 @@ export const scanGatePass = createServerFn({ method: "POST" })
               eventType: "LATE_ENTRY",
               tenantId: gp.tenant_id,
               propertyId: gp.property_id,
-              referenceId: `${gp.id}-late-sms-${phone.slice(-4)}-${bucket}`,
+              referenceId: `${lateEvent.id}-late-sms-${phone.slice(-4)}`,
             });
           }
         }

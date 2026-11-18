@@ -26,6 +26,7 @@ import {
 import { formatInr } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import type { CsvColumn } from "@/lib/csv";
+import { propertyOccupancyTotal } from "@/lib/occupancy-total";
 
 /* ----------------------- OCCUPANCY ----------------------- */
 
@@ -64,9 +65,12 @@ const occupancyCsv: CsvColumn<OccupancyRow>[] = occupancyCols.map((c) => ({
 export function OccupancyReportPanel({
   propertyId,
   showExport = true,
+  showPropertyTotal = false,
 }: {
   propertyId: string;
   showExport?: boolean;
+  /** Adds a "Property Total" summary row under the block rows (not another block; not in the chart). */
+  showPropertyTotal?: boolean;
 }) {
   const fn = useServerFn(getOccupancyReport);
   const q = useQuery({
@@ -74,6 +78,11 @@ export function OccupancyReportPanel({
     queryFn: () => fn({ data: { property_id: propertyId } }),
   });
   const rows = (q.data ?? []) as OccupancyRow[];
+  // Summed from the very rows shown above: every bed once (unassigned beds are the "(no block)" row).
+  const total: OccupancyRow | undefined =
+    showPropertyTotal && rows.length > 0
+      ? { block_id: null, block_name: "Property Total", ...propertyOccupancyTotal(rows) }
+      : undefined;
   return (
     <section className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -94,7 +103,7 @@ export function OccupancyReportPanel({
           <OccupancyChart data={rows} />
         </div>
       )}
-      <ReportTable rows={rows} columns={occupancyCols} />
+      <ReportTable rows={rows} columns={occupancyCols} footer={total} />
     </section>
   );
 }
@@ -517,26 +526,35 @@ const KPI_TONE = {
   },
 } as const;
 
-function Kpi({
+export function Kpi({
   icon: Icon,
   label,
   value,
   tone = "neutral",
   className,
+  detail,
+  onClick,
+  ariaLabel,
 }: {
   icon?: LucideIcon;
   label: string;
   value: string;
   tone?: keyof typeof KPI_TONE;
   className?: string;
+  /** Secondary information under the value (e.g. "₹X collected of ₹Y billed"). */
+  detail?: React.ReactNode;
+  /** Makes the whole card a button (keyboard accessible). */
+  onClick?: () => void;
+  ariaLabel?: string;
 }) {
   const t = KPI_TONE[tone];
-  return (
+  const card = (
     <div
       className={cn(
         "flex min-w-0 items-center gap-3 rounded-2xl border-l-4 bg-card p-3 shadow-card-ambient panel-lift sm:p-5",
         t.border,
-        className,
+        onClick && "h-full transition-colors hover:bg-muted/40",
+        !onClick && className,
       )}
     >
       {Icon && (
@@ -557,7 +575,22 @@ function Kpi({
         >
           {value}
         </p>
+        {detail && <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">{detail}</div>}
       </div>
     </div>
+  );
+  if (!onClick) return card;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={cn(
+        "block min-w-0 cursor-pointer rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+    >
+      {card}
+    </button>
   );
 }
