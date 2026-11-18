@@ -49,6 +49,14 @@ export const MSG91_SMS_TEMPLATES = {
     envKeys: ["MSG91_TEMPLATE_STAFF_ACCESS_REVOKED"] as const,
     variables: ["name", "property"] as const,
   },
+  // DLT text (register this exact wording, one variable):
+  //   Notice from Hostylia: ##title## Open the Hostylia app for details. -Hostylia
+  // No code fallback id: set MSG91_TEMPLATE_NOTICE_BROADCAST once MSG91 approves it.
+  NOTICE_BROADCAST: {
+    templateId: "",
+    envKeys: ["MSG91_TEMPLATE_NOTICE_BROADCAST"] as const,
+    variables: ["title"] as const,
+  },
 } as const;
 
 export type Msg91SmsTemplateKey = keyof typeof MSG91_SMS_TEMPLATES;
@@ -65,6 +73,7 @@ export const NOTIFICATION_TEMPLATE_TO_MSG91: Record<string, Msg91SmsTemplateKey>
   staff_access_revoked: "STAFF_ACCESS_REVOKED",
   sub_expiry: "SUB_EXPIRY",
   subscription_expiry: "SUB_EXPIRY",
+  notice_broadcast: "NOTICE_BROADCAST",
 };
 
 export function envNameForSmsType(templateKey: string): string {
@@ -142,6 +151,8 @@ export function buildMsg91RecipientVars(
       if (typeof vars.balance_paise === "number") value = String(vars.balance_paise / 100);
       else if (typeof vars.amount_paise === "number") value = String(vars.amount_paise / 100);
     }
+    // DLT variables are capped (~30 chars); longer values get the SMS rejected.
+    if (key === "NOTICE_BROADCAST" && value.length > 30) value = value.slice(0, 29) + "…";
     out[varName] = value || "-";
   }
   return out;

@@ -77,9 +77,9 @@ export function NoticeComposer({ propertyId }: Props) {
   const publishFn = useServerFn(publishNotice);
   const cancelFn = useServerFn(cancelNotice);
 
-  // Provider config surface — currently the platform has no Twilio secrets; hard-code false.
-  // A future settings page can expose /rest/v1/rpc('provider_status') to flip this live.
-  const providerConfigured = { SMS: false, WHATSAPP: false, EMAIL: false, IN_APP: true };
+  // SMS goes through MSG91 (see supabase/functions/_shared/msg91.ts). WhatsApp/Email
+  // remain off until Twilio/Resend secrets exist.
+  const providerConfigured = { SMS: true, WHATSAPP: false, EMAIL: false, IN_APP: true };
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -266,7 +266,7 @@ export function NoticeComposer({ propertyId }: Props) {
                         <span>{button}</span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Provider not configured. Add Twilio/Resend secrets to enable.
+                        Provider not configured. Add Twilio (WhatsApp) / Resend (Email) secrets to enable.
                       </TooltipContent>
                     </Tooltip>
                   ) : (
