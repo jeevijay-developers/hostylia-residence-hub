@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { isNoticeActive, useNowTick } from "@/lib/notice-time";
 
 export type NoticeRow = Database["public"]["Tables"]["notices"]["Row"];
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
@@ -122,7 +123,9 @@ export async function markAllRead(ids: string[]) {
 /**
  * @param includeAllStatuses Admin/composer views need to see and act on
  * DRAFT/SCHEDULED/CANCELLED notices too (e.g. to Cancel a scheduled one
- * before it fires); recipient-facing feeds must stay PUBLISHED-only.
+ * before it fires); recipient-facing feeds must stay PUBLISHED-only, and never show a notice whose
+ * `expires_at` has passed (the database job flips it to EXPIRED a few minutes later; until then it is
+ * excluded here, and re-checked every 30 seconds while the page is open).
  */
 export function useTenantNotices(
   tenantId: string | null | undefined,
@@ -131,8 +134,14 @@ export function useTenantNotices(
 ) {
   const qc = useQueryClient();
   const key = tenantId ?? propertyId ?? null;
+  const now = useNowTick(30_000);
+  const onlyActive = useCallback(
+    (rows: NoticeRow[]) => (includeAllStatuses ? rows : rows.filter((n) => isNoticeActive(n, now))),
+    [includeAllStatuses, now],
+  );
   const query = useQuery({
     queryKey: ["notices", tenantId, propertyId, includeAllStatuses],
+    select: onlyActive,
     enabled: !!(tenantId || propertyId),
     queryFn: async () => {
       let q = supabase
@@ -141,7 +150,11 @@ export function useTenantNotices(
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(50);
-      if (!includeAllStatuses) q = q.eq("status", "PUBLISHED");
+      if (!includeAllStatuses) {
+        q = q
+          .eq("status", "PUBLISHED")
+          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+      }
       if (tenantId) q = q.eq("tenant_id", tenantId);
       if (propertyId) q = q.eq("property_id", propertyId);
       const { data, error } = await q;

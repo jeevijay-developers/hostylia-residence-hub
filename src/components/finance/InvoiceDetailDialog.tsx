@@ -5,7 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
+import {
+  formatInr,
+  INVOICE_STATUS_TONE,
+  PAYMENT_STATUS_LABEL,
+  PAYMENT_STATUS_TONE,
+  sumReceivedPaise,
+  type InvoiceStatus,
+  type PaymentStatus,
+} from "@/lib/finance";
 import { useReceiptDownload } from "@/components/finance/PaymentHistoryPanel";
 
 /**
@@ -86,7 +94,7 @@ export function InvoiceDetailDialog({
               <Row label="Total" value={formatInr(inv.total_paise)} strong />
               <Row label="Paid" value={formatInr(inv.paid_paise)} />
               <Row label="Refunded" value={formatInr(inv.refunded_paise)} />
-              <Row label="Balance" value={formatInr(inv.balance_paise)} strong />
+              <Row label="Remaining Balance" value={formatInr(inv.balance_paise)} strong />
             </div>
 
             {inv.gst_invoice && (
@@ -113,29 +121,44 @@ export function InvoiceDetailDialog({
                 (paymentsQ.data ?? []).map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs"
                   >
-                    <span>
+                    <span className="min-w-0">
                       {p.payment_number} · {p.mode}
                       {p.paid_at && ` · ${new Date(p.paid_at).toLocaleDateString()}`}
                     </span>
-                    <span className="flex items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Badge
+                        className={PAYMENT_STATUS_TONE[p.status as PaymentStatus] ?? "bg-muted"}
+                      >
+                        {PAYMENT_STATUS_LABEL[p.status as PaymentStatus] ?? p.status}
+                      </Badge>
                       <span className="font-semibold text-foreground">
                         {formatInr(p.amount_paise)}
                       </span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        title="Download receipt"
-                        disabled={downloadingId === p.id}
-                        onClick={() => download.mutate(p.id)}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
+                      {p.status === "CAPTURED" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Download receipt"
+                          disabled={downloadingId === p.id}
+                          onClick={() => download.mutate(p.id)}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </span>
                   </div>
                 ))}
+              {!paymentsQ.isLoading && (paymentsQ.data ?? []).length > 0 && (
+                <div className="flex items-center justify-between px-1 text-xs">
+                  <span className="text-muted-foreground">Total received (successful only)</span>
+                  <span className="font-semibold text-foreground">
+                    {formatInr(sumReceivedPaise(paymentsQ.data ?? []))}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ReceiptText, Search } from "lucide-react";
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { INVOICE_FILTER_OPTIONS } from "@/lib/finance";
 import { listPropertyInvoices } from "@/lib/finance.functions";
 import { useAccountantProperty } from "@/lib/staff-scope";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,20 +27,12 @@ export const Route = createFileRoute("/_authenticated/accountant/invoices")({
   validateSearch: (search: Record<string, unknown>): { status?: string } => ({
     status: typeof search.status === "string" ? search.status : undefined,
   }),
-  component: AccInvoicesPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="invoices_view">
+      <AccInvoicesPage />
+    </StaffModuleGuard>
+  ),
 });
-
-const STATUS_OPTIONS = [
-  "ALL",
-  "DRAFT",
-  "ISSUED",
-  "PARTIALLY_PAID",
-  "PAID",
-  "OVERDUE",
-  "VOID",
-  "PARTIALLY_REFUNDED",
-  "REFUNDED",
-];
 
 function AccInvoicesPage() {
   const { status: initialStatus } = Route.useSearch();
@@ -117,9 +111,9 @@ function AccInvoicesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s === "ALL" ? "All statuses" : s.replaceAll("_", " ")}
+            {INVOICE_FILTER_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
               </SelectItem>
             ))}
           </SelectContent>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -75,12 +76,20 @@ import {
   isExpectedYearValid,
 } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
 import { cn, getErrorMessage } from "@/lib/utils";
 
+// Lets the Daily Brief's Visitors Today card open the visitors tab scoped to today.
+// Shared with the Accountant gate route, which reuses this page.
+export const gateSearchSchema = z.object({ view: z.literal("visitors-today").optional() });
+
 export const Route = createFileRoute("/_authenticated/warden/gate")({
-  // Lets the Daily Brief's Visitors Today card open the visitors tab scoped to today.
-  validateSearch: z.object({ view: z.literal("visitors-today").optional() }),
-  component: WardenGatePage,
+  validateSearch: gateSearchSchema,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="gate_passes_view">
+      <WardenGatePage />
+    </StaffModuleGuard>
+  ),
 });
 
 type RoomAllocation = { status: string; rooms?: { room_number: string } | null };
@@ -156,7 +165,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function WardenGatePage() {
+export function WardenGatePage() {
   const role = useResolvedRole();
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
@@ -171,7 +180,7 @@ function WardenGatePage() {
   const createVis = useServerFn(createVisitor);
   const today = todayStr();
 
-  const { view: initialView } = Route.useSearch();
+  const { view: initialView } = useSearch({ strict: false }) as z.infer<typeof gateSearchSchema>;
   const [tab, setTab] = useState(initialView === "visitors-today" ? "visitors" : "approvals");
   const [approvalFilter, setApprovalFilter] = useState<
     "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
@@ -408,6 +417,8 @@ function WardenGatePage() {
           />
         </div>
       </div>
+
+      <OverdueOutPassAlerts propertyId={propertyId} />
 
       <Tabs value={tab} onValueChange={setTab}>
         <div className="overflow-x-auto border-b border-border">

@@ -2,7 +2,8 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { DesktopShell } from "@/components/dashboard/DesktopShell";
 import { StudentBottomNav } from "@/components/dashboard/StudentBottomNav";
-import { SIDEBAR_NAV, BOTTOM_NAV, MORE_NAV, CENTER_NAV } from "@/lib/dashboard-nav";
+import { SIDEBAR_NAV, BOTTOM_NAV, MORE_NAV, CENTER_NAV, type NavItem } from "@/lib/dashboard-nav";
+import { useAccountantPermissions } from "@/lib/staff-scope";
 
 function AccountantLayout() {
   // Lock html/body scroll while on the Accountant section so only the
@@ -19,19 +20,31 @@ function AccountantLayout() {
     };
   }, []);
 
-  const bottomItems = BOTTOM_NAV.ACCOUNTANT ?? [];
-  const moreItems = MORE_NAV.ACCOUNTANT ?? [];
-  const centerItem = CENTER_NAV.ACCOUNTANT;
+  const { can: canModule } = useAccountantPermissions();
+  // Same "no module tag = always visible" + "module tag -> gate on the
+  // matching PermissionKey" filtering student.tsx/warden.tsx apply, extended
+  // to Accountant's own custom-permission matrix (admin.staff.tsx).
+  const moduleFilter = (item: NavItem) => !item.module || canModule(item.module);
+  const navItems = (SIDEBAR_NAV.ACCOUNTANT ?? []).filter(moduleFilter);
+  const bottomItems = (BOTTOM_NAV.ACCOUNTANT ?? []).filter(moduleFilter);
+  // Deposit Ledger now lives on the bottom bar; the rest of the former "More"
+  // list moves into the mobile hamburger drawer (same permission filter).
+  const bottomTargets = new Set(bottomItems.map((i) => i.to));
+  const drawerItems = (MORE_NAV.ACCOUNTANT ?? [])
+    .filter(moduleFilter)
+    .filter((i) => !bottomTargets.has(i.to));
+  const rawCenter = CENTER_NAV.ACCOUNTANT;
+  const centerItem =
+    rawCenter && (!rawCenter.module || canModule(rawCenter.module)) ? rawCenter : undefined;
 
   return (
     <DesktopShell
       allow={["ACCOUNTANT"]}
-      navItems={SIDEBAR_NAV.ACCOUNTANT ?? []}
+      navItems={navItems}
       hideMobileNavTrigger
       mobileHeaderScrollsWithContent
-      mobileBottomNav={
-        <StudentBottomNav items={bottomItems} centerItem={centerItem} moreItems={moreItems} />
-      }
+      mobileProfileMenuItems={drawerItems}
+      mobileBottomNav={<StudentBottomNav items={bottomItems} centerItem={centerItem} />}
     >
       <Outlet />
     </DesktopShell>
@@ -44,4 +57,3 @@ export const Route = createFileRoute("/_authenticated/accountant")({
   }),
   component: AccountantLayout,
 });
-

@@ -7,25 +7,29 @@ import { z } from "zod";
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronDown,
-  Clock,
+  Eye,
   LayoutGrid,
   Layers,
   Package,
+  PlayCircle,
   RotateCcw,
   UserPlus,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ComplaintCard } from "@/components/complaints/ComplaintCard";
-import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -45,14 +49,23 @@ import {
   useComplaints,
   useComplaintCategories,
   OPEN_COMPLAINT_STATUSES,
+  reopenComplaintWithOverride,
+  useCanOverrideReopen,
   type ComplaintWithRelations,
 } from "@/lib/complaint";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaff } from "@/lib/admin-staff.functions";
-import { resolutionSchema } from "@/schemas/complaint";
-import { cn } from "@/lib/utils";
+import {
+  reopenOverrideReasonError,
+  reopenOverrideSchema,
+  resolutionSchema,
+  resolutionSummaryError,
+} from "@/schemas/complaint";
+// Same details view the Warden dashboard uses (description, student, category/priority, resolution,
+// timeline, comments) — reused, not duplicated.
+import { ComplaintDetailsDialog } from "./warden.complaints";
 
 const complaintsSearchSchema = z.object({
   // Deep-link target for the "View complaint →" toast action fired when a
@@ -73,17 +86,9 @@ export const Route = createFileRoute("/_authenticated/admin/complaints")({
 type StaffListItem = Awaited<ReturnType<typeof listStaff>>[number];
 type WardenRow = StaffListItem & { role: "WARDEN" };
 
-const STATUSES = [
-  "ALL",
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "WAITING_FOR_STUDENT",
-  "RESOLVED",
-  "CLOSED",
-  "REOPENED",
-  "CANCELLED",
-];
+// WAITING_FOR_STUDENT / CANCELLED have no workflow that enters them, so they are not offered as
+// filters (existing rows keep the status and still show under ALL).
+const STATUSES = ["ALL", "OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED", "REOPENED"];
 
 function useBlocks(propertyId: string | null | undefined) {
   return useQuery({
@@ -226,7 +231,18 @@ function AdminComplaintRow({
   const [assignee, setAssignee] = useState<string>("");
   const [resolveOpen, setResolveOpen] = useState(false);
   const [summary, setSummary] = useState("");
+  const [summaryTouched, setSummaryTouched] = useState(false);
+  // Validated on every change; shown once the user has interacted so an untouched modal isn't red.
+  const summaryError = resolutionSummaryError(summary);
+  const showSummaryError = summaryTouched && summaryError !== null;
   const [detailsOpen, setDetailsOpen] = useState(isHighlighted);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideConfirmOpen, setOverrideConfirmOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideTouched, setOverrideTouched] = useState(false);
+  const overrideError = reopenOverrideReasonError(overrideReason);
+  const showOverrideError = overrideTouched && overrideError !== null;
+  const canOverrideQ = useCanOverrideReopen(complaint);
 
   useEffect(() => {
     if (isHighlighted) {
@@ -280,12 +296,14 @@ function AdminComplaintRow({
 
   const resolve = useMutation({
     mutationFn: async () => {
-      const parsed = resolutionSchema.parse({ resolution_summary: summary });
+      // Friendly message instead of a raw ZodError (whose message is a JSON dump).
+      const parsed = resolutionSchema.safeParse({ resolution_summary: summary });
+      if (!parsed.success) throw new Error(resolutionSummaryError(summary) ?? "Invalid summary");
       const { error } = await supabase
         .from("complaints")
         .update({
           status: "RESOLVED",
-          resolution_summary: parsed.resolution_summary,
+          resolution_summary: parsed.data.resolution_summary,
           resolved_at: new Date().toISOString(),
           resolved_by: userId,
         })
@@ -296,24 +314,49 @@ function AdminComplaintRow({
       toast.success("Marked resolved");
       setResolveOpen(false);
       setSummary("");
+      setSummaryTouched(false);
       qc.invalidateQueries({ queryKey: ["complaints"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Resolve failed"),
   });
 
-  const reopen = useMutation({
+  const startWorking = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from("complaints")
-        .update({ status: "REOPENED" })
+        .update({ status: "IN_PROGRESS" })
         .eq("id", complaint.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Complaint reopened");
+      toast.success("Work started");
       qc.invalidateQueries({ queryKey: ["complaints"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Reopen failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not start work"),
+  });
+
+  // Exceptional reopen. The permission, the mandatory reason and the eligibility (RESOLVED/CLOSED,
+  // never CANCELLED) are enforced by fn_admin_reopen_complaint; this only mirrors them for UX.
+  const reopenOverride = useMutation({
+    mutationFn: async () => {
+      const parsed = reopenOverrideSchema.safeParse({ reason: overrideReason });
+      if (!parsed.success)
+        throw new Error(reopenOverrideReasonError(overrideReason) ?? "Invalid reason");
+      await reopenComplaintWithOverride(complaint.id, parsed.data.reason);
+    },
+    onSuccess: () => {
+      toast.success("Complaint reopened (override recorded)");
+      setOverrideConfirmOpen(false);
+      setOverrideOpen(false);
+      setOverrideReason("");
+      setOverrideTouched(false);
+      qc.invalidateQueries({ queryKey: ["complaints"] });
+      qc.invalidateQueries({ queryKey: ["complaint-comments", complaint.id] });
+    },
+    onError: (e) => {
+      setOverrideConfirmOpen(false);
+      toast.error(e instanceof Error ? e.message : "Reopen override failed");
+    },
   });
 
   const canAssign = !["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
@@ -324,7 +367,12 @@ function AdminComplaintRow({
     "WAITING_FOR_STUDENT",
     "REOPENED",
   ].includes(complaint.status);
-  const canReopen = ["RESOLVED", "CLOSED", "CANCELLED"].includes(complaint.status);
+  const canStartWorking = complaint.status === "ASSIGNED";
+  // There is no regular Admin "Reopen": the student reopens RESOLVED complaints inside 48h. An Admin
+  // with the dedicated override permission may reopen a RESOLVED/CLOSED complaint (never CANCELLED).
+  const showReopenOverride =
+    (complaint.status === "RESOLVED" || complaint.status === "CLOSED") &&
+    canOverrideQ.data === true;
   // Once resolved/closed/cancelled, a stale sla_breached_at (set before
   // resolution and never cleared) shouldn't keep showing this as a live red
   // alert — mirrors slaMeta()'s own "done" gating for the SlaBadge/accent.
@@ -343,6 +391,14 @@ function AdminComplaintRow({
         identityVisibility="full"
         actions={
           <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-xl font-semibold"
+              onClick={() => setDetailsOpen(true)}
+            >
+              <Eye className="h-4 w-4" /> View Details
+            </Button>
             {canAssign && (
               <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
                 <DialogTrigger asChild>
@@ -390,8 +446,25 @@ function AdminComplaintRow({
                 </DialogContent>
               </Dialog>
             )}
+            {canStartWorking && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl font-semibold"
+                onClick={() => startWorking.mutate()}
+                disabled={startWorking.isPending}
+              >
+                <PlayCircle className="h-4 w-4" /> Start Working
+              </Button>
+            )}
             {canResolve && (
-              <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+              <Dialog
+                open={resolveOpen}
+                onOpenChange={(open) => {
+                  setResolveOpen(open);
+                  if (!open) setSummaryTouched(false);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" className="rounded-xl font-semibold">
                     <CheckCircle2 className="h-4 w-4" /> Resolve
@@ -401,53 +474,157 @@ function AdminComplaintRow({
                   <DialogHeader>
                     <DialogTitle>Resolve complaint</DialogTitle>
                   </DialogHeader>
-                  <Textarea
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    rows={4}
-                    placeholder="What was done to resolve this?"
-                  />
+                  <div className="space-y-1.5">
+                    <Textarea
+                      value={summary}
+                      onChange={(e) => {
+                        setSummary(e.target.value);
+                        setSummaryTouched(true);
+                      }}
+                      onBlur={() => setSummaryTouched(true)}
+                      rows={4}
+                      placeholder="Example: Water leakage repaired and plumbing issue fixed."
+                      aria-label="Resolution summary"
+                      aria-invalid={showSummaryError}
+                      aria-describedby={showSummaryError ? "resolve-summary-error" : undefined}
+                    />
+                    {showSummaryError && (
+                      <p
+                        id="resolve-summary-error"
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {summaryError}
+                      </p>
+                    )}
+                  </div>
                   <DialogFooter>
-                    <Button onClick={() => resolve.mutate()} disabled={resolve.isPending}>
+                    <Button
+                      onClick={() => {
+                        setSummaryTouched(true);
+                        if (summaryError === null) resolve.mutate();
+                      }}
+                      disabled={resolve.isPending || summaryError !== null}
+                    >
                       <CheckCircle2 className="h-4 w-4" /> Mark resolved
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
-            {canReopen && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-xl font-semibold"
-                onClick={() => reopen.mutate()}
-                disabled={reopen.isPending}
-              >
-                <RotateCcw className="h-4 w-4" /> Reopen
-              </Button>
+            {showReopenOverride && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl font-semibold"
+                  onClick={() => setOverrideOpen(true)}
+                >
+                  <RotateCcw className="h-4 w-4" /> Reopen Override
+                </Button>
+                <Dialog
+                  open={overrideOpen}
+                  onOpenChange={(open) => {
+                    setOverrideOpen(open);
+                    if (!open) setOverrideTouched(false);
+                  }}
+                >
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Reopen override</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                      This is an exceptional action outside the student&apos;s 48-hour reopen
+                      window. Your name, the time and your reason are recorded in the complaint
+                      history.
+                    </p>
+                    <div className="space-y-1.5">
+                      <Textarea
+                        value={overrideReason}
+                        onChange={(e) => {
+                          setOverrideReason(e.target.value);
+                          setOverrideTouched(true);
+                        }}
+                        onBlur={() => setOverrideTouched(true)}
+                        rows={4}
+                        placeholder="Why is this complaint being reopened?"
+                        aria-label="Reason for reopen override (required)"
+                        aria-invalid={showOverrideError}
+                        aria-describedby={showOverrideError ? "override-reason-error" : undefined}
+                      />
+                      {showOverrideError && (
+                        <p
+                          id="override-reason-error"
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {overrideError}
+                        </p>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => {
+                          setOverrideTouched(true);
+                          if (overrideError === null) {
+                            setOverrideOpen(false);
+                            setOverrideConfirmOpen(true);
+                          }
+                        }}
+                        disabled={overrideError !== null}
+                      >
+                        Continue
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <AlertDialog
+                  open={overrideConfirmOpen}
+                  onOpenChange={(open) => {
+                    if (reopenOverride.isPending) return;
+                    setOverrideConfirmOpen(open);
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reopen this complaint?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {complaint.complaint_number} will return to Reopened status. The override
+                        and your reason will be recorded in its history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        disabled={reopenOverride.isPending}
+                        onClick={() => setOverrideOpen(true)}
+                      >
+                        Back
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={reopenOverride.isPending}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          reopenOverride.mutate();
+                        }}
+                      >
+                        Confirm reopen override
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
           </>
         }
       />
-      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <div className="rounded-xl border border-border/80 bg-card shadow-sm">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground"
-            >
-              <Clock className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden="true" />
-              <span className="flex-1 text-left">Timeline details</span>
-              <ChevronDown
-                className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", detailsOpen && "rotate-180")}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="border-t border-border px-4 py-3">
-            <ComplaintTimeline complaint={complaint} />
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+      {detailsOpen && (
+        <ComplaintDetailsDialog
+          complaint={complaint}
+          userId={userId}
+          showStatusControls={false}
+          onOpenChange={setDetailsOpen}
+        />
+      )}
     </div>
   );
 }

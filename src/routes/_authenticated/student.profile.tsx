@@ -14,7 +14,9 @@ import {
   ChevronUp,
   Clock,
   Droplet,
+  FileText,
   GraduationCap,
+  Upload,
   KeyRound,
   Loader2,
   Lock,
@@ -197,6 +199,8 @@ function StudentProfilePage() {
   const fieldsEditable = mode === "edit" && !photoOnlyEdit;
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
+  /** Document type picked via a rejected row's "Re-upload" button. */
+  const [reuploadType, setReuploadType] = useState<string | undefined>(undefined);
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
 
   // ── Edit form fields ──
@@ -663,6 +667,11 @@ function StudentProfilePage() {
     : null;
 
   const kycRejected = docs.some((d) => d.verification_status === "REJECTED");
+  // Same rule as KycUploadForm: the form is open only while nothing is
+  // pending review or verified, so only then does "Re-upload" have a target.
+  const canReupload = !docs.some(
+    (d) => d.verification_status === "PENDING" || d.verification_status === "VERIFIED",
+  );
 
   const dobFormatted = s.date_of_birth
     ? new Date(s.date_of_birth).toLocaleDateString(undefined, {
@@ -1334,6 +1343,56 @@ function StudentProfilePage() {
             <DialogHeader>
               <DialogTitle>KYC documents</DialogTitle>
             </DialogHeader>
+            {docs.length > 0 && (
+              <div className="space-y-2">
+                {docs.map((doc) => {
+                  const rejected = doc.verification_status === "REJECTED";
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-border p-3"
+                    >
+                      <div className="flex min-w-0 items-start gap-2">
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {doc.document_type.replace(/_/g, " ")}
+                          </p>
+                          {rejected && (
+                            <p className="mt-0.5 text-xs text-destructive">
+                              Reason: {doc.rejection_reason?.trim() || "Not specified"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rejected
+                              ? "bg-destructive/15 text-destructive"
+                              : doc.verification_status === "VERIFIED"
+                                ? "bg-success/15 text-success"
+                                : "bg-warning/15 text-warning"
+                          }
+                        >
+                          {doc.verification_status.replace(/_/g, " ")}
+                        </Badge>
+                        {rejected && canEdit && canReupload && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setReuploadType(doc.document_type)}
+                          >
+                            <Upload className="h-4 w-4" /> Re-upload
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {canEdit ? (
               <>
                 {kycRejected && (
@@ -1342,11 +1401,16 @@ function StudentProfilePage() {
                   </p>
                 )}
                 <KycUploadForm
+                  key={reuploadType ?? "default"}
                   tenantId={s.tenant_id}
                   propertyId={s.property_id}
                   studentId={s.id}
                   existingDocs={docs}
-                  onUploaded={() => docsQ.refetch()}
+                  initialDocType={reuploadType}
+                  onUploaded={() => {
+                    setReuploadType(undefined);
+                    docsQ.refetch();
+                  }}
                 />
               </>
             ) : (

@@ -16,8 +16,15 @@ Deno.serve(async (req) => {
   }
 
   const evt = JSON.parse(raw);
-  const eventId: string = evt?.payload?.payment?.entity?.id ?? evt?.id ?? crypto.randomUUID();
   const eventType: string = evt?.event ?? "unknown";
+  // Refund events also carry the payment entity, so keying on the payment id would make them
+  // collide with (and be swallowed by) the payment.captured event of the same payment. Refund
+  // events are keyed by the refund id + event type instead; payment events keep their key.
+  const refundEntity = evt?.payload?.refund?.entity;
+  const eventId: string =
+    eventType.startsWith("refund.") && refundEntity?.id
+      ? `refund:${refundEntity.id}:${eventType}`
+      : (evt?.payload?.payment?.entity?.id ?? evt?.id ?? crypto.randomUUID());
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -108,6 +115,26 @@ Deno.serve(async (req) => {
         if (pendingAlloc) {
           await admin.rpc("activate_allocation", { p_allocation_id: pendingAlloc.id });
         }
+      }
+    }
+    // Gateway verdict on a refund. This is the only thing (besides the Edge Function reading the
+    // same verdict from the API) that can complete or fail a gateway refund. Idempotent in the DB.
+    if (eventType === "refund.processed" || eventType === "refund.failed") {
+      const gw = refundEntity;
+      const { data: refund } = await admin
+        .from("refunds")
+        .select("id")
+        .or(`provider_refund_ref.eq.${gw.id},id.eq.${gw?.notes?.refund_id ?? "00000000-0000-0000-0000-000000000000"}`)
+        .maybeSingle();
+      if (refund) {
+        const { error: rpcErr } = await admin.rpc("fn_record_refund_gateway_result", {
+          p_refund_id: refund.id,
+          p_gateway_refund_id: gw.id,
+          p_gateway_status: eventType === "refund.processed" ? "processed" : "failed",
+          p_amount_paise: gw.amount ?? null,
+          p_error: eventType === "refund.failed" ? "The gateway reported the refund as failed" : null,
+        });
+        if (rpcErr) throw new Error(rpcErr.message);
       }
     }
     await admin

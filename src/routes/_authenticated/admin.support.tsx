@@ -16,7 +16,6 @@ import {
   LogIn,
   MessageSquareWarning,
   Minus,
-  MoreVertical,
   Plus,
   ReceiptIndianRupee,
   Ticket,
@@ -134,7 +133,6 @@ function AdminSupportPage() {
                   <th className="px-3 py-3">Category</th>
                   <th className="px-3 py-3">Priority</th>
                   <th className="px-3 py-3">Status</th>
-                  <th className="w-10 px-3 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -221,22 +219,6 @@ function AdminSupportPage() {
                             t.status as keyof typeof SUPPORT_TICKET_STATUS_LABELS
                           ] ?? status.label}
                         </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <Button
-                          asChild
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground"
-                        >
-                          <Link
-                            to="/admin/support/$id"
-                            params={{ id: t.id }}
-                            aria-label={`Open ${t.subject}`}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Link>
-                        </Button>
                       </td>
                     </tr>
                   );

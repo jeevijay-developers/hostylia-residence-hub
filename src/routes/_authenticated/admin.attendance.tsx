@@ -3,18 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import {
-  Calendar as CalendarIcon,
-  CheckCheck,
-  Loader2,
-  Save,
-  Search,
-  Trash2,
-  UserCheck,
-  UserMinus,
-  Users,
-  UserX,
-} from "lucide-react";
+import { Calendar as CalendarIcon, CheckCheck, Loader2, Save, Search, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -39,24 +28,40 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { usePropertyStore } from "@/stores/property-store";
-import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
+import {
+  STUDENTS_IN_PROPERTY_PAGE_SIZE,
+  useAttendanceRoomCounts,
+  useAttendance,
+  useStudentsInProperty,
+} from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrls } from "@/lib/avatar";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { AttendanceReportPanel } from "@/components/reports/panels";
+import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
+import { RoomSelector } from "@/components/attendance/RoomSelector";
+import {
+  AttendanceStatusBadge,
+  AttendanceSummaryCards,
+} from "@/components/attendance/AttendanceSummaryCards";
+import {
+  ATTENDANCE_STATUSES,
+  ATTENDANCE_STATUS_LABEL,
+  summarizeAttendance,
+  type AttendanceStatus,
+} from "@/lib/attendance-status";
+import { useStudentsOnApprovedLeave } from "@/lib/leave";
+import { formatGateTime, useStudentsOnOutPass } from "@/lib/out-pass";
 
 export const Route = createFileRoute("/_authenticated/admin/attendance")({
   component: AdminAttendancePage,
 });
 
-type Status = "PRESENT" | "ABSENT" | "ON_LEAVE";
-const STATUS_LABEL: Record<Status, string> = {
-  PRESENT: "Present",
-  ABSENT: "Absent",
-  ON_LEAVE: "On leave",
-};
-const STATUSES = Object.keys(STATUS_LABEL) as Status[];
+type Status = AttendanceStatus;
+const STATUS_LABEL = ATTENDANCE_STATUS_LABEL;
+const STATUSES = ATTENDANCE_STATUSES;
 
 function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
   return (
@@ -74,17 +79,27 @@ function AdminAttendancePage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const dateInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(0);
+  const [roomFilter, setRoomFilter] = useState("ALL");
   useEffect(() => {
     setPage(0);
+    setRoomFilter("ALL");
   }, [propertyId]);
-  const studentsQ = useStudentsInProperty(propertyId, { page });
+  useEffect(() => {
+    setPage(0);
+  }, [roomFilter]);
+  // The room filter is applied in the database, so a selected room lists all of
+  // its active students across pages; the options come from their own query.
+  const studentsQ = useStudentsInProperty(propertyId, {
+    page,
+    roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
+  });
+  const roomsQ = useAttendanceRoomCounts(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [roomFilter, setRoomFilter] = useState("ALL");
 
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
   const [remarks, setRemarks] = useState<Record<string, string>>({});
@@ -96,9 +111,23 @@ function AdminAttendancePage() {
       m[a.student_id] = { id: a.id, status: a.status as Status, notes: a.notes };
     return m;
   }, [attendanceQ.data]);
+  // Approved leave is derived from leave requests, never marked by hand: those
+  // students always read "On leave" for the date and are locked below.
+  const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
+  const onApprovedLeave = onLeaveQ.data;
+  // Out-Pass is derived from the gate records (actual OUT scan, no IN scan yet):
+  // never marked by hand, never saved as an attendance row, leave wins over it.
+  const outPassQ = useStudentsOnOutPass(propertyId, date);
+  const outPass = outPassQ.data;
+  const outPassIds = useMemo(() => new Set(outPass?.keys() ?? []), [outPass]);
   const effective = useCallback(
-    (id: string): Status => overrides[id] ?? currentMap[id]?.status ?? "PRESENT",
-    [overrides, currentMap],
+    (id: string): Status =>
+      onApprovedLeave?.has(id)
+        ? "ON_LEAVE"
+        : outPass?.has(id)
+          ? "OUT_PASS"
+          : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave, outPass],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -114,16 +143,9 @@ function AdminAttendancePage() {
     });
   }, [studentRows]);
 
-  const rooms = useMemo(
-    () =>
-      Array.from(new Set(roster.map((s) => s.roomNumber).filter((r): r is string => !!r))).sort(),
-    [roster],
-  );
-
   const filteredRoster = useMemo(() => {
     let list = roster;
     if (statusFilter !== "ALL") list = list.filter((s) => effective(s.id) === statusFilter);
-    if (roomFilter !== "ALL") list = list.filter((s) => s.roomNumber === roomFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -134,28 +156,24 @@ function AdminAttendancePage() {
       );
     }
     return list;
-  }, [roster, statusFilter, roomFilter, search, effective]);
+  }, [roster, statusFilter, search, effective]);
 
   // One signed-URL request for every visible student's photo, instead of one
   // per row.
   const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
-  const summary = useMemo(() => {
-    const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, ON_LEAVE: 0 };
-    const seen = new Set<string>();
-    for (const a of attendanceQ.data ?? []) {
-      const status = (overrides[a.student_id] ?? a.status) as Status;
-      if (status in counts) counts[status] += 1;
-      seen.add(a.student_id);
-    }
-    for (const s of roster) {
-      if (seen.has(s.id)) continue;
-      counts[effective(s.id)] += 1;
-      seen.add(s.id);
-    }
-    counts.PRESENT += Math.max(0, studentTotal - seen.size);
-    return { total: studentTotal, ...counts };
-  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
+  const summary = useMemo(
+    () =>
+      summarizeAttendance({
+        rows: attendanceQ.data ?? [],
+        overrides,
+        roster,
+        effective,
+        studentTotal,
+        outPass: outPassIds,
+      }),
+    [attendanceQ.data, effective, overrides, roster, studentTotal, outPassIds],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -163,14 +181,21 @@ function AdminAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      const missingRemark = roster.find(
+      // On Leave rows (approved leave, or a legacy mark) and Out-Pass students
+      // (derived from the gate records) are never re-sent.
+      const markable = roster.filter((s) => {
+        const e = effective(s.id);
+        return e !== "ON_LEAVE" && e !== "OUT_PASS";
+      });
+      const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
       );
       if (missingRemark) {
         throw new Error(`Add a remark for ${missingRemark.full_name} before saving`);
       }
-      const entries = roster.map((s) => {
+      if (markable.length === 0) return;
+      const entries = markable.map((s) => {
         const status = effective(s.id);
         return {
           student_id: s.id,
@@ -190,6 +215,7 @@ function AdminAttendancePage() {
       setOverrides({});
       setRemarks({});
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to save attendance")),
   });
@@ -203,6 +229,7 @@ function AdminAttendancePage() {
       toast.success("Attendance record deleted");
       setPendingDelete(null);
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to delete attendance record")),
   });
@@ -211,6 +238,7 @@ function AdminAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
+      if (effective(s.id) === "ON_LEAVE" || effective(s.id) === "OUT_PASS") continue; // never overwrite leave / Out-Pass
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -230,6 +258,10 @@ function AdminAttendancePage() {
     <div className="space-y-6 sm:space-y-8 max-w-6xl pb-10 overflow-x-hidden">
       {/* Monthly Attendance Summary Panel */}
       <AttendanceReportPanel propertyId={propertyId} totalStudentsTile />
+
+      <LeaveReviewPanel propertyId={propertyId} />
+
+      <OverdueOutPassAlerts propertyId={propertyId} />
 
       {/* Controls Bar for Daily Attendance */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3 pt-4 border-t border-border/60 w-full">
@@ -277,66 +309,7 @@ function AdminAttendancePage() {
         </div>
       </div>
 
-      {/* Daily Metrics Summary Row */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-xl">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-500/10">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Total
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {summary.total}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
-              <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Present
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {summary.PRESENT}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0 shadow-sm shadow-amber-500/10">
-              <UserX className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                Absent
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">
-                {summary.ABSENT}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3.5 p-1.5 sm:p-2 pt-3 sm:pt-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-sm shadow-rose-500/10">
-              <UserMinus className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
-                On leave
-              </p>
-              <p className="text-lg sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
-                {summary.ON_LEAVE}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AttendanceSummaryCards summary={summary} />
 
       {/* Search and Filters */}
       <div className="space-y-2 sm:space-y-3">
@@ -363,19 +336,16 @@ function AdminAttendancePage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={roomFilter} onValueChange={setRoomFilter}>
-            <SelectTrigger className="bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm">
-              <SelectValue placeholder="Room" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border text-foreground">
-              <SelectItem value="ALL">All rooms</SelectItem>
-              {rooms.map((r) => (
-                <SelectItem key={r} value={r}>
-                  Room {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <RoomSelector
+            rooms={roomsQ.data}
+            isLoading={roomsQ.isLoading}
+            isError={roomsQ.isError}
+            total={summary.total}
+            value={roomFilter}
+            onChange={setRoomFilter}
+            onOpen={() => void roomsQ.refetch()}
+            className="w-full bg-background/90 border-border text-foreground rounded-xl h-9 text-xs sm:h-10 sm:text-sm"
+          />
         </div>
       </div>
 
@@ -389,7 +359,9 @@ function AdminAttendancePage() {
           {filteredRoster.map((s) => {
             const st = effective(s.id);
             const saved = currentMap[s.id];
-            const needsRemark = st !== "PRESENT";
+            const outPassInfo = outPass?.get(s.id);
+            const isLeaveLocked = (onApprovedLeave?.has(s.id) ?? false) || st === "OUT_PASS";
+            const needsRemark = st !== "PRESENT" && st !== "ON_LEAVE" && st !== "OUT_PASS";
             const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
             const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
             return (
@@ -414,6 +386,21 @@ function AdminAttendancePage() {
                         {s.roomNumber ? ` · Room ${s.roomNumber}` : ""}
                         {s.blockName ? ` · ${s.blockName}` : ""}
                       </div>
+                      {st === "ON_LEAVE" && (
+                        <AttendanceStatusBadge status="ON_LEAVE" className="mt-1" />
+                      )}
+                      {st === "OUT_PASS" && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <AttendanceStatusBadge status="OUT_PASS" />
+                          {outPassInfo && (
+                            <span className="text-[11px] text-muted-foreground">
+                              Left {formatGateTime(outPassInfo.out_at, outPassInfo.tz)} · due back{" "}
+                              {formatGateTime(outPassInfo.expected_in_at, outPassInfo.tz)}
+                              {outPassInfo.is_overdue ? " · overdue" : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {saved && (
                         <div className="mt-1">
                           <Badge
@@ -431,13 +418,20 @@ function AdminAttendancePage() {
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <Select
                       value={st}
+                      disabled={isLeaveLocked}
                       onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                     >
                       <SelectTrigger className="w-36 bg-background border-border text-foreground rounded-xl h-10 text-sm font-semibold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border text-foreground">
-                        {STATUSES.map((v) => (
+                        {/* On leave is derived from approved leave requests — it is only
+                            listed so an existing On leave row can display its value. */}
+                        {STATUSES.filter(
+                          (v) =>
+                            (v !== "ON_LEAVE" || st === "ON_LEAVE") &&
+                            (v !== "OUT_PASS" || st === "OUT_PASS"),
+                        ).map((v) => (
                           <SelectItem key={v} value={v}>
                             {STATUS_LABEL[v]}
                           </SelectItem>
@@ -445,7 +439,7 @@ function AdminAttendancePage() {
                       </SelectContent>
                     </Select>
 
-                    {saved && (
+                    {saved && !isLeaveLocked && (
                       <Button
                         size="icon"
                         variant="ghost"

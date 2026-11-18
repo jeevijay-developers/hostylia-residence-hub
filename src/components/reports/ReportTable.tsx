@@ -4,6 +4,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -28,6 +29,8 @@ interface Props<Row extends Record<string, unknown>> {
   /** While true, shows column-shaped skeleton rows instead of treating an
    * empty `rows` (the default before a query resolves) as a real empty result. */
   isLoading?: boolean;
+  /** Optional summary row pinned under the table on every page (e.g. a total). Not sorted or paged. */
+  footer?: Row;
 }
 
 /**
@@ -41,6 +44,7 @@ export function ReportTable<Row extends Record<string, unknown>>({
   pageSize = 25,
   empty,
   isLoading = false,
+  footer,
 }: Props<Row>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -130,6 +134,23 @@ export function ReportTable<Row extends Record<string, unknown>>({
                 </TableRow>
               ))}
             </TableBody>
+          )}
+          {footer && !isLoading && (
+            <TableFooter>
+              <TableRow>
+                {columns.map((c) => (
+                  <TableCell
+                    key={c.key}
+                    className={cn(
+                      "font-semibold",
+                      c.align === "right" && "text-right tabular-nums",
+                    )}
+                  >
+                    {c.render ? c.render(footer) : String(footer[c.key] ?? "")}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableFooter>
           )}
         </Table>
       </div>

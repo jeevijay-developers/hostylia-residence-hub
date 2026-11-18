@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { formatIstDateTime } from "@/lib/ist";
 
 interface Props {
   tenantId: string | null | undefined;
@@ -73,8 +74,9 @@ export function NoticeFeed({
           <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{n.body}</p>
           <p className="mt-2 text-[10px] text-muted-foreground">
             {n.published_at
-              ? `Published ${formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}`
+              ? `Published ${formatDistanceToNow(new Date(n.published_at), { addSuffix: true })} · ${formatIstDateTime(n.published_at)}`
               : "Draft"}
+            {n.expires_at ? ` · Expires ${formatIstDateTime(n.expires_at)}` : ""}
           </p>
         </Card>
       ))}

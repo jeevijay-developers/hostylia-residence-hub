@@ -10,6 +10,7 @@ import {
   Link2,
   Loader2,
   Trash2,
+  Archive,
   Building2,
   Filter,
   Users,
@@ -52,7 +53,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
+import { MoveOutNoticesPanel } from "@/components/students/MoveOutNoticesPanel";
 import { deleteStudent } from "@/lib/student.functions";
+import {
+  archiveStudent,
+  getStudentDeleteCheck,
+  permanentlyDeleteStudent,
+} from "@/lib/student-archive.functions";
 
 const AVATAR_COLOR_PAIRS = [
   {
@@ -102,6 +109,22 @@ function getAvatarStyle(name: string) {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
+// Same statuses as uidx_allocations_active_student / fn_archive_student.
+const OPEN_ALLOCATION_STATUSES = [
+  "PENDING_AGREEMENT",
+  "PENDING_PAYMENT",
+  "ACTIVE",
+  "NOTICE_GIVEN",
+  "MOVE_OUT_INSPECTION",
+];
+function hasOpenAllocation(
+  allocations: { status: string; deleted_at: string | null }[] | null | undefined,
+): boolean {
+  return (allocations ?? []).some(
+    (a) => a.deleted_at === null && OPEN_ALLOCATION_STATUSES.includes(a.status),
+  );
+}
+
 interface PropertyOption {
   id: string;
   name: string;
@@ -111,7 +134,7 @@ interface PropertyOption {
 export interface StudentsListPageProps {
   tenantId: string;
   /** Route prefix for the View action and Add/Import dialogs' student links. */
-  viewBasePath: "/admin/students" | "/warden/students";
+  viewBasePath: "/admin/students" | "/warden/students" | "/accountant/students";
   /** Properties available to switch between. Length <= 1 hides the switcher
    * (a single-property Warden never sees it — same condition Admin's own
    * page already used). */
@@ -127,6 +150,10 @@ export interface StudentsListPageProps {
   /** Preselects the status filter (e.g. deep-linking from a dashboard KPI
    * card) — defaults to "ALL" (today's unchanged behavior) when omitted. */
   initialStatusFilter?: string;
+  /** Shows the Move-out Notices section and its Review action. Defaults to true
+   * for Admin; Warden passes its real allocations_edit grant. Never shown on
+   * the Accountant view. */
+  canMoveOut?: boolean;
 }
 
 /**
@@ -146,13 +173,19 @@ export function StudentsListPage({
   canCreate,
   canDelete,
   initialStatusFilter,
+  canMoveOut = true,
 }: StudentsListPageProps) {
   // Scopes the mobile status+search row-merge below to Warden only (its
   // property switcher never renders, so that grid cell sits empty) — Admin's
   // multi-property mobile row is untouched.
-  const isWarden = viewBasePath === "/warden/students";
+  const isWarden = viewBasePath !== "/admin/students";
+  // Admin → Students has the Archive / Permanent Delete workflow; the Warden and
+  // Accountant views keep their existing delete behaviour untouched.
+  const isAdminView = !isWarden;
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? "ALL");
+  // Archived = soft-deleted (deleted_at set). Everything else excludes them.
+  const isArchivedView = isAdminView && statusFilter === "ARCHIVED";
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [page, setPage] = useState(0);
@@ -162,6 +195,10 @@ export function StudentsListPage({
   const [pendingDelete, setPendingDelete] = useState<{ id: string; full_name: string } | null>(
     null,
   );
+  const [pendingArchive, setPendingArchive] = useState<{ id: string; full_name: string } | null>(
+    null,
+  );
+  const [pendingPurge, setPendingPurge] = useState<{ id: string; full_name: string } | null>(null);
 
   const effectivePropertyRow = properties.find((p) => p.id === effectiveProperty);
 
@@ -199,15 +236,16 @@ export function StudentsListPage({
       if (!effectiveProperty) return { rows: [], total: 0 };
       let query = supabase
         .from("students")
-        .select("id, full_name, admission_number, phone, email, status, created_at", {
-          count: "exact",
-        })
+        .select(
+          "id, full_name, admission_number, phone, email, status, created_at, deleted_at, allocations(status, deleted_at)",
+          { count: "exact" },
+        )
         .eq("tenant_id", tenantId)
         .eq("property_id", effectiveProperty)
-        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
-      if (statusFilter !== "ALL") query = query.eq("status", statusFilter);
+      query = isArchivedView ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
+      if (statusFilter !== "ALL" && !isArchivedView) query = query.eq("status", statusFilter);
       if (debouncedQ.trim()) query = query.ilike("full_name", `%${debouncedQ.trim()}%`);
       const { data, error, count } = await query;
       if (error) throw error;
@@ -225,14 +263,17 @@ export function StudentsListPage({
           .from("students")
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", tenantId)
-          .eq("property_id", effectiveProperty)
-          .is("deleted_at", null);
+          .eq("property_id", effectiveProperty);
+        query = isArchivedView ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
         if (status) query = query.eq("status", status);
         if (debouncedQ.trim()) query = query.ilike("full_name", `%${debouncedQ.trim()}%`);
         const { count, error } = await query;
         if (error) throw error;
         return count ?? 0;
       };
+      if (isArchivedView) {
+        return { total: await countStatus(), active: 0, applicants: 0 };
+      }
       if (statusFilter !== "ALL") {
         const total = await countStatus(statusFilter);
         return {
@@ -259,6 +300,44 @@ export function StudentsListPage({
       qc.invalidateQueries({ queryKey: ["students-list"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete student"),
+  });
+
+  const archiveFn = useServerFn(archiveStudent);
+  const archiveMut = useMutation({
+    mutationFn: (student_id: string) => archiveFn({ data: { student_id } }),
+    onSuccess: () => {
+      toast.success("Student archived — find them under the Archived filter");
+      setPendingArchive(null);
+      qc.invalidateQueries({ queryKey: ["students-list"] });
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Could not archive student");
+      setPendingArchive(null);
+    },
+  });
+
+  // What a permanent delete would remove / what blocks it, fetched when the dialog opens.
+  const checkFn = useServerFn(getStudentDeleteCheck);
+  const purgeCheckQ = useQuery({
+    queryKey: ["student-delete-check", pendingPurge?.id],
+    enabled: !!pendingPurge,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: () => checkFn({ data: { student_id: pendingPurge!.id } }),
+  });
+  const purgeFn = useServerFn(permanentlyDeleteStudent);
+  const purgeMut = useMutation({
+    mutationFn: (student_id: string) => purgeFn({ data: { student_id } }),
+    onSuccess: (res) => {
+      toast.success("Student permanently deleted");
+      for (const w of res.warnings) toast.warning(w);
+      setPendingPurge(null);
+      qc.invalidateQueries({ queryKey: ["students-list"] });
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Could not delete student");
+      qc.invalidateQueries({ queryKey: ["student-delete-check"] });
+    },
   });
 
   const stats = statsQ.data ?? { total: 0, active: 0, applicants: 0 };
@@ -384,6 +463,15 @@ export function StudentsListPage({
         </div>
       </div>
 
+      {viewBasePath !== "/accountant/students" && tenantId && effectiveProperty && (
+        <MoveOutNoticesPanel
+          tenantId={tenantId}
+          propertyId={effectiveProperty}
+          area={isWarden ? "warden" : "admin"}
+          canReview={canMoveOut}
+        />
+      )}
+
       {/* Dashboard Stats KPI Cards */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 flex items-center gap-2 sm:gap-4 shadow-xl min-w-0">
@@ -503,7 +591,7 @@ export function StudentsListPage({
                         {s.phone ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                        <StudentStatusBadge status={s.status} />
+                        <StudentStatusBadge status={isArchivedView ? "ARCHIVED" : s.status} />
                       </TableCell>
                       <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
@@ -521,7 +609,50 @@ export function StudentsListPage({
                               <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Link>
                           </Button>
-                          {canDelete &&
+                          {isAdminView && canDelete && isArchivedView && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Permanently delete ${s.full_name}`}
+                              title="Permanently delete"
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-border/80 bg-background/80 text-rose-600 dark:text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"
+                              onClick={() => setPendingPurge({ id: s.id, full_name: s.full_name })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </Button>
+                          )}
+                          {isAdminView &&
+                            canDelete &&
+                            !isArchivedView &&
+                            (s.status === "ACTIVE" ||
+                            s.status === "NOTICE_GIVEN" ||
+                            hasOpenAllocation(s.allocations) ? (
+                              <span
+                                className="inline-flex h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/40 bg-background/40 items-center justify-center text-muted-foreground opacity-40 cursor-not-allowed"
+                                title={
+                                  s.status === "ACTIVE" || s.status === "NOTICE_GIVEN"
+                                    ? "Move this student out before archiving their record"
+                                    : "This student has an open allocation — close it before archiving"
+                                }
+                              >
+                                <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </span>
+                            ) : (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={`Archive ${s.full_name}`}
+                                title="Archive"
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-border/80 bg-background/80 text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all"
+                                onClick={() =>
+                                  setPendingArchive({ id: s.id, full_name: s.full_name })
+                                }
+                              >
+                                <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </Button>
+                            ))}
+                          {!isAdminView &&
+                            canDelete &&
                             (s.status === "ACTIVE" || s.status === "NOTICE_GIVEN" ? (
                               <span
                                 className="inline-flex h-8 w-8 sm:h-9 sm:w-9 rounded-xl border border-border/40 bg-background/40 items-center justify-center text-muted-foreground opacity-40 cursor-not-allowed"
@@ -602,6 +733,124 @@ export function StudentsListPage({
           />
         </>
       )}
+
+      <AlertDialog
+        open={!!pendingArchive}
+        onOpenChange={(open) => !open && setPendingArchive(null)}
+      >
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">
+              Archive {pendingArchive?.full_name ?? "this student"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              They will be removed from the Students list. Nothing is deleted — all of their records
+              and history are kept, and you can find them under the Archived filter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingArchive) archiveMut.mutate(pendingArchive.id);
+              }}
+              disabled={archiveMut.isPending}
+              className="rounded-xl"
+            >
+              {archiveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingPurge} onOpenChange={(open) => !open && setPendingPurge(null)}>
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">
+              Permanently delete {pendingPurge?.full_name ?? "this student"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                {purgeCheckQ.isLoading ? (
+                  <p className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Checking what depends on this
+                    student…
+                  </p>
+                ) : purgeCheckQ.isError ? (
+                  <p className="text-destructive">
+                    {purgeCheckQ.error instanceof Error
+                      ? purgeCheckQ.error.message
+                      : "Couldn't check this student's records."}
+                  </p>
+                ) : purgeCheckQ.data && purgeCheckQ.data.blockers.length > 0 ? (
+                  <>
+                    <p className="font-medium text-destructive">
+                      This student can't be permanently deleted — they still have protected records:
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-5">
+                      {purgeCheckQ.data.blockers.map((b) => (
+                        <li key={b.key}>
+                          {b.label}: {b.count}
+                        </li>
+                      ))}
+                    </ul>
+                    <p>
+                      Financial, attendance and stay history is never erased. Leave this student
+                      archived — their records stay intact.
+                    </p>
+                  </>
+                ) : purgeCheckQ.data ? (
+                  <>
+                    <p className="font-medium text-destructive">
+                      This cannot be undone. The student record will be erased for good.
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-5">
+                      <li>
+                        {purgeCheckQ.data.documents} KYC / document file
+                        {purgeCheckQ.data.documents === 1 ? "" : "s"} will be deleted
+                      </li>
+                      <li>
+                        {purgeCheckQ.data.guardian_links} guardian link
+                        {purgeCheckQ.data.guardian_links === 1 ? "" : "s"} will be removed (guardian
+                        records themselves are kept)
+                      </li>
+                      <li>
+                        {purgeCheckQ.data.has_login
+                          ? purgeCheckQ.data.delete_auth_user
+                            ? "Their student login will be deleted"
+                            : "Their login account is shared with other records and will be kept"
+                          : "No login account is linked"}
+                      </li>
+                      <li>An audit entry of this deletion is kept</li>
+                    </ul>
+                  </>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingPurge) purgeMut.mutate(pendingPurge.id);
+              }}
+              disabled={
+                purgeMut.isPending ||
+                !purgeCheckQ.data ||
+                purgeCheckQ.data.blockers.length > 0 ||
+                !purgeCheckQ.data.archived
+              }
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {purgeMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Delete permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent className="bg-card border-border rounded-2xl">

@@ -13,10 +13,15 @@ import {
   HelpCircle,
   LayoutGrid,
   Lightbulb,
+  Settings2,
   User,
 } from "lucide-react";
 
+import { useResolvedRole } from "@/lib/user-role";
+import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
+import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
+import { describeBedRestriction, formatBedLabel } from "@/lib/bed-label";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,15 +82,27 @@ function ilikeToken(value: string): string {
  * file re-exporting a non-Route symbol (TanStack Router route files must
  * only export `Route` for proper code-splitting — an extra named export
  * pulls the whole route's code into the importer's bundle instead).
- * Both optional props default to the original Admin-only behavior
- * (activePropertyId from the property switcher, no pre-selected student).
+ * All optional props default to the original Admin-only behavior
+ * (activePropertyId from the property switcher, no pre-selected student,
+ * full allocate/swap access) — Admin's own call site passes none of them.
  */
 export function AllocationBoard({
   initialStudentId,
   propertyIdOverride,
+  canCreate = true,
+  canEdit = true,
+  canManageBedStatus = true,
 }: {
   initialStudentId?: string;
   propertyIdOverride?: string | null;
+  /** Gates the "Allocate" action (new allocation into an empty bed) — matches the
+   * `allocations_create` permission key. */
+  canCreate?: boolean;
+  /** Gates the "Swap" action (move an existing allocation to another bed) —
+   * matches the `allocations_edit` permission key. */
+  canEdit?: boolean;
+  /** Gates "Manage status" (maintenance / blocked) — matches `rooms_beds_edit`. */
+  canManageBedStatus?: boolean;
 } = {}) {
   const activePropertyId = usePropertyStore((s) => s.activePropertyId);
   const effectiveProp = propertyIdOverride !== undefined ? propertyIdOverride : activePropertyId;
@@ -115,38 +132,68 @@ export function AllocationBoard({
     return () => window.clearTimeout(timer);
   }, [studentSearch, debouncedStudentSearch]);
 
-  const bedsQ = useQuery({
-    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
+  // Admin always has the Rooms/Beds page (its own route is HOSTEL_ADMIN-only
+  // regardless of permissions); a Warden needs the `rooms_beds_view`
+  // permission and is routed to their own copy of the same board
+  // (/warden/rooms-beds, sharing RoomsBedsBoard with the Admin route) since
+  // /admin/* stays locked to HOSTEL_ADMIN. Checked here, before navigating,
+  // so an ungranted Warden sees an inline Access Denied message instead of
+  // bouncing through /403.
+  const { data: resolvedRole } = useResolvedRole();
+  const { can: canWarden } = useWardenPermissions();
+  const isAdmin = resolvedRole?.role === "HOSTEL_ADMIN";
+  const canManageStructure = isAdmin || canWarden("rooms_beds_view");
+  const structureTo = isAdmin ? "/admin/properties/$id/structure" : "/warden/rooms-beds";
+
+  // Status summary: counted in the database for the WHOLE property (every block,
+  // floor and room), independent of the vacant/search bed list and its page. Same
+  // filter as Property Structure (property_id, not soft-deleted), so the totals
+  // match it. Always refetched when the page is opened, and invalidated together
+  // with the list (the key shares the "allocation-beds" prefix) after allocation,
+  // swap, move-out or a bed-status change.
+  const countsQ = useQuery({
+    queryKey: ["allocation-beds", "counts", effectiveProp],
     enabled: !!effectiveProp,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
-      const emptyCounts: Record<BedTile["status"], number> = {
+      const counts: Record<BedTile["status"], number> = {
         VACANT: 0,
         OCCUPIED: 0,
         MAINTENANCE: 0,
         BLOCKED: 0,
       };
-      if (!effectiveProp) return { beds: [] as BedTile[], total: 0, counts: emptyCounts };
       const statuses = ["VACANT", "OCCUPIED", "MAINTENANCE", "BLOCKED"] as const;
-      const countResults = await Promise.all(
+      const results = await Promise.all(
         statuses.map((status) =>
           supabase
             .from("beds")
             .select("id", { count: "exact", head: true })
-            .eq("property_id", effectiveProp)
+            .eq("property_id", effectiveProp!)
             .eq("status", status)
             .is("deleted_at", null),
         ),
       );
-      const counts = { ...emptyCounts };
       statuses.forEach((status, i) => {
-        const result = countResults[i];
+        const result = results[i];
         if (!result || result.error) throw result?.error ?? new Error("Could not count beds");
         counts[status] = result.count ?? 0;
       });
+      return counts;
+    },
+  });
+
+  const bedsQ = useQuery({
+    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
+    enabled: !!effectiveProp,
+    queryFn: async () => {
+      if (!effectiveProp) return { beds: [] as BedTile[], total: 0 };
 
       let bedQuery = supabase
         .from("beds")
-        .select("id, code, status, rooms(room_number)", { count: "exact" })
+        .select("id, code, status, notes, maintenance_until, rooms(room_number)", {
+          count: "exact",
+        })
         .eq("property_id", effectiveProp)
         .is("deleted_at", null)
         .order("code")
@@ -215,10 +262,11 @@ export function AllocationBoard({
           code: b.code,
           status: b.status as BedTile["status"],
           occupantName: occupantByBed.get(b.id) ?? null,
+          notes: b.notes,
+          maintenanceUntil: b.maintenance_until,
           roomNumber: (b.rooms as { room_number: string } | null)?.room_number ?? null,
         })),
         total: count ?? 0,
-        counts,
       };
     },
   });
@@ -255,6 +303,7 @@ export function AllocationBoard({
   });
 
   const [viewBed, setViewBed] = useState<BedTile | null>(null);
+  const [statusBed, setStatusBed] = useState<BedTile | null>(null);
   const bedDetailQ = useQuery({
     queryKey: ["bed-allocation-detail", viewBed?.id],
     enabled: !!viewBed && viewBed.status === "OCCUPIED",
@@ -388,7 +437,9 @@ export function AllocationBoard({
       });
     },
     onSuccess: () => {
-      toast.success(`Student moved to bed ${selectedBed?.code}`);
+      toast.success(
+        `Student moved to bed ${selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}`,
+      );
       qc.invalidateQueries({ queryKey: ["allocation-beds"] });
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
       qc.invalidateQueries({ queryKey: ["student-open-allocation"] });
@@ -406,30 +457,56 @@ export function AllocationBoard({
 
   return (
     <div className="space-y-6">
-      {effectiveProp && (
-        <Link
-          to="/admin/properties/$id/structure"
-          params={{ id: effectiveProp }}
-          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
-        >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
-            <LayoutGrid className="h-6 w-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
-              Manage rooms & beds
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              View and manage all rooms and beds in your property
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
-          <BedSingle
-            className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
-            aria-hidden="true"
-          />
-        </Link>
-      )}
+      {effectiveProp &&
+        (canManageStructure ? (
+          <Link
+            to={structureTo}
+            params={isAdmin ? { id: effectiveProp } : undefined}
+            className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+              <LayoutGrid className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                Manage rooms & beds
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                View and manage all rooms and beds in your property
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+            <BedSingle
+              className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+              aria-hidden="true"
+            />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() =>
+              toast.error("Access denied — you don't have permission to manage rooms & beds.")
+            }
+            className="group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-destructive/40 hover:shadow-md sm:gap-6 sm:p-6"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">
+              <LayoutGrid className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                Manage rooms & beds
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                View and manage all rooms and beds in your property
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-destructive" />
+            <BedSingle
+              className="pointer-events-none absolute -bottom-6 -right-6 h-32 w-32 text-primary/5"
+              aria-hidden="true"
+            />
+          </button>
+        ))}
 
       {!effectiveProp ? (
         <p className="text-sm text-muted-foreground">Choose a property from the sidebar first.</p>
@@ -440,10 +517,12 @@ export function AllocationBoard({
           <BedGrid
             variant="expanded"
             beds={bedsQ.data?.beds ?? []}
-            statusCounts={bedsQ.data?.counts}
+            statusCounts={countsQ.data}
             queryValue={bedSearch}
             onQueryChange={setBedSearch}
             serverFiltered
+            // Same dialog the card click opens for a VACANT bed, for that exact bed.
+            onAllocate={setSelectedBed}
             onSelect={(b) => {
               if (b.status === "VACANT") {
                 setSelectedBed(b);
@@ -487,7 +566,10 @@ export function AllocationBoard({
       <Dialog open={!!selectedBed} onOpenChange={(v) => !v && closeAllocateDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Allocate bed {selectedBed?.code}</DialogTitle>
+            <DialogTitle>
+              Allocate bed{" "}
+              {selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -574,14 +656,13 @@ export function AllocationBoard({
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <Info
                     label="Current bed"
-                    value={
-                      (
-                        openAllocationQ.data.beds as {
-                          code: string;
-                          rooms: { room_number: string } | null;
-                        } | null
-                      )?.code ?? "—"
-                    }
+                    value={(() => {
+                      const cur = openAllocationQ.data.beds as {
+                        code: string;
+                        rooms: { room_number: string } | null;
+                      } | null;
+                      return cur ? formatBedLabel(cur.rooms?.room_number, cur.code) : "—";
+                    })()}
                   />
                   <Info
                     label="Room"
@@ -602,8 +683,9 @@ export function AllocationBoard({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  To move them to bed {selectedBed?.code}, use Swap — this keeps their existing
-                  agreement, invoices, and payment history intact.
+                  To move them to bed{" "}
+                  {selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}, use
+                  Swap — this keeps their existing agreement, invoices, and payment history intact.
                 </p>
               </div>
             ) : (
@@ -636,6 +718,10 @@ export function AllocationBoard({
                       id="sd"
                       type="date"
                       value={startDate}
+                      // The native picker icon follows the browser colour scheme, which the app
+                      // never sets — so it rendered dark-on-dark in the dark theme. Same picker,
+                      // just a scheme that matches the theme.
+                      className="[color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       onChange={(e) => setStartDate(e.target.value)}
                     />
                   </div>
@@ -645,7 +731,14 @@ export function AllocationBoard({
                       id="rent"
                       type="number"
                       value={rent / 100}
-                      onChange={(e) => setRent(Math.round(+e.target.value * 100))}
+                      onChange={(e) => {
+                        // A number input keeps "05" as typed (React sees it as equal to 5), so
+                        // typing over the default 0 produced 05000. Drop leading zeros in the
+                        // field itself ("0.5" and a lone "0" are left alone).
+                        const cleaned = e.target.value.replace(/^(-?)0+(?=\d)/, "$1");
+                        if (cleaned !== e.target.value) e.target.value = cleaned;
+                        setRent(Math.round(+cleaned * 100));
+                      }}
                     />
                   </div>
                   <div>
@@ -665,32 +758,71 @@ export function AllocationBoard({
             <Button variant="ghost" onClick={closeAllocateDialog}>
               Cancel
             </Button>
-            {openAllocationQ.data ? (
-              <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
-                <ArrowRightLeft className="h-4 w-4" /> Swap
+            {canManageBedStatus && selectedBed && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const bed = selectedBed;
+                  closeAllocateDialog();
+                  setStatusBed(bed);
+                }}
+              >
+                <Settings2 className="h-4 w-4" /> Manage status
               </Button>
-            ) : (
+            )}
+            {openAllocationQ.data ? (
+              canEdit ? (
+                <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
+                  <ArrowRightLeft className="h-4 w-4" /> Swap
+                </Button>
+              ) : (
+                <p className="text-sm text-destructive">
+                  Access denied — you don't have permission to swap allocations.
+                </p>
+              )
+            ) : canCreate ? (
               <Button
                 disabled={!studentId || !feePlanId || create.isPending}
                 onClick={() => create.mutate()}
               >
                 <BedSingle className="h-4 w-4" /> Allocate
               </Button>
+            ) : (
+              <p className="text-sm text-destructive">
+                Access denied — you don't have permission to allocate beds.
+              </p>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {canManageBedStatus && (
+        <BedStatusDialog
+          bed={statusBed}
+          open={!!statusBed}
+          onOpenChange={(v) => !v && setStatusBed(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+            qc.invalidateQueries({ queryKey: ["structure"] });
+          }}
+        />
+      )}
+
       <Dialog open={!!viewBed} onOpenChange={(v) => !v && setViewBed(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Bed {viewBed?.code}</DialogTitle>
+            <DialogTitle>
+              Bed {viewBed ? formatBedLabel(viewBed.roomNumber, viewBed.code) : ""}
+            </DialogTitle>
           </DialogHeader>
           {viewBed?.status !== "OCCUPIED" ? (
             <p className="text-sm text-muted-foreground">
               This bed is currently{" "}
-              <span className="font-medium">{viewBed?.status.toLowerCase()}</span>. Manage its
-              status from Manage rooms & beds.
+              <span className="font-medium">{viewBed?.status.toLowerCase()}</span>
+              {viewBed && describeBedRestriction(viewBed)
+                ? ` — ${describeBedRestriction(viewBed)}`
+                : ""}
+              .
             </p>
           ) : bedDetailQ.isLoading ? (
             <Skeleton className="h-24 w-full" />
@@ -728,6 +860,17 @@ export function AllocationBoard({
             <Button variant="ghost" onClick={() => setViewBed(null)}>
               Close
             </Button>
+            {canManageBedStatus && viewBed && viewBed.status !== "OCCUPIED" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatusBed(viewBed);
+                  setViewBed(null);
+                }}
+              >
+                <Settings2 className="h-4 w-4" /> Manage status
+              </Button>
+            )}
             {viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
               <>
                 <Button asChild variant="outline">

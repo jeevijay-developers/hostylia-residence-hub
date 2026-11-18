@@ -80,6 +80,19 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return json({ error: "Forbidden" }, 403, cors);
 
+    // This function reads with the service role, so RLS can't enforce the
+    // student KYC gate here — check it explicitly. Only the student paying
+    // for themselves is gated; a linked guardian is a different caller.
+    if (studentRow.profile_id === userId) {
+      const { data: kycVerified, error: kycErr } = await admin.rpc("is_student_kyc_verified", {
+        _user_id: userId,
+      });
+      if (kycErr) return json({ error: "Could not verify KYC status" }, 500, cors);
+      if (kycVerified !== true) {
+        return json({ error: "Complete your KYC to access this feature." }, 403, cors);
+      }
+    }
+
     // Scoped to the current key's mode (test/live, per Razorpay's standard
     // rzp_test_/rzp_live_ key-id prefix) — without this, a PENDING order
     // created under test keys would get reused (and its stale order_id

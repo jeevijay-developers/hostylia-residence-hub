@@ -3,6 +3,8 @@ import { useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { z } from "zod";
+import { attendanceRoomCountSchema } from "@/schemas/attendance";
 
 export type AttendanceRow = Database["public"]["Tables"]["attendance"]["Row"];
 export type GatePassRow = Database["public"]["Tables"]["gate_passes"]["Row"];
@@ -42,22 +44,28 @@ function ilikeToken(value: string): string {
  */
 export function useStudentsInProperty(
   propertyId: string | null,
-  options?: { page?: number; pageSize?: number; search?: string },
+  options?: { page?: number; pageSize?: number; search?: string; roomNumber?: string },
 ) {
   const page = options?.page ?? 0;
   const pageSize = options?.pageSize ?? STUDENTS_IN_PROPERTY_PAGE_SIZE;
   const search = options?.search?.trim() ?? "";
+  const roomNumber = options?.roomNumber ?? "";
   return useQuery({
-    queryKey: ["students-in-property", propertyId, page, pageSize, search],
+    queryKey: ["students-in-property", propertyId, page, pageSize, search, roomNumber],
     enabled: !!propertyId,
     queryFn: async () => {
       if (!propertyId) return { rows: [], total: 0 };
       const from = page * pageSize;
       const to = from + pageSize - 1;
+      // A room filter is applied in the database (inner joins), so every
+      // matching student is reachable through normal pagination — not just the
+      // ones on the current page.
       let query = supabase
         .from("students")
         .select(
-          "id, full_name, admission_number, photo_path, status, allocations(status, room_id, block_id, beds(code), rooms(room_number), blocks(name))",
+          roomNumber
+            ? "id, full_name, admission_number, photo_path, status, allocations!inner(status, room_id, block_id, beds(code), rooms!inner(room_number), blocks(name))"
+            : "id, full_name, admission_number, photo_path, status, allocations(status, room_id, block_id, beds(code), rooms(room_number), blocks(name))",
           { count: "exact" },
         )
         .eq("property_id", propertyId)
@@ -65,6 +73,12 @@ export function useStudentsInProperty(
         .is("deleted_at", null)
         .order("full_name")
         .range(from, to);
+      if (roomNumber) {
+        query = query
+          .eq("allocations.status", "ACTIVE")
+          .is("allocations.deleted_at", null)
+          .eq("allocations.rooms.room_number", roomNumber);
+      }
       const token = ilikeToken(search);
       if (token) {
         query = query.or(`full_name.ilike.%${token}%,admission_number.ilike.%${token}%`);
@@ -72,6 +86,34 @@ export function useStudentsInProperty(
       const { data, error, count } = await query;
       if (error) throw error;
       return { rows: data ?? [], total: count ?? 0 };
+    },
+  });
+}
+
+/**
+ * Occupied rooms of a property with their eligible-student counts, from the
+ * SECURITY INVOKER attendance_room_counts() RPC (rooms x allocations x students
+ * under the caller's own RLS). Independent of student pagination, so the list
+ * never changes when the roster page does. Short staleTime plus refetch-on-open
+ * (see RoomSelector) keeps counts fresh as allocations / move-outs change.
+ */
+export function useAttendanceRoomCounts(propertyId: string | null) {
+  return useQuery({
+    queryKey: ["attendance-room-counts", propertyId],
+    enabled: !!propertyId,
+    staleTime: 15_000,
+    queryFn: async () => {
+      // Not in the generated types until types.ts is regenerated after
+      // 20261102110000 is applied; rows are validated with Zod instead.
+      const { data, error } = await supabase.rpc(
+        "attendance_room_counts" as never,
+        { p_property_id: propertyId ?? "" } as never,
+      );
+      if (error) throw new Error(error.message);
+      return z
+        .array(attendanceRoomCountSchema)
+        .parse(data ?? [])
+        .sort((x, y) => x.room_number.localeCompare(y.room_number, undefined, { numeric: true }));
     },
   });
 }

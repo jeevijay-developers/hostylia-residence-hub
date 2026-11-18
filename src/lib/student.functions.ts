@@ -5,6 +5,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
+import { classifyStudentRows, collectIdentityValues } from "@/lib/student-import";
+import {
+  giveNoticeSchema,
+  moveOutSettlementSchema,
+  studentPhoneKey,
+  validateKycFile,
+} from "@/schemas/student";
 import { sendStaffInviteNotification } from "@/lib/admin-staff.functions";
 import { dispatchNotification } from "@/lib/dispatch-notification";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -35,6 +42,26 @@ function adminClient() {
   });
 }
 
+type RpcResult = { data: unknown; error: { message: string; code?: string } | null };
+
+// fn_register_student & co. are not in the generated types until it is regenerated
+// from the migrated schema; drop the cast then.
+async function callRpc(
+  supabase: object,
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<RpcResult> {
+  const client = supabase as {
+    rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<RpcResult>;
+  };
+  return await client.rpc(fn, args);
+}
+
+/** The student guard trigger (23505) says exactly which identifier is taken. */
+function isDuplicateStudentError(e: { message: string; code?: string } | null): boolean {
+  return !!e && e.code === "23505" && /already registered/i.test(e.message);
+}
+
 function getClientIp(): string {
   try {
     const req = getRequest();
@@ -51,6 +78,26 @@ function nextAdmissionNumber(): string {
   const y = new Date().getFullYear().toString().slice(-2);
   const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `A${y}-${rand}`;
+}
+
+/** Resolves the property a public admission targets (unchanged rules, now shared with the duplicate pre-check). */
+async function resolveAdmissionProperty(admin: ReturnType<typeof adminClient>, slug: string) {
+  const { data: props, error: pErr } = await admin
+    .from("properties")
+    .select("id, tenant_id, status")
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .limit(2);
+  if (pErr) throw new Error(pErr.message);
+  if (!props?.length) throw new Error("Property not found");
+  if (props.length > 1) throw new Error("Property slug is ambiguous — contact the hostel");
+  const property = props[0];
+  // Matches listPublicActiveProperties' eligibility (ACTIVE + DRAFT) — a
+  // property picked from the Select Hostel dropdown must always be
+  // submittable here, even before its Hostel Admin finishes activation.
+  if (!["ACTIVE", "DRAFT"].includes(property.status))
+    throw new Error("Property is not accepting applications");
+  return property;
 }
 
 /**
@@ -76,83 +123,97 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
     const captcha = await verifyTurnstileToken(data.turnstileToken, ip);
     if (!captcha.ok) throw new Error(captcha.message);
 
-    const { data: props, error: pErr } = await admin
-      .from("properties")
-      .select("id, tenant_id, status")
-      .eq("slug", data.property_slug)
-      .is("deleted_at", null)
-      .limit(2);
-    if (pErr) throw new Error(pErr.message);
-    if (!props?.length) throw new Error("Property not found");
-    if (props.length > 1) throw new Error("Property slug is ambiguous — contact the hostel");
-    const property = props[0];
-    // Matches listPublicActiveProperties' eligibility (ACTIVE + DRAFT) — a
-    // property picked from the Select Hostel dropdown must always be
-    // submittable here, even before its Hostel Admin finishes activation.
-    if (!["ACTIVE", "DRAFT"].includes(property.status))
-      throw new Error("Property is not accepting applications");
+    const property = await resolveAdmissionProperty(admin, data.property_slug);
 
     const dob = data.date_of_birth || null;
     const isMinor = dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false;
 
-    const { data: student, error: sErr } = await admin
-      .from("students")
-      .insert({
-        tenant_id: property.tenant_id,
-        property_id: property.id,
-        admission_number: nextAdmissionNumber(),
-        full_name: data.full_name,
-        phone: data.phone,
-        email: data.email || null,
-        date_of_birth: dob,
-        gender: data.gender ?? null,
-        academic_institute: data.academic_institute || null,
-        course_name: data.course_name || null,
-        academic_year: data.academic_year || null,
-        is_minor: isMinor,
-        status: "APPLICANT",
-        metadata: { source: "public_admission", ip },
-      })
-      .select("id, admission_number")
-      .single();
-    if (sErr) throw new Error(sErr.message);
+    // A guardian's number is not the student's own: when the form fell back to
+    // the guardian's phone, the student has no phone of their own. This keeps
+    // siblings of one parent from colliding on that shared number.
+    const studentPhone =
+      studentPhoneKey(data.phone) === studentPhoneKey(data.guardian_phone) ? null : data.phone;
 
-    // Upsert guardian by (tenant, phone), then link.
-    const normalizedPhone = normalizeIndianPhone(data.guardian_phone);
-
-    const { data: existingG } = await admin
-      .from("guardians")
-      .select("id")
-      .eq("tenant_id", property.tenant_id)
-      .eq("phone", normalizedPhone)
-      .limit(1)
-      .maybeSingle();
-
-    let guardianId = existingG?.id;
-    if (!guardianId) {
-      const { data: gIns, error: gErr } = await admin
-        .from("guardians")
-        .insert({
-          tenant_id: property.tenant_id,
-          full_name: data.guardian_name,
-          phone: normalizedPhone,
-        })
-        .select("id")
-        .single();
-      if (gErr) throw new Error(gErr.message);
-      guardianId = gIns.id;
-    }
-
-    await admin.from("student_guardians").insert({
-      tenant_id: property.tenant_id,
-      student_id: student.id,
-      guardian_id: guardianId!,
-      relationship: data.guardian_relationship,
-      is_primary: true,
-      is_emergency_contact: true,
+    // Student + guardian + link in ONE database transaction. The duplicate
+    // phone/email guard lives in the database (advisory-locked trigger), so two
+    // concurrent submissions of the same number cannot both succeed.
+    const { data: reg, error: regErr } = await callRpc(admin, "fn_register_student", {
+      p_tenant_id: property.tenant_id,
+      p_property_id: property.id,
+      p_admission_number: nextAdmissionNumber(),
+      p_full_name: data.full_name,
+      p_phone: studentPhone,
+      p_email: data.email || null,
+      p_date_of_birth: dob,
+      p_gender: data.gender ?? null,
+      p_academic_institute: data.academic_institute || null,
+      p_course_name: data.course_name || null,
+      p_academic_year: data.academic_year || null,
+      p_is_minor: isMinor,
+      p_metadata: { source: "public_admission", ip },
+      p_guardian_name: data.guardian_name,
+      p_guardian_phone: normalizeIndianPhone(data.guardian_phone),
+      p_guardian_relationship: data.guardian_relationship,
+      p_guardian_is_emergency: true,
     });
+    if (regErr) throw new Error(regErr.message);
+    const registered = reg as { id: string; admission_number: string };
 
-    return { ok: true as const, admission_number: student.admission_number };
+    return { ok: true as const, admission_number: registered.admission_number };
+  });
+
+const duplicateCheckSchema = z.object({
+  property_slug: z.string().trim().min(2).max(80),
+  phone: z.string().trim().max(32).optional().or(z.literal("")),
+  email: z.string().trim().max(255).optional().or(z.literal("")),
+  guardian_phone: z.string().trim().max(32).optional().or(z.literal("")),
+});
+
+/**
+ * PUBLIC pre-check run BEFORE an applicant's account is created: is a student
+ * with this phone / email already registered in this hostel's tenant? Existence
+ * only — no student details are returned. The authoritative check is the
+ * database guard inside submitPublicAdmission; this just fails early and clearly.
+ */
+export const checkStudentAdmissionDuplicate = createServerFn({ method: "POST" })
+  .validator((data) => duplicateCheckSchema.parse(data))
+  .handler(async ({ data }) => {
+    const ip = getClientIp();
+    const admin = adminClient();
+    const { data: allowed, error: rlErr } = await admin.rpc("check_rate_limit", {
+      p_bucket_key: `admission-check:${ip}`,
+      p_limit: 30,
+      p_window_seconds: 3600,
+    });
+    if (rlErr) throw new Error("Rate limiter unavailable");
+    if (!allowed) throw new Error("Too many attempts from this network. Please try again later.");
+
+    const property = await resolveAdmissionProperty(admin, data.property_slug);
+    // Same rule as submitPublicAdmission: the guardian's number is not the student's.
+    const phone =
+      studentPhoneKey(data.phone) === studentPhoneKey(data.guardian_phone)
+        ? ""
+        : (data.phone ?? "");
+    const { data: taken, error } = await callRpc(admin, "fn_student_identity_taken", {
+      p_tenant_id: property.tenant_id,
+      p_phone: phone,
+      p_email: data.email ?? "",
+    });
+    if (error) throw new Error(error.message);
+    const t = taken as { phone_taken: boolean; email_taken: boolean };
+    if (t.phone_taken) {
+      return {
+        duplicate: true as const,
+        message: "Student already registered with this phone number.",
+      };
+    }
+    if (t.email_taken) {
+      return {
+        duplicate: true as const,
+        message: "Student already registered with this email address.",
+      };
+    }
+    return { duplicate: false as const, message: null };
   });
 
 const bulkImportSchema = z.object({
@@ -171,78 +232,138 @@ async function insertStudentRow(
 ) {
   const dob =
     r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
-  const { data: student, error } = await supabase
-    .from("students")
-    .insert({
-      tenant_id: tenantId,
-      property_id: propertyId,
-      admission_number: nextAdmissionNumber(),
-      full_name: r.full_name,
-      phone: r.phone || null,
-      email: r.email || null,
-      date_of_birth: dob,
-      gender: r.gender || null,
-      academic_institute: r.academic_institute || null,
-      course_name: r.course_name || null,
-      is_minor: dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false,
-      status: "APPLICANT",
-    })
-    .select("id, admission_number")
-    .single();
-  if (error) throw error;
-
-  if (r.guardian_phone && r.guardian_name) {
-    const phone = normalizeIndianPhone(r.guardian_phone);
-    const { data: eg } = await supabase
-      .from("guardians")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("phone", phone)
-      .maybeSingle();
-    let gid = eg?.id;
-    if (!gid) {
-      const { data: gi, error: gErr } = await supabase
-        .from("guardians")
-        .insert({ tenant_id: tenantId, full_name: r.guardian_name, phone })
-        .select("id")
-        .single();
-      if (gErr) throw gErr;
-      gid = gi?.id;
-    }
-    if (gid) {
-      await supabase.from("student_guardians").insert({
-        tenant_id: tenantId,
-        student_id: student.id,
-        guardian_id: gid,
-        relationship: "GUARDIAN",
-        is_primary: true,
-      });
-    }
+  // Student + guardian + link in one database transaction, with the duplicate
+  // phone/email guard enforced by the database: a row that fails leaves nothing behind.
+  const { data, error } = await callRpc(supabase, "fn_register_student", {
+    p_tenant_id: tenantId,
+    p_property_id: propertyId,
+    p_admission_number: nextAdmissionNumber(),
+    p_full_name: r.full_name,
+    p_phone: r.phone || null,
+    p_email: r.email || null,
+    p_date_of_birth: dob,
+    p_gender: r.gender || null,
+    p_academic_institute: r.academic_institute || null,
+    p_course_name: r.course_name || null,
+    p_academic_year: null,
+    p_is_minor: dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false,
+    p_metadata: {},
+    p_guardian_name: r.guardian_name || null,
+    p_guardian_phone: r.guardian_phone ? normalizeIndianPhone(r.guardian_phone) : null,
+    p_guardian_relationship: "GUARDIAN",
+    p_guardian_is_emergency: false,
+  });
+  if (error) {
+    throw Object.assign(new Error(error.message), { code: error.code });
   }
-  return student;
+  return data as { id: string; admission_number: string };
 }
+
+/**
+ * Which of the uploaded rows' phones / emails already belong to a live student of
+ * the tenant (tenant-wide, not just this property — the database guard is too).
+ * Existence only; nothing about the matching student is returned.
+ */
+async function loadExistingStudentKeys(
+  supabase: object,
+  tenantId: string,
+  propertyId: string,
+  rawRows: unknown[],
+) {
+  const { phones, emails } = collectIdentityValues(rawRows);
+  const existing = { phones: new Set<string>(), emails: new Set<string>() };
+  if (phones.length === 0 && emails.length === 0) return existing;
+  const { data, error } = await callRpc(supabase, "fn_existing_student_identity_keys", {
+    p_tenant_id: tenantId,
+    p_property_id: propertyId,
+    p_phones: phones,
+    p_emails: emails,
+  });
+  if (error) throw new Error(error.message);
+  const out = data as { phones: string[]; emails: string[] };
+  for (const k of out.phones) existing.phones.add(k);
+  for (const k of out.emails) existing.emails.add(k.trim().toLowerCase());
+  return existing;
+}
+
+export type StudentImportErrorKind = "DUPLICATE" | "FAILED";
+
+/** Read-only dry run for the Bulk import dialog: what would be imported, skipped as duplicate, or rejected. */
+export const previewStudentImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => bulkImportSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const existing = await loadExistingStudentKeys(
+      context.supabase,
+      data.tenant_id,
+      data.property_id,
+      data.rows,
+    );
+    const classified = classifyStudentRows(data.rows, existing);
+    const errors: { row: number; error: string; kind: StudentImportErrorKind }[] = [];
+    let ok = 0;
+    for (const c of classified) {
+      if (c.status === "OK") ok += 1;
+      else
+        errors.push({
+          row: c.row,
+          error: c.error,
+          kind: c.status === "DUPLICATE" ? "DUPLICATE" : "FAILED",
+        });
+    }
+    return {
+      ok,
+      duplicates: errors.filter((e) => e.kind === "DUPLICATE").length,
+      failed: errors.filter((e) => e.kind === "FAILED").length,
+      errors,
+    };
+  });
 
 export const bulkImportStudents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => bulkImportSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const errors: { row: number; error: string }[] = [];
+    const errors: { row: number; error: string; kind: StudentImportErrorKind }[] = [];
     let inserted = 0;
-    for (let i = 0; i < data.rows.length; i++) {
-      const parsed = studentBulkRowSchema.safeParse(data.rows[i]);
-      if (!parsed.success) {
-        errors.push({ row: i + 1, error: parsed.error.issues.map((x) => x.message).join("; ") });
+
+    const existing = await loadExistingStudentKeys(
+      supabase,
+      data.tenant_id,
+      data.property_id,
+      data.rows,
+    );
+    const classified = classifyStudentRows(data.rows, existing);
+
+    for (const c of classified) {
+      if (c.status === "INVALID") {
+        errors.push({ row: c.row, error: c.error, kind: "FAILED" });
+        continue;
+      }
+      if (c.status === "DUPLICATE") {
+        errors.push({ row: c.row, error: c.error, kind: "DUPLICATE" });
         continue;
       }
       try {
-        await insertStudentRow(supabase, data.tenant_id, data.property_id, parsed.data);
+        await insertStudentRow(supabase, data.tenant_id, data.property_id, c.data);
         inserted += 1;
       } catch (e) {
-        errors.push({ row: i + 1, error: e instanceof Error ? e.message : "unknown" });
+        const err = e as { message?: string; code?: string };
+        // Lost a race with another writer of the same phone/email: still a duplicate,
+        // and the database transaction left nothing behind.
+        if (isDuplicateStudentError({ message: err.message ?? "", code: err.code })) {
+          errors.push({ row: c.row, error: err.message ?? "Duplicate student", kind: "DUPLICATE" });
+        } else {
+          errors.push({ row: c.row, error: err.message ?? "unknown", kind: "FAILED" });
+        }
       }
     }
-    return { inserted, failed: errors.length, errors };
+    return {
+      inserted,
+      duplicates: errors.filter((e) => e.kind === "DUPLICATE").length,
+      failed: errors.filter((e) => e.kind === "FAILED").length,
+      errors,
+    };
   });
 
 const manualCreateSchema = manualStudentRowSchema.extend({
@@ -314,10 +435,12 @@ async function provisionStudentPortalAccount(
     // even though createStudentManual itself allows Warden — same blind spot
     // confirmStudentAdmission already works around with the service-role client.
     const nowIso = new Date().toISOString();
-    const { error: mErr } = await supabaseAdmin.from("tenant_memberships").upsert(
-      { tenant_id: student.tenant_id, user_id: inviteeId, status: "ACTIVE", joined_at: nowIso },
-      { onConflict: "tenant_id,user_id" },
-    );
+    const { error: mErr } = await supabaseAdmin
+      .from("tenant_memberships")
+      .upsert(
+        { tenant_id: student.tenant_id, user_id: inviteeId, status: "ACTIVE", joined_at: nowIso },
+        { onConflict: "tenant_id,user_id" },
+      );
     if (mErr) throw new Error(mErr.message);
 
     const { error: rErr } = await supabaseAdmin.from("role_assignments").insert({
@@ -908,18 +1031,83 @@ export const deleteStudent = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Student submits a move-out notice. ACTIVE -> NOTICE_GIVEN only; the
+ * give_notice RPC verifies the allocation belongs to the caller, enforces a
+ * single notice and the notice-period/lock-in minimum date, notifies staff,
+ * and leaves the allocation open and the bed OCCUPIED.
+ */
+export const giveNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => giveNoticeSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("give_notice", {
+      p_allocation_id: data.allocation_id,
+      p_requested_move_out_date: data.requested_move_out_date,
+      p_reason: data.reason,
+      p_remarks: data.remarks || undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const previewMoveOut = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => z.object({ allocation_id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const [{ data: eDate }, { data: refund }] = await Promise.all([
+    const [{ data: eDate }, { data: refund }, settlementRes] = await Promise.all([
       supabase.rpc("earliest_move_out_date", { p_allocation_id: data.allocation_id }),
       supabase.rpc("provisional_refund_paise", { p_allocation_id: data.allocation_id }),
+      supabase.rpc("move_out_settlement", { p_allocation_id: data.allocation_id }),
     ]);
+
+    // The invoice-wise settlement is only available to staff who may move the
+    // allocation out (or manage refunds); everyone else just gets the two
+    // legacy figures, exactly as before.
+    const parsed = settlementRes.error
+      ? null
+      : moveOutSettlementSchema.safeParse(settlementRes.data);
+    const settlement = parsed?.success ? parsed.data : null;
+
+    // Real, captured payments of this allocation's invoices that still have
+    // room for a refund — a deposit refund must hang off one of these
+    // (refunds.payment_id is NOT NULL; no payment rows are ever invented).
+    let refundPayments: { id: string; payment_number: string; remaining_paise: number }[] = [];
+    if (settlement && settlement.refundable_paise > 0) {
+      const { data: pays } = await supabase
+        .from("payments")
+        .select("id, payment_number, amount_paise, paid_at, invoice:invoices!inner(allocation_id)")
+        .eq("invoice.allocation_id", data.allocation_id)
+        .eq("status", "CAPTURED")
+        .order("paid_at", { ascending: true });
+      const ids = (pays ?? []).map((p) => p.id);
+      const { data: existing } = ids.length
+        ? await supabase
+            .from("refunds")
+            .select("payment_id, amount_paise")
+            .in("payment_id", ids)
+            .not("status", "in", "(REJECTED,CANCELLED,FAILED)")
+        : { data: [] as { payment_id: string; amount_paise: number }[] };
+      const used = new Map<string, number>();
+      for (const r of existing ?? []) {
+        used.set(r.payment_id, (used.get(r.payment_id) ?? 0) + r.amount_paise);
+      }
+      refundPayments = (pays ?? [])
+        .map((p) => ({
+          id: p.id,
+          payment_number: p.payment_number,
+          remaining_paise: p.amount_paise - (used.get(p.id) ?? 0),
+        }))
+        .filter((p) => p.remaining_paise > 0);
+    }
+
     return {
       earliest_move_out_date: eDate as string | null,
       provisional_refund_paise: (refund as number | null) ?? 0,
+      settlement,
+      refund_payments: refundPayments,
     };
   });
 
@@ -945,6 +1133,18 @@ export const registerDocument = createServerFn({ method: "POST" })
   .validator((data) => registerDocSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Per-document-type format/size rules (AADHAAR/COLLEGE_ID: JPG, PNG, PDF;
+    // PHOTO: JPG, PNG; OTHER: whatever the bucket allows). The same rules are
+    // enforced at the database by fn_validate_kyc_document, which also covers
+    // direct inserts that never reach this function.
+    if (data.owner_type === "STUDENT" && data.storage_bucket === "kyc-documents") {
+      const invalid = validateKycFile(
+        { name: data.original_filename, type: data.mime_type, size: data.size_bytes },
+        data.document_type,
+      );
+      if (invalid) throw new Error(invalid);
+    }
 
     const { data: doc, error } = await supabase
       .from("documents")

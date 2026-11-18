@@ -12,8 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { bulkImportStudents } from "@/lib/student.functions";
-import { studentBulkRowSchema } from "@/schemas/student";
+import { bulkImportStudents, previewStudentImport } from "@/lib/student.functions";
 
 const CSV_COLUMNS = [
   "full_name",
@@ -75,19 +74,51 @@ export function StudentBulkImportModal({
   onDone,
 }: Props) {
   const [rows, setRows] = useState<Record<string, string>[]>([]);
-  const [errors, setErrors] = useState<{ row: number; error: string }[]>([]);
+  type RowError = { row: number; error: string; kind: "DUPLICATE" | "FAILED" };
+  // Server-side dry run: validation + duplicates against existing students and within the file.
+  const [preview, setPreview] = useState<{
+    ok: number;
+    duplicates: number;
+    failed: number;
+    errors: RowError[];
+  } | null>(null);
+  const [result, setResult] = useState<{
+    inserted: number;
+    duplicates: number;
+    failed: number;
+    errors: RowError[];
+  } | null>(null);
+  const previewFn = useServerFn(previewStudentImport);
   const importFn = useServerFn(bulkImportStudents);
+
+  const previewMut = useMutation({
+    mutationFn: async (parsed: Record<string, string>[]) =>
+      previewFn({ data: { tenant_id: tenantId, property_id: propertyId, rows: parsed } }),
+    onSuccess: (r) => setPreview(r),
+    onError: (e) => {
+      setPreview(null);
+      toast.error(e instanceof Error ? e.message : "Could not check the file");
+    },
+  });
 
   const importMut = useMutation({
     mutationFn: async () =>
-      importFn({ data: { tenant_id: tenantId, property_id: propertyId, rows: rows as never } }),
+      importFn({ data: { tenant_id: tenantId, property_id: propertyId, rows } }),
     onSuccess: (r) => {
-      toast.success(`Imported ${r.inserted} • Failed ${r.failed}`);
-      if (r.errors.length) console.warn(r.errors);
       onDone();
-      onOpenChange(false);
-      setRows([]);
-      setErrors([]);
+      if (r.duplicates === 0 && r.failed === 0) {
+        toast.success(`Imported ${r.inserted} students`);
+        onOpenChange(false);
+        setRows([]);
+        setPreview(null);
+        setResult(null);
+        return;
+      }
+      // Keep the dialog open so the skipped rows and reasons can be read.
+      toast.warning(
+        `Imported ${r.inserted} • Duplicates skipped ${r.duplicates} • Failed ${r.failed}`,
+      );
+      setResult(r);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Import failed"),
   });
@@ -97,18 +128,16 @@ export function StudentBulkImportModal({
     reader.onload = () => {
       const parsed = parseCsv(String(reader.result ?? ""));
       setRows(parsed);
-      const errs: { row: number; error: string }[] = [];
-      parsed.forEach((r, i) => {
-        const res = studentBulkRowSchema.safeParse(r);
-        if (!res.success)
-          errs.push({ row: i + 1, error: res.error.issues.map((x) => x.message).join("; ") });
-      });
-      setErrors(errs);
+      setResult(null);
+      setPreview(null);
+      if (parsed.length > 0) previewMut.mutate(parsed);
     };
     reader.readAsText(f);
   }
 
-  const validCount = rows.length - errors.length;
+  const validCount = preview?.ok ?? 0;
+  const shown = result ?? preview;
+  const shownErrors = shown?.errors ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,7 +152,8 @@ export function StudentBulkImportModal({
               full_name, phone, email, date_of_birth, gender, academic_institute, course_name,
               guardian_name, guardian_phone
             </code>
-            . Rows with errors are skipped — valid rows still import.
+            . Rows whose phone or email already belongs to a registered student (or repeats earlier
+            in the file) are skipped as duplicates; other valid rows still import.
           </p>
           <Button type="button" variant="outline" size="sm" onClick={downloadSampleCsv}>
             <Download className="mr-2 h-4 w-4" /> Download sample CSV
@@ -144,19 +174,29 @@ export function StudentBulkImportModal({
           {rows.length > 0 && (
             <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
               <div className="flex items-center gap-2 font-medium">
-                <FileText className="h-4 w-4" /> Preview
+                <FileText className="h-4 w-4" /> {result ? "Import result" : "Preview"}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {validCount} valid • {errors.length} errors (skipped on import)
-              </p>
-              {errors.length > 0 && (
+              {previewMut.isPending && !result ? (
+                <p className="mt-1 text-xs text-muted-foreground">Checking for duplicates…</p>
+              ) : shown ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {result ? result.inserted : (preview?.ok ?? 0)}
+                  </span>{" "}
+                  {result ? "successful" : "will import"} •{" "}
+                  <span className="font-medium text-foreground">{shown.duplicates}</span> duplicate
+                  {shown.duplicates === 1 ? "" : "s"} (skipped) •{" "}
+                  <span className="font-medium text-foreground">{shown.failed}</span> failed
+                </p>
+              ) : null}
+              {shownErrors.length > 0 && (
                 <ul className="mt-2 max-h-40 overflow-auto text-xs text-destructive">
-                  {errors.slice(0, 20).map((e) => (
-                    <li key={e.row}>
-                      Row {e.row}: {e.error}
+                  {shownErrors.slice(0, 50).map((e) => (
+                    <li key={`${e.kind}-${e.row}`}>
+                      Row {e.row} [{e.kind === "DUPLICATE" ? "Duplicate" : "Failed"}]: {e.error}
                     </li>
                   ))}
-                  {errors.length > 20 && <li>…and {errors.length - 20} more</li>}
+                  {shownErrors.length > 50 && <li>…and {shownErrors.length - 50} more</li>}
                 </ul>
               )}
             </div>
@@ -164,14 +204,16 @@ export function StudentBulkImportModal({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            {result ? "Close" : "Cancel"}
           </Button>
-          <Button
-            disabled={validCount === 0 || importMut.isPending}
-            onClick={() => importMut.mutate()}
-          >
-            Import {validCount || ""} valid rows
-          </Button>
+          {!result && (
+            <Button
+              disabled={validCount === 0 || previewMut.isPending || importMut.isPending}
+              onClick={() => importMut.mutate()}
+            >
+              Import {validCount || ""} valid rows
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

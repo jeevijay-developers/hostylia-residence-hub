@@ -1,19 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  CalendarDays,
-  CheckCheck,
-  ChevronDown,
-  Clock,
-  Loader2,
-  Save,
-  Search,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { CalendarDays, CheckCheck, ChevronDown, Loader2, Save, Search } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,18 +21,47 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useMyStaffProperty } from "@/lib/staff-scope";
-import { STUDENTS_IN_PROPERTY_PAGE_SIZE, useAttendance, useStudentsInProperty } from "@/lib/ops";
+import { useStudentsOnApprovedLeave } from "@/lib/leave";
+import { formatGateTime, useStudentsOnOutPass } from "@/lib/out-pass";
+import { LeaveReviewPanel } from "@/components/attendance/LeaveReviewPanel";
+import { OverdueOutPassAlerts } from "@/components/attendance/OverdueOutPassAlerts";
+import { RoomSelector } from "@/components/attendance/RoomSelector";
+import {
+  STUDENTS_IN_PROPERTY_PAGE_SIZE,
+  useAttendanceRoomCounts,
+  useAttendance,
+  useStudentsInProperty,
+} from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useAvatarUrls } from "@/lib/avatar";
-import { cn, getErrorMessage, toneClasses, toneTextClasses, type SemanticTone } from "@/lib/utils";
+import { cn, getErrorMessage, toneClasses, toneTextClasses } from "@/lib/utils";
+import {
+  ATTENDANCE_STATUSES,
+  ATTENDANCE_STATUS_LABEL,
+  ATTENDANCE_STATUS_TONE,
+  MANUAL_ATTENDANCE_STATUSES,
+  summarizeAttendance,
+  type AttendanceStatus,
+} from "@/lib/attendance-status";
+import {
+  ATTENDANCE_STATUS_ICON,
+  AttendanceSummaryCards,
+} from "@/components/attendance/AttendanceSummaryCards";
+
+// Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
+// Shared with the Accountant attendance route, which reuses this page.
+export const attendanceSearchSchema = z.object({
+  status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE", "OUT_PASS"]).optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/warden/attendance")({
-  // Lets the Daily Brief's Present/Absent cards open this page pre-filtered.
-  validateSearch: z.object({
-    status: z.enum(["PRESENT", "ABSENT", "LATE", "ON_LEAVE"]).optional(),
-  }),
-  component: WardenAttendancePage,
+  validateSearch: attendanceSearchSchema,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="attendance_view">
+      <WardenAttendancePage />
+    </StaffModuleGuard>
+  ),
 });
 
 function StudentRosterAvatar({ url, name }: { url: string | undefined; name: string }) {
@@ -55,45 +75,42 @@ function StudentRosterAvatar({ url, name }: { url: string | undefined; name: str
   );
 }
 
-type Status = "PRESENT" | "ABSENT" | "LATE" | "ON_LEAVE";
-const STATUS_LABEL: Record<Status, string> = {
-  PRESENT: "Present",
-  ABSENT: "Absent",
-  LATE: "Late",
-  ON_LEAVE: "Leave",
-};
-const STATUS_TONE: Record<Status, SemanticTone> = {
-  PRESENT: "success",
-  ABSENT: "destructive",
-  LATE: "warning",
-  ON_LEAVE: "info",
-};
-const STATUS_ICON: Record<Status, typeof UserCheck> = {
-  PRESENT: UserCheck,
-  ABSENT: UserX,
-  LATE: Clock,
-  ON_LEAVE: CalendarDays,
-};
-const STATUSES = Object.keys(STATUS_LABEL) as Status[];
+type Status = AttendanceStatus;
+const STATUS_LABEL = ATTENDANCE_STATUS_LABEL;
+const STATUS_TONE = ATTENDANCE_STATUS_TONE;
+const STATUS_ICON = ATTENDANCE_STATUS_ICON;
+const STATUSES = ATTENDANCE_STATUSES;
 
-function WardenAttendancePage() {
+export function WardenAttendancePage() {
   const role = useResolvedRole();
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(0);
+  const [roomFilter, setRoomFilter] = useState("ALL");
   useEffect(() => {
     setPage(0);
+    setRoomFilter("ALL");
   }, [propertyId]);
-  const studentsQ = useStudentsInProperty(propertyId, { page });
+  useEffect(() => {
+    setPage(0);
+  }, [roomFilter]);
+  // The room filter is applied in the database, so a selected room lists all of
+  // its active students across pages; the options come from their own query.
+  const studentsQ = useStudentsInProperty(propertyId, {
+    page,
+    roomNumber: roomFilter === "ALL" ? undefined : roomFilter,
+  });
+  const roomsQ = useAttendanceRoomCounts(propertyId);
   const attendanceQ = useAttendance(propertyId, date);
   const qc = useQueryClient();
   const mark = useServerFn(bulkMarkAttendance);
 
   const [search, setSearch] = useState("");
-  const { status: initialStatus } = Route.useSearch();
+  const { status: initialStatus } = useSearch({ strict: false }) as z.infer<
+    typeof attendanceSearchSchema
+  >;
   const [statusFilter, setStatusFilter] = useState(initialStatus ?? "ALL");
-  const [roomFilter, setRoomFilter] = useState("ALL");
 
   // Local overrides (student_id -> Status / remark text)
   const [overrides, setOverrides] = useState<Record<string, Status>>({});
@@ -107,9 +124,23 @@ function WardenAttendancePage() {
       m[a.student_id] = { status: a.status as Status, notes: a.notes };
     return m;
   }, [attendanceQ.data]);
+  // Approved leave is derived from leave requests, never marked by hand: those
+  // students always read "On Leave" for the date and are locked below.
+  const onLeaveQ = useStudentsOnApprovedLeave(propertyId, date);
+  const onApprovedLeave = onLeaveQ.data;
+  // Out-Pass is derived from the gate records (actual OUT scan, no IN scan yet):
+  // never marked by hand, never saved as an attendance row, leave wins over it.
+  const outPassQ = useStudentsOnOutPass(propertyId, date);
+  const outPass = outPassQ.data;
+  const outPassIds = useMemo(() => new Set(outPass?.keys() ?? []), [outPass]);
   const effective = useCallback(
-    (id: string): Status => overrides[id] ?? currentMap[id]?.status ?? "PRESENT",
-    [overrides, currentMap],
+    (id: string): Status =>
+      onApprovedLeave?.has(id)
+        ? "ON_LEAVE"
+        : outPass?.has(id)
+          ? "OUT_PASS"
+          : (overrides[id] ?? currentMap[id]?.status ?? "PRESENT"),
+    [overrides, currentMap, onApprovedLeave, outPass],
   );
 
   const studentRows = studentsQ.data?.rows ?? [];
@@ -125,16 +156,9 @@ function WardenAttendancePage() {
     });
   }, [studentRows]);
 
-  const rooms = useMemo(
-    () =>
-      Array.from(new Set(roster.map((s) => s.roomNumber).filter((r): r is string => !!r))).sort(),
-    [roster],
-  );
-
   const filteredRoster = useMemo(() => {
     let list = roster;
     if (statusFilter !== "ALL") list = list.filter((s) => effective(s.id) === statusFilter);
-    if (roomFilter !== "ALL") list = list.filter((s) => s.roomNumber === roomFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -145,28 +169,24 @@ function WardenAttendancePage() {
       );
     }
     return list;
-  }, [roster, statusFilter, roomFilter, search, effective]);
+  }, [roster, statusFilter, search, effective]);
 
   // One signed-URL request for every visible student's photo, instead of one
   // per row.
   const avatarUrls = useAvatarUrls(filteredRoster.map((s) => s.photo_path));
 
-  const summary = useMemo(() => {
-    const counts: Record<Status, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, ON_LEAVE: 0 };
-    const seen = new Set<string>();
-    for (const a of attendanceQ.data ?? []) {
-      const status = (overrides[a.student_id] ?? a.status) as Status;
-      if (status in counts) counts[status] += 1;
-      seen.add(a.student_id);
-    }
-    for (const s of roster) {
-      if (seen.has(s.id)) continue;
-      counts[effective(s.id)] += 1;
-      seen.add(s.id);
-    }
-    counts.PRESENT += Math.max(0, studentTotal - seen.size);
-    return { total: studentTotal, ...counts };
-  }, [attendanceQ.data, effective, overrides, roster, studentTotal]);
+  const summary = useMemo(
+    () =>
+      summarizeAttendance({
+        rows: attendanceQ.data ?? [],
+        overrides,
+        roster,
+        effective,
+        studentTotal,
+        outPass: outPassIds,
+      }),
+    [attendanceQ.data, effective, overrides, roster, studentTotal, outPassIds],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -174,14 +194,21 @@ function WardenAttendancePage() {
       if (date !== new Date().toISOString().slice(0, 10)) {
         throw new Error("Attendance can only be marked for today.");
       }
-      const missingRemark = roster.find(
+      // On Leave rows (approved leave, or a legacy mark) and Out-Pass students
+      // (derived from the gate records) are never re-sent.
+      const markable = roster.filter((s) => {
+        const e = effective(s.id);
+        return e !== "ON_LEAVE" && e !== "OUT_PASS";
+      });
+      const missingRemark = markable.find(
         (s) =>
           effective(s.id) !== "PRESENT" && !(remarks[s.id] ?? currentMap[s.id]?.notes ?? "").trim(),
       );
       if (missingRemark) {
         throw new Error(`Add a remark for ${missingRemark.full_name} before saving`);
       }
-      const entries = roster.map((s) => {
+      if (markable.length === 0) return;
+      const entries = markable.map((s) => {
         const status = effective(s.id);
         return {
           student_id: s.id,
@@ -201,6 +228,7 @@ function WardenAttendancePage() {
       setOverrides({});
       setRemarks({});
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance-room-counts"] });
     },
     onError: (e) => toast.error(getErrorMessage(e, "Failed to save attendance")),
   });
@@ -209,6 +237,7 @@ function WardenAttendancePage() {
     const next: Record<string, Status> = {};
     const clearedRemarks = { ...remarks };
     for (const s of roster) {
+      if (effective(s.id) === "ON_LEAVE" || effective(s.id) === "OUT_PASS") continue; // never overwrite leave / Out-Pass
       if (effective(s.id) !== target) next[s.id] = target;
       if (target === "PRESENT") delete clearedRemarks[s.id];
     }
@@ -218,6 +247,8 @@ function WardenAttendancePage() {
 
   return (
     <div className="space-y-4">
+      <LeaveReviewPanel propertyId={propertyId} />
+      <OverdueOutPassAlerts propertyId={propertyId} />
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -252,19 +283,16 @@ function WardenAttendancePage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={roomFilter} onValueChange={setRoomFilter}>
-          <SelectTrigger className="w-36 shrink-0 rounded-full border-border bg-card">
-            <SelectValue placeholder="Room" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All rooms</SelectItem>
-            {rooms.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <RoomSelector
+          rooms={roomsQ.data}
+          isLoading={roomsQ.isLoading}
+          isError={roomsQ.isError}
+          total={summary.total}
+          value={roomFilter}
+          onChange={setRoomFilter}
+          onOpen={() => void roomsQ.refetch()}
+          className="w-48 shrink-0 rounded-full border-border bg-card"
+        />
       </div>
 
       <div className="flex gap-2">
@@ -289,17 +317,16 @@ function WardenAttendancePage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <AttendanceStat icon={UserCheck} label="Present" value={summary.PRESENT} tone="success" />
-        <AttendanceStat icon={UserX} label="Absent" value={summary.ABSENT} tone="destructive" />
-        <AttendanceStat icon={Clock} label="Late" value={summary.LATE} tone="warning" />
-      </div>
+      <AttendanceSummaryCards summary={summary} />
 
       <div className="space-y-3">
         {filteredRoster.map((s) => {
           const st = effective(s.id);
           const saved = currentMap[s.id];
-          const needsRemark = st !== "PRESENT";
+          const isLeaveLocked = st === "ON_LEAVE";
+          const isOutPass = st === "OUT_PASS";
+          const outPassInfo = outPass?.get(s.id);
+          const needsRemark = st !== "PRESENT" && !isLeaveLocked && !isOutPass;
           const remarkValue = remarks[s.id] ?? (overrides[s.id] ? "" : (saved?.notes ?? ""));
           const avatarUrl = s.photo_path ? avatarUrls[s.photo_path] : undefined;
           const missingRemark = needsRemark && !remarkValue.trim();
@@ -353,12 +380,27 @@ function WardenAttendancePage() {
               </div>
 
               <CollapsibleContent className="mt-3 space-y-3">
+                {isLeaveLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    On approved leave — attendance for this date is set by the leave request.
+                  </p>
+                )}
+                {isOutPass && (
+                  <p className="text-xs text-muted-foreground">
+                    Out on a gate pass
+                    {outPassInfo
+                      ? ` — left ${formatGateTime(outPassInfo.out_at, outPassInfo.tz)}, due back ${formatGateTime(outPassInfo.expected_in_at, outPassInfo.tz)}${outPassInfo.is_overdue ? " (overdue)" : ""}`
+                      : ""}
+                    . Counted as Out-Pass until the return is scanned at the gate.
+                  </p>
+                )}
                 <RadioGroup
                   value={st}
                   onValueChange={(v) => setOverrides({ ...overrides, [s.id]: v as Status })}
                   className="gap-2"
+                  disabled={isLeaveLocked || isOutPass}
                 >
-                  {STATUSES.filter((v) => v !== "ON_LEAVE").map((v) => {
+                  {MANUAL_ATTENDANCE_STATUSES.map((v) => {
                     const StatusIcon = STATUS_ICON[v];
                     const optionTone = STATUS_TONE[v];
                     const selected = st === v;
@@ -420,48 +462,6 @@ function WardenAttendancePage() {
           onPageChange={setPage}
         />
       )}
-    </div>
-  );
-}
-
-function AttendanceStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof UserCheck;
-  label: string;
-  value: number;
-  tone: SemanticTone;
-}) {
-  return (
-    <div className={cn("relative overflow-hidden rounded-2xl p-4", toneClasses[tone])}>
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 120 40"
-        preserveAspectRatio="none"
-        className={cn("absolute inset-x-0 bottom-0 h-10 w-full opacity-30", toneTextClasses[tone])}
-      >
-        <path
-          d="M0 28 C 15 16, 30 36, 45 24 S 75 12, 90 26 S 110 32, 120 20 L 120 40 L 0 40 Z"
-          fill="currentColor"
-        />
-      </svg>
-      <div className="relative flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-card",
-            toneTextClasses[tone],
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      <p className="relative mt-3 text-sm font-medium text-muted-foreground">{label}</p>
-      <p className={cn("relative font-display text-3xl font-bold", toneTextClasses[tone])}>
-        {value}
-      </p>
     </div>
   );
 }

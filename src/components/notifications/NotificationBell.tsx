@@ -34,7 +34,19 @@ export function NotificationBell({ className }: { className?: string }) {
     const p = (n.payload ?? {}) as Record<string, unknown>;
     const ticketId = p.ticket_id;
     const refundId = p.refund_id;
-    if (typeof ticketId === "string") {
+    const complaintId = p.complaint_id;
+    if (typeof complaintId === "string" && typeof p.audience === "string") {
+      // Complaint notifications carry the complaint id and who they are for, because the
+      // same complaint lives on a different page per role.
+      if (!n.read_at) void markNotificationRead(n.id);
+      setOpen(false);
+      if (p.audience === "WARDEN") navigate({ to: "/warden/complaints", search: { complaintId } });
+      else if (p.audience === "STUDENT")
+        navigate({ to: "/student/complaints", search: { complaintId } });
+      else if (p.audience === "PARENT")
+        navigate({ to: "/parent/complaints", search: { complaintId } });
+      else navigate({ to: "/admin/complaints", search: { complaintId } });
+    } else if (typeof ticketId === "string") {
       if (!n.read_at) void markNotificationRead(n.id);
       setOpen(false);
       navigate({ to: "/admin/support/$id", params: { id: ticketId } });
@@ -76,7 +88,9 @@ export function NotificationBell({ className }: { className?: string }) {
                 const title = String(p.title ?? n.event_type.replaceAll("_", " "));
                 const body = String(p.body ?? p.invoice_number ?? p.complaint_number ?? "");
                 const clickable =
-                  typeof p.ticket_id === "string" || typeof p.refund_id === "string";
+                  typeof p.ticket_id === "string" ||
+                  typeof p.refund_id === "string" ||
+                  (typeof p.complaint_id === "string" && typeof p.audience === "string");
                 const content = (
                   <>
                     <div className="flex justify-between gap-2">

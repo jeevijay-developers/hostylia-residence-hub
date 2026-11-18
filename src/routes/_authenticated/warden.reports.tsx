@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
+import { useWardenPermissions } from "@/lib/staff-scope";
 import {
   OccupancyReportPanel,
   SlaComplianceReportPanel,
@@ -17,30 +17,18 @@ import {
  * the daily bulk-mark screen.
  */
 export const Route = createFileRoute("/_authenticated/warden/reports")({
-  component: WardenReportsPage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="reports_view">
+      <WardenReportsPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function WardenReportsPage() {
-  // Resolve a property in the warden's scope via role_assignments (RLS-safe).
-  const q = useQuery({
-    queryKey: ["warden-scope-property"],
-    queryFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return null;
-      const { data } = await supabase
-        .from("role_assignments")
-        .select("property_id")
-        .eq("user_id", user.user.id)
-        .eq("role", "WARDEN")
-        .eq("is_active", true)
-        .not("property_id", "is", null)
-        .limit(1)
-        .maybeSingle();
-      return data?.property_id ?? null;
-    },
-  });
+  const { propertyId, isLoading } = useWardenPermissions();
 
-  const propertyId = q.data;
+  if (isLoading) return null;
+
   return (
     <div className="space-y-8 p-4">
       {!propertyId ? (

@@ -41,6 +41,8 @@ interface TopbarProps {
   tenantId?: string | null;
   /** Hides the mobile hamburger/Sheet nav trigger — used when a role-specific mobile bottom nav replaces it. */
   hideMobileNavTrigger?: boolean;
+  /** Extra permission-filtered links shown in the account dropdown between Profile and Sign out, below `lg` only. */
+  mobileProfileMenuItems?: NavItem[];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,6 +52,7 @@ export function Topbar({
   showPropertySwitcher,
   tenantId,
   hideMobileNavTrigger,
+  mobileProfileMenuItems = [],
 }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
@@ -58,6 +61,7 @@ export function Topbar({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { data: ownProfile } = useQuery({
     queryKey: ["own-profile"],
@@ -311,12 +315,67 @@ export function Topbar({
           </button>
         )}
         {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
+          <>
+          {(isWarden || isAccountant) && (
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open menu"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-foreground transition-colors hover:bg-muted lg:hidden"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="flex w-72 flex-col p-0 lg:hidden">
+                <SheetHeader className="p-4 pb-2 text-left">
+                  <SheetTitle className="sr-only">Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-8">
+                  <Link
+                    to={isAccountant ? "/accountant/profile" : "/warden/profile"}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Profile</span>
+                  </Link>
+                  {mobileProfileMenuItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+                <div className="p-4">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setSignOutOpen(true);
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" /> Sign out
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 aria-label="Account menu"
-                className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60"
+                className={cn(
+                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
+                  (isWarden || isAccountant) && "max-lg:hidden",
+                )}
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -346,6 +405,16 @@ export function Topbar({
                   <span className="text-sm font-medium text-foreground">Profile</span>
                 </Link>
               </DropdownMenuItem>
+              {mobileProfileMenuItems.map((item) => (
+                <DropdownMenuItem key={item.to} asChild className="gap-3 rounded-lg px-2 py-2 lg:hidden">
+                  <Link to={item.to}>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
               <DropdownMenuItem
                 onSelect={() => setSignOutOpen(true)}
                 className="gap-3 rounded-lg px-2 py-2"
@@ -357,6 +426,7 @@ export function Topbar({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
         ) : (
           <ProfileAvatarMenu
             avatarUrl={avatarUrl}

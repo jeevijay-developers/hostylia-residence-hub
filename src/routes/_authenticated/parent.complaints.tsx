@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
 import { ParentPageFrame } from "@/components/parent/ParentPageFrame";
 import { ComplaintTrackerList } from "@/components/parent/ComplaintTrackerList";
@@ -7,11 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useResolvedRole } from "@/lib/user-role";
 
 export const Route = createFileRoute("/_authenticated/parent/complaints")({
+  // `complaintId` lets a notification jump straight to that complaint.
+  validateSearch: z.object({ complaintId: z.string().uuid().optional() }),
   component: ParentComplaintsPage,
 });
 
 function ParentComplaintsPage() {
   const { data: role } = useResolvedRole();
+  const { complaintId } = Route.useSearch();
   return (
     <div className="space-y-6">
       <ParentPageFrame requirePermission="can_view_complaints">
@@ -27,7 +31,7 @@ function ParentComplaintsPage() {
                 </CardContent>
               </Card>
             )}
-            <ComplaintTrackerList studentId={child.student_id} />
+            <ComplaintTrackerList studentId={child.student_id} highlightId={complaintId} />
           </div>
         )}
       </ParentPageFrame>

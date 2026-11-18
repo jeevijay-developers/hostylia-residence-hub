@@ -75,6 +75,57 @@ const WARDEN_KEY_DEFAULT_FALSE = new Set([
   "rooms_beds_delete",
 ]);
 
+// Finance keys never default on for a Warden, unlike the rest of
+// WARDEN_KEY_DEFAULT_FALSE's "on by default, a few carved out" shape — this
+// mirrors the SQL truth in has_finance_permission()/has_role_permission()
+// (20260814070000/20260814090000): only HOSTEL_ADMIN or an explicit
+// `permissions[key] = true` grants a Warden access; the "absent key still
+// passes" default-true fallback those functions give ACCOUNTANT never
+// applies to WARDEN. Without this, the client would show Finance
+// nav/actions as allowed for every Warden by default while the RLS layer
+// silently rejects the underlying query/mutation.
+const WARDEN_FINANCE_KEYS = new Set([
+  "fee_plans_view",
+  "fee_plans_create",
+  "fee_plans_edit",
+  "fee_plans_delete",
+  "invoices_view",
+  "invoices_create",
+  "invoices_edit",
+  "invoices_delete",
+  "payments_view",
+  "payments_create",
+  "payments_edit",
+  "payments_delete",
+  "refunds",
+]);
+
+// Default Warden access when Customize Permissions is OFF: Brief (no key),
+// Students, Attendance, Complaints and Gate only. Mirrors the default list in
+// 20261026100000_warden_default_permissions_five_modules.sql — keep in sync.
+// allocations_view/rooms_beds_view are deliberately absent: the pages are
+// hidden/guarded here, while the backend keeps read-only access so the
+// student detail page can still show the student's current room/bed.
+const WARDEN_DEFAULT_KEYS = new Set([
+  "students_view",
+  "students_create",
+  "students_edit",
+  "attendance_view",
+  "attendance_create",
+  "attendance_edit",
+  "attendance_delete",
+  "complaints",
+  "gate_passes_view",
+  "gate_passes_create",
+  "gate_passes_edit",
+  "gate_passes_delete",
+  "visitors_view",
+  "visitors_create",
+  "visitors_edit",
+  "visitors_delete",
+  "gate_events",
+]);
+
 /**
  * A Warden's own effective per-module permission overrides, read straight
  * from their `role_assignments` row (RLS already allows reading your own
@@ -103,9 +154,14 @@ export function useWardenPermissions() {
     },
   });
   const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
+  // "Customize Permissions" OFF is stored as an empty bag; ON always saves
+  // at least one explicit key (admin.staff.tsx seeds every key).
+  const isCustomized = Object.keys(permissions).length > 0;
   function can(key: string): boolean {
     const override = permissions[key];
     if (override !== undefined) return override;
+    if (!isCustomized) return WARDEN_DEFAULT_KEYS.has(key);
+    if (WARDEN_FINANCE_KEYS.has(key)) return false;
     return !WARDEN_KEY_DEFAULT_FALSE.has(key);
   }
   return {
@@ -116,17 +172,92 @@ export function useWardenPermissions() {
   };
 }
 
+// Finance keys default true for an Accountant (their own role defaults, see
+// has_finance_permission() in 20260814070000); every other key — operational
+// (attendance/complaints/gate_passes/.../reports_view) and the granular CRUD
+// pilot keys — defaults false unless explicitly granted (see
+// has_operational_permission_property/scope() in 20260814090000). Mirrors
+// those two SQL functions exactly so the sidebar/route gating here never
+// drifts from what RLS actually enforces.
+const ACCOUNTANT_FINANCE_DEFAULT_TRUE = new Set([
+  "fee_plans_view",
+  "fee_plans_create",
+  "fee_plans_edit",
+  "fee_plans_delete",
+  "invoices_view",
+  "invoices_create",
+  "invoices_edit",
+  "invoices_delete",
+  "payments_view",
+  "payments_create",
+  "payments_edit",
+  "payments_delete",
+  "refunds",
+]);
+
+/**
+ * An Accountant's own effective per-module permission overrides — same
+ * shape/intent as useWardenPermissions above, for the other direction
+ * (Accountant's defaults are Warden's grantable-extras, and vice versa).
+ * Client-side UI gating only; can_manage_()/can_view_() RLS is the real
+ * enforcement.
+ */
+export function useAccountantPermissions() {
+  const { data: role } = useResolvedRole();
+  const q = useQuery({
+    queryKey: ["my-accountant-permissions", role?.userId, role?.tenantId],
+    enabled: !!role?.userId && !!role?.tenantId && role.role === "ACCOUNTANT",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("role_assignments")
+        .select("property_id, block_id, permissions")
+        .eq("user_id", role!.userId!)
+        .eq("tenant_id", role!.tenantId!)
+        .eq("role", "ACCOUNTANT")
+        .eq("is_active", true)
+        .order("granted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
+  function can(key: string): boolean {
+    // Synthetic key (not stored): the Gate page hosts both Gate Pass and
+    // Visitors, so either grant shows it; each tab/action is still gated by
+    // its own key via RLS.
+    if (key === "gate_any") return can("gate_passes_view") || can("visitors_view");
+    const override = permissions[key];
+    if (override !== undefined) return override;
+    return ACCOUNTANT_FINANCE_DEFAULT_TRUE.has(key);
+  }
+  return {
+    can,
+    propertyId: q.data?.property_id ?? null,
+    blockId: q.data?.block_id ?? null,
+    isLoading: q.isLoading,
+  };
+}
+
+/**
+ * Role-aware wrapper for operational pages shared between Warden and
+ * Accountant (attendance, complaints, gate, notices, mess, students) — resolves
+ * `can()` / property / block from whichever staff role is signed in, so the
+ * same page component enforces the Admin-granted keys for either role. Both
+ * underlying queries are role-gated, so only the matching one actually runs.
+ */
+export function useStaffPermissions() {
+  const { data: role } = useResolvedRole();
+  const warden = useWardenPermissions();
+  const accountant = useAccountantPermissions();
+  return role?.role === "ACCOUNTANT" ? accountant : warden;
+}
+
 // Modules without a real write action for students today (Attendance,
 // Notices are read-only) only ever expose Read/No Access — there's no
 // `edit` key for them, `can()` below just returns `false` for that verb.
 export type StudentModule =
-  | "profile"
-  | "attendance"
-  | "complaints"
-  | "notices"
-  | "finance"
-  | "gate_passes"
-  | "mess";
+  "profile" | "attendance" | "complaints" | "notices" | "finance" | "gate_passes" | "mess";
 
 const STUDENT_VIEW_ONLY_MODULES = new Set<StudentModule>(["attendance", "notices"]);
 
@@ -182,9 +313,7 @@ export function useMyPermission(key: string, defaultValue: boolean): boolean {
   const q = useQuery({
     queryKey: ["my-permission-override", role?.userId, role?.tenantId, role?.role],
     enabled:
-      !!role?.userId &&
-      !!role?.tenantId &&
-      (role.role === "WARDEN" || role.role === "ACCOUNTANT"),
+      !!role?.userId && !!role?.tenantId && (role.role === "WARDEN" || role.role === "ACCOUNTANT"),
     queryFn: async () => {
       const { data } = await supabase
         .from("role_assignments")

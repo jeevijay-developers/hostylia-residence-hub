@@ -46,7 +46,7 @@ import { TurnstileWidget, useCaptchaToken } from "@/components/site/TurnstileWid
 import { supabase } from "@/integrations/supabase/client";
 import { sendPhoneOtp } from "@/lib/auth-otp.functions";
 import { listPublicActiveProperties } from "@/lib/public-property.functions";
-import { submitPublicAdmission } from "@/lib/student.functions";
+import { checkStudentAdmissionDuplicate, submitPublicAdmission } from "@/lib/student.functions";
 
 type Mode = "phone" | "email";
 type Step = 0 | 1 | 2 | 3;
@@ -512,6 +512,30 @@ function signupMetadata(role: SignupRole, identity: IdentityValues) {
  * (email is still the primary match key `confirmStudentAdmission` uses, so
  * this fallback never affects account linking for email signups).
  */
+/**
+ * Runs BEFORE the account is created: a student whose phone / email is already
+ * registered is stopped here with a clear message instead of getting an account
+ * and a silently-failed application. Returns the message to show, or null when
+ * clear to continue. The database guard behind submitPublicAdmission remains the
+ * authoritative check (this one is only for failing early and clearly).
+ */
+async function findDuplicateStudentMessage(
+  checkFn: ReturnType<typeof useServerFn<typeof checkStudentAdmissionDuplicate>>,
+  identity: IdentityValues,
+  contact: { email?: string; phone?: string },
+): Promise<string | null> {
+  if (!identity.propertySlug) return null;
+  const result = await checkFn({
+    data: {
+      property_slug: identity.propertySlug,
+      phone: contact.phone ?? "",
+      email: contact.email ?? "",
+      guardian_phone: identity.guardianPhone ?? "",
+    },
+  });
+  return result.duplicate ? result.message : null;
+}
+
 async function submitStudentApplication(
   submitFn: ReturnType<typeof useServerFn<typeof submitPublicAdmission>>,
   identity: IdentityValues,
@@ -555,6 +579,7 @@ function EmailCredentialsForm({
   const authCaptcha = useCaptchaToken();
   const applicationCaptcha = useCaptchaToken();
   const submitApplicationFn = useServerFn(submitPublicAdmission);
+  const duplicateCheckFn = useServerFn(checkStudentAdmissionDuplicate);
   const {
     register,
     handleSubmit,
@@ -572,6 +597,17 @@ function EmailCredentialsForm({
     }
     setSubmitting(true);
     try {
+      if (role === "STUDENT") {
+        const duplicate = await findDuplicateStudentMessage(duplicateCheckFn, identity, {
+          email: values.email,
+        });
+        if (duplicate) {
+          authCaptcha.reset();
+          applicationCaptcha.reset();
+          toast.error(duplicate);
+          return;
+        }
+      }
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -697,6 +733,7 @@ function PhoneCredentialsForm({
   const authCaptcha = useCaptchaToken();
   const applicationCaptcha = useCaptchaToken();
   const submitApplicationFn = useServerFn(submitPublicAdmission);
+  const duplicateCheckFn = useServerFn(checkStudentAdmissionDuplicate);
   const {
     register,
     handleSubmit,
@@ -718,6 +755,15 @@ function PhoneCredentialsForm({
     setSubmitting(true);
     try {
       const phone = normalizeIndianPhone(values.phone);
+      if (role === "STUDENT") {
+        const duplicate = await findDuplicateStudentMessage(duplicateCheckFn, identity, { phone });
+        if (duplicate) {
+          authCaptcha.reset();
+          applicationCaptcha.reset();
+          toast.error(duplicate);
+          return;
+        }
+      }
       const result = await sendPhoneOtp({
         data: {
           phone,

@@ -20,7 +20,18 @@ import { formatInr } from "@/lib/finance";
 
 const PAYABLE_STATUSES = ["ISSUED", "PARTIALLY_PAID", "OVERDUE"];
 
-export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
+/**
+ * `canCreate` defaults to `true` so the existing Admin/Accountant call sites
+ * (which pass neither) keep recording payments unconditionally — only the
+ * Warden payments route passes an explicit, permission-derived value.
+ */
+export function PaymentEntryForm({
+  propertyId,
+  canCreate = true,
+}: {
+  propertyId: string;
+  canCreate?: boolean;
+}) {
   const qc = useQueryClient();
   const record = useServerFn(recordManualPayment);
   const [invoiceId, setInvoiceId] = useState("");
@@ -88,7 +99,7 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
           invoice_id: invoiceId,
           mode,
           amount_paise: Math.round(parseFloat(amount) * 100),
-          offline_reference: ref,
+          offline_reference: mode === "CASH" ? "" : ref.trim(),
           cheque_date: mode === "CHEQUE" ? chequeDate : "",
           notes,
         },
@@ -105,6 +116,24 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+
+  // Online modes (UPI / bank transfer) need a transaction ID / UTR; cheque
+  // needs its number; OTHER keeps an optional generic reference; CASH has none.
+  const isOnline = mode === "BANK_TRANSFER" || mode === "UPI";
+  const isReferenceRequired = isOnline || mode === "CHEQUE";
+  const referenceLabel = isOnline
+    ? "Transaction ID / UTR"
+    : mode === "CHEQUE"
+      ? "Cheque Number"
+      : "Reference";
+
+  if (!canCreate) {
+    return (
+      <div className="rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
+        Access denied — you don't have permission to record payments.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
@@ -136,7 +165,13 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
           </Select>
         </FormField>
         <FormField icon={CreditCard} label="Mode">
-          <Select value={mode} onValueChange={(v) => setMode(v as never)}>
+          <Select
+            value={mode}
+            onValueChange={(v) => {
+              setMode(v as never);
+              if (v === "CASH") setRef("");
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -159,14 +194,17 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
             onChange={(e) => setAmount(e.target.value)}
           />
         </FormField>
-        <FormField icon={FileText} label="Reference" htmlFor="payment-reference">
-          <Input
-            id="payment-reference"
-            value={ref}
-            onChange={(e) => setRef(e.target.value)}
-            placeholder="Cheque no. / UPI ref"
-          />
-        </FormField>
+        {mode !== "CASH" && (
+          <FormField icon={FileText} label={referenceLabel} htmlFor="payment-reference">
+            <Input
+              id="payment-reference"
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder={referenceLabel}
+              required={isReferenceRequired}
+            />
+          </FormField>
+        )}
         {mode === "CHEQUE" && (
           <FormField icon={FileText} label="Cheque date" htmlFor="payment-cheque-date">
             <Input
@@ -193,7 +231,9 @@ export function PaymentEntryForm({ propertyId }: { propertyId: string }) {
         size="lg"
         className="w-full shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_30%,transparent),0_10px_28px_-8px_color-mix(in_oklab,var(--primary)_55%,transparent)] transition-shadow hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_40%,transparent),0_14px_36px_-8px_color-mix(in_oklab,var(--primary)_65%,transparent)] active:shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_45%,transparent),0_6px_16px_-6px_color-mix(in_oklab,var(--primary)_60%,transparent)] disabled:shadow-none"
         onClick={() => m.mutate()}
-        disabled={!invoiceId || !amount || m.isPending}
+        disabled={
+          !invoiceId || !amount || (isReferenceRequired && !ref.trim()) || m.isPending
+        }
       >
         <Save className="h-4 w-4" />
         {m.isPending ? "Recording…" : "Record payment"}

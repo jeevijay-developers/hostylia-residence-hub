@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { MoreHorizontal } from "lucide-react";
+import { Lock, MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useKycLockedToast } from "@/lib/kyc";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem } from "@/lib/dashboard-nav";
 
@@ -42,6 +43,7 @@ interface StudentBottomNavProps {
 export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentBottomNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
+  const showLockedToast = useKycLockedToast();
 
   // Split primary items around the center slot
   const half = Math.ceil(items.length / 2);
@@ -49,8 +51,7 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
   const rightItems = items.slice(half);
 
   const isCenterActive =
-    !!centerItem &&
-    (pathname === centerItem.to || pathname.startsWith(`${centerItem.to}/`));
+    !!centerItem && (pathname === centerItem.to || pathname.startsWith(`${centerItem.to}/`));
 
   const isMoreActive = moreItems.some(
     (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
@@ -78,8 +79,9 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
           {centerItem ? (
             <li className="relative flex flex-1 items-end justify-center pb-2">
               {/* The raised disc sits above the bar via negative translateY */}
-              <Link
-                to={centerItem.to}
+              <CenterTarget
+                item={centerItem}
+                onLockedClick={showLockedToast}
                 aria-label={centerItem.label}
                 aria-current={isCenterActive ? "page" : undefined}
                 className={cn(
@@ -104,7 +106,7 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
                   const CenterIcon = centerItem.icon;
                   return <CenterIcon className="h-6 w-6 shrink-0" />;
                 })()}
-              </Link>
+              </CenterTarget>
               {/* Label rendered inside the bar, below the disc */}
               <span
                 className={cn(
@@ -133,9 +135,7 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
                     className={cn(
                       "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
                       "text-[11px] sm:text-sm font-semibold transition-colors",
-                      isMoreActive
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground",
+                      isMoreActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     <span className="relative">
@@ -183,11 +183,66 @@ export function StudentBottomNav({ items, centerItem, moreItems = [] }: StudentB
   );
 }
 
+/** The raised center disc: a link, or — when KYC-locked — a button that shows
+ * the lock message instead of navigating. */
+function CenterTarget({
+  item,
+  onLockedClick,
+  className,
+  children,
+  ...rest
+}: {
+  item: NavItem;
+  onLockedClick: () => void;
+  className: string;
+  children: ReactNode;
+  "aria-label": string;
+  "aria-current": "page" | undefined;
+}) {
+  if (item.locked) {
+    return (
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-label={`${rest["aria-label"]} (locked)`}
+        onClick={onLockedClick}
+        className={cn(className, "opacity-60")}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <Link to={item.to} className={className} {...rest}>
+      {children}
+    </Link>
+  );
+}
+
 /* ── Reusable plain nav tab ─────────────────────────────────────────────── */
 
 function NavTab({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
   const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+  const showLockedToast = useKycLockedToast();
+  if (item.locked) {
+    return (
+      <li className="flex flex-1 min-w-0">
+        <button
+          type="button"
+          aria-disabled="true"
+          onClick={showLockedToast}
+          className="flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[11px] sm:text-sm font-semibold text-muted-foreground/60"
+        >
+          <span className="relative">
+            <Icon className="h-5 w-5 shrink-0" />
+            <Lock className="absolute -right-2 -top-1.5 h-3 w-3 text-muted-foreground" />
+          </span>
+          <span className="w-full truncate text-center">{item.label}</span>
+        </button>
+      </li>
+    );
+  }
   return (
     <li className="flex flex-1 min-w-0">
       <Link
@@ -196,9 +251,7 @@ function NavTab({ item, pathname }: { item: NavItem; pathname: string }) {
         className={cn(
           "flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-0.5",
           "text-[11px] sm:text-sm font-semibold transition-colors",
-          active
-            ? "text-primary"
-            : "text-muted-foreground hover:text-foreground",
+          active ? "text-primary" : "text-muted-foreground hover:text-foreground",
         )}
       >
         <span className="relative">
@@ -212,4 +265,3 @@ function NavTab({ item, pathname }: { item: NavItem; pathname: string }) {
     </li>
   );
 }
-

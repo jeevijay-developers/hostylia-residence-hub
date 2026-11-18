@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { FeePlansPanel } from "@/components/finance/FeePlansPanel";
 import { useAccountantProperty } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/accountant/fee-plans")({
-  component: AccFeePlansPage,
+  component: () => (
+    <StaffModuleGuard role="ACCOUNTANT" module="fee_plans_view">
+      <AccFeePlansPage />
+    </StaffModuleGuard>
+  ),
 });
 
 function AccFeePlansPage() {

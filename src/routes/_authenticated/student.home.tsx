@@ -1,7 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bed, Bell, ChevronRight, DoorOpen, IndianRupee, Utensils, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Bed,
+  Bell,
+  ChevronRight,
+  DoorOpen,
+  IndianRupee,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
 
+import { AttendanceLeaveSummary } from "@/components/attendance/AttendanceLeaveSummary";
+import { GiveNoticeAction, MoveOutNoticeStatusCard } from "@/components/students/GiveNotice";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +62,10 @@ function StudentHomePage() {
     },
   });
 
-  const noticesQ = useTenantNotices(student.data?.tenant_id, propertyId);
+  const noticesQ = useTenantNotices(
+    kycComplete ? student.data?.tenant_id : null,
+    kycComplete ? propertyId : null,
+  );
   const notices = (noticesQ.data ?? []).filter(
     (n) => n.audience_type === "ALL" || n.audience_type === "STUDENTS",
   );
@@ -62,7 +76,7 @@ function StudentHomePage() {
   return (
     <div className="space-y-8">
       {!kycLoading && !kycComplete && (
-        <KycGateNotice message="Complete your KYC to unlock fees, gate pass, mess and complaints." />
+        <KycGateNotice message="Complete your KYC to access this feature." />
       )}
 
       {student.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -81,51 +95,63 @@ function StudentHomePage() {
               label="Room / Bed"
               value={`${bed.room?.room_number ?? "—"} / ${bed.code}`}
               caption="Your allocation"
+              action={
+                allocQ.data?.id ? <GiveNoticeAction allocationId={allocQ.data.id} /> : undefined
+              }
             />
           )}
-          {can("finance", "view") && <FeesCard studentId={studentId} />}
-          {can("gate_passes", "view") && <GatePassCard studentId={studentId} />}
-          {can("mess", "view") && <MessCard propertyId={propertyId} />}
+          {kycComplete && can("finance", "view") && <FeesCard studentId={studentId} />}
+          {kycComplete && can("gate_passes", "view") && <GatePassCard studentId={studentId} />}
+          {kycComplete && can("mess", "view") && <MessCard propertyId={propertyId} />}
         </div>
       )}
 
-      <div>
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold text-foreground">Notice board</h2>
-          <Link to="/student/notices" className="text-sm font-medium text-primary">
-            See all
-          </Link>
-        </div>
-        <div className="mt-3 divide-y divide-border rounded-2xl border border-border bg-card">
-          {noticesQ.isLoading ? (
-            <div className="space-y-3 p-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : notices.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No notices posted yet.</p>
-          ) : (
-            notices.slice(0, 4).map((n) => (
-              <Link
-                key={n.id}
-                to="/student/notices"
-                className="flex items-center gap-3 p-4 first:rounded-t-2xl last:rounded-b-2xl hover:bg-accent/40"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-warning">
-                  <Bell className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-foreground">
-                    {n.title}
+      {studentId && kycComplete && can("attendance", "view") && (
+        <AttendanceLeaveSummary studentId={studentId} />
+      )}
+
+      {allocQ.data?.id && <MoveOutNoticeStatusCard allocationId={allocQ.data.id} />}
+
+      {/* Notice content is KYC-gated: no board (or preview) until verified. */}
+      {kycComplete && (
+        <div>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold text-foreground">Notice board</h2>
+            <Link to="/student/notices" className="text-sm font-medium text-primary">
+              See all
+            </Link>
+          </div>
+          <div className="mt-3 divide-y divide-border rounded-2xl border border-border bg-card">
+            {noticesQ.isLoading ? (
+              <div className="space-y-3 p-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : notices.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">No notices posted yet.</p>
+            ) : (
+              notices.slice(0, 4).map((n) => (
+                <Link
+                  key={n.id}
+                  to="/student/notices"
+                  className="flex items-center gap-3 p-4 first:rounded-t-2xl last:rounded-b-2xl hover:bg-accent/40"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-warning">
+                    <Bell className="h-4 w-4" />
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">{n.body}</span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            ))
-          )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {n.title}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">{n.body}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Link>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -136,12 +162,14 @@ function HomeStatCard({
   value,
   caption,
   to,
+  action,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
   caption: string;
   to?: string;
+  action?: ReactNode;
 }) {
   const content = (
     <>
@@ -149,6 +177,7 @@ function HomeStatCard({
       <span className="mt-3 block text-xs text-muted-foreground">{label}</span>
       <span className="mt-0.5 block truncate text-xl font-bold text-foreground">{value}</span>
       <span className="mt-0.5 block text-xs text-muted-foreground">{caption}</span>
+      {action}
     </>
   );
   const className = "block rounded-2xl border border-border bg-card p-4";

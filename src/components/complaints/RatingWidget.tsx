@@ -21,7 +21,7 @@ export function RatingWidget({
 
   const canRate = complaint.status === "RESOLVED" || complaint.status === "CLOSED";
   const canReopen =
-    (complaint.status === "RESOLVED" || complaint.status === "CLOSED") &&
+    complaint.status === "RESOLVED" &&
     complaint.reopen_until != null &&
     new Date(complaint.reopen_until).getTime() > Date.now();
 

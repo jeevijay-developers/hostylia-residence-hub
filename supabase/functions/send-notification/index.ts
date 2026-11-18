@@ -16,15 +16,14 @@
 // entirely and reuses the existing notifications row.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import {
-  msg91AuthKey,
-  resolveMsg91TemplateId,
-  sendMsg91TemplateSms,
-} from "../_shared/msg91.ts";
+import { sendMsg91TemplateSms } from "../_shared/msg91.ts";
+import { channelAvailability, resolveChannelProvider } from "../_shared/provider-status.ts";
 
 type Channel = "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL";
 
 interface Body {
+  /** Internal status probe: report which channels are deliverable (no secrets). Sends nothing. */
+  action?: "provider_status";
   channel: Channel;
   templateKey: string;
   recipient: { userId?: string; phone?: string; email?: string };
@@ -68,6 +67,16 @@ Deno.serve(async (req) => {
   }
   try {
     const b = (await req.json()) as Body;
+
+    // Provider availability for the Notice Composer. Same internal-secret gate as everything else here;
+    // answers with booleans and safe reasons only, from the very logic the sender uses below.
+    if (b.action === "provider_status") {
+      return json(
+        { ok: true, channels: channelAvailability(b.templateKey || "notice_broadcast") },
+        200,
+        cors,
+      );
+    }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -232,31 +241,8 @@ async function dispatchAndRespond(
   const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER");
   const twilioWaFrom = Deno.env.get("TWILIO_WHATSAPP_FROM");
   const resendKey = Deno.env.get("RESEND_API_KEY");
-  const hasMsg91 = !!msg91AuthKey();
-  const msg91Mapped = !!resolveMsg91TemplateId(templateKey);
-
-  let provider = "none";
-  let configured = false;
-  if (channel === "SMS") {
-    if (hasMsg91 && msg91Mapped) {
-      provider = "msg91";
-      configured = true;
-    } else if (twilioSid && twilioTok && twilioFrom) {
-      provider = "twilio";
-      configured = true;
-    } else {
-      provider = hasMsg91 ? "msg91" : "twilio";
-      configured = false;
-    }
-  }
-  if (channel === "WHATSAPP") {
-    provider = "twilio";
-    configured = !!(twilioSid && twilioTok && twilioWaFrom);
-  }
-  if (channel === "EMAIL") {
-    provider = "resend";
-    configured = !!resendKey;
-  }
+  // Same decision the Notice Composer's availability check uses (_shared/provider-status.ts).
+  const { provider, configured, missing } = resolveChannelProvider(channel, templateKey);
 
   const { data: attemptRow } = await admin
     .from("notification_attempts")
@@ -271,14 +257,7 @@ async function dispatchAndRespond(
     .single();
 
   if (!configured) {
-    const hint =
-      channel === "EMAIL"
-        ? "RESEND_API_KEY"
-        : channel === "WHATSAPP"
-          ? "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_WHATSAPP_FROM"
-          : hasMsg91 && !msg91Mapped
-            ? `MSG91 mapping for templateKey=${templateKey}`
-            : "MSG91_AUTH_KEY (preferred) or TWILIO_* for SMS";
+    const hint = missing.join(", ");
     await admin
       .from("notification_attempts")
       .update({
@@ -430,6 +409,13 @@ function renderTemplate(key: string, vars: Record<string, unknown>): string {
     complaint_sla_breach_warden_subject: "SLA Breach — Complaint {{complaint_number}}",
     complaint_sla_breach_admin: "Complaint {{complaint_number}} SLA breach (property).",
     complaint_sla_breach_admin_subject: "SLA Breach — Complaint {{complaint_number}}",
+    complaint_message:
+      "{{sender_name}} ({{sender_role}}) sent a message on complaint {{complaint_number}} ({{complaint_title}}): {{message_preview}}",
+    complaint_message_subject:
+      "New message on complaint {{complaint_number}} from {{sender_name}} ({{sender_role}})",
+    complaint_resolved_submitter:
+      "Your complaint {{complaint_number}} ({{complaint_title}}) is now {{status_label}}. Resolution: {{resolution_summary}} If the issue is not fixed, you can reopen the complaint within 48 hours.",
+    complaint_resolved_submitter_subject: "Complaint {{complaint_number}} — {{status_label}}",
     fee_reminder_student:
       "Invoice {{invoice_number}} due {{due_date}} — balance ₹{{balance_rupees}}.",
     fee_reminder_student_subject: "Fee Reminder — Invoice {{invoice_number}} due {{due_date}}",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
@@ -61,7 +62,11 @@ import { messMenuFormSchema } from "@/schemas/mess";
 import { cn, getErrorMessage } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warden/mess")({
-  component: WardenMessPage,
+  component: () => (
+    <StaffModuleGuard role="WARDEN" module="mess_menus">
+      <WardenMessPage />
+    </StaffModuleGuard>
+  ),
 });
 
 const MEALS = ["BREAKFAST", "LUNCH", "SNACKS", "DINNER"] as const;
@@ -117,7 +122,7 @@ function FieldIcon({ icon: Icon, alignTop }: { icon: LucideIcon; alignTop?: bool
 const DUPLICATE_MENU_MESSAGE =
   "A menu for this meal already exists on this date. Edit the existing one instead.";
 
-function WardenMessPage() {
+export function WardenMessPage() {
   const role = useResolvedRole();
   const userId = role.data?.userId ?? null;
   const propQ = useMyStaffProperty(userId);

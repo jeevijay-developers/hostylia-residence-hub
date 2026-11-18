@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { resolveInvoiceFilter } from "@/lib/finance";
+import { isRangeValid, isoDateSchema } from "@/lib/report-range";
 import {
   feePlanFormSchema,
   recordPaymentSchema,
@@ -330,11 +332,31 @@ export const initiateRefund = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: pay, error: pErr } = await supabase
       .from("payments")
-      .select("tenant_id, property_id, student_id, amount_paise")
+      .select("tenant_id, property_id, student_id, amount_paise, status")
       .eq("id", data.payment_id)
       .single();
     if (pErr || !pay) throw new Error("Payment not found");
-    if (data.amount_paise > pay.amount_paise) throw new Error("Refund exceeds payment");
+    if (pay.status !== "CAPTURED" && pay.status !== "PARTIALLY_REFUNDED") {
+      throw new Error("Only a captured payment can be refunded");
+    }
+    // Refundable = payment minus every refund that is still alive (completed or in flight).
+    const { data: live } = await supabase
+      .from("refunds")
+      .select("amount_paise")
+      .eq("payment_id", data.payment_id)
+      .not("status", "in", "(REJECTED,CANCELLED,FAILED)");
+    const alreadyRefunded = (live ?? []).reduce((sum, r) => sum + r.amount_paise, 0);
+    if (data.amount_paise > pay.amount_paise - alreadyRefunded) {
+      throw new Error(
+        `Refund exceeds the refundable balance of this payment (₹${((pay.amount_paise - alreadyRefunded) / 100).toFixed(2)} left)`,
+      );
+    }
+
+    // Move-out deposit refunds go Warden clearance -> Admin approval; plain
+    // refunds keep entering PENDING_APPROVAL exactly as before.
+    const initialStatus = data.requires_deposit_clearance
+      ? "PENDING_VERIFICATION"
+      : "PENDING_APPROVAL";
 
     const { data: ref, error } = await supabase
       .from("refunds")
@@ -347,8 +369,10 @@ export const initiateRefund = createServerFn({ method: "POST" })
         amount_paise: data.amount_paise,
         reason: data.reason,
         mode: data.mode,
-        status: "PENDING_APPROVAL",
+        status: initialStatus,
         initiated_by: userId,
+        allocation_id: data.allocation_id ?? null,
+        requires_deposit_clearance: data.requires_deposit_clearance ?? false,
       })
       .select("id, refund_number")
       .single();
@@ -366,12 +390,110 @@ export const initiateRefund = createServerFn({ method: "POST" })
         amount_paise: data.amount_paise,
         reason: data.reason,
         mode: data.mode,
-        status: "PENDING_APPROVAL",
+        status: initialStatus,
+        allocation_id: data.allocation_id ?? null,
         refund_number: ref.refund_number,
       },
     });
 
     return { refund_id: ref.id, refund_number: ref.refund_number };
+  });
+
+// ---- Refund execution (approved -> processing -> gateway confirmation) ----
+
+async function refundFunctionError(error: unknown): Promise<string> {
+  const ctx = (error as { context?: Response }).context;
+  if (ctx && typeof ctx.json === "function") {
+    try {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+    } catch {
+      // not JSON — fall through to the generic SDK message
+    }
+  }
+  return error instanceof Error ? error.message : "Refund processing failed";
+}
+
+type RefundRpc = {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => PromiseLike<{ error: { message: string } | null }>;
+};
+
+async function invokeRefundGateway(
+  supabaseClient: object,
+  refundId: string,
+  action: "process" | "sync",
+) {
+  const supabase = supabaseClient as {
+    functions: {
+      invoke: (
+        name: string,
+        opts: { body: unknown },
+      ) => PromiseLike<{ data: unknown; error: unknown }>;
+    };
+  };
+  const { data, error } = await supabase.functions.invoke("razorpay-refund", {
+    body: { refund_id: refundId, action },
+  });
+  if (error) throw new Error(await refundFunctionError(error));
+  return data as { state?: string; gateway_status?: string; message?: string };
+}
+
+/**
+ * Sends an APPROVED refund (or retries a FAILED gateway refund) to the payment gateway. The refund is
+ * COMPLETED only when the gateway itself reports success — by this call's follow-up, "Check status",
+ * or the refund.processed webhook. Authorization (can_manage_refunds) is enforced by the Edge Function
+ * and by fn_start_refund_processing, not here.
+ */
+export const processRefund = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ refund_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) =>
+    invokeRefundGateway(context.supabase, data.refund_id, "process"),
+  );
+
+/** Re-reads a PROCESSING gateway refund from the gateway and records its verdict. */
+export const syncRefundStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ refund_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) =>
+    invokeRefundGateway(context.supabase, data.refund_id, "sync"),
+  );
+
+/**
+ * Offline payments (cash / cheque / bank transfer) have no gateway: the Accountant records the real
+ * payout with its transaction reference. fn_complete_refund refuses this path for gateway payments.
+ */
+export const recordManualRefundPayout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) =>
+    z
+      .object({ refund_id: z.string().uuid(), reference: z.string().trim().min(3).max(120) })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const client = context.supabase as unknown as RefundRpc;
+    const { data: row, error: readErr } = await context.supabase
+      .from("refunds")
+      .select("status")
+      .eq("id", data.refund_id)
+      .maybeSingle();
+    if (readErr || !row) throw new Error("Refund not found");
+    if (row.status === "APPROVED") {
+      const { error } = await client.rpc("fn_start_refund_processing", {
+        p_refund_id: data.refund_id,
+      });
+      if (error) throw new Error(error.message);
+    }
+    const { error } = await client.rpc("fn_complete_refund", {
+      p_refund_id: data.refund_id,
+      p_decision: "COMPLETED",
+      p_provider_refund_ref: data.reference,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
   });
 
 /**
@@ -526,6 +648,47 @@ export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
   });
 
 /**
+ * The property's own calendar date ("YYYY-MM-DD", properties.timezone, default Asia/Kolkata): the clock the
+ * daily OVERDUE job and the Reports overdue count (fn_collection_report) both use.
+ */
+async function propertyLocalToday(supabase: unknown, propertyId: string): Promise<string> {
+  const client = supabase as {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (
+          c: string,
+          v: string,
+        ) => {
+          maybeSingle: () => PromiseLike<{ data: { timezone?: string | null } | null }>;
+        };
+      };
+    };
+  };
+  const { data } = await client
+    .from("properties")
+    .select("timezone")
+    .eq("id", propertyId)
+    .maybeSingle();
+  const format = (timeZone: string) => {
+    const p: Record<string, string> = {};
+    for (const part of new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date())) {
+      p[part.type] = part.value;
+    }
+    return `${p.year}-${p.month}-${p.day}`;
+  };
+  try {
+    return format(data?.timezone || "Asia/Kolkata");
+  } catch {
+    return format("Asia/Kolkata");
+  }
+}
+
+/**
  * Fetch invoices + student names for a property (staff view).
  */
 export const listPropertyInvoices = createServerFn({ method: "POST" })
@@ -536,12 +699,21 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
         property_id: z.string().uuid(),
         status: z.string().optional(),
         search: z.string().optional(),
+        // Reports drill-down: past-due invoices that still carry a balance (the Overdue Invoices KPI),
+        // optionally limited to an issue-date range. Same predicate as fn_collection_report.
+        overdue: z.boolean().optional(),
+        issue_from: isoDateSchema.optional(),
+        issue_to: isoDateSchema.optional(),
         page: z.number().int().min(0).default(0),
         // Capped well above the UI's own page size (20) so a bulk CSV export
         // can request everything in one call without needing a separate
         // "export" endpoint, while still bounding the worst case.
         pageSize: z.number().int().min(1).max(5000).default(20),
       })
+      .refine(
+        (v) => isRangeValid(v.issue_from, v.issue_to),
+        "The start date must not be after the end date",
+      )
       .parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -573,39 +745,25 @@ export const listPropertyInvoices = createServerFn({ method: "POST" })
       .is("deleted_at", null)
       .order("issue_date", { ascending: false })
       .range(data.page * data.pageSize, data.page * data.pageSize + data.pageSize - 1);
-    // "OVERDUE" matches v_invoice_aging's live definition (balance still due
-    // past due_date), not the stored status column — invoices.status only
-    // flips to 'OVERDUE' via fn_recalc_invoice_status, which runs off
-    // payment inserts/updates, so a never-paid invoice past its due date
-    // stays 'ISSUED' forever and would otherwise never match here even
-    // though the Dashboard's aging view already counts it as overdue.
-    if (data.status === "OVERDUE") {
-      const today = new Date().toISOString().slice(0, 10);
+    // Every filter is a literal stored status (the dropdown value IS the status; see
+    // INVOICE_FILTER_OPTIONS). OVERDUE is now accurate at rest because fn_mark_overdue_invoices
+    // flips past-due invoices daily and fn_recompute_invoice keeps them OVERDUE. "OUTSTANDING"
+    // is the dashboard's Total Outstanding link: anything still carrying a balance.
+    const filter = resolveInvoiceFilter(data.status);
+    if (data.issue_from) q = q.gte("issue_date", data.issue_from);
+    if (data.issue_to) q = q.lte("issue_date", data.issue_to);
+    if (data.overdue) {
+      // Everything the Overdue Invoices KPI counts: due date before the property's today, balance still
+      // positive (partially paid included), and not DRAFT / VOID / PAID / fully REFUNDED.
+      const today = await propertyLocalToday(supabase, data.property_id);
       q = q
+        .gt("balance_paise", 0)
         .lt("due_date", today)
-        .gt("balance_paise", 0)
-        .not("status", "in", "(PAID,VOID,REFUNDED)");
-    } else if (data.status === "ISSUED") {
-      // Dashboard's "Pending Payments" count is v_invoice_aging's "current"
-      // bucket: balance still due, not yet past due_date, excluding
-      // PAID/VOID/REFUNDED — not a literal status='ISSUED' match (a
-      // not-yet-due PARTIALLY_PAID invoice is "pending" too, and a
-      // never-repaid invoice whose status is still stuck at 'ISSUED' past
-      // its due_date is actually overdue, not pending). Matching that
-      // definition here keeps this filter consistent with the Dashboard tile
-      // it's linked from.
-      const today = new Date().toISOString().slice(0, 10);
-      q = q
-        .gte("due_date", today)
-        .gt("balance_paise", 0)
-        .not("status", "in", "(PAID,VOID,REFUNDED)");
-    } else if (data.status === "OUTSTANDING") {
-      // Matches v_invoice_aging's total_outstanding_paise: any invoice still
-      // carrying a balance that hasn't reached a terminal status, regardless
-      // of due date (so both not-yet-due and overdue balances are included).
+        .not("status", "in", "(DRAFT,VOID,PAID,REFUNDED)");
+    } else if (filter.kind === "outstanding") {
       q = q.gt("balance_paise", 0).not("status", "in", "(PAID,VOID,REFUNDED)");
-    } else if (data.status) {
-      q = q.eq("status", data.status);
+    } else if (filter.kind === "status") {
+      q = q.eq("status", filter.status);
     }
     if (data.search) {
       const idList = studentIds.length

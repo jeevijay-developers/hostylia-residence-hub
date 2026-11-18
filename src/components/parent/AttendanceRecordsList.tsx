@@ -16,7 +16,7 @@ type AttendanceRecord = Tables<"attendance">;
 
 // Only these statuses carry a reason worth surfacing — matches the
 // requirement (notes are mandatory) enforced in bulkMarkAttendance's schema.
-const REASON_STATUSES = ["ABSENT", "ON_LEAVE"];
+const REASON_STATUSES = ["ABSENT", "ON_LEAVE", "LATE"];
 
 /**
  * Parent-facing attendance history — a restyled fork of the shared
@@ -93,7 +93,9 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
               ? "info"
               : record.status === "ABSENT"
                 ? "destructive"
-                : "outline"
+                : record.status === "LATE"
+                  ? "warning"
+                  : "outline"
           }
           className="rounded-full"
         >
@@ -130,10 +132,31 @@ function AttendanceRow({ record }: { record: AttendanceRecord }) {
     >
       {row}
       <CollapsibleContent className="pt-3">
-        <div className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+        <div
+          className={cn(
+            "flex items-start gap-2 rounded-xl border p-3",
+            // Late is not an absence: same panel, warning tone instead of destructive.
+            record.status === "LATE"
+              ? "border-warning/20 bg-warning/5"
+              : "border-destructive/20 bg-destructive/5",
+          )}
+        >
+          <AlertCircle
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0",
+              record.status === "LATE" ? "text-warning" : "text-destructive",
+            )}
+            aria-hidden="true"
+          />
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-destructive">Reason</p>
+            <p
+              className={cn(
+                "text-xs font-semibold",
+                record.status === "LATE" ? "text-warning" : "text-destructive",
+              )}
+            >
+              Reason
+            </p>
             <p className="mt-0.5 text-sm text-muted-foreground">{reasonText}</p>
           </div>
         </div>
