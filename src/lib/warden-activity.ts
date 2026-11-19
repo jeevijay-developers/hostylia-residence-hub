@@ -39,6 +39,24 @@ export function useRecentActivity(propertyId: string | null) {
     },
   });
 
+  // New requests (any status) created today. Keyed under "gate-passes" so the realtime
+  // gate_passes subscription in useGatePasses (which invalidates ["gate-passes"]) refreshes it.
+  const requestedTodayQ = useQuery({
+    queryKey: ["gate-passes", "requested-today", propertyId, today],
+    enabled: !!propertyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("gate_passes")
+        .select("id, pass_number, created_at, students(full_name)")
+        .eq("property_id", propertyId!)
+        .is("deleted_at", null)
+        .gte("created_at", `${today}T00:00:00`)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const items = useMemo(() => {
     const list: ActivityItem[] = [];
 
@@ -78,6 +96,15 @@ export function useRecentActivity(propertyId: string | null) {
       }
     }
 
+    for (const g of requestedTodayQ.data ?? []) {
+      const studentName = g.students?.full_name;
+      list.push({
+        type: "Gate Pass Requested",
+        detail: studentName ? `${g.pass_number} — ${studentName}` : g.pass_number,
+        at: g.created_at,
+      });
+    }
+
     for (const m of menusQ.data ?? []) {
       if (m.published_at) {
         list.push({
@@ -89,10 +116,21 @@ export function useRecentActivity(propertyId: string | null) {
     }
 
     return list.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  }, [attendanceQ.data, complaintsQ.data, approvedTodayQ.data, menusQ.data, today]);
+  }, [
+    attendanceQ.data,
+    complaintsQ.data,
+    approvedTodayQ.data,
+    requestedTodayQ.data,
+    menusQ.data,
+    today,
+  ]);
 
   const isLoading =
-    attendanceQ.isLoading || complaintsQ.isLoading || menusQ.isLoading || approvedTodayQ.isLoading;
+    attendanceQ.isLoading ||
+    complaintsQ.isLoading ||
+    menusQ.isLoading ||
+    approvedTodayQ.isLoading ||
+    requestedTodayQ.isLoading;
 
   return { items, isLoading };
 }

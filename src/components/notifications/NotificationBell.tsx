@@ -46,6 +46,11 @@ export function NotificationBell({ className }: { className?: string }) {
       else if (p.audience === "PARENT")
         navigate({ to: "/parent/complaints", search: { complaintId } });
       else navigate({ to: "/admin/complaints", search: { complaintId } });
+    } else if (typeof p.gate_pass_id === "string" && p.audience === "WARDEN") {
+      // A new gate pass request waiting for the warden — the Gate page's Approvals tab.
+      if (!n.read_at) void markNotificationRead(n.id);
+      setOpen(false);
+      navigate({ to: "/warden/gate" });
     } else if (typeof ticketId === "string") {
       if (!n.read_at) void markNotificationRead(n.id);
       setOpen(false);
@@ -88,6 +93,7 @@ export function NotificationBell({ className }: { className?: string }) {
                 const title = String(p.title ?? n.event_type.replaceAll("_", " "));
                 const body = String(p.body ?? p.invoice_number ?? p.complaint_number ?? "");
                 const clickable =
+                  (typeof p.gate_pass_id === "string" && p.audience === "WARDEN") ||
                   typeof p.ticket_id === "string" ||
                   typeof p.refund_id === "string" ||
                   (typeof p.complaint_id === "string" && typeof p.audience === "string");

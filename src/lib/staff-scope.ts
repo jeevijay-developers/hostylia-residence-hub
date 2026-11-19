@@ -74,7 +74,7 @@ export function useAccountantProperty() {
  * RLS functions, not this hook.
  */
 export function useWardenPermissions() {
-  const { data: role } = useResolvedRole();
+  const { data: role, isLoading: roleLoading } = useResolvedRole();
   const q = useQuery({
     queryKey: ["my-warden-permissions", role?.userId, role?.tenantId],
     enabled: !!role?.userId && !!role?.tenantId && role.role === "WARDEN",
@@ -96,13 +96,18 @@ export function useWardenPermissions() {
   // Shared with the Admin Feature Access panel / Customize Permissions dialog —
   // see warden-permissions.ts for the rules (they mirror the SQL checkers).
   function can(key: string): boolean {
+    // Synthetic key (not stored) — same meaning as the Accountant's below: the Gate page
+    // hosts Gate Pass and Visitors, so either grant shows it.
+    if (key === "gate_any") return can("gate_passes_view") || can("visitors_view");
     return resolveWardenPermission(permissions, key, { forUi: true });
   }
   return {
     can,
     propertyId: q.data?.property_id ?? null,
     blockId: q.data?.block_id ?? null,
-    isLoading: q.isLoading,
+    // The permissions query stays disabled until the role resolves, so include the role's
+    // own loading state — otherwise `can()` would briefly answer from the empty default bag.
+    isLoading: roleLoading || q.isLoading,
   };
 }
 

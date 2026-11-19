@@ -14,7 +14,7 @@ import {
 
 export function ActivityIcon({ type }: { type: string }) {
   const Icon =
-    type === "Gate Pass Approved"
+    type === "Gate Pass Approved" || type === "Gate Pass Requested"
       ? DoorOpen
       : type === "Menu Published"
         ? Utensils

@@ -120,7 +120,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
       icon: MessageSquareWarning,
       module: "complaints",
     },
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
     // Previously desktop-sidebar-invisible regardless of grant (only ever
     // reachable via the mobile "More" sheet, which stays suppressed for
     // Warden — see warden.tsx) — same existing /warden/* routes, now a real
@@ -182,7 +182,7 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
       icon: MessageSquareWarning,
       module: "complaints",
     },
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
   ],
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
@@ -236,7 +236,7 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart, module: "reports_view" },
   ],
   WARDEN: [
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
     { label: "Mess", to: "/warden/mess", icon: Utensils, module: "mess_menus" },
     { label: "Notices", to: "/warden/notices", icon: BellRing, module: "notices" },
     {
