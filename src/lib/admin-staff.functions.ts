@@ -680,7 +680,10 @@ const updateStaffSchema = z.object({
   tenant_id: z.string().uuid(),
   role_assignment_id: z.string().uuid(),
   full_name: z.string().trim().min(2).max(120),
-  phone: z.string().trim().min(6),
+  // Optional, same as inviteSchema — a staff member invited without a phone
+  // (or whose profile otherwise has none) must stay editable; only a
+  // non-empty value is format-checked (min 6).
+  phone: z.string().trim().min(6).nullable().optional(),
   // Omitted = leave block scope untouched; null = "all blocks" (property-wide).
   block_id: z.string().uuid().nullable().optional(),
   // Omitted = leave permissions untouched. An explicit {} clears any
@@ -708,7 +711,10 @@ export const updateStaff = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("profiles")
-      .update({ full_name: data.full_name, phone: normalizeIndianPhone(data.phone) })
+      .update({
+        full_name: data.full_name,
+        phone: data.phone ? normalizeIndianPhone(data.phone) : null,
+      })
       .eq("id", ra.user_id);
     if (error) throw error;
 
