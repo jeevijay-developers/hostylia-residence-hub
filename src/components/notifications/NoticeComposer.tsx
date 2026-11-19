@@ -604,7 +604,7 @@ export function NoticeComposer({ propertyId }: Props) {
                   className={cn(
                     "rounded-full border-transparent",
                     toneClasses[
-                      STATUS_TONE[effectiveNoticeStatus(viewingNotice, nowTick)] ?? "muted"
+                    STATUS_TONE[effectiveNoticeStatus(viewingNotice, nowTick)] ?? "muted"
                     ],
                   )}
                 >
