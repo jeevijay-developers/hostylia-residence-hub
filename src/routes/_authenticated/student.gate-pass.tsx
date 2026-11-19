@@ -76,7 +76,7 @@ function StudentGatePassPage() {
   const createMut = useMutation({
     mutationFn: async () => {
       if (!studentQ.data?.id) throw new Error("Student profile missing");
-      // A pass starts PENDING_WARDEN/PENDING_PARENT — not yet scannable, so
+      // A pass starts PENDING_WARDEN — not yet scannable, so
       // this placeholder hash is never actually shown; PassCard issues the
       // real, retrievable-from-any-device token once the pass is approved.
       const token = randomHex(24);

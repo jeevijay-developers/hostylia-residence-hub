@@ -203,17 +203,16 @@ SELECT pg_temp.assert_throws(
   'Approver parent for a different student is rejected');
 ROLLBACK;
 
--- gp_parent_approve RLS policy: parents (not just admins) must be able to
--- actually reach the UPDATE — this is what decideGatePass's PARENT branch
--- relies on at runtime.
+-- Parents can no longer approve / reject gate passes (the gp_parent_approve policy was dropped and every
+-- pass goes straight to the Warden): even a linked guardian with can_approve_gate_pass matches no row.
 BEGIN;
 SELECT pg_temp.assume('00000000-0000-0000-0000-000000000041'); -- Parent 02: not linked to Student 01
 SELECT pg_temp.assert_eq(
   (WITH upd AS (
-     UPDATE public.gate_passes SET status='PENDING_WARDEN', parent_approved_by='00000000-0000-0000-0000-000000000041', parent_approved_at=now()
+     UPDATE public.gate_passes SET status='APPROVED'
        WHERE id='11111111-1111-1111-1111-11111111da05' RETURNING 1
    ) SELECT count(*) FROM upd), 0,
-  'Parent not linked to Student 01 cannot approve gp05 (RLS blocks the row match)');
+  'Parent not linked to Student 01 cannot touch gp05');
 ROLLBACK;
 
 BEGIN;
@@ -222,8 +221,14 @@ SELECT pg_temp.assert_eq(
   (WITH upd AS (
      UPDATE public.gate_passes SET status='PENDING_WARDEN', parent_approved_by='00000000-0000-0000-0000-000000000040', parent_approved_at=now()
        WHERE id='11111111-1111-1111-1111-11111111da05' RETURNING 1
-   ) SELECT count(*) FROM upd), 1,
-  'Approving parent linked to Student 01 can move gp05 PENDING_PARENT -> PENDING_WARDEN');
+   ) SELECT count(*) FROM upd), 0,
+  'Linked parent can no longer approve a gate pass (no parent UPDATE policy)');
+SELECT pg_temp.assert_eq(
+  (WITH upd AS (
+     UPDATE public.gate_passes SET status='REJECTED'
+       WHERE id='11111111-1111-1111-1111-11111111da05' RETURNING 1
+   ) SELECT count(*) FROM upd), 0,
+  'Linked parent can no longer reject a gate pass');
 ROLLBACK;
 
 -- =============================================================================

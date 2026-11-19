@@ -40,12 +40,11 @@ export const createGatePass = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: s, error: sErr } = await supabase
       .from("students")
-      .select("id, tenant_id, property_id, is_minor")
+      .select("id, tenant_id, property_id")
       .eq("id", data.student_id)
       .maybeSingle();
     if (sErr || !s) throw new Error("Student not found");
-    const requiresParent = !!s.is_minor;
-    const initialStatus = requiresParent ? "PENDING_PARENT" : "PENDING_WARDEN";
+    // Every student (minor or adult) requests straight from the Warden — no parent step.
     const { data: gp, error } = await supabase
       .from("gate_passes")
       .insert({
@@ -57,8 +56,8 @@ export const createGatePass = createServerFn({ method: "POST" })
         destination: data.destination ?? null,
         out_at: data.out_at,
         expected_in_at: data.expected_in_at,
-        status: initialStatus,
-        requires_parent_approval: requiresParent,
+        status: "PENDING_WARDEN",
+        requires_parent_approval: false,
         qr_token_hash: data.qr_token_hash,
         qr_expires_at: data.expected_in_at,
         created_by: userId,
@@ -154,7 +153,7 @@ export const createVisitor = createServerFn({ method: "POST" })
 
 const decisionSchema = z.object({
   pass_id: z.string().uuid(),
-  role: z.enum(["WARDEN", "PARENT", "HOSTEL_ADMIN"]),
+  role: z.enum(["WARDEN", "HOSTEL_ADMIN"]),
   decision: z.enum(["APPROVED", "REJECTED"]),
   reason: z.string().max(300).optional(),
 });
@@ -173,30 +172,19 @@ export const decideGatePass = createServerFn({ method: "POST" })
 
     const now = new Date().toISOString();
     const patch: Record<string, string | null> = {};
-    if (data.role === "PARENT") {
-      if (gp.status !== "PENDING_PARENT") throw new Error("Not awaiting parent approval");
-      if (data.decision === "REJECTED") {
-        patch.status = "REJECTED";
-        patch.decision_reason = data.reason ?? null;
-      } else {
-        patch.parent_approved_by = userId;
-        patch.parent_approved_at = now;
-        patch.status = "PENDING_WARDEN";
-      }
+    // Warden / Admin — the only approver. (PENDING_PARENT is legacy: no new pass gets it, and the
+    // migration moves existing ones to PENDING_WARDEN; it stays decidable so none can be stuck.)
+    if (!["PENDING_WARDEN", "PENDING_PARENT", "DRAFT"].includes(gp.status)) {
+      throw new Error(`Cannot decide from status ${gp.status}`);
+    }
+    if (data.decision === "REJECTED") {
+      patch.status = "REJECTED";
+      patch.decision_reason = data.reason ?? null;
     } else {
-      // Warden / Admin
-      if (!["PENDING_WARDEN", "PENDING_PARENT", "DRAFT"].includes(gp.status)) {
-        throw new Error(`Cannot decide from status ${gp.status}`);
-      }
-      if (data.decision === "REJECTED") {
-        patch.status = "REJECTED";
-        patch.decision_reason = data.reason ?? null;
-      } else {
-        // QR token hash was set at creation; approval just finalizes status.
-        patch.warden_approved_by = userId;
-        patch.warden_approved_at = now;
-        patch.status = "APPROVED";
-      }
+      // QR token hash was set at creation; approval just finalizes status.
+      patch.warden_approved_by = userId;
+      patch.warden_approved_at = now;
+      patch.status = "APPROVED";
     }
 
     const { data: updated, error: uErr } = await supabase
@@ -217,7 +205,7 @@ export const decideGatePass = createServerFn({ method: "POST" })
       reason: data.reason ?? null,
     });
 
-    if (data.decision === "APPROVED" && data.role !== "PARENT") {
+    if (data.decision === "APPROVED") {
       try {
         const { data: student } = await supabase
           .from("students")

@@ -1,18 +1,13 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import { ArrowRight, Calendar, Check, ChevronRight, Clock, IdCard, Loader2, X } from "lucide-react";
+import { ArrowRight, Calendar, ChevronRight, Clock, IdCard } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { decideGatePass } from "@/lib/operations.functions";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { SectionHeading } from "@/components/parent/SectionHeading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
 
 interface GatePass {
@@ -52,23 +47,11 @@ function badgeVariantFor(status: string): BadgeProps["variant"] {
 }
 
 /**
- * Parent-facing gate-pass panel: shows passes awaiting this parent's
- * approval (only when the linked guardian has can_approve_gate_pass) plus a
- * read-only recent history. Approve/reject reuses the same decideGatePass
- * server fn the warden console uses, with role "PARENT" — the fn itself
- * checks the pass is still PENDING_PARENT before applying the decision.
+ * Parent-facing gate-pass panel: a read-only list of the child's recent passes. Parents no longer
+ * approve or reject gate passes — every request goes straight to the Warden.
  */
-export function GatePassPanel({
-  studentId,
-  canApprove,
-}: {
-  studentId: string;
-  canApprove: boolean;
-}) {
+export function GatePassPanel({ studentId }: { studentId: string }) {
   const { t } = useTranslation();
-  const qc = useQueryClient();
-  const decide = useServerFn(decideGatePass);
-  const [decidingId, setDecidingId] = useState<string | null>(null);
 
   const passesQ = useQuery({
     queryKey: ["parent-gate-passes", studentId],
@@ -84,23 +67,7 @@ export function GatePassPanel({
     },
   });
 
-  const pending = (passesQ.data ?? []).filter((p) => p.status === "PENDING_PARENT");
-  const others = (passesQ.data ?? []).filter((p) => p.status !== "PENDING_PARENT");
-
-  async function handleDecision(passId: string, decision: "APPROVED" | "REJECTED") {
-    setDecidingId(passId);
-    try {
-      await decide({ data: { pass_id: passId, role: "PARENT", decision } });
-      toast.success(
-        decision === "APPROVED" ? t("parent.gatePass.approved") : t("parent.gatePass.rejected"),
-      );
-      qc.invalidateQueries({ queryKey: ["parent-gate-passes", studentId] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("parent.gatePass.decisionFailed"));
-    } finally {
-      setDecidingId(null);
-    }
-  }
+  const passes = passesQ.data ?? [];
 
   if (passesQ.isLoading)
     return (
@@ -122,59 +89,15 @@ export function GatePassPanel({
 
   return (
     <div className="space-y-6">
-      {canApprove && (
-        <div className="space-y-3">
-          <SectionHeading>{t("parent.gatePass.needsApproval")}</SectionHeading>
-          {pending.length === 0 && (
-            <EmptyState
-              title={t("parent.gatePass.noPendingTitle")}
-              description={t("parent.gatePass.noPendingBody")}
-            />
-          )}
-          {pending.map((p) => (
-            <Card key={p.id} className="overflow-hidden rounded-2xl">
-              <CardContent className="p-4">
-                <PassCardBody pass={p} />
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1 min-h-10"
-                    disabled={decidingId === p.id}
-                    onClick={() => handleDecision(p.id, "APPROVED")}
-                  >
-                    {decidingId === p.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                    {t("parent.gatePass.approve")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 min-h-10"
-                    disabled={decidingId === p.id}
-                    onClick={() => handleDecision(p.id, "REJECTED")}
-                  >
-                    <X className="h-4 w-4" />
-                    {t("parent.gatePass.reject")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
       <div className="space-y-3">
         <SectionHeading>{t("parent.gatePass.recentTitle")}</SectionHeading>
-        {others.length === 0 && (
+        {passes.length === 0 && (
           <EmptyState
             title={t("parent.gatePass.emptyTitle")}
             description={t("parent.gatePass.emptyBody")}
           />
         )}
-        {others.map((p) => (
+        {passes.map((p) => (
           <Card key={p.id} className="overflow-hidden rounded-2xl">
             <CardContent className="p-4">
               <PassCardBody pass={p} />
