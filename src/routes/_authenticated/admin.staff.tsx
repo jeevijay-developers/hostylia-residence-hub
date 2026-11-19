@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  DoorOpen,
   Info,
   Key,
   Loader2,
@@ -23,6 +24,7 @@ import {
   UserPlus,
   Users,
   UserX,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +61,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResolvedRole } from "@/lib/user-role";
+import {
+  buildWardenPermissionsPayload,
+  isWardenCustomized,
+  resolveWardenPermission,
+  seedWardenPermissions,
+} from "@/lib/warden-permissions";
 import { usePropertyStore } from "@/stores/property-store";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -439,13 +447,21 @@ function PermissionChecklist({
   items,
   values,
   onChange,
+  heading,
 }: {
   items: { keys: PermissionKey[]; label: string; helper?: string }[];
   values: StaffPermissions;
   onChange: (keys: PermissionKey[], checked: boolean) => void;
+  /** Optional group title (e.g. "Finance" for a Warden's Fee Plans / Invoices / Payments). */
+  heading?: string;
 }) {
   return (
     <div className="space-y-2 pt-1">
+      {heading && (
+        <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wide">
+          {heading}
+        </p>
+      )}
       {items.map((item) => (
         <label
           key={item.keys.join("+")}
@@ -545,7 +561,11 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
   const p = row.permissions ?? {};
   const role = row.role as "WARDEN" | "ACCOUNTANT";
 
-  const has = (key: PermissionKey) => p[key] ?? false;
+  // A Warden's missing key is NOT "disabled": it resolves to the same default RLS applies
+  // (explicit true/false wins; Finance and admin-only keys default-deny). Accountant
+  // rows keep their previous explicit-only display.
+  const has = (key: PermissionKey) =>
+    role === "WARDEN" ? resolveWardenPermission(p, key) : (p[key] ?? false);
   const anyHas = (keys: PermissionKey[]) => keys.some((k) => p[k] !== undefined);
 
   const cats: PermCategory[] = [];
@@ -590,10 +610,18 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
     "payments_edit",
     "payments_delete",
   ];
-  if (role === "ACCOUNTANT" || anyHas(financeKeys)) {
+  const feePlanKeys: PermissionKey[] = [
+    "fee_plans_view",
+    "fee_plans_create",
+    "fee_plans_edit",
+    "fee_plans_delete",
+  ];
+  // Fee Plans lived (wrongly) under Attendance and was listed for every Warden, so the
+  // Finance card is shown for every Warden too (default-deny keys read Disabled).
+  if (role === "WARDEN" || role === "ACCOUNTANT" || anyHas([...financeKeys, ...feePlanKeys])) {
     cats.push({
       id: "finance",
-      label: "Invoices & Payments",
+      label: "Finance",
       icon: <span className="text-amber-500 dark:text-amber-400">📄</span>,
       entries: [
         { label: "Edit Invoices", granted: has("invoices_edit") },
@@ -604,6 +632,10 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
         { label: "Delete Invoices", granted: has("invoices_delete") },
         { label: "Delete Payments", granted: has("payments_delete") },
         { label: "Create Invoices", granted: has("invoices_create") },
+        { label: "View Fee Plans", granted: has("fee_plans_view") },
+        { label: "Create Fee Plans", granted: has("fee_plans_create") },
+        { label: "Edit Fee Plans", granted: has("fee_plans_edit") },
+        { label: "Delete Fee Plans", granted: has("fee_plans_delete") },
       ],
     });
   }
@@ -623,8 +655,6 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
       entries: [
         { label: "Manage Attendance", granted: has("attendance_create") || has("attendance_edit") },
         { label: "View Attendance", granted: has("attendance_view") },
-        { label: "Edit Fee Plans", granted: has("fee_plans_edit") },
-        { label: "View Fee Plans", granted: has("fee_plans_view") },
       ],
     });
   }
@@ -663,6 +693,28 @@ function buildPermissionCategories(row: StaffRow): PermCategory[] {
       entries: [
         { label: "Manage Visitors", granted: has("visitors_create") || has("visitors_edit") },
         { label: "Visitors Read", granted: has("visitors_view") },
+      ],
+    });
+  }
+
+  // --- Gate Passes ---
+  const gatePassKeys: PermissionKey[] = [
+    "gate_passes_view",
+    "gate_passes_create",
+    "gate_passes_edit",
+    "gate_passes_delete",
+  ];
+  if (role === "WARDEN" || anyHas(gatePassKeys)) {
+    cats.push({
+      id: "gate_passes",
+      label: "Gate Passes",
+      icon: <DoorOpen className="h-4 w-4 text-sky-500 dark:text-sky-400" />,
+      entries: [
+        {
+          label: "Manage Gate Passes",
+          granted: has("gate_passes_create") || has("gate_passes_edit"),
+        },
+        { label: "Gate Passes Read", granted: has("gate_passes_view") },
       ],
     });
   }
@@ -726,11 +778,25 @@ function FeatureAccessPanel({ row }: { row: StaffRow }) {
                       {entry.granted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                     </div>
                     <span
-                      className={`text-xs leading-tight ${
-                        entry.granted ? "text-foreground/90" : "text-muted-foreground/50"
+                      className={`min-w-0 flex-1 text-xs leading-tight ${
+                        entry.granted ? "text-foreground/90" : "text-muted-foreground/70"
                       }`}
                     >
                       {entry.label}
+                    </span>
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold ${
+                        entry.granted
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {entry.granted ? (
+                        <Check className="w-2.5 h-2.5 stroke-[3]" aria-hidden="true" />
+                      ) : (
+                        <X className="w-2.5 h-2.5 stroke-[3]" aria-hidden="true" />
+                      )}
+                      {entry.granted ? "Enabled" : "Disabled"}
                     </span>
                   </div>
                 ))}
@@ -896,6 +962,14 @@ function StaffCard({
                         const flatKeys = permissionItemsForRole(role).flatMap((item) => item.keys);
                         const allKeys =
                           role === "WARDEN" ? [...WARDEN_GRID_KEYS, ...flatKeys] : flatKeys;
+                        if (role === "WARDEN") {
+                          // Same effective rules as RLS and the Feature Access panel
+                          // (warden-permissions.ts): the dialog opens on what the Warden
+                          // really has today, so saving never silently changes it.
+                          setEditCustomizePerms(isWardenCustomized(s.permissions));
+                          setEditPermissions(seedWardenPermissions(s.permissions, allKeys));
+                          return;
+                        }
                         const hasOverride = allKeys.some(
                           (key) => s.permissions?.[key] !== undefined,
                         );
@@ -1303,7 +1377,11 @@ function AdminStaffPage() {
           phone: editPhone,
           block_id:
             editRow?.role === "WARDEN" ? (editBlockId !== "ALL" ? editBlockId : null) : undefined,
-          permissions: editCustomizePerms ? editPermissions : {},
+          permissions: !editCustomizePerms
+            ? {}
+            : editRow?.role === "WARDEN"
+              ? buildWardenPermissionsPayload(editRow.permissions, editPermissions)
+              : editPermissions,
         },
       }),
     onSuccess: () => {
@@ -1628,6 +1706,7 @@ function AdminStaffPage() {
                       />
                     )}
                     <PermissionChecklist
+                      heading={addRole === "WARDEN" ? "Finance" : undefined}
                       items={permissionItemsForRole(addRole)}
                       values={addPermissions}
                       onChange={(keys, checked) =>
@@ -1832,7 +1911,12 @@ function AdminStaffPage() {
                       setEditCustomizePerms(v);
                       if (v) {
                         setEditPermissions(
-                          defaultPermissions(editRow.role as "WARDEN" | "ACCOUNTANT"),
+                          editRow.role === "WARDEN"
+                            ? seedWardenPermissions(editRow.permissions, [
+                                ...WARDEN_GRID_KEYS,
+                                ...permissionItemsForRole("WARDEN").flatMap((i) => i.keys),
+                              ])
+                            : defaultPermissions(editRow.role as "WARDEN" | "ACCOUNTANT"),
                         );
                       }
                     }}
@@ -1849,6 +1933,7 @@ function AdminStaffPage() {
                       />
                     )}
                     <PermissionChecklist
+                      heading={editRow.role === "WARDEN" ? "Finance" : undefined}
                       items={permissionItemsForRole(editRow.role as "WARDEN" | "ACCOUNTANT")}
                       values={editPermissions}
                       onChange={(keys, checked) =>

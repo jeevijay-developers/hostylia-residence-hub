@@ -860,7 +860,7 @@ function WardenProfilePage() {
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
-                    className="h-8 text-sm"
+                    className="h-8 text-sm [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                 </EditField>
 

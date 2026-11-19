@@ -139,7 +139,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     // own permission allows. "finance_any" is a synthetic key handled only
     // in this file's WARDEN moduleFilter (see warden.tsx), not a real
     // `role_assignments.permissions` entry. A Warden has none of the
-    // underlying keys by default (see WARDEN_FINANCE_KEYS in staff-scope.ts).
+    // underlying keys by default (see FINANCE_KEYS in warden-permissions.ts).
     { label: "Finance", to: "/warden/finance", icon: Wallet, module: "finance_any" },
     { label: "Notices", to: "/warden/notices", icon: BellRing, module: "notices" },
     { label: "Reports", to: "/warden/reports", icon: FileBarChart, module: "reports_view" },
