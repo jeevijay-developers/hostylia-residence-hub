@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertCircle,
   AlertTriangle,
   BedDouble,
   BookOpen,
@@ -23,6 +24,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  RotateCcw,
   ShieldCheck,
   User,
   UserRoundPen,
@@ -59,8 +61,87 @@ import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
-import { changePasswordSchema } from "@/schemas/auth";
+import {
+  changePasswordSchema,
+  emailSchema,
+  fullNameSchema,
+  indianMobileSchema,
+  sanitizeIndianPhoneInput,
+  sanitizeNameKeystroke,
+} from "@/schemas/auth";
+import { pincodeSchema } from "@/schemas/profile";
 import { studentSelfProfileSchema } from "@/schemas/student";
+
+// ─── Field-level validators (shared by blur and submit) ──────────────────────
+// Reuse the same shared schemas the rest of the app already validates these
+// field *types* with (fullNameSchema/indianMobileSchema from signup &
+// StudentProfileEditDialog, pincodeSchema) — not a new rule invented for
+// this page, just applied earlier (typing/blur) than before (previously
+// submit-only, and for phone/pincode not applied here at all).
+const PLACE_NAME_REGEX = /^\p{L}[\p{L}\s.'-]*$/u;
+
+function requiredNameError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter your full name";
+  return fullNameSchema.safeParse(trimmed).success
+    ? null
+    : "Please enter a valid name. Numbers are not allowed.";
+}
+
+/** Optional name-type field (Emergency Contact Name) — empty is valid, never
+ * flagged before the student has entered anything. */
+function optionalNameError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return fullNameSchema.safeParse(trimmed).success
+    ? null
+    : "Please enter a valid name. Numbers are not allowed.";
+}
+
+/** City/State — same "no digits/stray symbols" intent as a name field, but
+ * deliberately not reusing fullNameSchema's own length bounds (80 vs this
+ * field's existing 80 cap is fine, but a 2-char minimum doesn't fit every
+ * real place name) — character class only. */
+function placeNameError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return PLACE_NAME_REGEX.test(trimmed)
+    ? null
+    : "Please enter a valid name using letters only.";
+}
+
+function mobileNumberError(value: string, required: boolean): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return required ? "Enter your mobile number" : null;
+  return indianMobileSchema.safeParse(trimmed).success
+    ? null
+    : "Please enter a valid 10-digit mobile number.";
+}
+
+function pincodeFieldError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return pincodeSchema.safeParse(trimmed).success ? null : "Please enter a valid 6-digit pincode.";
+}
+
+function emailFieldError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = emailSchema.safeParse(trimmed);
+  return parsed.success ? null : parsed.error.issues[0]?.message ?? "Enter a valid email address";
+}
+
+/** Institute/Course names legitimately contain digits sometimes ("B.Tech",
+ * "Class 10", "IIT-7") — unlike a name field, so this doesn't strip digits
+ * or require letters-only. It only catches the thing actually wrong in the
+ * screenshot: a value that's *nothing but* digits, which is never a real
+ * institute or course name. Academic Year is deliberately exempt — "2024"
+ * or "2023-24" is the normal, correct value there. */
+function notPurelyNumericError(value: string, label: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return /^\d+$/.test(trimmed) ? `Please enter a valid ${label}.` : null;
+}
 
 export const Route = createFileRoute("/_authenticated/student/profile")({
   head: () => ({ meta: [{ title: "My Profile — Hostylia" }] }),
@@ -228,6 +309,36 @@ function StudentProfilePage() {
 
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
+  // Snapshot of the values as last loaded from the DB — the new stricter
+  // regex checks below only apply to a field once its value has changed
+  // from this snapshot, so a legacy value that predates these rules (e.g.
+  // a name containing a digit) never blocks saving an unrelated field.
+  const originalRef = useRef({
+    fullName: "",
+    phone: "",
+    email: "",
+    academicInstitute: "",
+    courseName: "",
+    emergencyContactName: "",
+    emergencyContactNumber: "",
+    city: "",
+    state: "",
+    pincode: "",
+  });
+
+  function setFieldError(key: string, message: string | null) {
+    setEditErrors((prev) => {
+      if (message === null) {
+        if (!(key in prev)) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      if (prev[key] === message) return prev;
+      return { ...prev, [key]: message };
+    });
+  }
+
   // ── Password fields ──
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -293,16 +404,41 @@ function StudentProfilePage() {
     queryKey: ["student-docs", studentQ.data?.id],
     enabled: !!studentQ.data?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("documents")
         .select("id, document_type, original_filename, verification_status, rejection_reason")
         .eq("owner_type", "STUDENT")
         .eq("owner_id", studentQ.data!.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });
+
+  // KYC status can change from the Admin/Warden side (approve/reject) while
+  // this page is already open — without this, the student would only see
+  // the update after a manual reload or the next natural refetch
+  // (window refocus past the 30s default staleTime), which reads as
+  // "verification isn't working" even though the write succeeded. Also
+  // covers a re-upload from another tab/device. Same pattern as
+  // useGatePasses in lib/ops.ts.
+  const docsChannelId = useId();
+  useEffect(() => {
+    const sId = studentQ.data?.id;
+    if (!sId) return;
+    const channel = supabase
+      .channel(`student-docs-${sId}-${docsChannelId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "documents", filter: `owner_id=eq.${sId}` },
+        () => qc.invalidateQueries({ queryKey: ["student-docs", sId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [studentQ.data?.id, qc, docsChannelId]);
 
   const propertyQ = useQuery({
     queryKey: ["student-property", studentQ.data?.property_id],
@@ -368,6 +504,19 @@ function StudentProfilePage() {
     setAddrCity(addr?.city ?? "");
     setAddrState(addr?.state ?? "");
     setAddrPincode(addr?.pincode ?? "");
+
+    originalRef.current = {
+      fullName: s.full_name ?? "",
+      phone: s.phone ?? "",
+      email: s.email ?? "",
+      academicInstitute: s.academic_institute ?? "",
+      courseName: s.course_name ?? "",
+      emergencyContactName: p.emergency_contact_name ?? "",
+      emergencyContactNumber: p.emergency_contact_number ?? "",
+      city: addr?.city ?? "",
+      state: addr?.state ?? "",
+      pincode: addr?.pincode ?? "",
+    };
   }, [studentQ.data, profileQ.data]);
 
   // ─── Avatar upload ────────────────────────────────────────────────────────
@@ -442,12 +591,70 @@ function StudentProfilePage() {
         address: { line1: addrLine1, city: addrCity, state: addrState, pincode: addrPincode },
       });
 
+      const fieldErrors: Record<string, string> = {};
       if (!parsed.success) {
-        const fieldErrors: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
-          fieldErrors[String(issue.path[0])] = issue.message;
+          // Flattened so address.city/state/pincode get their own key
+          // instead of all collapsing into one unused "address" entry.
+          fieldErrors[issue.path.join(".")] = issue.message;
         }
+      }
+
+      // Stricter format checks layered on top of the schema above, applied
+      // only to fields that actually changed in this edit — see
+      // originalRef's comment. Only overrides a field already flagged by
+      // the base schema if this check also finds it invalid, which it will
+      // whenever the base schema didn't.
+      const orig = originalRef.current;
+      if (fullName !== orig.fullName) {
+        const err = requiredNameError(fullName);
+        if (err) fieldErrors.full_name = err;
+      }
+      if (emergencyContactName !== orig.emergencyContactName) {
+        const err = optionalNameError(emergencyContactName);
+        if (err) fieldErrors.emergency_contact_name = err;
+      }
+      if (phone !== orig.phone) {
+        const err = mobileNumberError(phone, true);
+        if (err) fieldErrors.phone = err;
+      }
+      if (emergencyContactNumber !== orig.emergencyContactNumber) {
+        const err = mobileNumberError(emergencyContactNumber, false);
+        if (err) fieldErrors.emergency_contact_number = err;
+      }
+      if (addrCity !== orig.city) {
+        const err = placeNameError(addrCity);
+        if (err) fieldErrors["address.city"] = err;
+      }
+      if (addrState !== orig.state) {
+        const err = placeNameError(addrState);
+        if (err) fieldErrors["address.state"] = err;
+      }
+      if (addrPincode !== orig.pincode) {
+        const err = pincodeFieldError(addrPincode);
+        if (err) fieldErrors["address.pincode"] = err;
+      }
+      if (email !== orig.email) {
+        const err = emailFieldError(email);
+        if (err) fieldErrors.email = err;
+      }
+      if (academicInstitute !== orig.academicInstitute) {
+        const err = notPurelyNumericError(academicInstitute, "institute name");
+        if (err) fieldErrors.academic_institute = err;
+      }
+      if (courseName !== orig.courseName) {
+        const err = notPurelyNumericError(courseName, "course name");
+        if (err) fieldErrors.course_name = err;
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
         setEditErrors(fieldErrors);
+        throw new Error("Please fix the highlighted fields");
+      }
+      if (!parsed.success) {
+        // Base schema failed but none of the issues mapped to a check above
+        // (shouldn't happen given the field set, but fail safe rather than
+        // silently proceed with unparsed data).
         throw new Error("Please fix the highlighted fields");
       }
       setEditErrors({});
@@ -881,7 +1088,16 @@ function StudentProfilePage() {
                     <Input
                       id="s-name"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      maxLength={120}
+                      onChange={(e) => {
+                        const v = sanitizeNameKeystroke(e.target.value);
+                        setFullName(v);
+                        if (editErrors.full_name) setFieldError("full_name", requiredNameError(v));
+                      }}
+                      onBlur={() => {
+                        if (fullName !== originalRef.current.fullName)
+                          setFieldError("full_name", requiredNameError(fullName));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -928,8 +1144,20 @@ function StudentProfilePage() {
                   >
                     <Input
                       id="s-phone"
+                      type="tel"
+                      inputMode="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const v = sanitizeIndianPhoneInput(e.target.value);
+                        setPhone(v);
+                        if (editErrors.phone) setFieldError("phone", mobileNumberError(v, true));
+                      }}
+                      onBlur={() => {
+                        if (phone !== originalRef.current.phone)
+                          setFieldError("phone", mobileNumberError(phone, true));
+                      }}
+                      placeholder="+91 98765 43210"
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -944,7 +1172,16 @@ function StudentProfilePage() {
                       id="s-email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      maxLength={255}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEmail(v);
+                        if (editErrors.email) setFieldError("email", emailFieldError(v));
+                      }}
+                      onBlur={() => {
+                        if (email !== originalRef.current.email)
+                          setFieldError("email", emailFieldError(email));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -998,7 +1235,20 @@ function StudentProfilePage() {
                     <Input
                       id="s-inst"
                       value={academicInstitute}
-                      onChange={(e) => setAcademicInstitute(e.target.value)}
+                      maxLength={160}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setAcademicInstitute(v);
+                        if (editErrors.academic_institute)
+                          setFieldError("academic_institute", notPurelyNumericError(v, "institute name"));
+                      }}
+                      onBlur={() => {
+                        if (academicInstitute !== originalRef.current.academicInstitute)
+                          setFieldError(
+                            "academic_institute",
+                            notPurelyNumericError(academicInstitute, "institute name"),
+                          );
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -1011,7 +1261,17 @@ function StudentProfilePage() {
                     <Input
                       id="s-course"
                       value={courseName}
-                      onChange={(e) => setCourseName(e.target.value)}
+                      maxLength={160}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCourseName(v);
+                        if (editErrors.course_name)
+                          setFieldError("course_name", notPurelyNumericError(v, "course name"));
+                      }}
+                      onBlur={() => {
+                        if (courseName !== originalRef.current.courseName)
+                          setFieldError("course_name", notPurelyNumericError(courseName, "course name"));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -1024,6 +1284,7 @@ function StudentProfilePage() {
                     <Input
                       id="s-batch"
                       value={academicYear}
+                      maxLength={40}
                       onChange={(e) => setAcademicYear(e.target.value)}
                       className="h-8 text-sm"
                     />
@@ -1060,7 +1321,20 @@ function StudentProfilePage() {
                     <Input
                       id="s-ecname"
                       value={emergencyContactName}
-                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      maxLength={120}
+                      onChange={(e) => {
+                        const v = sanitizeNameKeystroke(e.target.value);
+                        setEmergencyContactName(v);
+                        if (editErrors.emergency_contact_name)
+                          setFieldError("emergency_contact_name", optionalNameError(v));
+                      }}
+                      onBlur={() => {
+                        if (emergencyContactName !== originalRef.current.emergencyContactName)
+                          setFieldError(
+                            "emergency_contact_name",
+                            optionalNameError(emergencyContactName),
+                          );
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -1072,45 +1346,113 @@ function StudentProfilePage() {
                   >
                     <Input
                       id="s-ecphone"
+                      type="tel"
+                      inputMode="tel"
                       value={emergencyContactNumber}
-                      onChange={(e) => setEmergencyContactNumber(e.target.value)}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const v = sanitizeIndianPhoneInput(e.target.value);
+                        setEmergencyContactNumber(v);
+                        if (editErrors.emergency_contact_number)
+                          setFieldError("emergency_contact_number", mobileNumberError(v, false));
+                      }}
+                      onBlur={() => {
+                        if (emergencyContactNumber !== originalRef.current.emergencyContactNumber)
+                          setFieldError(
+                            "emergency_contact_number",
+                            mobileNumberError(emergencyContactNumber, false),
+                          );
+                      }}
+                      placeholder="+91 98765 43210"
                       className="h-8 text-sm"
                     />
                   </EditField>
 
                   <div className="col-span-1 sm:col-span-2">
-                    <EditField label="Address" htmlFor="s-addr1" className="py-1">
+                    <EditField
+                      label="Address"
+                      htmlFor="s-addr1"
+                      error={editErrors["address.line1"]}
+                      className="py-1"
+                    >
                       <Input
                         id="s-addr1"
                         placeholder="Street address"
                         value={addrLine1}
+                        maxLength={200}
                         onChange={(e) => setAddrLine1(e.target.value)}
                         className="h-8 text-sm"
                       />
                     </EditField>
                   </div>
 
-                  <EditField label="City" htmlFor="s-city" className="py-1">
+                  <EditField
+                    label="City"
+                    htmlFor="s-city"
+                    error={editErrors["address.city"]}
+                    className="py-1"
+                  >
                     <Input
                       id="s-city"
                       value={addrCity}
-                      onChange={(e) => setAddrCity(e.target.value)}
+                      maxLength={80}
+                      onChange={(e) => {
+                        const v = sanitizeNameKeystroke(e.target.value);
+                        setAddrCity(v);
+                        if (editErrors["address.city"]) setFieldError("address.city", placeNameError(v));
+                      }}
+                      onBlur={() => {
+                        if (addrCity !== originalRef.current.city)
+                          setFieldError("address.city", placeNameError(addrCity));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
-                  <EditField label="State" htmlFor="s-state" className="py-1">
+                  <EditField
+                    label="State"
+                    htmlFor="s-state"
+                    error={editErrors["address.state"]}
+                    className="py-1"
+                  >
                     <Input
                       id="s-state"
                       value={addrState}
-                      onChange={(e) => setAddrState(e.target.value)}
+                      maxLength={80}
+                      onChange={(e) => {
+                        const v = sanitizeNameKeystroke(e.target.value);
+                        setAddrState(v);
+                        if (editErrors["address.state"])
+                          setFieldError("address.state", placeNameError(v));
+                      }}
+                      onBlur={() => {
+                        if (addrState !== originalRef.current.state)
+                          setFieldError("address.state", placeNameError(addrState));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
-                  <EditField label="Pincode" htmlFor="s-pin" className="py-1">
+                  <EditField
+                    label="Pincode"
+                    htmlFor="s-pin"
+                    error={editErrors["address.pincode"]}
+                    className="py-1"
+                  >
                     <Input
                       id="s-pin"
+                      type="tel"
+                      inputMode="numeric"
                       value={addrPincode}
-                      onChange={(e) => setAddrPincode(e.target.value)}
+                      maxLength={6}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setAddrPincode(v);
+                        if (editErrors["address.pincode"])
+                          setFieldError("address.pincode", pincodeFieldError(v));
+                      }}
+                      onBlur={() => {
+                        if (addrPincode !== originalRef.current.pincode)
+                          setFieldError("address.pincode", pincodeFieldError(addrPincode));
+                      }}
                       className="h-8 text-sm"
                     />
                   </EditField>
@@ -1140,16 +1482,38 @@ function StudentProfilePage() {
             <Card className="rounded-2xl border-border/80 py-0 shadow-card-ambient">
               <SectionHeader icon={ShieldCheck} title="KYC Documents" tone="info" />
               <CardContent className="px-5 pb-5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setKycDialogOpen(true)}
-                  className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50 mt-2"
-                >
-                  <span className="text-sm font-medium text-foreground">
-                    {docs.length === 0 ? "No documents submitted yet" : "View KYC documents"}
-                  </span>
-                  <KycOverallBadge docs={docs} />
-                </button>
+                {docsQ.isLoading ? (
+                  <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Loading KYC status…
+                  </div>
+                ) : docsQ.isError ? (
+                  <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+                    <span className="flex items-center gap-2 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      Could not load KYC status.
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => docsQ.refetch()}
+                    >
+                      <RotateCcw className="h-4 w-4" /> Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setKycDialogOpen(true)}
+                    className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50 mt-2"
+                  >
+                    <span className="text-sm font-medium text-foreground">
+                      {docs.length === 0 ? "No documents submitted yet" : "View KYC documents"}
+                    </span>
+                    <KycOverallBadge docs={docs} />
+                  </button>
+                )}
               </CardContent>
             </Card>
 

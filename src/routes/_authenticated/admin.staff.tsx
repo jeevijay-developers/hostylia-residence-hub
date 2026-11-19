@@ -176,6 +176,12 @@ const FINANCE_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; helper?:
 // "one flag covered every verb" shape these resources always had for the
 // role that already owns them by default (Warden); an Accountant opting in
 // gets the same all-or-nothing grant a Warden already has unconditionally.
+const MESS_MENU_PERMISSION_ITEM: { keys: PermissionKey[]; label: string; helper?: string } = {
+  keys: ["mess_menus"],
+  label: "Manage Mess Menu",
+  helper: "Also covers menu items and headcount.",
+};
+
 const OPERATIONAL_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; helper?: string }[] = [
   {
     keys: ["attendance_view", "attendance_create", "attendance_edit", "attendance_delete"],
@@ -192,11 +198,7 @@ const OPERATIONAL_PERMISSION_ITEMS: { keys: PermissionKey[]; label: string; help
     label: "Manage Visitors",
   },
   { keys: ["notices"], label: "Manage Notices" },
-  {
-    keys: ["mess_menus"],
-    label: "Manage Mess Menu",
-    helper: "Also covers menu items and headcount.",
-  },
+  MESS_MENU_PERMISSION_ITEM,
   { keys: ["feedback"], label: "Manage Feedback" },
 ];
 
@@ -327,9 +329,16 @@ function wardenGridDefault(key: PermissionKey): boolean {
   return !WARDEN_GRID_DEFAULT_FALSE.has(key);
 }
 
+// Mess Menu is a single all-or-nothing flag (covers read/create/edit/delete
+// together, like Notices/Complaints), not a Read/Create/Update/Delete split —
+// so it's surfaced via the flat checklist rather than forced into a
+// WARDEN_MODULE_GRID row with 4 columns bound to one key. Reuses
+// MESS_MENU_PERMISSION_ITEM, the same object the Accountant checklist
+// already includes via OPERATIONAL_PERMISSION_ITEMS, so there's exactly one
+// definition of the "mess_menus" permission item, not two drifting copies.
 function permissionItemsForRole(role: "WARDEN" | "ACCOUNTANT") {
   return role === "WARDEN"
-    ? FINANCE_PERMISSION_ITEMS
+    ? [MESS_MENU_PERMISSION_ITEM, ...FINANCE_PERMISSION_ITEMS]
     : [...OPERATIONAL_PERMISSION_ITEMS, ...STUDENT_PERMISSION_ITEMS_FOR_ACCOUNTANT];
 }
 
@@ -1374,7 +1383,7 @@ function AdminStaffPage() {
           tenant_id: tenantId!,
           role_assignment_id: editRow!.id,
           full_name: editName,
-          phone: editPhone,
+          phone: editPhone.trim() ? editPhone.trim() : null,
           block_id:
             editRow?.role === "WARDEN" ? (editBlockId !== "ALL" ? editBlockId : null) : undefined,
           permissions: !editCustomizePerms
@@ -1403,7 +1412,16 @@ function AdminStaffPage() {
     onError: (e) => toast.error(errorMessage(e, "Could not remove")),
   });
 
-  const canUpdate = !update.isPending && editName.trim().length >= 2 && editPhone.trim() !== "";
+  // Phone is optional here too (mirrors the invite flow) — a staff member
+  // with no phone on file must stay fully editable, including permission-only
+  // changes. Only a non-empty value is format-checked.
+  const editPhoneError =
+    editPhone.trim() && !indianMobileSchema.safeParse(editPhone.trim()).success
+      ? "Enter a valid 10-digit Indian mobile number"
+      : null;
+
+  const canUpdate =
+    !update.isPending && editName.trim().length >= 2 && !editPhoneError;
 
   // Phone is sent whenever filled in regardless of addMode (see the invite
   // mutation below), so this validates on presence, not on which mode is
@@ -1864,6 +1882,9 @@ function AdminStaffPage() {
                 placeholder="+91 98765 43210"
                 className="bg-background border-border text-foreground rounded-xl"
               />
+              {editPhoneError && (
+                <p className="text-sm text-destructive font-medium">{editPhoneError}</p>
+              )}
             </div>
             {editRow?.role === "WARDEN" && (
               <div className="space-y-1.5">

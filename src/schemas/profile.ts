@@ -26,6 +26,18 @@ export const addressSchema = z.object({
 });
 
 /**
+ * Strict Indian PIN code (exactly 6 digits) — kept separate from
+ * `addressSchema.pincode` (max 12, no digit check) rather than tightening
+ * that shared field, since `addressSchema` is also used by the Warden/
+ * Accountant/Admin self-edit forms; a page that wants the stricter rule
+ * layers this on top of its own input instead.
+ */
+export const pincodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, "Please enter a valid 6-digit pincode.");
+
+/**
  * Warden self-service "Edit Profile" — covers only the fields the spec
  * allows a Warden to edit on their own `profiles` row. Employee ID, role,
  * assigned property/block, joining date, account status and permissions are
