@@ -74,6 +74,10 @@ export const publicAdmissionSchema = z.object({
     .min(2, "Enter the relationship (e.g. Parent, Guardian)")
     .max(60, "Relationship can be at most 60 characters"),
   turnstileToken: z.string().trim().min(1).max(2048),
+  // Set only by the public /apply form. Marks the application as eligible for
+  // automatic account linking after a verified signup (see fn_link_public_applicant);
+  // the signup-wizard path omits it and keeps its existing manual-confirm flow.
+  origin: z.literal("apply_form").optional(),
 });
 export type PublicAdmissionInput = z.infer<typeof publicAdmissionSchema>;
 

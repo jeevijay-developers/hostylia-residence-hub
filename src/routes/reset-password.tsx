@@ -33,6 +33,7 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<SessionState>("checking");
   const [submitting, setSubmitting] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -44,6 +45,24 @@ function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // Supabase reports a bad link as `#error=...&error_code=otp_expired&error_description=...`.
+    // Capture it before the client rewrites the URL so we can say what went wrong.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const errorCode = hashParams.get("error_code");
+    const hadToken = hashParams.has("access_token");
+    if (errorCode) {
+      setLinkError(
+        errorCode === "otp_expired"
+          ? "This link has expired or was already used. Ask your hostel admin to resend the invitation, or use Forgot password."
+          : (hashParams.get("error_description")?.replace(/\+/g, " ") ??
+              "This link is not valid. Ask your hostel admin to resend the invitation."),
+      );
+    } else if (!hadToken) {
+      setLinkError(
+        "No invitation or reset token was found in this link. Open the link from your email again.",
+      );
+    }
 
     async function check() {
       const { data } = await supabase.auth.getSession();
@@ -97,7 +116,7 @@ function ResetPasswordPage() {
             <XCircle className="h-8 w-8" />
           </div>
           <p className="text-sm text-muted-foreground">
-            This reset link has expired or was already used. Request a fresh one.
+            {linkError ?? "This reset link has expired or was already used. Request a fresh one."}
           </p>
           <Button asChild className="min-h-11 w-full">
             <Link to="/forgot-password">{t("auth.forgotPasswordLink")}</Link>

@@ -194,9 +194,10 @@ async function sendStaffInviteNotificationInner(
 
   // 3. Generate a password-setup link (email invites only).
   //    We use type:"recovery" so the user lands on /reset-password and can
-  //    set their first password. APP_URL must be set to the production URL
-  //    in the server environment — falls back to localhost for local dev.
-  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  //    set their first password. Set APP_URL to the production URL in the
+  //    server environment (see resolveAppUrl for the fallback).
+  const { resolveAppUrl } = await import("@/lib/app-url.server");
+  const appUrl = resolveAppUrl();
   let setupUrl = `${appUrl}/reset-password`;
   if (args.email) {
     try {

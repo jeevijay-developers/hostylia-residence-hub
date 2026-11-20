@@ -161,7 +161,11 @@ export function AdmissionForm({ propertySlug, onSuccess }: Props) {
       toast.error("Complete the verification check before submitting.");
       return;
     }
-    const parsed = publicAdmissionSchema.safeParse({ ...form, turnstileToken: captcha.token });
+    const parsed = publicAdmissionSchema.safeParse({
+      ...form,
+      turnstileToken: captcha.token,
+      origin: "apply_form",
+    });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
       return;

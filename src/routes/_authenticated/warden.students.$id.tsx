@@ -46,6 +46,8 @@ import { StudentProfileEditDialog } from "@/components/students/StudentProfileEd
 import { supabase } from "@/integrations/supabase/client";
 import { displayIndianPhone } from "@/schemas/auth";
 import { confirmStudentAdmission } from "@/lib/student.functions";
+import { StudentLinkBadge } from "@/components/students/StudentLinkBadge";
+import { useStudentsRealtime } from "@/lib/student-realtime";
 import { useStaffPermissions } from "@/lib/staff-scope";
 
 export const Route = createFileRoute("/_authenticated/warden/students/$id")({
@@ -113,6 +115,7 @@ export function WardenStudentDetailPage() {
   // the same pattern updateGuardianPhone uses for property scope.
   const confirmAdmissionFn = useServerFn(confirmStudentAdmission);
   const qc = useQueryClient();
+  useStudentsRealtime(studentQ.data?.property_id);
 
   const confirmAdmission = useMutation({
     mutationFn: () => confirmAdmissionFn({ data: { student_id: id } }),
@@ -158,6 +161,7 @@ export function WardenStudentDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <StudentStatusBadge status={s.status} />
+            <StudentLinkBadge isLinked={!!s.profile_id} />
             {!isAccountantView &&
               can("allocations_edit") &&
               (s.status === "ACTIVE" || s.status === "NOTICE_GIVEN") && (

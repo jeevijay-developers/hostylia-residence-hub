@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AdmissionForm } from "@/components/students/AdmissionForm";
@@ -66,6 +66,14 @@ function PublicApplyPage() {
               </p>
               <p className="text-sm text-muted-foreground">
                 The hostel team will contact you shortly. Save this reference for follow-up.
+              </p>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Next step: create your account at{" "}
+                <Link to="/signup" className="font-medium text-primary hover:underline">
+                  /signup
+                </Link>{" "}
+                using the same email or phone number you applied with. Once verified, your account
+                is linked to this application automatically.
               </p>
             </div>
           )}

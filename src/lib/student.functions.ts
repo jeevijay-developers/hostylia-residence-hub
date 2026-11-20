@@ -150,7 +150,11 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
       p_course_name: data.course_name || null,
       p_academic_year: data.academic_year || null,
       p_is_minor: isMinor,
-      p_metadata: { source: "public_admission", ip },
+      p_metadata: {
+        source: "public_admission",
+        ip,
+        ...(data.origin === "apply_form" ? { origin: "apply_form" } : {}),
+      },
       p_guardian_name: data.guardian_name,
       p_guardian_phone: normalizeIndianPhone(data.guardian_phone),
       p_guardian_relationship: data.guardian_relationship,
