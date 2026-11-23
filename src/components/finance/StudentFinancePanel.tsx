@@ -25,15 +25,26 @@ export function StudentFinancePanel({ propertyId }: { propertyId: string }) {
   const studentsQ = useQuery({
     queryKey: ["finance-students", propertyId],
     queryFn: async () => {
+      // A student stays `status: 'APPLICANT'` (not yet 'ACTIVE') until their
+      // first payment is recorded — so an Accountant could never find them
+      // here to collect that very first payment, even after admission, bed
+      // allocation and agreement signing were all already done. Surface
+      // those specifically: an APPLICANT whose allocation has reached
+      // PENDING_PAYMENT (agreement signed, awaiting first payment only) —
+      // not PENDING_AGREEMENT (not signed yet) or CANCELLED. Existing ACTIVE
+      // students are untouched; the first-payment auto-activation workflow
+      // itself lives elsewhere and isn't touched by this read-only list.
       const { data, error } = await supabase
         .from("students")
-        .select("id, full_name, admission_number, allocations(status, rooms(room_number))")
+        .select("id, full_name, admission_number, status, allocations(status, rooms(room_number))")
         .eq("property_id", propertyId)
-        .eq("status", "ACTIVE")
+        .in("status", ["ACTIVE", "APPLICANT"])
         .is("deleted_at", null)
         .order("full_name");
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data ?? []).filter(
+        (s) => s.status === "ACTIVE" || s.allocations?.some((a) => a.status === "PENDING_PAYMENT"),
+      );
     },
   });
 
@@ -70,7 +81,8 @@ export function StudentFinancePanel({ propertyId }: { propertyId: string }) {
   const feePlanName = invoicesQ.data?.find((i) => i.fee_plans)?.fee_plans?.name ?? null;
 
   function roomOf(s: (typeof students)[number]) {
-    return s.allocations?.find((a) => a.status === "ACTIVE")?.rooms?.room_number;
+    return s.allocations?.find((a) => a.status === "ACTIVE" || a.status === "PENDING_PAYMENT")?.rooms
+      ?.room_number;
   }
 
   return (

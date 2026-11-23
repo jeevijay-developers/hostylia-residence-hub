@@ -53,11 +53,48 @@ export function lastMonthRange(now: Date = new Date()): DateRange {
   return { from: ymd(py, pm, 1), to: ymd(py, pm, lastDayOf(py, pm)) };
 }
 
+/** Today only (IST). */
+export function todayRange(now: Date = new Date()): DateRange {
+  const t = todayIst(now);
+  return { from: t, to: t };
+}
+
+/** Monday through today (IST) — a partial week stays partial, it never runs into the future. */
+export function thisWeekRange(now: Date = new Date()): DateRange {
+  const t = todayIst(now);
+  const [y, m, d] = t.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const mondayOffset = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(Date.UTC(y, m - 1, d - mondayOffset));
+  return {
+    from: ymd(monday.getUTCFullYear(), monday.getUTCMonth() + 1, monday.getUTCDate()),
+    to: t,
+  };
+}
+
+/** 1 Jan through today of the current year (IST). */
+export function thisYearRange(now: Date = new Date()): DateRange {
+  const t = todayIst(now);
+  const [y] = t.split("-").map(Number);
+  return { from: ymd(y, 1, 1), to: t };
+}
+
 /** Which of the offered periods a range is: "Current month", "Previous month" or "Custom range". */
 export function describeRange(range: DateRange, now: Date = new Date()): string {
   const same = (r: DateRange) => r.from === range.from && r.to === range.to;
   if (same(currentMonthRange(now))) return "Current month";
   if (same(lastMonthRange(now))) return "Previous month";
+  return "Custom range";
+}
+
+/** Same idea as describeRange, but across the full Finance Overview preset set. */
+export function describeFinanceRange(range: DateRange, now: Date = new Date()): string {
+  const same = (r: DateRange) => r.from === range.from && r.to === range.to;
+  if (same(todayRange(now))) return "Today";
+  if (same(thisWeekRange(now))) return "This week";
+  if (same(currentMonthRange(now))) return "This month";
+  if (same(lastMonthRange(now))) return "Last month";
+  if (same(thisYearRange(now))) return "This year";
   return "Custom range";
 }
 

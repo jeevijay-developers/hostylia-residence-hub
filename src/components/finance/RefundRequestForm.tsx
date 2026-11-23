@@ -78,7 +78,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
       </div>
 
       <div className="space-y-4">
-        <FormField icon={FileText} label="Payment">
+        <FormField icon={FileText} label="Payment *">
           <Select value={paymentId} onValueChange={setPaymentId}>
             <SelectTrigger>
               <SelectValue placeholder="Choose payment" />
@@ -92,7 +92,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField icon={IndianRupee} label="Amount (INR)" htmlFor="refund-amount">
+        <FormField icon={IndianRupee} label="Amount (INR) *" htmlFor="refund-amount">
           <Input
             id="refund-amount"
             type="number"
@@ -116,7 +116,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField icon={MessageSquare} label="Reason" htmlFor="refund-reason">
+        <FormField icon={MessageSquare} label="Reason *" htmlFor="refund-reason">
           <Textarea
             id="refund-reason"
             rows={3}
@@ -144,6 +144,15 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
         <Send className="h-4 w-4" />
         {m.isPending ? "Submitting…" : "Submit for approval"}
       </Button>
+      {!m.isPending && (!paymentId || !amount || !reason) && (
+        <p className="text-center text-xs text-destructive">
+          {!paymentId
+            ? "Choose a payment to refund first."
+            : !amount
+              ? "Enter the refund amount."
+              : "Enter a reason — required before this can be submitted."}
+        </p>
+      )}
     </div>
   );
 }
