@@ -15,9 +15,22 @@ import {
 } from "@/lib/report-range";
 import { dayFromYmd, ymd } from "@/lib/schedule-picker";
 
+export interface DateRangePreset {
+  label: string;
+  range: DateRange;
+}
+
 interface Props {
   value: DateRange;
   onChange: (value: DateRange) => void;
+  /**
+   * The quick-pick buttons shown above the calendar. Defaults to the original
+   * two (Current month / Previous month) so the one existing caller
+   * (CollectionsAgingPanel) is unaffected. The Finance Overview page passes
+   * its own six-preset list (Today/This week/This month/Last month/This
+   * year) instead.
+   */
+  presets?: DateRangePreset[];
 }
 
 /**
@@ -26,7 +39,12 @@ interface Props {
  * issue date. The custom range applies as soon as both ends are chosen. Like the Notice Composer's date field, the
  * text field only DISPLAYS the period; the calendar opens only from the calendar icon button.
  */
-export function DateRangeFilter({ value, onChange }: Props) {
+const DEFAULT_PRESETS: DateRangePreset[] = [
+  { label: "Current month", range: currentMonthRange() },
+  { label: "Previous month", range: lastMonthRange() },
+];
+
+export function DateRangeFilter({ value, onChange, presets = DEFAULT_PRESETS }: Props) {
   const [open, setOpen] = useState(false);
   // The first click on the calendar is always a NEW start date (even inside the current range); the
   // second click completes the range. While waiting for the end date, only the start day is shown.
@@ -51,7 +69,10 @@ export function DateRangeFilter({ value, onChange }: Props) {
     ? { from: dayFromYmd(anchor) }
     : { from: dayFromYmd(value.from), to: dayFromYmd(value.to) };
 
-  const kind = describeRange(value);
+  const matchedPreset = presets.find(
+    (p) => p.range.from === value.from && p.range.to === value.to,
+  );
+  const kind = matchedPreset?.label ?? describeRange(value);
   const today = currentMonthRange().from;
   const [thisYear] = today.split("-").map(Number);
 
@@ -90,22 +111,17 @@ export function DateRangeFilter({ value, onChange }: Props) {
         className="w-auto max-w-[calc(100vw-1rem)] p-0"
       >
         <div className="flex flex-wrap gap-1.5 border-b border-border p-3">
-          <Button
-            type="button"
-            size="sm"
-            variant={kind === "Current month" ? "default" : "secondary"}
-            onClick={() => apply(currentMonthRange())}
-          >
-            Current month
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={kind === "Previous month" ? "default" : "secondary"}
-            onClick={() => apply(lastMonthRange())}
-          >
-            Previous month
-          </Button>
+          {presets.map((p) => (
+            <Button
+              key={p.label}
+              type="button"
+              size="sm"
+              variant={kind === p.label ? "default" : "secondary"}
+              onClick={() => apply(p.range)}
+            >
+              {p.label}
+            </Button>
+          ))}
         </div>
         <p className="px-3 pt-2 text-xs font-medium text-foreground">Custom date range</p>
         <Calendar

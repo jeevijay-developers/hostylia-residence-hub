@@ -236,6 +236,19 @@ export function KycUploadForm({
   const upload = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Choose a file");
+      // tenantId/propertyId/studentId feed the storage path's folder
+      // segments, which the "kyc student self write" RLS policy casts
+      // to uuid ((storage.foldername(name))[4])::uuid etc. — if any of
+      // these were ever undefined, the template literal below would
+      // silently turn that into the literal text "undefined" in the
+      // path, and the resulting error from Postgres ("invalid input
+      // syntax for type uuid: undefined") gives no indication of which
+      // value was missing or why. Fail clearly here instead.
+      if (!tenantId || !propertyId || !studentId) {
+        throw new Error(
+          "Your profile isn't fully loaded yet — please refresh the page and try uploading again.",
+        );
+      }
       const invalid = validateKycFile(file, docType);
       if (invalid) throw new Error(invalid);
       const contentType = resolveKycMimeType(file.name, file.type);

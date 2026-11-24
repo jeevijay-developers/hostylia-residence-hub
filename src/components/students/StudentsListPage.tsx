@@ -554,7 +554,7 @@ export function StudentsListPage({
                   <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     STATUS
                   </TableHead>
-                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+                  <TableHead className="sticky right-0 z-10 bg-card px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
                     ACTIONS
                   </TableHead>
                 </TableRow>
@@ -567,7 +567,7 @@ export function StudentsListPage({
                   const avatarStyle = getAvatarStyle(s.full_name);
                   const initialStr = (firstName[0] || "") + (lastName[0] || "");
                   return (
-                    <TableRow key={s.id} className="hover:bg-accent/30 transition-colors">
+                    <TableRow key={s.id} className="group hover:bg-accent/30 transition-colors">
                       <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div
@@ -599,7 +599,7 @@ export function StudentsListPage({
                           {!isArchivedView && <StudentLinkBadge isLinked={!!s.profile_id} />}
                         </div>
                       </TableCell>
-                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right">
+                      <TableCell className="sticky right-0 z-10 bg-card px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right transition-colors group-hover:bg-accent/30">
                         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                           <Button
                             asChild

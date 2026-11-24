@@ -61,16 +61,13 @@ import { useAvatarUrl } from "@/lib/avatar";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
-import {
-  changePasswordSchema,
-  emailSchema,
-  fullNameSchema,
-  indianMobileSchema,
-  sanitizeIndianPhoneInput,
-  sanitizeNameKeystroke,
-} from "@/schemas/auth";
+import { changePasswordSchema, emailSchema, fullNameSchema, indianMobileSchema } from "@/schemas/auth";
 import { pincodeSchema } from "@/schemas/profile";
-import { studentSelfProfileSchema } from "@/schemas/student";
+import {
+  MAX_STUDENT_AGE_YEARS,
+  MIN_STUDENT_AGE_YEARS,
+  studentSelfProfileSchema,
+} from "@/schemas/student";
 
 // ─── Field-level validators (shared by blur and submit) ──────────────────────
 // Reuse the same shared schemas the rest of the app already validates these
@@ -141,6 +138,41 @@ function notPurelyNumericError(value: string, label: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   return /^\d+$/.test(trimmed) ? `Please enter a valid ${label}.` : null;
+}
+
+/** Same rule studentSelfProfileSchema's date_of_birth already enforces at
+ * submit (not in the future, a plausible student age) — reused here, not a
+ * new restriction, just checked live instead of only after Save. */
+function dobFieldError(value: string): string | null {
+  if (!value) return null;
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) return "Enter a valid date of birth";
+  if (dob > new Date()) return "Date of birth cannot be in the future";
+  const ageYears = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (ageYears < MIN_STUDENT_AGE_YEARS || ageYears > MAX_STUDENT_AGE_YEARS) {
+    return "Enter a valid date of birth";
+  }
+  return null;
+}
+
+/** Character-type check for name-type fields — the character is allowed to
+ * be typed (nothing is stripped), this just flags it immediately with a
+ * message naming what's wrong, instead of only failing the fuller
+ * requiredNameError/optionalNameError/placeNameError check's generic text. */
+function nameCharError(value: string): string | null {
+  if (!value) return null;
+  if (/\d/.test(value)) return "Numbers are not allowed in this field.";
+  if (!/^[\p{L}\s.'-]*$/u.test(value)) return "Special characters are not allowed in this field.";
+  return null;
+}
+
+/** Character-type check for digits-only fields (phone/pincode) — same idea
+ * as nameCharError, for the opposite direction. */
+function digitsOnlyCharError(value: string): string | null {
+  if (!value) return null;
+  if (/[a-zA-Z]/.test(value)) return "Letters are not allowed. Enter numbers only.";
+  if (!/^\d*$/.test(value)) return "Special characters are not allowed. Enter numbers only.";
+  return null;
 }
 
 export const Route = createFileRoute("/_authenticated/student/profile")({
@@ -317,6 +349,7 @@ function StudentProfilePage() {
     fullName: "",
     phone: "",
     email: "",
+    dateOfBirth: "",
     academicInstitute: "",
     courseName: "",
     emergencyContactName: "",
@@ -509,6 +542,7 @@ function StudentProfilePage() {
       fullName: s.full_name ?? "",
       phone: s.phone ?? "",
       email: s.email ?? "",
+      dateOfBirth: s.date_of_birth ?? "",
       academicInstitute: s.academic_institute ?? "",
       courseName: s.course_name ?? "",
       emergencyContactName: p.emergency_contact_name ?? "",
@@ -1090,13 +1124,13 @@ function StudentProfilePage() {
                       value={fullName}
                       maxLength={120}
                       onChange={(e) => {
-                        const v = sanitizeNameKeystroke(e.target.value);
+                        const v = e.target.value;
                         setFullName(v);
-                        if (editErrors.full_name) setFieldError("full_name", requiredNameError(v));
+                        setFieldError("full_name", nameCharError(v) ?? requiredNameError(v));
                       }}
                       onBlur={() => {
                         if (fullName !== originalRef.current.fullName)
-                          setFieldError("full_name", requiredNameError(fullName));
+                          setFieldError("full_name", nameCharError(fullName) ?? requiredNameError(fullName));
                       }}
                       className="h-8 text-sm"
                     />
@@ -1113,8 +1147,16 @@ function StudentProfilePage() {
                       id="s-dob"
                       type="date"
                       value={dateOfBirth}
-                      onChange={(e) => setDateOfBirth(e.target.value)}
-                      className="h-8 text-sm"
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDateOfBirth(v);
+                        setFieldError("date_of_birth", dobFieldError(v));
+                      }}
+                      onBlur={() => {
+                        if (dateOfBirth !== originalRef.current.dateOfBirth)
+                          setFieldError("date_of_birth", dobFieldError(dateOfBirth));
+                      }}
+                      className="h-8 text-sm scheme-dark"
                     />
                   </EditField>
 
@@ -1149,13 +1191,16 @@ function StudentProfilePage() {
                       value={phone}
                       maxLength={10}
                       onChange={(e) => {
-                        const v = sanitizeIndianPhoneInput(e.target.value);
+                        const v = e.target.value;
                         setPhone(v);
-                        if (editErrors.phone) setFieldError("phone", mobileNumberError(v, true));
+                        setFieldError("phone", digitsOnlyCharError(v) ?? mobileNumberError(v, true));
                       }}
                       onBlur={() => {
                         if (phone !== originalRef.current.phone)
-                          setFieldError("phone", mobileNumberError(phone, true));
+                          setFieldError(
+                            "phone",
+                            digitsOnlyCharError(phone) ?? mobileNumberError(phone, true),
+                          );
                       }}
                       placeholder="+91 98765 43210"
                       className="h-8 text-sm"
@@ -1176,7 +1221,7 @@ function StudentProfilePage() {
                       onChange={(e) => {
                         const v = e.target.value;
                         setEmail(v);
-                        if (editErrors.email) setFieldError("email", emailFieldError(v));
+                        setFieldError("email", emailFieldError(v));
                       }}
                       onBlur={() => {
                         if (email !== originalRef.current.email)
@@ -1239,8 +1284,7 @@ function StudentProfilePage() {
                       onChange={(e) => {
                         const v = e.target.value;
                         setAcademicInstitute(v);
-                        if (editErrors.academic_institute)
-                          setFieldError("academic_institute", notPurelyNumericError(v, "institute name"));
+                        setFieldError("academic_institute", notPurelyNumericError(v, "institute name"));
                       }}
                       onBlur={() => {
                         if (academicInstitute !== originalRef.current.academicInstitute)
@@ -1265,8 +1309,7 @@ function StudentProfilePage() {
                       onChange={(e) => {
                         const v = e.target.value;
                         setCourseName(v);
-                        if (editErrors.course_name)
-                          setFieldError("course_name", notPurelyNumericError(v, "course name"));
+                        setFieldError("course_name", notPurelyNumericError(v, "course name"));
                       }}
                       onBlur={() => {
                         if (courseName !== originalRef.current.courseName)
@@ -1323,16 +1366,18 @@ function StudentProfilePage() {
                       value={emergencyContactName}
                       maxLength={120}
                       onChange={(e) => {
-                        const v = sanitizeNameKeystroke(e.target.value);
+                        const v = e.target.value;
                         setEmergencyContactName(v);
-                        if (editErrors.emergency_contact_name)
-                          setFieldError("emergency_contact_name", optionalNameError(v));
+                        setFieldError(
+                          "emergency_contact_name",
+                          nameCharError(v) ?? optionalNameError(v),
+                        );
                       }}
                       onBlur={() => {
                         if (emergencyContactName !== originalRef.current.emergencyContactName)
                           setFieldError(
                             "emergency_contact_name",
-                            optionalNameError(emergencyContactName),
+                            nameCharError(emergencyContactName) ?? optionalNameError(emergencyContactName),
                           );
                       }}
                       className="h-8 text-sm"
@@ -1351,16 +1396,19 @@ function StudentProfilePage() {
                       value={emergencyContactNumber}
                       maxLength={10}
                       onChange={(e) => {
-                        const v = sanitizeIndianPhoneInput(e.target.value);
+                        const v = e.target.value;
                         setEmergencyContactNumber(v);
-                        if (editErrors.emergency_contact_number)
-                          setFieldError("emergency_contact_number", mobileNumberError(v, false));
+                        setFieldError(
+                          "emergency_contact_number",
+                          digitsOnlyCharError(v) ?? mobileNumberError(v, false),
+                        );
                       }}
                       onBlur={() => {
                         if (emergencyContactNumber !== originalRef.current.emergencyContactNumber)
                           setFieldError(
                             "emergency_contact_number",
-                            mobileNumberError(emergencyContactNumber, false),
+                            digitsOnlyCharError(emergencyContactNumber) ??
+                              mobileNumberError(emergencyContactNumber, false),
                           );
                       }}
                       placeholder="+91 98765 43210"
@@ -1397,13 +1445,13 @@ function StudentProfilePage() {
                       value={addrCity}
                       maxLength={80}
                       onChange={(e) => {
-                        const v = sanitizeNameKeystroke(e.target.value);
+                        const v = e.target.value;
                         setAddrCity(v);
-                        if (editErrors["address.city"]) setFieldError("address.city", placeNameError(v));
+                        setFieldError("address.city", nameCharError(v) ?? placeNameError(v));
                       }}
                       onBlur={() => {
                         if (addrCity !== originalRef.current.city)
-                          setFieldError("address.city", placeNameError(addrCity));
+                          setFieldError("address.city", nameCharError(addrCity) ?? placeNameError(addrCity));
                       }}
                       className="h-8 text-sm"
                     />
@@ -1419,14 +1467,16 @@ function StudentProfilePage() {
                       value={addrState}
                       maxLength={80}
                       onChange={(e) => {
-                        const v = sanitizeNameKeystroke(e.target.value);
+                        const v = e.target.value;
                         setAddrState(v);
-                        if (editErrors["address.state"])
-                          setFieldError("address.state", placeNameError(v));
+                        setFieldError("address.state", nameCharError(v) ?? placeNameError(v));
                       }}
                       onBlur={() => {
                         if (addrState !== originalRef.current.state)
-                          setFieldError("address.state", placeNameError(addrState));
+                          setFieldError(
+                            "address.state",
+                            nameCharError(addrState) ?? placeNameError(addrState),
+                          );
                       }}
                       className="h-8 text-sm"
                     />
@@ -1444,14 +1494,16 @@ function StudentProfilePage() {
                       value={addrPincode}
                       maxLength={6}
                       onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        const v = e.target.value;
                         setAddrPincode(v);
-                        if (editErrors["address.pincode"])
-                          setFieldError("address.pincode", pincodeFieldError(v));
+                        setFieldError("address.pincode", digitsOnlyCharError(v) ?? pincodeFieldError(v));
                       }}
                       onBlur={() => {
                         if (addrPincode !== originalRef.current.pincode)
-                          setFieldError("address.pincode", pincodeFieldError(addrPincode));
+                          setFieldError(
+                            "address.pincode",
+                            digitsOnlyCharError(addrPincode) ?? pincodeFieldError(addrPincode),
+                          );
                       }}
                       className="h-8 text-sm"
                     />

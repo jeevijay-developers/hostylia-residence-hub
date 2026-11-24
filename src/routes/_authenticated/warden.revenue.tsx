@@ -6,10 +6,10 @@ import { useWardenPermissions } from "@/lib/staff-scope";
 
 /**
  * Warden's view of Admin's "Revenue & Collections" (admin.finance.pnl.tsx) —
- * reuses the same RevenueCollectionsSummary component and
- * getRevenueCollectionsSummary server function (RLS-scoped to this Warden's
- * property via can_view_invoices, same as /warden/invoices). Deliberately
- * excludes RefundApprovalList — approving a refund is a Hostel-Admin-only
+ * reuses the same RevenueCollectionsSummary component (RLS-scoped to this
+ * Warden's property via can_view_invoices, same as /warden/invoices), with
+ * export turned off (unchanged from before). Deliberately excludes
+ * RefundApprovalList — approving a refund is a Hostel-Admin-only
  * maker-checker action (a different user than the one who submitted it via
  * /warden/refunds), never a Warden capability.
  */
@@ -35,7 +35,7 @@ function WardenRevenuePage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Revenue & Collections" />
-      <RevenueCollectionsSummary propertyId={propertyId} />
+      <RevenueCollectionsSummary propertyId={propertyId} showExport={false} />
     </div>
   );
 }

@@ -146,6 +146,12 @@ export function RefundHistoryPanel({
 
       {q.isLoading ? (
         <Skeleton className="h-24 w-full rounded-xl" />
+      ) : q.isError ? (
+        <EmptyState
+          title="Couldn't load refund history"
+          description={getErrorMessage(q.error, "Something went wrong while fetching refunds.")}
+          action={{ label: "Retry", onClick: () => q.refetch() }}
+        />
       ) : !q.data?.length ? (
         <EmptyState
           title="No refund requests yet"
