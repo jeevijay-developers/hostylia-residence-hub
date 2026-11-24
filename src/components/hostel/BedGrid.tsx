@@ -57,6 +57,7 @@ const STATUS_CARD_META: Record<
     border: string;
     badge: string;
     text: string;
+    ring: string;
     label: string;
     caption: string;
     Icon: typeof Bed;
@@ -67,6 +68,7 @@ const STATUS_CARD_META: Record<
     border: "border-bed-vacant/40",
     badge: "bg-bed-vacant/15 text-bed-vacant",
     text: "text-bed-vacant",
+    ring: "ring-bed-vacant",
     label: "Vacant",
     caption: "Available beds",
     Icon: Bed,
@@ -76,6 +78,7 @@ const STATUS_CARD_META: Record<
     border: "border-bed-occupied/40",
     badge: "bg-bed-occupied/15 text-bed-occupied",
     text: "text-bed-occupied",
+    ring: "ring-bed-occupied",
     label: "Occupied",
     caption: "Occupied beds",
     Icon: CheckCircle2,
@@ -85,6 +88,7 @@ const STATUS_CARD_META: Record<
     border: "border-bed-maintenance/40",
     badge: "bg-bed-maintenance/15 text-bed-maintenance",
     text: "text-bed-maintenance",
+    ring: "ring-bed-maintenance",
     label: "Maintenance",
     caption: "Under maintenance",
     Icon: Wrench,
@@ -94,6 +98,7 @@ const STATUS_CARD_META: Record<
     border: "border-bed-blocked/40",
     badge: "bg-bed-blocked/15 text-bed-blocked",
     text: "text-bed-blocked",
+    ring: "ring-bed-blocked",
     label: "Blocked",
     caption: "Currently blocked",
     Icon: XCircle,
@@ -123,6 +128,13 @@ interface BedGridProps {
   onQueryChange?: (value: string) => void;
   /** Parent already filtered this page (server `.range`). */
   serverFiltered?: boolean;
+  /**
+   * Expanded grid only. When `onStatusFilterChange` is given, the four summary cards become
+   * toggle buttons: click selects that status, click the active one again clears it (null).
+   * The filtering itself is the parent's job (server query) — counts stay property-wide.
+   */
+  statusFilter?: BedStatus | null;
+  onStatusFilterChange?: (status: BedStatus | null) => void;
 }
 
 /**
@@ -138,6 +150,8 @@ export function BedGrid({
   queryValue,
   onQueryChange,
   serverFiltered = false,
+  statusFilter = null,
+  onStatusFilterChange,
 }: BedGridProps) {
   const counts = useMemo(() => {
     if (statusCounts) return statusCounts;
@@ -212,12 +226,26 @@ export function BedGrid({
         {(Object.keys(STATUS_CARD_META) as BedStatus[]).map((s) => {
           const meta = STATUS_CARD_META[s];
           const Icon = meta.Icon;
+          const interactive = !!onStatusFilterChange;
+          const selected = statusFilter === s;
+          const Card = interactive ? "button" : "div";
           return (
-            <div
+            <Card
               key={s}
+              {...(interactive
+                ? {
+                    type: "button" as const,
+                    "aria-pressed": selected,
+                    "aria-label": `${selected ? "Clear" : "Show only"} ${meta.label.toLowerCase()} beds`,
+                    onClick: () => onStatusFilterChange?.(selected ? null : s),
+                  }
+                : {})}
               className={cn(
-                "rounded-2xl border bg-card p-4 shadow-card-ambient panel-lift",
+                "rounded-2xl border bg-card p-4 text-left shadow-card-ambient panel-lift",
                 meta.border,
+                interactive &&
+                  "cursor-pointer outline-none transition focus-visible:ring-2 focus-visible:ring-ring",
+                selected && `border-transparent bg-muted/40 ring-2 ${meta.ring}`,
               )}
             >
               <div className="flex items-center gap-2">
@@ -236,7 +264,7 @@ export function BedGrid({
                 {counts[s]}
               </p>
               <p className="text-xs text-muted-foreground">{meta.caption}</p>
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -285,7 +313,11 @@ export function BedGrid({
 
       {visibleBeds.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground">
-          {query.trim() ? `No rooms match "${query}".` : "No available beds right now."}
+          {query.trim()
+            ? `No rooms match "${query}".`
+            : statusFilter
+              ? `No ${STATUS_CARD_META[statusFilter].label.toLowerCase()} beds found.`
+              : "No beds found."}
         </p>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

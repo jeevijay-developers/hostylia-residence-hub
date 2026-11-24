@@ -754,7 +754,7 @@ function FounderSection() {
             <img
               src={vikasPhoto}
               alt="Vikas Patel, Founder & CEO of Hostylia"
-              className="h-32 w-32 rounded-2xl object-cover ring-2 ring-soft-teal/40 shadow-xl"
+              className="h-32 w-32 rounded-2xl object-cover object-top ring-2 ring-soft-teal/40 shadow-xl"
             />
 
             <div>
