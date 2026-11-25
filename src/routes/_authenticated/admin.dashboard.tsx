@@ -191,17 +191,27 @@ function AdminDashboardPage() {
               ) : recentActivity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No recent activity yet.</p>
               ) : (
-                <ol className="space-y-3 text-sm">
+                <ol className="divide-y divide-border text-sm">
                   {recentActivity.slice(0, 8).map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <ActivityIcon type={item.type} />
-                      <div className="min-w-0">
-                        <div className="font-medium">{item.type}</div>
-                        <div className="truncate text-xs text-muted-foreground">{item.detail}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(item.at).toLocaleString()}
+                    <li
+                      key={i}
+                      className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <ActivityIcon type={item.type} />
+                        <div className="min-w-0">
+                          <div className="font-medium leading-tight">{item.type}</div>
+                          <div className="break-words text-xs text-muted-foreground">
+                            {item.detail}
+                          </div>
                         </div>
                       </div>
+                      <time
+                        dateTime={item.at}
+                        className="shrink-0 pl-11 font-mono text-xs tabular-nums text-muted-foreground sm:pl-0 sm:text-right"
+                      >
+                        {new Date(item.at).toLocaleString()}
+                      </time>
                     </li>
                   ))}
                 </ol>
