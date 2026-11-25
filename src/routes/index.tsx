@@ -36,6 +36,9 @@ import {
   Lock,
   Compass,
   MessageCircle,
+  MapPin,
+  TrendingUp,
+  Star,
 } from "lucide-react";
 import { HeroDashboard } from "@/components/site/HeroDashboard";
 import { canonicalUrl } from "@/lib/site";
@@ -45,7 +48,6 @@ import {
   MockFinanceDashboard,
   MockComplaintBoard,
   MockParentApp,
-  StatBand,
   BenefitList,
   TestimonialCard,
 } from "@/components/site/HtmlMockups";
@@ -900,13 +902,31 @@ function HeroStats() {
   return (
     <section className="bg-section-dark py-12">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
-        <StatBand
-          stats={[
-            { v: "11 cities", l: "Across India" },
-            { v: "92%", l: "On-time collection" },
-            { v: "4.9 / 5", l: "Operator CSAT" },
-          ]}
-        />
+        <div className="rounded-3xl border border-dark-border bg-card p-4 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+            {[
+              { icon: MapPin, cat: "Coverage", v: "11 cities", l: "Across India" },
+              { icon: TrendingUp, cat: "Collections", v: "92%", l: "On-time collection" },
+              { icon: Star, cat: "Satisfaction", v: "4.9 / 5", l: "Operator CSAT" },
+            ].map((s) => (
+              <div
+                key={s.l}
+                className="rounded-2xl border border-dark-border bg-background/40 p-4 sm:p-5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-soft-teal/15 text-soft-teal">
+                    <s.icon size={16} />
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">
+                    {s.cat}
+                  </span>
+                </div>
+                <div className="mt-3 text-3xl font-extrabold text-soft-teal md:text-4xl">{s.v}</div>
+                <div className="mt-1 text-sm text-soft-grey">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

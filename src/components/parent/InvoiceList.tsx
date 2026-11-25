@@ -166,7 +166,7 @@ export function InvoiceList({
               {canPay && i.balance_paise > 0 && status !== "VOID" && (
                 <Button
                   size="sm"
-                  className="relative mt-4 w-full rounded-full"
+                  className="relative mt-4 w-fit rounded-full"
                   onClick={() => pay.mutate(i.id)}
                   disabled={!kycComplete || pay.isPending}
                 >
