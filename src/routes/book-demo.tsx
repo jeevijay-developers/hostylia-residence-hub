@@ -1,20 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useState, type FormEvent } from "react";
-import { Calendar, CheckCircle2, Send, Sparkles, Users, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
-import { PageHero, CTAStrip } from "@/components/site/PageHero";
-import { TurnstileWidget } from "@/components/site/TurnstileWidget";
-import { submitPublicLead } from "@/lib/public-lead.functions";
+import { BedDouble, CalendarDays, LayoutGrid, MessageCircle, Users } from "lucide-react";
 import { canonicalUrl } from "@/lib/site";
-import { SectionHeading } from "@/components/site/Primitives";
-import {
-  MockOccupancyDashboard,
-  MockFinanceDashboard,
-  StatBand,
-  BenefitList,
-  TestimonialCard,
-} from "@/components/site/HtmlMockups";
+import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { SplitHero } from "@/components/site/marketing/SplitHero";
+import { CheckList } from "@/components/site/marketing/MarketingPrimitives";
+import { LeadForm } from "@/components/site/marketing/LeadForm";
+import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
+import { FaqSection } from "@/components/site/marketing/FaqSection";
+import { faqPageJsonLd, TRIAL_FAQ, type Faq } from "@/components/site/marketing/faq";
+import { CtaBanner } from "@/components/site/marketing/CtaBanner";
+
+const faqs: Faq[] = [
+  {
+    q: "How long is the demo?",
+    a: "About 30 minutes — a focused, no-pressure walkthrough tailored to your property type.",
+  },
+  TRIAL_FAQ,
+  {
+    q: "Who should attend?",
+    a: "Owners, managers and wardens are all welcome — we'll show each role's view of the platform.",
+  },
+  {
+    q: "Do I need to prepare anything?",
+    a: "No preparation needed. Knowing your number of properties, beds and current tools helps us tailor the walkthrough.",
+  },
+];
 
 export const Route = createFileRoute("/book-demo")({
   head: () => ({
@@ -27,6 +37,7 @@ export const Route = createFileRoute("/book-demo")({
       { property: "og:title", content: "Book a Demo — Hostylia" },
       { property: "og:description", content: "See Hostylia in action." },
       { property: "og:url", content: canonicalUrl("/book-demo") },
+      { "script:ld+json": faqPageJsonLd(faqs) },
     ],
     links: [{ rel: "canonical", href: canonicalUrl("/book-demo") }],
   }),
@@ -34,288 +45,79 @@ export const Route = createFileRoute("/book-demo")({
 });
 
 function BookDemoPage() {
-  const submitLead = useServerFn(submitPublicLead);
-  const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [widgetKey, setWidgetKey] = useState(0);
-
-  function resetWidget() {
-    setTurnstileToken("");
-    setWidgetKey((key) => key + 1);
-  }
-
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    if (!turnstileToken) {
-      toast.error("Complete the verification check before sending.");
-      return;
-    }
-    const data = new FormData(form);
-    setLoading(true);
-    try {
-      const result = await submitLead({
-        data: {
-          kind: "demo",
-          captchaToken: turnstileToken,
-          name: String(data.get("name") ?? ""),
-          email: String(data.get("email") ?? ""),
-          phone: String(data.get("phone") ?? ""),
-          propertyName: String(data.get("property") ?? ""),
-          beds: String(data.get("beds") ?? ""),
-          city: String(data.get("city") ?? ""),
-          propertyType: String(data.get("type") ?? ""),
-          message: String(data.get("notes") ?? ""),
-        },
-      });
-      if (!result.ok) {
-        toast.error(result.message ?? "Could not send your request.");
-        resetWidget();
-        return;
-      }
-      form.reset();
-      resetWidget();
-      toast.success("Demo request received", {
-        description: "We'll reach out shortly to schedule your walkthrough.",
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error && err.message ? err.message : "Could not send your request.";
-      toast.error(message);
-      resetWidget();
-    } finally {
-      setLoading(false);
-    }
-  }
-  const types = [
-    "Student Hostel",
-    "PG / Co-Living",
-    "Boarding School",
-    "University Dorm",
-    "Multi-Property",
-  ];
   return (
-    <div className="bg-section-dark">
-      <PageHero
-        eyebrow="Book Demo"
-        title="See Hostylia in action"
-        desc="A 30-minute personalized walkthrough tailored to your property type."
-      />
-
-      <section className="py-20">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 md:px-6 lg:grid-cols-[1.3fr_1fr]">
-          <form onSubmit={onSubmit} className="glass-panel rounded-2xl p-6 md:p-8">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Full name" name="name" placeholder="Your name" required />
-              <Field
-                label="Work email"
-                name="email"
-                type="email"
-                placeholder="you@property.com"
-                required
-              />
-              <Field label="Phone" name="phone" placeholder="+91 ..." />
-              <Field
-                label="Property name"
-                name="property"
-                placeholder="e.g. Sunrise Hostels"
-                required
-              />
-              <Field label="City" name="city" placeholder="Mumbai" />
-              <Field label="Number of beds" name="beds" placeholder="e.g. 250" />
-            </div>
-            <label className="mt-4 block">
-              <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">
-                Property type
-              </span>
-              <select
-                name="type"
-                className="mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] px-3 py-2.5 text-sm text-foreground focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30"
-              >
-                {types.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </label>
-            <Field
-              label="Anything we should know?"
-              name="notes"
-              textarea
-              placeholder="Tell us about your operations"
-            />
-            <div className="mt-4">
-              <TurnstileWidget key={widgetKey} onToken={setTurnstileToken} />
-            </div>
-            <button
-              disabled={loading || !turnstileToken}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-3 text-sm font-bold text-navy disabled:opacity-60"
-            >
-              <Send size={14} /> {loading ? "Submitting..." : "Request Demo"}
-            </button>
-          </form>
-          <div className="space-y-4">
-            <Bullet
-              icon={Calendar}
-              title="30-minute walkthrough"
-              desc="A focused session, no pressure."
-            />
-            <Bullet
-              icon={Sparkles}
-              title="Tailored to your property"
-              desc="We adapt the demo to your operations."
-            />
-            <Bullet
-              icon={Users}
-              title="Owner, manager, warden views"
-              desc="See every role in action."
-            />
-            <Bullet
-              icon={ShieldCheck}
-              title="Security & compliance"
-              desc="Discuss your data and privacy needs."
-            />
-            <Bullet
-              icon={CheckCircle2}
-              title="Trial environment"
-              desc="We can set up a sandbox for you."
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-dark-border py-12">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <StatBand
-            stats={[
-              { v: "30 min", l: "Personalized walkthrough" },
-              { v: "48 hrs", l: "From demo to live trial" },
-              { v: "4.9 / 5", l: "Demo-to-decision rating" },
+    <div className="landing-type">
+      <SplitHero
+        chip="Book a demo"
+        chipIcon={CalendarDays}
+        title={
+          <>
+            See Hostylia <span className="text-brand-green sm:block">in action</span>
+          </>
+        }
+        desc="A personalized walkthrough tailored to your property — see every role, from owner to warden, working on one platform."
+        extra={
+          <CheckList
+            className="mt-8"
+            items={[
+              "A focused 30-minute walkthrough",
+              "Tailored to your property type",
+              "Owner, manager and warden views",
+              "Trial environment on request",
             ]}
           />
-        </div>
-      </section>
+        }
+        media={<LeadForm kind="demo" />}
+      />
 
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <SectionHeading eyebrow="What you'll see" title="A live tour of the operating system" />
-        </div>
-        <div className="mx-auto mt-12 grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
-          <MockOccupancyDashboard />
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold">
-              Live occupancy
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
-              See every bed in real time
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-soft-grey">
-              We'll walk you through a real residence — occupancy down to the bed, on-notice
-              tracking and instant vacancy alerts.
-            </p>
-            <BenefitList
-              items={[
-                "Property → Block → Floor → Room → Bed in one view.",
-                "Color-coded statuses for vacant, occupied and on-notice.",
-                "One-click move-out, move-in and bed swaps.",
-              ]}
-            />
-          </div>
-        </div>
-        <div className="mx-auto mt-16 grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold">
-              Finance, automated
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
-              From invoicing to reconciliation — in one click
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-soft-grey">
-              We'll show you exactly how AI nudges, UPI auto-reconciliation and owner dashboards
-              turn collections from a chore into a competitive advantage.
-            </p>
-            <BenefitList
-              items={[
-                "On-time collection up to 92% on average.",
-                "AI nudges that recover 4 of 5 overdue fees.",
-                "FY-level finance roll-up across properties.",
-              ]}
-            />
-          </div>
-          <MockFinanceDashboard />
-        </div>
-      </section>
+      <FeatureSplit
+        copy={{
+          chip: "What you'll see",
+          chipIcon: BedDouble,
+          title: "Every bed, at a glance",
+          desc: "We'll walk you through a sample residence set up like yours — occupancy down to the bed, move-out notices and vacancies.",
+          points: [
+            "Property → Block → Floor → Room → Bed in one view",
+            "Vacant, occupied, blocked and maintenance beds at a glance",
+            "Move-ins, move-outs and bed transfers in a few clicks",
+          ],
+        }}
+        image={marketingAssets.room}
+        imageAlt="Isometric hostel room with two of three beds occupied"
+        imageSide="left"
+        sectionClassName="bg-background"
+      />
 
-      <section className="border-t border-dark-border py-20">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <SectionHeading eyebrow="Why operators say yes" title="Demos that turn into decisions" />
-          <div className="mt-12 grid gap-5 md:grid-cols-2">
-            <TestimonialCard
-              quote="I booked the demo thinking I'd shop around. We signed within the same week — the product spoke for itself."
-              name="Karthik Reddy"
-              role="Owner · 480-bed PG, Hyderabad"
-            />
-            <TestimonialCard
-              quote="The demo answered every question my CFO had. Going live took a weekend."
-              name="Priya Saxena"
-              role="Director · Boarding school, Dehradun"
-            />
-          </div>
-        </div>
-      </section>
-      <CTAStrip />
-    </div>
-  );
-}
+      <FeatureSplit
+        copy={{
+          chip: "Every role",
+          chipIcon: Users,
+          title: "One platform, a view for every role",
+          desc: "We'll show you how each person in your residence works in Hostylia — each with their own focused view of the same live data.",
+          points: [
+            "Owners and admins: occupancy, collections and dues",
+            "Wardens: rooms, attendance, complaints and gate passes",
+            "Accountants: invoices, payments and receipts",
+            "Students and parents: fees, notices and updates",
+          ],
+        }}
+        image={marketingAssets.roleDashboards}
+        imageAlt="Stacked dashboard cards for the Admin, Warden, Student and Parent roles"
+        sectionClassName="bg-linear-to-b from-background to-mint/40"
+      />
 
-function Field({
-  label,
-  name,
-  type = "text",
-  placeholder,
-  required,
-  textarea,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  placeholder?: string;
-  required?: boolean;
-  textarea?: boolean;
-}) {
-  const cls =
-    "mt-1.5 w-full rounded-lg border border-dark-border bg-[color-mix(in_oklab,var(--background)_70%,transparent)] px-3 py-2.5 text-sm text-foreground placeholder:text-soft-grey/80 focus:border-soft-teal focus:outline-none focus:ring-2 focus:ring-soft-teal/30";
-  return (
-    <label className={textarea ? "mt-4 block" : "block"}>
-      <span className="text-xs font-semibold uppercase tracking-widest text-soft-grey">
-        {label}
-      </span>
-      {textarea ? (
-        <textarea
-          name={name}
-          placeholder={placeholder}
-          required={required}
-          rows={4}
-          className={cls}
-        />
-      ) : (
-        <input
-          type={type}
-          name={name}
-          placeholder={placeholder}
-          required={required}
-          className={cls}
-        />
-      )}
-    </label>
-  );
-}
+      <FaqSection
+        title="Demo Questions, Answered"
+        faqs={faqs}
+        sectionClassName="bg-linear-to-b from-mint/40 to-background"
+      />
 
-function Bullet({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
-  return (
-    <div className="card-lift rounded-2xl border border-dark-border bg-card p-5">
-      <Icon size={20} className="text-soft-teal" />
-      <div className="mt-2 text-base font-bold text-foreground">{title}</div>
-      <div className="text-sm text-soft-grey">{desc}</div>
+      <CtaBanner
+        title="Have a quick question first?"
+        desc="Our team is happy to help — or explore how Hostylia fits your type of residence."
+        primary={{ label: "Talk to Our Team", to: "/contact", icon: MessageCircle }}
+        secondary={{ label: "Explore Solutions", to: "/solutions", icon: LayoutGrid }}
+      />
     </div>
   );
 }

@@ -231,6 +231,8 @@ const APP_ROUTE_PREFIXES = [
   "/signup",
   "/verify-otp",
   "/verify-email",
+  "/forgot-password",
+  "/reset-password",
   "/access-pending",
   "/post-login",
   "/403",

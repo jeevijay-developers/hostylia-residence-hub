@@ -68,7 +68,14 @@
     "resetPasswordTitle": "नया पासवर्ड सेट करें",
     "resetPasswordSubtitle": "अपने खाते के लिए एक नया पासवर्ड चुनें।",
     "newPasswordLabel": "नया पासवर्ड",
-    "updatePassword": "पासवर्ड अपडेट करें"
+    "updatePassword": "पासवर्ड अपडेट करें",
+    "showcaseChip": "स्मार्ट रेज़िडेंशियल मैनेजमेंट",
+    "showcaseTitle": "अपनी रेज़िडेंस एक ही जगह से चलाएँ",
+    "showcasePoint1": "कमरे, बेड और आवंटन — एक ही नज़र में",
+    "showcasePoint2": "फ़ीस, रसीदें और बकाया — हमेशा अपडेटेड",
+    "showcasePoint3": "हाज़िरी, गेट पास और शिकायतें",
+    "showcasePoint4": "अभिभावकों को हर अपडेट",
+    "showcaseImageAlt": "लैपटॉप पर Hostylia डैशबोर्ड और फ़ोन पर रेज़िडेंट ऐप"
   },
   "parent": {
     "shellTitle": "अभिभावक पोर्टल",

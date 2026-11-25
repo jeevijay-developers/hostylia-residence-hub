@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, ArrowRight } from "lucide-react";
+import { Menu, ArrowRight, LogIn } from "lucide-react";
 import { Logo } from "@/components/site/Logo";
 import { MobileNav } from "./MobileNav";
 import { siteNavItems } from "./site-nav";
@@ -38,7 +38,7 @@ export function SiteHeader() {
         >
           <Logo variant="lockup" className="h-7 w-auto md:h-8" />
 
-          <nav className="hidden items-center justify-center gap-1 md:flex" aria-label="Main">
+          <nav className="hidden items-center justify-center gap-1 lg:flex" aria-label="Main">
             {siteNavItems.map((item) => {
               const isActive = pathname === item.to;
               return (
@@ -60,6 +60,11 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2 justify-self-end">
+            <Button asChild variant="glass" size="pill" className="hidden sm:inline-flex">
+              <Link to="/login">
+                <LogIn /> Sign In
+              </Link>
+            </Button>
             <Button asChild variant="brand" size="pill" className="hidden sm:inline-flex">
               <Link to="/book-demo">
                 Book a Demo <ArrowRight />
@@ -69,7 +74,7 @@ export function SiteHeader() {
               <SheetTrigger asChild>
                 <button
                   aria-label="Open menu"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card/70 text-foreground md:hidden"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card/70 text-foreground lg:hidden"
                 >
                   <Menu size={20} />
                 </button>

@@ -14,7 +14,7 @@ import { PricingPlans } from "@/components/site/landing/PricingPlans";
 import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/FeatureGrid";
 import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
 import { FaqSection } from "@/components/site/marketing/FaqSection";
-import { faqPageJsonLd, type Faq } from "@/components/site/marketing/faq";
+import { faqPageJsonLd, TRIAL_FAQ, type Faq } from "@/components/site/marketing/faq";
 import { CtaBanner } from "@/components/site/marketing/CtaBanner";
 
 const faqs: Faq[] = [
@@ -22,10 +22,7 @@ const faqs: Faq[] = [
     q: "How is Hostylia priced?",
     a: "Hostylia is priced per student per month, with plans for hostels of every size.",
   },
-  {
-    q: "Is there a free trial?",
-    a: "Yes — book a demo and we'll configure a trial environment for your property.",
-  },
+  TRIAL_FAQ,
   {
     q: "Do you support multiple properties?",
     a: "Absolutely. Multi-property owners get portfolio-wide roll-ups on Enterprise.",

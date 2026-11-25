@@ -23,7 +23,7 @@ import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/Featu
 import { FaqSection } from "@/components/site/marketing/FaqSection";
 import { faqPageJsonLd, type Faq } from "@/components/site/marketing/faq";
 import { CtaBanner } from "@/components/site/marketing/CtaBanner";
-import { ContactForm } from "@/components/site/support/ContactForm";
+import { LeadForm } from "@/components/site/marketing/LeadForm";
 
 const faqs: Faq[] = [
   {
@@ -135,7 +135,7 @@ function SupportPage() {
             })}
           </ul>
         }
-        media={<ContactForm />}
+        media={<LeadForm kind="contact" />}
       />
 
       <FeatureGrid

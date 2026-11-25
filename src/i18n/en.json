@@ -68,7 +68,14 @@
     "resetPasswordTitle": "Set a new password",
     "resetPasswordSubtitle": "Choose a new password for your account.",
     "newPasswordLabel": "New password",
-    "updatePassword": "Update password"
+    "updatePassword": "Update password",
+    "showcaseChip": "Smart residential management",
+    "showcaseTitle": "Run your residence from one place",
+    "showcasePoint1": "Rooms, beds and allocations in one view",
+    "showcasePoint2": "Fees, receipts and dues — always up to date",
+    "showcasePoint3": "Attendance, gate passes and complaints",
+    "showcasePoint4": "Parents kept in the loop",
+    "showcaseImageAlt": "Hostylia dashboard on a laptop and the resident app on a phone"
   },
   "parent": {
     "shellTitle": "Parent portal",

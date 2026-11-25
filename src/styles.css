@@ -528,6 +528,22 @@
     }
   }
 
+  /* Auth shell (login, signup, OTP, password reset…): re-point the shadcn
+     primary + focus-ring tokens at the marketing emerald inside this scope, so
+     the existing forms' default Buttons, text-primary links and focus rings
+     match the marketing site without touching any auth form code. */
+  .auth-brand {
+    --primary: var(--brand-green);
+    --primary-foreground: var(--brand-green-foreground);
+    --ring: var(--brand-green);
+  }
+  /* With --primary == --ring, a primary Button's 1px focus ring vanishes into its
+     own fill; an offset outline keeps keyboard focus visible on the card. */
+  .auth-brand :is(button, a):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
   /* Brand CTA depth: emerald drop shadow + a subtle top highlight. */
   .shadow-brand-cta {
     box-shadow:

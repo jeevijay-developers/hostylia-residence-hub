@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
 import { Logo } from "@/components/site/Logo";
 import { Button } from "@/components/ui/button";
 import { siteNavItems } from "./site-nav";
@@ -26,10 +26,15 @@ export function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           ))}
         </ul>
       </nav>
-      <div className="border-t border-border p-4">
+      <div className="space-y-3 border-t border-border p-4">
         <Button asChild variant="brand" size="pill-lg" className="w-full">
           <Link to="/book-demo" onClick={onNavigate}>
             Book a Demo <ArrowRight />
+          </Link>
+        </Button>
+        <Button asChild variant="glass" size="pill-lg" className="w-full">
+          <Link to="/login" onClick={onNavigate}>
+            <LogIn /> Sign In
           </Link>
         </Button>
       </div>

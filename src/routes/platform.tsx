@@ -1,23 +1,138 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { canonicalUrl } from "@/lib/site";
 import {
-  Cpu,
-  Cloud,
-  Shield,
-  Layers,
-  Smartphone,
-  Database,
-  Plug,
-  Lock,
-  Globe,
-  Zap,
+  BadgeCheck,
+  BellRing,
+  Boxes,
+  Building2,
+  CalendarDays,
+  CreditCard,
+  DatabaseZap,
+  FileLock,
+  History,
+  IndianRupee,
+  KeyRound,
+  LayoutGrid,
+  Link2,
+  MonitorSmartphone,
+  RefreshCw,
+  ShieldCheck,
+  UserCheck,
+  UserCog,
+  Users,
 } from "lucide-react";
-import { PageHero, CTAStrip } from "@/components/site/PageHero";
-import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
-import { IllustrationCard } from "@/components/site/IllustrationCard";
-import moveOutNotice from "@/assets/illustrations/move-out-notice.jpg";
-import buildingHero from "@/assets/illustrations/building-hero.jpg";
-import { MockOccupancyDashboard, StatBand, BenefitList } from "@/components/site/HtmlMockups";
+import { canonicalUrl } from "@/lib/site";
+import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/FeatureGrid";
+import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
+import { FaqSection } from "@/components/site/marketing/FaqSection";
+import { faqPageJsonLd, type Faq } from "@/components/site/marketing/faq";
+import { CtaBanner } from "@/components/site/marketing/CtaBanner";
+import { PlatformHero } from "@/components/site/platform/PlatformHero";
+
+// Copy here describes what the product does today (see docs/PRD.md stages):
+// no uptime / latency / certification figures, SSO, public API or native apps.
+const foundations: FeatureItem[] = [
+  {
+    title: "Property hierarchy",
+    desc: "Property → Block → Floor → Room → Bed, modelled end to end so occupancy is accurate down to the bed.",
+    icon: Building2,
+  },
+  {
+    title: "Role-based workspaces",
+    desc: "Admins, accountants, wardens, students and parents each get a workspace built around their job.",
+    icon: Users,
+  },
+  {
+    title: "Live updates",
+    desc: "Gate passes, attendance and activity feeds refresh on their own — no reloading to see what changed.",
+    icon: RefreshCw,
+  },
+  {
+    title: "Works on any device",
+    desc: "A responsive web app that works from a phone to a desktop browser — nothing to install.",
+    icon: MonitorSmartphone,
+  },
+  {
+    title: "Fees and payments",
+    desc: "Online payments through Razorpay, automatic receipts and invoices that are never silently edited.",
+    icon: IndianRupee,
+  },
+  {
+    title: "Notifications",
+    desc: "In-app alerts and SMS keep wardens, students and parents in the loop as things happen.",
+    icon: BellRing,
+  },
+];
+
+const safeguards: FeatureItem[] = [
+  {
+    title: "Isolated data",
+    desc: "Every record belongs to one organisation, and the database itself enforces it.",
+    icon: DatabaseZap,
+  },
+  {
+    title: "Linked parents only",
+    desc: "A parent sees a student only after an admin has linked them.",
+    icon: Link2,
+  },
+  {
+    title: "Verified payments",
+    desc: "A payment counts only once Razorpay's signed confirmation is verified.",
+    icon: BadgeCheck,
+  },
+  {
+    title: "No card data stored",
+    desc: "Card details stay with the payment gateway; Hostylia never stores them.",
+    icon: CreditCard,
+  },
+  {
+    title: "Two-person refunds",
+    desc: "A refund needs a second person's approval — never the requester's own.",
+    icon: UserCheck,
+  },
+  {
+    title: "Audit trail",
+    desc: "Sensitive actions are recorded with who did what, and when.",
+    icon: History,
+  },
+  {
+    title: "Private documents",
+    desc: "KYC files are stored privately and opened through short-lived links.",
+    icon: FileLock,
+  },
+  {
+    title: "Secure sign-in",
+    desc: "Phone OTP or email and password, over encrypted connections.",
+    icon: KeyRound,
+  },
+];
+
+const faqs: Faq[] = [
+  {
+    q: "Do students and parents need to install an app?",
+    a: "No. Hostylia is a responsive web app that works in any modern browser on phones, tablets and computers — there is nothing to download from an app store.",
+  },
+  {
+    q: "Can one hostel see another hostel's data?",
+    a: "No. Every record belongs to a single organisation, and the database itself refuses requests for another organisation's data. It is not left to the app screens to hide it.",
+  },
+  {
+    q: "How is an online payment confirmed?",
+    a: "Payments are processed by Razorpay. An invoice is marked paid only after Razorpay's signed server-to-server confirmation has been verified — never from the browser redirect alone.",
+  },
+  {
+    q: "Can I manage more than one property?",
+    a: "Yes. One account can hold several properties, each with its own blocks, rooms, staff and fees, and admins switch between them without signing out.",
+  },
+  {
+    q: "Can I control what wardens and accountants can do?",
+    a: "Yes. Admins can customise each warden's and accountant's permissions — for example, letting a warden see rooms and beds without touching fee plans.",
+  },
+  {
+    q: "Which languages are supported?",
+    a: "English, with Hindi available for sign-in and the parent portal. More screens are being translated.",
+  },
+];
 
 export const Route = createFileRoute("/platform")({
   head: () => ({
@@ -25,176 +140,107 @@ export const Route = createFileRoute("/platform")({
       { title: "Platform — Hostylia" },
       {
         name: "description",
-        content: "A modern, secure platform built for residential operations at any scale.",
+        content:
+          "The secure platform behind Hostylia: property hierarchy, role-based workspaces, verified payments and data isolated per organisation.",
       },
       { property: "og:title", content: "Platform — Hostylia" },
       {
         property: "og:description",
-        content: "Architecture, integrations and security behind Hostylia.",
+        content: "One secure platform behind every residence.",
       },
       { property: "og:url", content: canonicalUrl("/platform") },
+      { "script:ld+json": faqPageJsonLd(faqs) },
     ],
-    links: [{ rel: "canonical", href: canonicalUrl("/platform") }],
+    links: [
+      { rel: "canonical", href: canonicalUrl("/platform") },
+      {
+        rel: "preload",
+        as: "image",
+        href: marketingAssets.devices.src,
+        fetchPriority: "high",
+      },
+    ],
   }),
   component: PlatformPage,
 });
 
 function PlatformPage() {
-  const pillars = [
-    { icon: Cloud, title: "Cloud-Native", desc: "Multi-region cloud with 99.9% uptime SLAs." },
-    {
-      icon: Shield,
-      title: "Enterprise Security",
-      desc: "Role-based access, SSO, audit logs and encryption.",
-    },
-    {
-      icon: Layers,
-      title: "Property Hierarchy",
-      desc: "Property → Block → Floor → Room → Bed modeled end to end.",
-    },
-    {
-      icon: Smartphone,
-      title: "Apps for Everyone",
-      desc: "Owner, manager, warden, student and parent apps.",
-    },
-    {
-      icon: Database,
-      title: "Reliable Data",
-      desc: "Daily backups, point-in-time recovery, GDPR ready.",
-    },
-    { icon: Plug, title: "Open Integrations", desc: "Webhooks, REST APIs and partner connectors." },
-    {
-      icon: Lock,
-      title: "Privacy First",
-      desc: "Granular consent, data residency and DPA support.",
-    },
-    {
-      icon: Globe,
-      title: "Multi-Language",
-      desc: "Built for India and global residential portfolios.",
-    },
-    { icon: Zap, title: "Real-Time Sync", desc: "Live updates across every dashboard and app." },
-  ];
   return (
-    <div className="bg-section-dark">
-      <PageHero
-        eyebrow="Platform"
-        title="A modern operating system for residential properties"
-        desc="Built on a secure, scalable architecture designed for hostels, schools and institutional residences."
+    <div className="landing-type">
+      <PlatformHero />
+
+      <FeatureGrid
+        chip="Platform foundations"
+        chipIcon={Boxes}
+        title="Everything Runs on One System"
+        desc="The building blocks every Hostylia workspace shares."
+        items={foundations}
+        columns={3}
+        sectionClassName="bg-background"
       />
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <SectionHeading eyebrow="Architecture" title="The Hostylia platform" />
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {pillars.map((p) => (
-              <FeatureCard key={p.title} {...p} tone="teal" />
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="border-y border-dark-border py-20">
-        <div className="mx-auto max-w-5xl px-4 md:px-6">
-          <SectionHeading
-            eyebrow="Stack"
-            title="Trusted infrastructure"
-            desc="Modern cloud, hardened security and battle-tested integrations."
-          />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-            {["Cloud Hosting", "Encrypted Storage", "UPI Gateways", "SMS / WhatsApp"].map((t) => (
-              <div key={t} className="rounded-xl border border-dark-border bg-card p-5 text-center">
-                <Cpu size={20} className="mx-auto text-soft-teal" />
-                <div className="mt-2 text-sm font-bold text-foreground">{t}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="py-20">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
-          <MockOccupancyDashboard />
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold">
-              Live Operations
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
-              A control room for every residence
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-soft-grey">
-              Beds, blocks and floors are live objects — not spreadsheets. Owners see real status
-              from anywhere; wardens act on it in the same screen.
-            </p>
-            <BenefitList
-              items={[
-                "Property → Block → Floor → Room → Bed hierarchy.",
-                "Real-time occupancy with vacancy alerts.",
-                "Multi-tenant isolation with single sign-on for chains.",
-                "99.9% uptime SLA on production workloads.",
-              ]}
-            />
-          </div>
-        </div>
-      </section>
 
-      <section className="border-t border-dark-border py-20">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2">
-          <IllustrationCard src={moveOutNotice} alt="Move-out lifecycle card" />
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold">
-              Stay Lifecycle
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
-              From onboarding to move-out — fully tracked
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-soft-grey">
-              Lock-in periods, notice windows, renewals and exits are modeled end to end. Wardens,
-              owners and parents always see the same accurate status.
-            </p>
-            <BenefitList
-              items={[
-                "Digital agreements with e-sign and KYC.",
-                "Automated notice and refund calculation.",
-                "Alumni archive with one-click re-onboarding.",
-              ]}
-            />
-          </div>
-        </div>
-      </section>
+      <FeatureSplit
+        copy={{
+          chip: "Live occupancy",
+          chipIcon: Building2,
+          title: "Your whole property, down to the bed",
+          desc: "Blocks, floors, rooms and beds are live records, not spreadsheet rows. Allocate, transfer and vacate in a few clicks, and everyone sees the same status.",
+          points: [
+            "Property → Block → Floor → Room → Bed",
+            "Bed-level allocation and vacancy at a glance",
+            "Several properties under one account",
+            "Wardens scoped to the blocks they manage",
+          ],
+        }}
+        image={marketingAssets.room}
+        imageAlt="Isometric hostel room with two of three beds occupied"
+        imageSide="left"
+        sectionClassName="bg-linear-to-b from-background to-mint/40"
+      />
 
-      <section className="border-t border-dark-border py-12">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <StatBand
-            stats={[
-              { v: "99.9%", l: "Uptime SLA" },
-              { v: "<200ms", l: "API p95 latency" },
-              { v: "SOC 2", l: "Security posture" },
-              { v: "12+", l: "Open integrations" },
-            ]}
-          />
-        </div>
-      </section>
+      <FeatureSplit
+        copy={{
+          chip: "Role-based access",
+          chipIcon: UserCog,
+          title: "Every role sees exactly what it should",
+          desc: "Fixed roles with clear boundaries, so the right people act on the right information — and nobody sees more than their job needs.",
+          points: [
+            "Admins run the property; accountants own finance",
+            "Wardens handle daily operations and the gate",
+            "Students see only their own room, fees and requests",
+            "Parents see only the students they're linked to",
+          ],
+        }}
+        image={marketingAssets.roleDashboards}
+        imageAlt="Stacked workspace cards for Admin, Warden, Student and Parent roles"
+        sectionClassName="bg-linear-to-b from-mint/40 to-background"
+      />
 
-      <section className="border-t border-dark-border py-20">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 md:px-6 lg:grid-cols-[1.1fr_1fr]">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-gold">
-              Engineered for Scale
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold text-foreground md:text-3xl">
-              A platform that grows with your portfolio
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-soft-grey">
-              From a single hostel to a national chain, Hostylia's architecture is built for high
-              availability, fast performance and secure multi-tenant isolation.
-            </p>
-          </div>
-          <IllustrationCard
-            src={buildingHero}
-            alt="Luminous modern residential apartment tower at night"
-          />
-        </div>
-      </section>
+      <FeatureGrid
+        chip="Security & trust"
+        chipIcon={ShieldCheck}
+        title="Safeguards Built Into the Core"
+        desc="Protections that work the same way for every property, every day."
+        items={safeguards}
+        columns={4}
+        layout="inline"
+        isPanel
+        sectionClassName="bg-background"
+      />
 
-      <CTAStrip />
+      <FaqSection
+        title="Platform Questions, Answered"
+        desc="How Hostylia works under the hood."
+        faqs={faqs}
+        sectionClassName="bg-linear-to-b from-background to-mint/40"
+      />
+
+      <CtaBanner
+        title="See the platform in action"
+        desc="Book a walkthrough and we'll show Hostylia set up around your properties, roles and fee structure."
+        primary={{ label: "Book a Demo", to: "/book-demo", icon: CalendarDays }}
+        secondary={{ label: "Explore Solutions", to: "/solutions", icon: LayoutGrid }}
+      />
     </div>
   );
 }
