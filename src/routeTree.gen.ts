@@ -80,6 +80,7 @@ import { Route as AuthenticatedStudentHomeRouteImport } from './routes/_authenti
 import { Route as AuthenticatedStudentMessRouteImport } from './routes/_authenticated/student.mess'
 import { Route as AuthenticatedStudentNoticesRouteImport } from './routes/_authenticated/student.notices'
 import { Route as AuthenticatedStudentProfileRouteImport } from './routes/_authenticated/student.profile'
+import { Route as AuthenticatedStudentRefundsRouteImport } from './routes/_authenticated/student.refunds'
 import { Route as AuthenticatedSuperAdminBillingRouteImport } from './routes/_authenticated/super-admin.billing'
 import { Route as AuthenticatedSuperAdminDashboardRouteImport } from './routes/_authenticated/super-admin.dashboard'
 import { Route as AuthenticatedSuperAdminFeatureFlagsRouteImport } from './routes/_authenticated/super-admin.feature-flags'
@@ -529,6 +530,12 @@ const AuthenticatedStudentProfileRoute =
     path: '/profile',
     getParentRoute: () => AuthenticatedStudentRoute,
   } as any)
+const AuthenticatedStudentRefundsRoute =
+  AuthenticatedStudentRefundsRouteImport.update({
+    id: '/refunds',
+    path: '/refunds',
+    getParentRoute: () => AuthenticatedStudentRoute,
+  } as any)
 const AuthenticatedSuperAdminBillingRoute =
   AuthenticatedSuperAdminBillingRouteImport.update({
     id: '/billing',
@@ -935,6 +942,7 @@ export interface FileRoutesByFullPath {
   '/student/mess': typeof AuthenticatedStudentMessRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/student/profile': typeof AuthenticatedStudentProfileRoute
+  '/student/refunds': typeof AuthenticatedStudentRefundsRoute
   '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
@@ -1059,6 +1067,7 @@ export interface FileRoutesByTo {
   '/student/mess': typeof AuthenticatedStudentMessRoute
   '/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/student/profile': typeof AuthenticatedStudentProfileRoute
+  '/student/refunds': typeof AuthenticatedStudentRefundsRoute
   '/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
@@ -1187,6 +1196,7 @@ export interface FileRoutesById {
   '/_authenticated/student/mess': typeof AuthenticatedStudentMessRoute
   '/_authenticated/student/notices': typeof AuthenticatedStudentNoticesRoute
   '/_authenticated/student/profile': typeof AuthenticatedStudentProfileRoute
+  '/_authenticated/student/refunds': typeof AuthenticatedStudentRefundsRoute
   '/_authenticated/super-admin/billing': typeof AuthenticatedSuperAdminBillingRoute
   '/_authenticated/super-admin/dashboard': typeof AuthenticatedSuperAdminDashboardRoute
   '/_authenticated/super-admin/feature-flags': typeof AuthenticatedSuperAdminFeatureFlagsRoute
@@ -1317,6 +1327,7 @@ export interface FileRouteTypes {
     | '/student/mess'
     | '/student/notices'
     | '/student/profile'
+    | '/student/refunds'
     | '/super-admin/billing'
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
@@ -1441,6 +1452,7 @@ export interface FileRouteTypes {
     | '/student/mess'
     | '/student/notices'
     | '/student/profile'
+    | '/student/refunds'
     | '/super-admin/billing'
     | '/super-admin/dashboard'
     | '/super-admin/feature-flags'
@@ -1568,6 +1580,7 @@ export interface FileRouteTypes {
     | '/_authenticated/student/mess'
     | '/_authenticated/student/notices'
     | '/_authenticated/student/profile'
+    | '/_authenticated/student/refunds'
     | '/_authenticated/super-admin/billing'
     | '/_authenticated/super-admin/dashboard'
     | '/_authenticated/super-admin/feature-flags'
@@ -2152,6 +2165,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/student/profile'
       preLoaderRoute: typeof AuthenticatedStudentProfileRouteImport
+      parentRoute: typeof AuthenticatedStudentRoute
+    }
+    '/_authenticated/student/refunds': {
+      id: '/_authenticated/student/refunds'
+      path: '/refunds'
+      fullPath: '/student/refunds'
+      preLoaderRoute: typeof AuthenticatedStudentRefundsRouteImport
       parentRoute: typeof AuthenticatedStudentRoute
     }
     '/_authenticated/super-admin/billing': {
@@ -2795,6 +2815,7 @@ interface AuthenticatedStudentRouteChildren {
   AuthenticatedStudentMessRoute: typeof AuthenticatedStudentMessRoute
   AuthenticatedStudentNoticesRoute: typeof AuthenticatedStudentNoticesRoute
   AuthenticatedStudentProfileRoute: typeof AuthenticatedStudentProfileRoute
+  AuthenticatedStudentRefundsRoute: typeof AuthenticatedStudentRefundsRoute
 }
 
 const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
@@ -2806,6 +2827,7 @@ const AuthenticatedStudentRouteChildren: AuthenticatedStudentRouteChildren = {
   AuthenticatedStudentMessRoute: AuthenticatedStudentMessRoute,
   AuthenticatedStudentNoticesRoute: AuthenticatedStudentNoticesRoute,
   AuthenticatedStudentProfileRoute: AuthenticatedStudentProfileRoute,
+  AuthenticatedStudentRefundsRoute: AuthenticatedStudentRefundsRoute,
 }
 
 const AuthenticatedStudentRouteWithChildren =

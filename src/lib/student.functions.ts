@@ -1085,6 +1085,7 @@ export const previewMoveOut = createServerFn({ method: "POST" })
         .select("id, payment_number, amount_paise, paid_at, invoice:invoices!inner(allocation_id)")
         .eq("invoice.allocation_id", data.allocation_id)
         .eq("status", "CAPTURED")
+        .neq("provider", "simulated")
         .order("paid_at", { ascending: true });
       const ids = (pays ?? []).map((p) => p.id);
       const { data: existing } = ids.length

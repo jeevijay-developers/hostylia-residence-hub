@@ -63,6 +63,7 @@ function AdminDashboardPage() {
           .select("amount_paise")
           .eq("property_id", propertyId!)
           .eq("status", "CAPTURED")
+          .neq("provider", "simulated")
           .gte("paid_at", start)
           .lt("paid_at", end),
         supabase

@@ -1,6 +1,7 @@
 // Razorpay: create checkout order for an invoice.
 // Requires secrets: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET.
-// If they aren't set, this returns a clear 503 the UI surfaces.
+// If they aren't set, this returns a clear 503 the UI surfaces — except when
+// payment simulation mode is enabled for the tenant, which never needs them.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -12,16 +13,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
-    const KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
-    if (!KEY_ID || !KEY_SECRET) {
-      return json(
-        { error: "Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." },
-        503,
-        cors,
-      );
-    }
-
     const { invoice_id } = await req.json();
     if (!invoice_id) return json({ error: "invoice_id required" }, 400, cors);
 
@@ -91,6 +82,72 @@ Deno.serve(async (req) => {
       if (kycVerified !== true) {
         return json({ error: "Complete your KYC to access this feature." }, 403, cors);
       }
+    }
+
+    // --- Temporary payment simulation mode -----------------------------
+    // Super-Admin-controlled, per-tenant, expiring feature override (never a
+    // plan_features default — see tenant_feature_overrides / fn_effective_feature).
+    // Reuses every validation above unchanged (invoice, balance, ownership, KYC);
+    // only the "call Razorpay" tail is replaced. No Razorpay API call, no fake
+    // webhook event — a real `payments` row is inserted directly, status
+    // CAPTURED, provider 'simulated', which the existing trg_payments_recalc_invoice
+    // trigger picks up automatically, exactly like a real captured payment.
+    const { data: simFeature } = await admin.rpc("fn_effective_feature", {
+      _tenant_id: inv.tenant_id,
+      _feature_key: "payment_simulation_mode",
+    });
+    if (simFeature && (simFeature as { enabled?: boolean }).enabled === true) {
+      const { data: simPayment, error: simErr } = await admin
+        .from("payments")
+        .insert({
+          tenant_id: inv.tenant_id,
+          property_id: inv.property_id,
+          student_id: inv.student_id,
+          invoice_id: inv.id,
+          payment_number: "",
+          mode: "OTHER",
+          provider: "simulated",
+          provider_payment_ref: `SIM-${crypto.randomUUID()}`,
+          amount_paise: inv.balance_paise,
+          status: "CAPTURED",
+          paid_at: new Date().toISOString(),
+          metadata: { simulated: true, created_by_user_id: userId },
+        })
+        .select("id, payment_number, amount_paise")
+        .single();
+      if (simErr) {
+        // uniq_simulated_payment_per_invoice — one simulated payment per invoice.
+        if ((simErr as { code?: string }).code === "23505") {
+          return json(
+            { error: "This invoice already has a simulated payment recorded." },
+            409,
+            cors,
+          );
+        }
+        return json({ error: simErr.message }, 500, cors);
+      }
+      return json(
+        {
+          simulated: true as const,
+          payment_id: simPayment.id,
+          payment_number: simPayment.payment_number,
+          amount_paise: simPayment.amount_paise,
+          currency: inv.currency,
+        },
+        200,
+        cors,
+      );
+    }
+    // --- End simulation mode --------------------------------------------
+
+    const KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+    const KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    if (!KEY_ID || !KEY_SECRET) {
+      return json(
+        { error: "Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." },
+        503,
+        cors,
+      );
     }
 
     // Scoped to the current key's mode (test/live, per Razorpay's standard

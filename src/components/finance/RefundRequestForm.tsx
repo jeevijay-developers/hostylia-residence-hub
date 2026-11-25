@@ -36,6 +36,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
         .select("id, payment_number, amount_paise, students(full_name)")
         .eq("property_id", propertyId)
         .eq("status", "CAPTURED")
+        .neq("provider", "simulated")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw new Error(error.message);

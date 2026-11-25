@@ -599,13 +599,21 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
       }
       throw new Error(message);
     }
-    return out as {
-      order_id: string;
-      key_id: string;
-      amount_paise: number;
-      currency: string;
-      payment_order_id: string;
-    };
+    return out as
+      | {
+          order_id: string;
+          key_id: string;
+          amount_paise: number;
+          currency: string;
+          payment_order_id: string;
+        }
+      | {
+          simulated: true;
+          payment_id: string;
+          payment_number: string;
+          amount_paise: number;
+          currency: string;
+        };
   });
 
 /**
