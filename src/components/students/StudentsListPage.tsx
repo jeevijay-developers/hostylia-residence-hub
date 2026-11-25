@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { StudentStatusBadge } from "@/components/students/StudentStatusBadge";
+import { StudentLinkBadge } from "@/components/students/StudentLinkBadge";
+import { useStudentsRealtime } from "@/lib/student-realtime";
 import { StudentBulkImportModal } from "@/components/students/StudentBulkImportModal";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 import { MoveOutNoticesPanel } from "@/components/students/MoveOutNoticesPanel";
@@ -201,6 +203,7 @@ export function StudentsListPage({
   const [pendingPurge, setPendingPurge] = useState<{ id: string; full_name: string } | null>(null);
 
   const effectivePropertyRow = properties.find((p) => p.id === effectiveProperty);
+  useStudentsRealtime(effectiveProperty);
 
   function shareAdmissionLink() {
     if (!effectivePropertyRow?.slug) {
@@ -237,7 +240,7 @@ export function StudentsListPage({
       let query = supabase
         .from("students")
         .select(
-          "id, full_name, admission_number, phone, email, status, created_at, deleted_at, allocations(status, deleted_at)",
+          "id, full_name, admission_number, phone, email, status, profile_id, created_at, deleted_at, allocations(status, deleted_at)",
           { count: "exact" },
         )
         .eq("tenant_id", tenantId)
@@ -551,7 +554,7 @@ export function StudentsListPage({
                   <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     STATUS
                   </TableHead>
-                  <TableHead className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+                  <TableHead className="sticky right-0 z-10 bg-card px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
                     ACTIONS
                   </TableHead>
                 </TableRow>
@@ -564,7 +567,7 @@ export function StudentsListPage({
                   const avatarStyle = getAvatarStyle(s.full_name);
                   const initialStr = (firstName[0] || "") + (lastName[0] || "");
                   return (
-                    <TableRow key={s.id} className="hover:bg-accent/30 transition-colors">
+                    <TableRow key={s.id} className="group hover:bg-accent/30 transition-colors">
                       <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div
@@ -591,9 +594,12 @@ export function StudentsListPage({
                         {s.phone ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                        <StudentStatusBadge status={isArchivedView ? "ARCHIVED" : s.status} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StudentStatusBadge status={isArchivedView ? "ARCHIVED" : s.status} />
+                          {!isArchivedView && <StudentLinkBadge isLinked={!!s.profile_id} />}
+                        </div>
                       </TableCell>
-                      <TableCell className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right">
+                      <TableCell className="sticky right-0 z-10 bg-card px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right transition-colors group-hover:bg-accent/30">
                         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                           <Button
                             asChild

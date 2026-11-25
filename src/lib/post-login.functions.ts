@@ -114,7 +114,10 @@ async function linkStudentProfiles(
     .from("students")
     .select("id, tenant_id, property_id, phone, profile_id")
     .is("profile_id", null)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    // Public-form applicants are linked only by fn_link_public_applicant (unique
+    // match required); don't let the loose phone sweep claim them.
+    .or("status.neq.APPLICANT,metadata->>origin.is.null,metadata->>origin.neq.apply_form");
   if (listErr) throw new Error(listErr.message);
 
   const matches = (candidates ?? []).filter((row) => phoneNumbersMatch(authPhone, row.phone ?? ""));
@@ -178,6 +181,25 @@ export const resolvePostLoginDestination = createServerFn({ method: "POST" })
     if (uErr || !userRes.user) return { kind: "login" };
     const user = userRes.user;
     const authPhone = user.phone ? normalizeIndianPhone(user.phone) : null;
+
+    // Public-form applicants: link by VERIFIED email/phone when exactly one
+    // unambiguous record matches (all checks run inside the DB function). Must never
+    // break sign-in, so failures are logged and swallowed.
+    try {
+      // Not in the generated DB types until they are regenerated after the migration.
+      const untyped = supabaseAdmin as unknown as {
+        rpc: (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => PromiseLike<{ error: { message: string } | null }>;
+      };
+      const { error: autoLinkErr } = await untyped.rpc("fn_link_public_applicant", {
+        p_user_id: userId,
+      });
+      if (autoLinkErr) console.warn("fn_link_public_applicant failed", autoLinkErr.message);
+    } catch (e) {
+      console.warn("fn_link_public_applicant threw", e);
+    }
 
     if (authPhone) {
       await linkGuardianProfiles(supabaseAdmin, userId, authPhone);

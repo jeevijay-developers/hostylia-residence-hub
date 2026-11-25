@@ -15,6 +15,67 @@ export type MessMenuItemRow = Database["public"]["Tables"]["mess_menu_items"]["R
 export type MessFeedbackRow = Database["public"]["Tables"]["mess_feedback"]["Row"];
 export type MessHeadcountRow = Database["public"]["Tables"]["mess_headcounts"]["Row"];
 
+/**
+ * Property-local calendar date ("YYYY-MM-DD") for a given IANA timezone —
+ * `new Date().toISOString().slice(0,10)` is UTC, not the property's local
+ * date, so between 00:00-05:29 IST it silently returns yesterday. `en-CA`
+ * formats as ISO (YYYY-MM-DD) directly. Falls back to Asia/Kolkata for a
+ * missing or invalid zone rather than throwing.
+ */
+export function localDateInTimezone(timeZone: string | null | undefined): string {
+  const zone = timeZone || "Asia/Kolkata";
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: zone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  }
+}
+
+/**
+ * The given property's configured timezone, for property-local date
+ * calculations (mess menus, etc). `data` is `undefined` while
+ * loading/disabled — `localDateInTimezone()` already falls back to
+ * Asia/Kolkata for that case, matching `properties.timezone`'s own DB
+ * default, so callers don't need to special-case the loading state.
+ */
+export function usePropertyTimezone(propertyId: string | null) {
+  return useQuery({
+    queryKey: ["property-timezone", propertyId],
+    enabled: !!propertyId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("properties")
+        .select("timezone")
+        .eq("id", propertyId!)
+        .single();
+      if (error) throw error;
+      return data.timezone ?? "Asia/Kolkata";
+    },
+  });
+}
+
+/** Formats a mess_menus.serve_time ("HH:MM:SS"/"HH:MM") as "h:MM AM/PM". */
+export function formatServeTime(t: string | null | undefined): string {
+  if (!t) return "Time not set";
+  const [hStr, mStr] = t.split(":");
+  const h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return "Time not set";
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mStr ?? "00"} ${ampm}`;
+}
+
 export function useAttendance(propertyId: string | null, date: string) {
   return useQuery({
     queryKey: ["attendance", propertyId, date],

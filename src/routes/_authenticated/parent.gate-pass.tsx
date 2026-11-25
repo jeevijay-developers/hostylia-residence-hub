@@ -17,7 +17,7 @@ function ParentGatePassPage() {
       <ParentPageFrame requirePermission="can_view_gate_events">
         {(child) => (
           <div className="space-y-6">
-            <GatePassPanel studentId={child.student_id} canApprove={child.can_approve_gate_pass} />
+            <GatePassPanel studentId={child.student_id} />
             <div className="space-y-3">
               <SectionHeading>{t("parent.gateHistory.title")}</SectionHeading>
               <GateHistoryList studentId={child.student_id} />

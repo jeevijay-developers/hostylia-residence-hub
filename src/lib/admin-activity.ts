@@ -81,7 +81,7 @@ export function useAdminRecentActivity(tenantId: string | null, propertyId: stri
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select("id, payment_number, amount_paise, paid_at, students(full_name)")
+        .select("id, payment_number, amount_paise, provider, paid_at, students(full_name)")
         .eq("property_id", propertyId!)
         .eq("status", "CAPTURED")
         .not("paid_at", "is", null)
@@ -92,6 +92,7 @@ export function useAdminRecentActivity(tenantId: string | null, propertyId: stri
         id: string;
         payment_number: string;
         amount_paise: number;
+        provider: string | null;
         paid_at: string;
         students: { full_name: string } | null;
       }[];
@@ -195,7 +196,7 @@ export function useAdminRecentActivity(tenantId: string | null, propertyId: stri
     for (const p of paymentsQ.data ?? []) {
       list.push({
         type: "Payment Received",
-        detail: `${p.payment_number} — ₹${(p.amount_paise / 100).toFixed(2)}${p.students?.full_name ? ` from ${p.students.full_name}` : ""}`,
+        detail: `${p.payment_number} — ₹${(p.amount_paise / 100).toFixed(2)}${p.students?.full_name ? ` from ${p.students.full_name}` : ""}${p.provider === "simulated" ? " (SIMULATED — test payment)" : ""}`,
         at: p.paid_at,
       });
     }

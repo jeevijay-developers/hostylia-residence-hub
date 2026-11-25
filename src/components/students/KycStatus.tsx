@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { KycDocumentViewButton } from "@/components/students/KycDocumentViewButton";
-import { useResolvedRole } from "@/lib/user-role";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
@@ -157,8 +156,6 @@ function KycDocRow({
   canReview?: boolean;
 }) {
   const qc = useQueryClient();
-  const role = useResolvedRole();
-  const userId = role.data?.userId ?? null;
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -167,40 +164,41 @@ function KycDocRow({
     qc.invalidateQueries({ queryKey: ["student-docs", studentId] });
     qc.invalidateQueries({ queryKey: ["kyc-complete", studentId] });
     qc.invalidateQueries({ queryKey: ["kyc-pending-queue"] });
+    qc.invalidateQueries({ queryKey: ["kyc-decided-queue"] });
   };
 
+  // Routed through the same atomic, row-locked RPC KycApprovalQueueCard
+  // uses — a direct .update() here would bypass the race-condition
+  // protection and review-history capture for this second write path onto
+  // the same `documents` rows.
   const approve = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("documents")
-        .update({
-          verification_status: "VERIFIED",
-          verified_by: userId,
-          verified_at: new Date().toISOString(),
-          rejection_reason: null,
-        })
-        .eq("id", doc.id);
+      // Not in the generated types until types.ts is regenerated after
+      // this migration is applied.
+      const { error } = await supabase.rpc("fn_decide_kyc_document" as never, {
+        p_document_id: doc.id,
+        p_decision: "VERIFIED",
+      } as never);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success(`${doc.document_type} approved`);
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not approve"),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Could not approve");
+      invalidate();
+    },
   });
 
   const reject = useMutation({
     mutationFn: async () => {
       if (!reason.trim()) throw new Error("Reason is required");
-      const { error } = await supabase
-        .from("documents")
-        .update({
-          verification_status: "REJECTED",
-          verified_by: userId,
-          verified_at: new Date().toISOString(),
-          rejection_reason: reason.trim(),
-        })
-        .eq("id", doc.id);
+      const { error } = await supabase.rpc("fn_decide_kyc_document" as never, {
+        p_document_id: doc.id,
+        p_decision: "REJECTED",
+        p_rejection_reason: reason.trim(),
+      } as never);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -209,7 +207,10 @@ function KycDocRow({
       setReason("");
       invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not reject"),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Could not reject");
+      invalidate();
+    },
   });
 
   const showActions = canReview && doc.verification_status === "PENDING";

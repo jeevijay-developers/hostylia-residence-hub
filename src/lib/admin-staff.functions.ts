@@ -194,9 +194,10 @@ async function sendStaffInviteNotificationInner(
 
   // 3. Generate a password-setup link (email invites only).
   //    We use type:"recovery" so the user lands on /reset-password and can
-  //    set their first password. APP_URL must be set to the production URL
-  //    in the server environment — falls back to localhost for local dev.
-  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  //    set their first password. Set APP_URL to the production URL in the
+  //    server environment (see resolveAppUrl for the fallback).
+  const { resolveAppUrl } = await import("@/lib/app-url.server");
+  const appUrl = resolveAppUrl();
   let setupUrl = `${appUrl}/reset-password`;
   if (args.email) {
     try {
@@ -680,7 +681,10 @@ const updateStaffSchema = z.object({
   tenant_id: z.string().uuid(),
   role_assignment_id: z.string().uuid(),
   full_name: z.string().trim().min(2).max(120),
-  phone: z.string().trim().min(6),
+  // Optional, same as inviteSchema — a staff member invited without a phone
+  // (or whose profile otherwise has none) must stay editable; only a
+  // non-empty value is format-checked (min 6).
+  phone: z.string().trim().min(6).nullable().optional(),
   // Omitted = leave block scope untouched; null = "all blocks" (property-wide).
   block_id: z.string().uuid().nullable().optional(),
   // Omitted = leave permissions untouched. An explicit {} clears any
@@ -708,7 +712,10 @@ export const updateStaff = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("profiles")
-      .update({ full_name: data.full_name, phone: normalizeIndianPhone(data.phone) })
+      .update({
+        full_name: data.full_name,
+        phone: data.phone ? normalizeIndianPhone(data.phone) : null,
+      })
       .eq("id", ra.user_id);
     if (error) throw error;
 

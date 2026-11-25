@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,10 @@ import {
   CalendarDays,
   Clock,
   List,
+  Loader2,
   MessageCircle,
   Pencil,
+  RotateCcw,
   Save,
   Send,
   Tag,
@@ -53,6 +55,9 @@ import { useMyStaffProperty } from "@/lib/staff-scope";
 import {
   useMessMenusForDate,
   useStudentsInProperty,
+  formatServeTime,
+  localDateInTimezone,
+  usePropertyTimezone,
   type MessMenuRow,
   type MessMenuItemRow,
   type MessHeadcountRow,
@@ -84,16 +89,6 @@ type FeedbackRow = {
   student_id: string;
   students: { full_name: string } | null;
 };
-
-function formatServeTime(t: string | null | undefined): string {
-  if (!t) return "Time not set";
-  const [hStr, mStr] = t.split(":");
-  const h = parseInt(hStr, 10);
-  if (Number.isNaN(h)) return "Time not set";
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${mStr ?? "00"} ${ampm}`;
-}
 
 function itemsToText(items: MessMenuItemRow[] | undefined): string {
   return [...(items ?? [])]
@@ -127,7 +122,16 @@ export function WardenMessPage() {
   const userId = role.data?.userId ?? null;
   const propQ = useMyStaffProperty(userId);
   const propertyId = propQ.data ?? null;
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const tzQ = usePropertyTimezone(propertyId);
+  const today = localDateInTimezone(tzQ.data);
+  const [date, setDate] = useState(today);
+  // Keeps the date picker's default in step with the property's own
+  // timezone once it loads (tzQ starts as Asia/Kolkata-by-fallback, same
+  // as `today` above), without ever overwriting a date the Warden picked.
+  const dateTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!dateTouchedRef.current) setDate(today);
+  }, [today]);
   const menusQ = useMessMenusForDate(propertyId, date);
   const studentsQ = useStudentsInProperty(propertyId, { page: 0, pageSize: 1 });
   const qc = useQueryClient();
@@ -204,13 +208,41 @@ export function WardenMessPage() {
     queryFn: async (): Promise<FeedbackRow[]> => {
       const menuIds = (menusQ.data ?? []).map((m) => m.id);
       if (!menuIds.length) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("mess_feedback")
         .select("mess_menu_id, rating, comment, created_at, student_id, students(full_name)")
         .in("mess_menu_id", menuIds);
+      if (error) throw error;
       return (data ?? []) as unknown as FeedbackRow[];
     },
   });
+
+  // New feedback can land while this page is already open (a student
+  // submitting from their own session) — without this, the badge/dialog
+  // would only pick it up on the next natural refetch (focus/staleTime).
+  // Scoped by property via the channel name + postgres_changes filter, same
+  // pattern as useGatePasses in lib/ops.ts; "mess-feedback-summary" (no
+  // date/menuIds suffix) invalidates every date this Warden has open.
+  const feedbackChannelId = useId();
+  useEffect(() => {
+    if (!propertyId) return;
+    const channel = supabase
+      .channel(`mess-feedback-${propertyId}-${feedbackChannelId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "mess_feedback",
+          filter: `property_id=eq.${propertyId}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ["mess-feedback-summary"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [propertyId, qc, feedbackChannelId]);
 
   const activeStudentCount = studentsQ.data?.total ?? 0;
 
@@ -222,7 +254,10 @@ export function WardenMessPage() {
           <Input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              dateTouchedRef.current = true;
+              setDate(e.target.value);
+            }}
             className="w-40 pr-8 scheme-dark [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
           />
         </div>
@@ -284,6 +319,9 @@ export function WardenMessPage() {
             key={m.id}
             menu={m as MenuWithChildren}
             feedback={(feedbackQ.data ?? []).filter((f) => f.mess_menu_id === m.id)}
+            feedbackLoading={feedbackQ.isLoading}
+            feedbackError={feedbackQ.isError}
+            onRetryFeedback={() => feedbackQ.refetch()}
             tenantId={tenantId}
             propertyId={propertyId}
             userId={userId}
@@ -303,6 +341,9 @@ export function WardenMessPage() {
 function MenuCard({
   menu,
   feedback,
+  feedbackLoading,
+  feedbackError,
+  onRetryFeedback,
   tenantId,
   propertyId,
   userId,
@@ -310,6 +351,9 @@ function MenuCard({
 }: {
   menu: MenuWithChildren;
   feedback: FeedbackRow[];
+  feedbackLoading: boolean;
+  feedbackError: boolean;
+  onRetryFeedback: () => void;
   tenantId: string | null;
   propertyId: string | null;
   userId: string | null;
@@ -339,6 +383,14 @@ function MenuCard({
     onError: (e) => toast.error(getErrorMessage(e, "Could not delete menu")),
   });
 
+  // Once students have rated/commented on this specific menu, silently
+  // changing what it actually was (meal/title/date/time/items) would make
+  // their feedback misleading — locked client-side here, and enforced at
+  // the DB layer (trg_block_mess_menu_edit_with_feedback /
+  // trg_block_mess_menu_items_change_with_feedback) for any direct API call.
+  const lockedByFeedback = feedback.length > 0;
+  const lockedMessage = "This menu cannot be edited because students have already submitted feedback.";
+
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -350,6 +402,9 @@ function MenuCard({
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
               <Clock className="h-3 w-3" /> {formatServeTime(menu.serve_time)}
             </div>
+            {lockedByFeedback && (
+              <p className="text-xs text-warning mt-1">{lockedMessage}</p>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
@@ -360,7 +415,26 @@ function MenuCard({
                     {menu.title ? ` — ${menu.title}` : ""}
                   </DialogTitle>
                 </DialogHeader>
-                {feedback.length === 0 ? (
+                {feedbackLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Loading feedback…
+                  </div>
+                ) : feedbackError ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Could not load feedback. Please try again.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onRetryFeedback}
+                    >
+                      <RotateCcw className="h-4 w-4" /> Retry
+                    </Button>
+                  </div>
+                ) : feedback.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No feedback available.</p>
                 ) : (
                   <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -386,12 +460,28 @@ function MenuCard({
                 onClick={() => setFeedbackOpen(true)}
                 className="cursor-pointer"
               >
-                <Badge variant="secondary">
-                  ⭐ {avg} ({feedback.length})
-                </Badge>
+                {feedbackLoading ? (
+                  <Badge variant="secondary">
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  </Badge>
+                ) : feedbackError ? (
+                  <Badge variant="destructive">Feedback error</Badge>
+                ) : (
+                  <Badge variant="secondary">
+                    ⭐ {avg} ({feedback.length})
+                  </Badge>
+                )}
               </button>
             </Dialog>
-            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+              disabled={lockedByFeedback}
+              aria-disabled={lockedByFeedback}
+              title={lockedByFeedback ? lockedMessage : undefined}
+              className={lockedByFeedback ? "opacity-50 cursor-not-allowed" : undefined}
+            >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button size="sm" variant="outline" onClick={() => setDeleteOpen(true)}>

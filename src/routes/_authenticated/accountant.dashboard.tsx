@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ReceiptText,
   FileText,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,6 +62,7 @@ function useAccountantCollectionsOverview(propertyId: string | null) {
         .select("amount_paise, paid_at")
         .eq("property_id", propertyId!)
         .eq("status", "CAPTURED")
+        .neq("provider", "simulated")
         .gte("paid_at", queryFrom.toISOString());
       if (error) throw new Error(error.message);
 
@@ -87,7 +89,7 @@ function useAccountantRecentPayments(propertyId: string | null) {
       const { data, error } = await supabase
         .from("payments")
         .select(
-          "id, mode, amount_paise, status, paid_at, created_at, students(full_name), invoices(invoice_number)",
+          "id, mode, amount_paise, status, provider, paid_at, created_at, students(full_name), invoices(invoice_number)",
         )
         .eq("property_id", propertyId!)
         .order("created_at", { ascending: false })
@@ -476,7 +478,14 @@ function RecentPaymentsCard({
                 {rows.map((p) => (
                   <tr key={p.id}>
                     <td className="px-3 py-2.5 font-medium text-foreground max-sm:whitespace-nowrap">
-                      {p.students?.full_name ?? "—"}
+                      <span className="inline-flex items-center gap-1.5">
+                        {p.students?.full_name ?? "—"}
+                        {p.provider === "simulated" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+                            <FlaskConical className="h-3 w-3" /> SIMULATED
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground max-sm:whitespace-nowrap">
                       {p.invoices?.invoice_number ?? "—"}

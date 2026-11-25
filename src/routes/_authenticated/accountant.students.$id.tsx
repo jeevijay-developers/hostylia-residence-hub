@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useAccountantPermissions } from "@/lib/staff-scope";
-import { WardenStudentDetailPage } from "./warden.students.$id";
+import { WardenStudentDetailPage } from "@/components/students/WardenStudentDetail";
 
 // Student detail for an Accountant granted a student permission — reuses the
 // existing Warden detail page; Edit is gated on students_edit inside it.

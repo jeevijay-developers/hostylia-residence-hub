@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, ReceiptText } from "lucide-react";
+import { Download, FlaskConical, ReceiptText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export function InvoiceDetailDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select("id, payment_number, mode, amount_paise, status, paid_at")
+        .select("id, payment_number, mode, amount_paise, status, provider, paid_at")
         .eq("invoice_id", invoiceId)
         .order("paid_at", { ascending: false });
       if (error) throw new Error(error.message);
@@ -123,9 +123,14 @@ export function InvoiceDetailDialog({
                     key={p.id}
                     className="flex items-center justify-between gap-2 rounded-xl border border-border/80 bg-muted/10 p-2.5 text-xs"
                   >
-                    <span className="min-w-0">
+                    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
                       {p.payment_number} · {p.mode}
                       {p.paid_at && ` · ${new Date(p.paid_at).toLocaleDateString()}`}
+                      {p.provider === "simulated" && (
+                        <Badge variant="warning" className="gap-1 text-[10px]">
+                          <FlaskConical className="h-3 w-3" /> SIMULATED
+                        </Badge>
+                      )}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Badge

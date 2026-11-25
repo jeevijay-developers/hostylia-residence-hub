@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { formatInr, type InvoiceStatus } from "@/lib/finance";
 import { useKycComplete } from "@/lib/kyc";
 import { KycGateNotice } from "@/components/students/KycGateNotice";
 import { WaveMark } from "@/components/parent/WaveMark";
+import { SimulatedPaymentSuccessDialog } from "@/components/finance/SimulatedPaymentSuccessDialog";
 
 const STATUS_ICON: Record<InvoiceStatus, typeof CheckCircle2 | null> = {
   DRAFT: null,
@@ -54,6 +56,10 @@ export function InvoiceList({
   const qc = useQueryClient();
   const createOrder = useServerFn(createRazorpayOrder);
   const { complete: kycComplete } = useKycComplete(studentId);
+  const [simResult, setSimResult] = useState<{
+    amount_paise: number;
+    payment_number: string;
+  } | null>(null);
 
   const q = useQuery({
     queryKey: ["student-invoices", studentId],
@@ -72,8 +78,14 @@ export function InvoiceList({
   const pay = useMutation({
     mutationFn: async (invoiceId: string) => createOrder({ data: { invoice_id: invoiceId } }),
     onSuccess: (out) => {
-      // Open Razorpay checkout. Requires window.Razorpay script — loaded on demand.
-      openRazorpayCheckout(out).catch((e) => toast.error(e.message));
+      if ("simulated" in out) {
+        // Simulation mode (payment_simulation_mode feature flag) — no real
+        // Razorpay Checkout, a real `payments` row was already inserted server-side.
+        setSimResult({ amount_paise: out.amount_paise, payment_number: out.payment_number });
+      } else {
+        // Open Razorpay checkout. Requires window.Razorpay script — loaded on demand.
+        openRazorpayCheckout(out).catch((e) => toast.error(e.message));
+      }
       qc.invalidateQueries({ queryKey: ["student-invoices"] });
     },
     onError: (e) =>
@@ -166,7 +178,7 @@ export function InvoiceList({
               {canPay && i.balance_paise > 0 && status !== "VOID" && (
                 <Button
                   size="sm"
-                  className="relative mt-4 w-full rounded-full"
+                  className="relative mt-4 w-fit rounded-full"
                   onClick={() => pay.mutate(i.id)}
                   disabled={!kycComplete || pay.isPending}
                 >
@@ -177,6 +189,12 @@ export function InvoiceList({
           </Card>
         );
       })}
+      <SimulatedPaymentSuccessDialog
+        open={!!simResult}
+        onOpenChange={(open) => !open && setSimResult(null)}
+        amountPaise={simResult?.amount_paise ?? 0}
+        paymentNumber={simResult?.payment_number ?? ""}
+      />
     </div>
   );
 }

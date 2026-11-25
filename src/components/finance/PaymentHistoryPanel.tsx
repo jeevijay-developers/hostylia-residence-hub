@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, History } from "lucide-react";
+import { Download, FlaskConical, History } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +81,7 @@ export function PaymentHistoryPanel({
       let query = supabase
         .from("payments")
         .select(
-          "id, payment_number, mode, amount_paise, status, paid_at, students(full_name), invoices(invoice_number)",
+          "id, payment_number, mode, amount_paise, status, provider, paid_at, students(full_name), invoices(invoice_number)",
           { count: "exact" },
         )
         .eq("property_id", propertyId)
@@ -89,7 +90,12 @@ export function PaymentHistoryPanel({
       if (onlyCapturedToday) {
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        query = query.eq("status", "CAPTURED").gte("paid_at", startOfToday.toISOString());
+        // Matches the Dashboard "Today's Collection" tile's own definition,
+        // which excludes simulated payments from real collections.
+        query = query
+          .eq("status", "CAPTURED")
+          .neq("provider", "simulated")
+          .gte("paid_at", startOfToday.toISOString());
       }
       const { data, error, count } = await query;
       if (error) throw new Error(error.message);
@@ -127,8 +133,13 @@ export function PaymentHistoryPanel({
               className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/20 p-3 text-sm"
             >
               <div className="min-w-0">
-                <p className="break-words font-medium text-foreground sm:truncate">
+                <p className="flex flex-wrap items-center gap-1.5 break-words font-medium text-foreground">
                   {p.payment_number} · {p.students?.full_name ?? "—"}
+                  {p.provider === "simulated" && (
+                    <Badge variant="warning" className="gap-1 text-[10px]">
+                      <FlaskConical className="h-3 w-3" /> SIMULATED
+                    </Badge>
+                  )}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {p.invoices?.invoice_number ?? "—"} · {p.mode} · {p.status}

@@ -134,6 +134,19 @@ export const fullNameSchema = z
   .max(80, "Name is too long")
   .regex(/^\p{L}[\p{L}\s.'-]*$/u, "Name can only contain letters, spaces, and . ' -");
 
+/**
+ * Sanitizes a name-type field as the user types — same character set
+ * `fullNameSchema` validates at submit (letters, spaces, . ' -), applied
+ * live so a digit or symbol never makes it into the field in the first
+ * place. Deliberately keystroke-only, not wired into any Zod schema used
+ * at submit time — an already-saved name containing a digit (seed/test
+ * data, or a pre-existing record) must stay editable and savable; this
+ * only stops *new* non-letter characters from being typed going forward.
+ */
+export function sanitizeNameKeystroke(input: string): string {
+  return input.replace(/[^\p{L}\s.'-]/gu, "");
+}
+
 export const hostelNameSchema = z
   .string()
   .trim()

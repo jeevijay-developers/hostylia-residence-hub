@@ -2,13 +2,14 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { MessageSquare, Send, Soup, Star, Sunrise, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { AlertCircle, Clock, Loader2, MessageSquare, RotateCcw, Send, Soup, Star, Sunrise, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { formatServeTime, localDateInTimezone, usePropertyTimezone } from "@/lib/ops";
 import { useResolvedRole } from "@/lib/user-role";
 import { useStudentPermissions } from "@/lib/staff-scope";
 import { StudentModuleGuard } from "@/components/dashboard/RoleGuard";
@@ -33,15 +34,17 @@ function StudentMessPage() {
     },
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const tzQ = usePropertyTimezone(studentQ.data?.property_id ?? null);
+  const today = localDateInTimezone(tzQ.data);
   const menusQ = useQuery({
     queryKey: ["student-mess-menus", studentQ.data?.property_id, today],
     enabled: !!studentQ.data?.property_id,
     queryFn: async () => {
-      const { data } = await supabase.from("mess_menus")
+      const { data, error } = await supabase.from("mess_menus")
         .select("*, mess_menu_items(*)")
         .eq("property_id", studentQ.data!.property_id)
         .eq("menu_date", today).eq("status", "PUBLISHED").order("meal");
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -59,13 +62,34 @@ function StudentMessPage() {
   const { can } = useStudentPermissions();
   const canWrite = can("mess", "edit");
 
+  const loading = studentQ.isLoading || menusQ.isLoading;
+  const errored = !loading && menusQ.isError;
+  const empty = !loading && !errored && (menusQ.data?.length ?? 0) === 0;
+
   return (
     <StudentModuleGuard module="mess">
       <div className="space-y-4">
-        {(menusQ.data ?? []).map((m) => (
+        {loading && (
+          <div className="flex flex-col items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Loading today&apos;s menu…
+          </div>
+        )}
+        {errored && (
+          <div className="flex flex-col items-center justify-center gap-3 p-10 text-center">
+            <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">
+              Unable to load today&apos;s menu. Please try again.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => menusQ.refetch()}>
+              <RotateCcw className="h-4 w-4" /> Retry
+            </Button>
+          </div>
+        )}
+        {!loading && !errored && (menusQ.data ?? []).map((m) => (
           <MenuCard key={m.id} menu={m} submittedRating={submittedMap.get(m.id)} student={studentQ.data} kycComplete={kycComplete} canWrite={canWrite} onSubmitted={() => { qc.invalidateQueries({ queryKey: ["my-mess-feedback"] }); }} />
         ))}
-        {menusQ.data?.length === 0 && <div className="text-sm text-muted-foreground text-center p-6">No menu published for today.</div>}
+        {empty && <div className="text-sm text-muted-foreground text-center p-6">No menu published for today.</div>}
       </div>
     </StudentModuleGuard>
   );
@@ -79,7 +103,7 @@ const MEAL_STYLE: Record<string, { icon: LucideIcon; iconBg: string; iconText: s
 };
 const DEFAULT_MEAL_STYLE = { icon: UtensilsCrossed, iconBg: "bg-muted", iconText: "text-muted-foreground" };
 
-function MenuCard({ menu, submittedRating, student, kycComplete, canWrite, onSubmitted }: { menu: { id: string; meal: string; title: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; canWrite: boolean; onSubmitted: () => void }) {
+function MenuCard({ menu, submittedRating, student, kycComplete, canWrite, onSubmitted }: { menu: { id: string; meal: string; title: string | null; serve_time: string | null; mess_menu_items?: Array<{ item_name: string }> }; submittedRating: number | undefined; student: { id: string; tenant_id: string; property_id: string } | null | undefined; kycComplete: boolean; canWrite: boolean; onSubmitted: () => void }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const submitMut = useMutation({
@@ -106,6 +130,9 @@ function MenuCard({ menu, submittedRating, student, kycComplete, canWrite, onSub
           <div>
             <div className="font-semibold uppercase tracking-wide text-foreground">
               {menu.meal} {menu.title ? `— ${menu.title}` : ""}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              <Clock className="h-3 w-3" /> {formatServeTime(menu.serve_time)}
             </div>
             <div className="text-xs uppercase text-muted-foreground">{(menu.mess_menu_items ?? []).map((i) => i.item_name).join(" ")}</div>
           </div>

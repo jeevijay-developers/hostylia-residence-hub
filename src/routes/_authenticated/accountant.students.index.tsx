@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StudentFinancePanel } from "@/components/finance/StudentFinancePanel";
 import { useAccountantPermissions, useAccountantProperty } from "@/lib/staff-scope";
-import { WardenStudentsRoute } from "./warden.students.index";
+import { WardenStudentsRoute } from "@/components/students/WardenStudentsPage";
 
 export const Route = createFileRoute("/_authenticated/accountant/students/")({
   validateSearch: (search: Record<string, unknown>): { status?: string } => ({

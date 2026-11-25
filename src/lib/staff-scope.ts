@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
+import { resolveWardenPermission } from "@/lib/warden-permissions";
 
 /**
  * Returns the property scope for the current staff user (any role assigned a
@@ -64,68 +65,6 @@ export function useAccountantProperty() {
   return { propertyId: propQ.data ?? null, isLoading: propQ.isLoading };
 }
 
-// Same defaults as the SQL functions in
-// 20260820140000_warden_full_module_permissions.sql — a key absent from
-// `role_assignments.permissions` means "use the role default", which for a
-// Warden is true for every module key except these three (capabilities that
-// never existed for a Warden before that migration, opt-in only).
-const WARDEN_KEY_DEFAULT_FALSE = new Set([
-  "students_delete",
-  "rooms_beds_create",
-  "rooms_beds_delete",
-]);
-
-// Finance keys never default on for a Warden, unlike the rest of
-// WARDEN_KEY_DEFAULT_FALSE's "on by default, a few carved out" shape — this
-// mirrors the SQL truth in has_finance_permission()/has_role_permission()
-// (20260814070000/20260814090000): only HOSTEL_ADMIN or an explicit
-// `permissions[key] = true` grants a Warden access; the "absent key still
-// passes" default-true fallback those functions give ACCOUNTANT never
-// applies to WARDEN. Without this, the client would show Finance
-// nav/actions as allowed for every Warden by default while the RLS layer
-// silently rejects the underlying query/mutation.
-const WARDEN_FINANCE_KEYS = new Set([
-  "fee_plans_view",
-  "fee_plans_create",
-  "fee_plans_edit",
-  "fee_plans_delete",
-  "invoices_view",
-  "invoices_create",
-  "invoices_edit",
-  "invoices_delete",
-  "payments_view",
-  "payments_create",
-  "payments_edit",
-  "payments_delete",
-  "refunds",
-]);
-
-// Default Warden access when Customize Permissions is OFF: Brief (no key),
-// Students, Attendance, Complaints and Gate only. Mirrors the default list in
-// 20261026100000_warden_default_permissions_five_modules.sql — keep in sync.
-// allocations_view/rooms_beds_view are deliberately absent: the pages are
-// hidden/guarded here, while the backend keeps read-only access so the
-// student detail page can still show the student's current room/bed.
-const WARDEN_DEFAULT_KEYS = new Set([
-  "students_view",
-  "students_create",
-  "students_edit",
-  "attendance_view",
-  "attendance_create",
-  "attendance_edit",
-  "attendance_delete",
-  "complaints",
-  "gate_passes_view",
-  "gate_passes_create",
-  "gate_passes_edit",
-  "gate_passes_delete",
-  "visitors_view",
-  "visitors_create",
-  "visitors_edit",
-  "visitors_delete",
-  "gate_events",
-]);
-
 /**
  * A Warden's own effective per-module permission overrides, read straight
  * from their `role_assignments` row (RLS already allows reading your own
@@ -135,7 +74,7 @@ const WARDEN_DEFAULT_KEYS = new Set([
  * RLS functions, not this hook.
  */
 export function useWardenPermissions() {
-  const { data: role } = useResolvedRole();
+  const { data: role, isLoading: roleLoading } = useResolvedRole();
   const q = useQuery({
     queryKey: ["my-warden-permissions", role?.userId, role?.tenantId],
     enabled: !!role?.userId && !!role?.tenantId && role.role === "WARDEN",
@@ -154,21 +93,21 @@ export function useWardenPermissions() {
     },
   });
   const permissions = (q.data?.permissions ?? {}) as Record<string, boolean>;
-  // "Customize Permissions" OFF is stored as an empty bag; ON always saves
-  // at least one explicit key (admin.staff.tsx seeds every key).
-  const isCustomized = Object.keys(permissions).length > 0;
+  // Shared with the Admin Feature Access panel / Customize Permissions dialog —
+  // see warden-permissions.ts for the rules (they mirror the SQL checkers).
   function can(key: string): boolean {
-    const override = permissions[key];
-    if (override !== undefined) return override;
-    if (!isCustomized) return WARDEN_DEFAULT_KEYS.has(key);
-    if (WARDEN_FINANCE_KEYS.has(key)) return false;
-    return !WARDEN_KEY_DEFAULT_FALSE.has(key);
+    // Synthetic key (not stored) — same meaning as the Accountant's below: the Gate page
+    // hosts Gate Pass and Visitors, so either grant shows it.
+    if (key === "gate_any") return can("gate_passes_view") || can("visitors_view");
+    return resolveWardenPermission(permissions, key, { forUi: true });
   }
   return {
     can,
     propertyId: q.data?.property_id ?? null,
     blockId: q.data?.block_id ?? null,
-    isLoading: q.isLoading,
+    // The permissions query stays disabled until the role resolves, so include the role's
+    // own loading state — otherwise `can()` would briefly answer from the empty default bag.
+    isLoading: roleLoading || q.isLoading,
   };
 }
 

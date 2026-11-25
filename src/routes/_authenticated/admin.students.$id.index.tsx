@@ -31,6 +31,8 @@ import { KycStatus } from "@/components/students/KycStatus";
 import { AgreementViewer } from "@/components/students/AgreementViewer";
 import { GuardianCard } from "@/components/students/GuardianCard";
 import { confirmStudentAdmission } from "@/lib/student.functions";
+import { StudentLinkBadge } from "@/components/students/StudentLinkBadge";
+import { useStudentsRealtime } from "@/lib/student-realtime";
 import { formatInr } from "@/lib/finance";
 import { cn, toneClasses, type SemanticTone } from "@/lib/utils";
 
@@ -68,6 +70,8 @@ function StudentDetailPage() {
       return data;
     },
   });
+
+  useStudentsRealtime(studentQ.data?.property_id);
 
   const confirmAdmission = useMutation({
     mutationFn: () => confirmAdmissionFn({ data: { student_id: id } }),
@@ -153,6 +157,7 @@ function StudentDetailPage() {
                   {s.full_name}
                 </h1>
                 <StudentStatusBadge status={s.status} />
+                <StudentLinkBadge isLinked={!!s.profile_id} />
               </div>
               <p className="mt-1 truncate text-sm text-muted-foreground lg:mt-1.5 lg:text-[0.925rem]">
                 Admission #{s.admission_number} • {s.phone ?? "no phone"}

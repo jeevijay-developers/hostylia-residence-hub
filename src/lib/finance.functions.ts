@@ -599,52 +599,71 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
       }
       throw new Error(message);
     }
-    return out as {
-      order_id: string;
-      key_id: string;
-      amount_paise: number;
-      currency: string;
-      payment_order_id: string;
-    };
+    return out as
+      | {
+          order_id: string;
+          key_id: string;
+          amount_paise: number;
+          currency: string;
+          payment_order_id: string;
+        }
+      | {
+          simulated: true;
+          payment_id: string;
+          payment_number: string;
+          amount_paise: number;
+          currency: string;
+        };
   });
 
 /**
- * Revenue & Collections summary (formerly "P&L"). NOTE: schema doc §50 —
- * v1 does NOT include expense data. This is a collections-side report only.
+ * Daily/monthly collection series for the Finance Overview charts (migration
+ * 20261127090000, fn_collection_series). Same invoice cohort and refund
+ * reconciliation as getCollectionReport (reports.functions.ts /
+ * fn_collection_report), just split by day or month of the invoice's issue
+ * date instead of collapsed into one total — so summing collected_paise
+ * across every row this returns for a given range always equals
+ * getCollectionReport's collected_paise for that same range.
  */
-export const getRevenueCollectionsSummary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((d) => z.object({ property_id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    // Phase 9: aging math is centralised in v_invoice_aging so this page
-    // and /admin/reports agree exactly on every number.
-    const { data: rows, error } = await supabase
-      .from("v_invoice_aging" as never)
-      .select("total_paise, paid_paise, balance_paise, aging_bucket, status" as never)
-      .eq("property_id", data.property_id);
-    if (error) throw new Error(error.message);
+const collectionSeriesFilter = z
+  .object({
+    property_id: z.string().uuid(),
+    from: isoDateSchema,
+    to: isoDateSchema,
+    granularity: z.enum(["day", "month"]),
+  })
+  .refine((v) => isRangeValid(v.from, v.to), "The start date must not be after the end date");
 
-    let totalIssued = 0,
-      totalCollected = 0,
-      totalOutstanding = 0;
-    const aging = { current: 0, "0-30": 0, "31-60": 0, "60+": 0 } as Record<string, number>;
-    for (const i of (rows ?? []) as any[]) {
-      if (i.status === "VOID") continue;
-      totalIssued += i.total_paise;
-      totalCollected += i.paid_paise;
-      if (i.balance_paise > 0 && i.aging_bucket !== "paid") {
-        aging[i.aging_bucket] = (aging[i.aging_bucket] ?? 0) + i.balance_paise;
-        totalOutstanding += i.balance_paise;
-      }
-    }
-    return {
-      total_issued_paise: totalIssued,
-      total_collected_paise: totalCollected,
-      total_outstanding_paise: totalOutstanding,
-      collection_rate: totalIssued > 0 ? totalCollected / totalIssued : 0,
-      aging_paise: aging,
+export interface CollectionSeriesPoint {
+  period: string;
+  received_paise: number;
+  refunded_paise: number;
+  collected_paise: number;
+}
+
+export const getCollectionSeries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => collectionSeriesFilter.parse(d))
+  .handler(async ({ data, context }): Promise<CollectionSeriesPoint[]> => {
+    const rpcClient = context.supabase as unknown as {
+      rpc: (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>;
     };
+    const { data: rows, error } = await rpcClient.rpc("fn_collection_series", {
+      p_property_id: data.property_id,
+      p_from: data.from,
+      p_to: data.to,
+      p_granularity: data.granularity,
+    });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      period: String(r.period),
+      received_paise: Number(r.received_paise ?? 0),
+      refunded_paise: Number(r.refunded_paise ?? 0),
+      collected_paise: Number(r.collected_paise ?? 0),
+    }));
   });
 
 /**

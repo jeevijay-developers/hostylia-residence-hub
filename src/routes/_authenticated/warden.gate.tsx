@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { createFileRoute, Navigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import {
   Clock,
   DoorOpen,
   LogIn,
+  Loader2,
   LogOut,
   QrCode,
   RefreshCw,
@@ -58,7 +59,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useResolvedRole } from "@/lib/user-role";
-import { useMyStaffProperty } from "@/lib/staff-scope";
+import { useMyStaffProperty, useStaffPermissions } from "@/lib/staff-scope";
+import { isGateEventAuthorized, pickGateTab, resolveGateAccess } from "@/lib/gate-access";
 import {
   useGatePasses,
   useGateEventsFeed,
@@ -86,7 +88,7 @@ export const gateSearchSchema = z.object({ view: z.literal("visitors-today").opt
 export const Route = createFileRoute("/_authenticated/warden/gate")({
   validateSearch: gateSearchSchema,
   component: () => (
-    <StaffModuleGuard role="WARDEN" module="gate_passes_view">
+    <StaffModuleGuard role="WARDEN" module="gate_any">
       <WardenGatePage />
     </StaffModuleGuard>
   ),
@@ -161,6 +163,8 @@ const APPROVAL_FILTER_STATUSES: Record<string, string[]> = {
   EXPIRED: ["EXPIRED"],
 };
 
+const NO_PERMISSION = "You do not have permission to do this.";
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -169,11 +173,26 @@ export function WardenGatePage() {
   const role = useResolvedRole();
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
-  const pending = useGatePasses(propertyId, ["PENDING_WARDEN", "PENDING_PARENT"]);
-  const active = useGatePasses(propertyId, ["APPROVED", "ACTIVE"]);
-  const events = useGateEventsFeed(propertyId);
-  const visitors = useVisitors(propertyId);
+  // Effective Warden / Accountant permissions (same resolver as the sidebar and RLS mirror).
+  // Until they have loaded nothing is authorised, so no tab, card or query can flash.
+  const perms = useStaffPermissions();
+  const access = resolveGateAccess(perms.can, !perms.isLoading);
+  // An unauthorised data source gets a null property, which disables its query (and realtime
+  // channel) entirely — nothing is fetched that RLS would reject or that must stay hidden.
+  const passesPropertyId = access.passes ? propertyId : null;
+  const pending = useGatePasses(passesPropertyId, ["PENDING_WARDEN", "PENDING_PARENT"]);
+  const active = useGatePasses(access.scan ? propertyId : null, ["APPROVED", "ACTIVE"]);
+  const events = useGateEventsFeed(access.feed ? propertyId : null);
+  const visitors = useVisitors(access.visitors ? propertyId : null);
   const qc = useQueryClient();
+  // Pick up a permission change made by an Admin while this page stays open.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void qc.invalidateQueries({ queryKey: ["my-warden-permissions"] });
+      void qc.invalidateQueries({ queryKey: ["my-accountant-permissions"] });
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [qc]);
   const decide = useServerFn(decideGatePass);
   const scan = useServerFn(scanGatePass);
   const chkVis = useServerFn(checkVisitor);
@@ -185,7 +204,10 @@ export function WardenGatePage() {
   const [approvalFilter, setApprovalFilter] = useState<
     "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
   >("PENDING");
-  const filteredApprovals = useGatePasses(propertyId, APPROVAL_FILTER_STATUSES[approvalFilter]);
+  const filteredApprovals = useGatePasses(
+    passesPropertyId,
+    APPROVAL_FILTER_STATUSES[approvalFilter],
+  );
   const [approvalSearch, setApprovalSearch] = useState("");
   const [visitorSearch, setVisitorSearch] = useState("");
   const [feedSearch, setFeedSearch] = useState("");
@@ -197,8 +219,10 @@ export function WardenGatePage() {
   const [registerOpen, setRegisterOpen] = useState(false);
 
   const decideMut = useMutation({
-    mutationFn: async (v: { pass_id: string; decision: "APPROVED" | "REJECTED" }) =>
-      decide({ data: { pass_id: v.pass_id, role: "WARDEN", decision: v.decision } }),
+    mutationFn: async (v: { pass_id: string; decision: "APPROVED" | "REJECTED" }) => {
+      if (!access.decidePasses) throw new Error(NO_PERMISSION);
+      return decide({ data: { pass_id: v.pass_id, role: "WARDEN", decision: v.decision } });
+    },
     onSuccess: () => {
       toast.success("Updated");
       qc.invalidateQueries({ queryKey: ["gate-passes"] });
@@ -210,8 +234,10 @@ export function WardenGatePage() {
   const [tokenInput, setTokenInput] = useState("");
   const [scanDirection, setScanDirection] = useState<"IN" | "OUT">("OUT");
   const scanMut = useMutation({
-    mutationFn: async (v: { pass_id: string; token: string; direction: "IN" | "OUT" }) =>
-      scan({ data: v }),
+    mutationFn: async (v: { pass_id: string; token: string; direction: "IN" | "OUT" }) => {
+      if (!access.scan) throw new Error(NO_PERMISSION);
+      return scan({ data: v });
+    },
     onSuccess: () => {
       toast.success("Scanned");
       setTokenInput("");
@@ -222,7 +248,10 @@ export function WardenGatePage() {
   });
 
   const visMut = useMutation({
-    mutationFn: async (v: { visitor_id: string; direction: "IN" | "OUT" }) => chkVis({ data: v }),
+    mutationFn: async (v: { visitor_id: string; direction: "IN" | "OUT" }) => {
+      if (!access.checkVisitors) throw new Error(NO_PERMISSION);
+      return chkVis({ data: v });
+    },
     onSuccess: () => {
       toast.success("Recorded");
       qc.invalidateQueries({ queryKey: ["visitors"] });
@@ -262,17 +291,24 @@ export function WardenGatePage() {
       ((visitors.data as VisitorWithRelations[]) ?? []).filter((v) => v.status === "CHECKED_IN"),
     [visitors.data],
   );
+  // Gate Pass and Visitor events are authorised independently (see gate-access.ts); everything
+  // below — counts and the Live Feed — only ever sees the types this staff member may read.
+  const authorizedEvents = useMemo(
+    () => ((events.data as FeedEvent[]) ?? []).filter((e) => isGateEventAuthorized(access, e)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events.data, access.feedPassEvents, access.feedVisitorEvents],
+  );
   const entriesToday = useMemo(
     () =>
-      (events.data ?? []).filter((e) => e.direction === "IN" && e.event_at.slice(0, 10) === today)
+      authorizedEvents.filter((e) => e.direction === "IN" && e.event_at.slice(0, 10) === today)
         .length,
-    [events.data, today],
+    [authorizedEvents, today],
   );
   const exitsToday = useMemo(
     () =>
-      (events.data ?? []).filter((e) => e.direction === "OUT" && e.event_at.slice(0, 10) === today)
+      authorizedEvents.filter((e) => e.direction === "OUT" && e.event_at.slice(0, 10) === today)
         .length,
-    [events.data, today],
+    [authorizedEvents, today],
   );
 
   const [detailsPass, setDetailsPass] = useState<PassWithStudent | null>(null);
@@ -335,7 +371,7 @@ export function WardenGatePage() {
   }, [filteredApprovals.data, approvalSearch]);
 
   const feedList = useMemo(() => {
-    let list = (events.data as FeedEvent[]) ?? [];
+    let list = authorizedEvents;
     if (feedFilter === "entry") list = list.filter((e) => e.direction === "IN");
     else if (feedFilter === "exit") list = list.filter((e) => e.direction === "OUT");
     else if (feedFilter === "alerts") list = list.filter((e) => e.is_late);
@@ -346,11 +382,29 @@ export function WardenGatePage() {
         (e.students?.full_name ?? e.visitors?.name ?? "").toLowerCase().includes(q),
       );
     return list;
-  }, [events.data, feedFilter, feedTodayOnly, today, feedSearch]);
+  }, [authorizedEvents, feedFilter, feedTodayOnly, today, feedSearch]);
 
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+  // A selected tab can never outlive its permission: fall back to the first authorised one.
+  const activeTab = pickGateTab(access, tab);
+  useEffect(() => {
+    if (activeTab && activeTab !== tab) setTab(activeTab);
+  }, [activeTab, tab]);
+
+  if (perms.isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+  // Neither Gate Pass nor Visitors is authorised (also fires if it is revoked while open).
+  if (!access.any) return <Navigate to="/403" />;
+
+  const kpiCards: { key: string; node: React.ReactNode }[] = [];
+  if (access.passes)
+    kpiCards.push({
+      key: "pending",
+      node: (
         <KpiSummaryCard
           icon={DoorOpen}
           label="Pending Approvals"
@@ -363,6 +417,12 @@ export function WardenGatePage() {
             setTab("approvals");
           }}
         />
+      ),
+    });
+  if (access.visitors) {
+    kpiCards.push({
+      key: "visitors-today",
+      node: (
         <KpiSummaryCard
           icon={UserPlus}
           label="Visitors Today"
@@ -376,6 +436,11 @@ export function WardenGatePage() {
             setTab("visitors");
           }}
         />
+      ),
+    });
+    kpiCards.push({
+      key: "inside",
+      node: (
         <KpiSummaryCard
           icon={Users}
           label="Currently Inside"
@@ -388,6 +453,13 @@ export function WardenGatePage() {
             setTab("visitors");
           }}
         />
+      ),
+    });
+  }
+  if (access.feed) {
+    kpiCards.push({
+      key: "entries",
+      node: (
         <KpiSummaryCard
           icon={LogIn}
           label="Today's Entries"
@@ -401,480 +473,534 @@ export function WardenGatePage() {
             setTab("feed");
           }}
         />
-        <div className="col-span-2">
-          <KpiSummaryCard
-            icon={LogOut}
-            label="Today's Exits"
-            value={exitsToday}
-            caption="Total exits"
-            loading={events.isLoading}
-            tone="muted"
-            onNavigate={() => {
-              setFeedFilter("exit");
-              setFeedTodayOnly(true);
-              setTab("feed");
-            }}
-          />
+      ),
+    });
+    kpiCards.push({
+      key: "exits",
+      node: (
+        <KpiSummaryCard
+          icon={LogOut}
+          label="Today's Exits"
+          value={exitsToday}
+          caption="Total exits"
+          loading={events.isLoading}
+          tone="muted"
+          onNavigate={() => {
+            setFeedFilter("exit");
+            setFeedTodayOnly(true);
+            setTab("feed");
+          }}
+        />
+      ),
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      {kpiCards.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {kpiCards.map((card, i) =>
+            i === kpiCards.length - 1 && kpiCards.length % 2 === 1 ? (
+              <div key={card.key} className="col-span-2">
+                {card.node}
+              </div>
+            ) : (
+              <Fragment key={card.key}>{card.node}</Fragment>
+            ),
+          )}
         </div>
-      </div>
+      )}
 
-      <OverdueOutPassAlerts propertyId={propertyId} />
+      {access.passes && access.events && <OverdueOutPassAlerts propertyId={propertyId} />}
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={activeTab ?? undefined} onValueChange={setTab}>
         <div className="overflow-x-auto border-b border-border">
           <TabsList className="h-auto justify-start rounded-none border-none bg-transparent p-0">
-            <TabsTrigger
-              value="approvals"
-              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
-            >
-              Approvals ({pending.data?.length ?? 0})
-            </TabsTrigger>
-            <TabsTrigger
-              value="scan"
-              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
-            >
-              Scan
-            </TabsTrigger>
-            <TabsTrigger
-              value="visitors"
-              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
-            >
-              Visitors
-            </TabsTrigger>
-            <TabsTrigger
-              value="feed"
-              className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
-            >
-              Live Feed
-            </TabsTrigger>
+            {access.passes && (
+              <TabsTrigger
+                value="approvals"
+                className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+              >
+                Approvals ({pending.data?.length ?? 0})
+              </TabsTrigger>
+            )}
+            {access.scan && (
+              <TabsTrigger
+                value="scan"
+                className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+              >
+                Scan
+              </TabsTrigger>
+            )}
+            {access.visitors && (
+              <TabsTrigger
+                value="visitors"
+                className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+              >
+                Visitors
+              </TabsTrigger>
+            )}
+            {access.feed && (
+              <TabsTrigger
+                value="feed"
+                className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-medium data-[state=active]:border-warning data-[state=active]:bg-transparent data-[state=active]:text-warning data-[state=active]:shadow-none"
+              >
+                Live Feed
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
-        <TabsContent value="approvals" className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-40">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by student or room"
-                className="pl-8"
-                value={approvalSearch}
-                onChange={(e) => setApprovalSearch(e.target.value)}
-              />
+        {access.passes && (
+          <TabsContent value="approvals" className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-40">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by student or room"
+                  className="pl-8"
+                  value={approvalSearch}
+                  onChange={(e) => setApprovalSearch(e.target.value)}
+                />
+              </div>
+              <Select
+                value={approvalFilter}
+                onValueChange={(v) => setApprovalFilter(v as typeof approvalFilter)}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="EXPIRED">Expired</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={approvalFilter}
-              onValueChange={(v) => setApprovalFilter(v as typeof approvalFilter)}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-                <SelectItem value="EXPIRED">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {filteredApprovals.isLoading && <GateSkeletonList />}
-          {!filteredApprovals.isLoading && filteredApprovals.error && (
-            <QueryErrorAlert
-              error={filteredApprovals.error}
-              onRetry={() => filteredApprovals.refetch()}
-            />
-          )}
-
-          {!filteredApprovals.isLoading &&
-            !filteredApprovals.error &&
-            approvalsList.map((p) => (
-              <Card key={p.id}>
-                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 flex-1 gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-warning/15 text-sm font-semibold text-warning">
-                      {initialsOf(p.students?.full_name ?? p.pass_number)}
-                    </span>
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">{p.pass_number}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {p.students?.full_name} · {p.reason}
-                        </p>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
-                          Out: {new Date(p.out_at).toLocaleString()}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <LogIn className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
-                          In: {new Date(p.expected_in_at).toLocaleString()}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={statusBadgeClass(p.status)}>
-                        {p.status}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-row gap-2 sm:w-32 sm:flex-col">
-                    <Button
-                      className="flex-1 sm:flex-none"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDetailsPass(p)}
-                    >
-                      Details
-                    </Button>
-                    {approvalFilter === "PENDING" && (
-                      <>
-                        <Button
-                          className="flex-1 sm:flex-none"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })}
-                        >
-                          <X className="h-4 w-4" /> Reject
-                        </Button>
-                        <Button
-                          className="flex-1 bg-warning text-warning-foreground hover:bg-warning/90 sm:flex-none"
-                          size="sm"
-                          onClick={() => decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })}
-                        >
-                          <Check className="h-4 w-4" /> Approve
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          {!filteredApprovals.isLoading &&
-            !filteredApprovals.error &&
-            approvalsList.length === 0 && (
-              <EmptyState
-                title={
-                  approvalSearch.trim()
-                    ? "No approvals match your search"
-                    : approvalFilter === "PENDING"
-                      ? "No pending approvals"
-                      : `No ${approvalFilter.toLowerCase()} passes`
-                }
+            {filteredApprovals.isLoading && <GateSkeletonList />}
+            {!filteredApprovals.isLoading && filteredApprovals.error && (
+              <QueryErrorAlert
+                error={filteredApprovals.error}
+                onRetry={() => filteredApprovals.refetch()}
               />
             )}
-        </TabsContent>
 
-        <TabsContent value="scan" className="space-y-3">
-          <Card>
-            <CardHeader className="flex-row items-center gap-2.5 space-y-0">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <QrCode className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <CardTitle className="text-base">QR Scan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <CameraQrScanner
-                direction={scanDirection}
-                onDirectionChange={setScanDirection}
-                onDetected={async ({ pass_id, token }) => {
-                  await scanMut.mutateAsync({ pass_id, token, direction: scanDirection });
-                }}
-              />
-              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Or paste the Pass ID and QR token shown on the student's app.
-                </p>
-                <Input
-                  placeholder="Pass ID (UUID)"
-                  className="bg-background"
-                  value={passIdInput}
-                  onChange={(e) => setPassIdInput(e.target.value)}
-                />
-                <Input
-                  placeholder="QR token"
-                  className="bg-background"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    onClick={() =>
-                      scanMut.mutate({ pass_id: passIdInput, token: tokenInput, direction: "OUT" })
-                    }
-                    disabled={!passIdInput || !tokenInput}
-                  >
-                    <LogOut className="h-4 w-4" /> Check OUT
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    variant="outline"
-                    onClick={() =>
-                      scanMut.mutate({ pass_id: passIdInput, token: tokenInput, direction: "IN" })
-                    }
-                    disabled={!passIdInput || !tokenInput}
-                  >
-                    <LogIn className="h-4 w-4" /> Check IN
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <div>
-            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Currently Out
-              {!active.isLoading && (
-                <Badge
-                  variant="outline"
-                  className="border-transparent bg-muted text-muted-foreground"
-                >
-                  {
-                    ((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE")
-                      .length
-                  }
-                </Badge>
-              )}
-            </div>
-            {active.isLoading && <GateSkeletonList compact />}
-            {!active.isLoading &&
-              ((active.data as PassWithStudent[]) ?? [])
-                .filter((p) => p.status === "ACTIVE")
-                .map((p, i) => (
-                  <Card key={p.id} className="mb-2">
-                    <CardContent className="flex items-center gap-3 p-3">
-                      <span
-                        className={cn(
-                          "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold",
-                          avatarTone(i),
-                        )}
-                      >
+            {!filteredApprovals.isLoading &&
+              !filteredApprovals.error &&
+              approvalsList.map((p) => (
+                <Card key={p.id}>
+                  <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 flex-1 gap-3">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-warning/15 text-sm font-semibold text-warning">
                         {initialsOf(p.students?.full_name ?? p.pass_number)}
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          {p.pass_number} · {p.students?.full_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Out since{" "}
-                          {p.actual_out_at ? new Date(p.actual_out_at).toLocaleTimeString() : "—"}
-                        </p>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">{p.pass_number}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {p.students?.full_name} · {p.reason}
+                          </p>
+                        </div>
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Clock
+                              className="h-3.5 w-3.5 shrink-0 text-warning"
+                              aria-hidden="true"
+                            />
+                            Out: {new Date(p.out_at).toLocaleString()}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <LogIn
+                              className="h-3.5 w-3.5 shrink-0 text-success"
+                              aria-hidden="true"
+                            />
+                            In: {new Date(p.expected_in_at).toLocaleString()}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={statusBadgeClass(p.status)}>
+                          {p.status}
+                        </Badge>
                       </div>
-                      <Badge
+                    </div>
+                    <div className="flex shrink-0 flex-row gap-2 sm:w-32 sm:flex-col">
+                      <Button
+                        className="flex-1 sm:flex-none"
+                        size="sm"
                         variant="outline"
-                        className="shrink-0 border-transparent bg-muted text-muted-foreground"
+                        onClick={() => setDetailsPass(p)}
                       >
-                        OUT
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                ))}
-            {!active.isLoading &&
-              ((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE")
-                .length === 0 && (
-                <p className="text-sm text-muted-foreground">No one is currently out.</p>
+                        Details
+                      </Button>
+                      {approvalFilter === "PENDING" && access.decidePasses && (
+                        <>
+                          <Button
+                            className="flex-1 sm:flex-none"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              decideMut.mutate({ pass_id: p.id, decision: "REJECTED" })
+                            }
+                          >
+                            <X className="h-4 w-4" /> Reject
+                          </Button>
+                          <Button
+                            className="flex-1 bg-warning text-warning-foreground hover:bg-warning/90 sm:flex-none"
+                            size="sm"
+                            onClick={() =>
+                              decideMut.mutate({ pass_id: p.id, decision: "APPROVED" })
+                            }
+                          >
+                            <Check className="h-4 w-4" /> Approve
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            {!filteredApprovals.isLoading &&
+              !filteredApprovals.error &&
+              approvalsList.length === 0 && (
+                <EmptyState
+                  title={
+                    approvalSearch.trim()
+                      ? "No approvals match your search"
+                      : approvalFilter === "PENDING"
+                        ? "No pending approvals"
+                        : `No ${approvalFilter.toLowerCase()} passes`
+                  }
+                />
               )}
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
 
-        <TabsContent value="visitors" className="space-y-2">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={visitorView === "all" ? "default" : "outline"}
-              onClick={() => {
-                setVisitorView("all");
-                setVisitorTodayOnly(false);
-              }}
-            >
-              All
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={visitorView === "expected" ? "default" : "outline"}
-              onClick={() => {
-                setVisitorView("expected");
-                setVisitorTodayOnly(false);
-              }}
-            >
-              Expected Today
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={visitorView === "inside" ? "default" : "outline"}
-              onClick={() => {
-                setVisitorView("inside");
-                setVisitorTodayOnly(false);
-              }}
-            >
-              Inside
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={visitorView === "checked_out" ? "default" : "outline"}
-              onClick={() => {
-                setVisitorView("checked_out");
-                setVisitorTodayOnly(false);
-              }}
-            >
-              Checked Out
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by visitor, host, room, or phone"
-                className="pl-8 text-sm placeholder:text-sm"
-                value={visitorSearch}
-                onChange={(e) => setVisitorSearch(e.target.value)}
-              />
+        {access.scan && (
+          <TabsContent value="scan" className="space-y-3">
+            <Card>
+              <CardHeader className="flex-row items-center gap-2.5 space-y-0">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <QrCode className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <CardTitle className="text-base">QR Scan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <CameraQrScanner
+                  direction={scanDirection}
+                  onDirectionChange={setScanDirection}
+                  onDetected={async ({ pass_id, token }) => {
+                    await scanMut.mutateAsync({ pass_id, token, direction: scanDirection });
+                  }}
+                />
+                <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Or paste the Pass ID and QR token shown on the student's app.
+                  </p>
+                  <Input
+                    placeholder="Pass ID (UUID)"
+                    className="bg-background"
+                    value={passIdInput}
+                    onChange={(e) => setPassIdInput(e.target.value)}
+                  />
+                  <Input
+                    placeholder="QR token"
+                    className="bg-background"
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() =>
+                        scanMut.mutate({
+                          pass_id: passIdInput,
+                          token: tokenInput,
+                          direction: "OUT",
+                        })
+                      }
+                      disabled={!passIdInput || !tokenInput}
+                    >
+                      <LogOut className="h-4 w-4" /> Check OUT
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      onClick={() =>
+                        scanMut.mutate({ pass_id: passIdInput, token: tokenInput, direction: "IN" })
+                      }
+                      disabled={!passIdInput || !tokenInput}
+                    >
+                      <LogIn className="h-4 w-4" /> Check IN
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+                <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                Currently Out
+                {!active.isLoading && (
+                  <Badge
+                    variant="outline"
+                    className="border-transparent bg-muted text-muted-foreground"
+                  >
+                    {
+                      ((active.data as PassWithStudent[]) ?? []).filter(
+                        (p) => p.status === "ACTIVE",
+                      ).length
+                    }
+                  </Badge>
+                )}
+              </div>
+              {active.isLoading && <GateSkeletonList compact />}
+              {!active.isLoading &&
+                ((active.data as PassWithStudent[]) ?? [])
+                  .filter((p) => p.status === "ACTIVE")
+                  .map((p, i) => (
+                    <Card key={p.id} className="mb-2">
+                      <CardContent className="flex items-center gap-3 p-3">
+                        <span
+                          className={cn(
+                            "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold",
+                            avatarTone(i),
+                          )}
+                        >
+                          {initialsOf(p.students?.full_name ?? p.pass_number)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {p.pass_number} · {p.students?.full_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Out since{" "}
+                            {p.actual_out_at ? new Date(p.actual_out_at).toLocaleTimeString() : "—"}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-transparent bg-muted text-muted-foreground"
+                        >
+                          OUT
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+              {!active.isLoading &&
+                ((active.data as PassWithStudent[]) ?? []).filter((p) => p.status === "ACTIVE")
+                  .length === 0 && (
+                  <p className="text-sm text-muted-foreground">No one is currently out.</p>
+                )}
             </div>
-            <Button size="sm" className="shrink-0" onClick={() => setRegisterOpen(true)}>
-              <UserPlus className="h-4 w-4" /> Register
-            </Button>
-          </div>
-          {visitors.isLoading && <GateSkeletonList />}
-          {!visitors.isLoading && visitors.error && (
-            <QueryErrorAlert error={visitors.error} onRetry={() => visitors.refetch()} />
-          )}
-          {!visitors.isLoading &&
-            !visitors.error &&
-            visibleVisitors.map((v, i) => (
-              <VisitorCard
-                key={v.id}
-                visitor={v}
-                avatarIndex={i}
-                onOpenDetails={() => setDetailsVisitor(v)}
-              />
-            ))}
-          {!visitors.isLoading && !visitors.error && visibleVisitors.length === 0 && (
-            <EmptyState
-              title={
-                visitorSearch.trim()
-                  ? "No visitors match your search"
-                  : visitorView === "expected"
-                    ? "No visitors expected today"
-                    : visitorView === "inside"
-                      ? "No visitors currently inside"
-                      : visitorView === "checked_out"
-                        ? "No visitors checked out yet"
-                        : "No visitors"
-              }
-            />
-          )}
-          {!visitors.isLoading &&
-            !visitors.error &&
-            visibleVisitors.length > 0 &&
-            (visitorView !== "all" || visitorTodayOnly || visitorSearch.trim()) && (
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+          </TabsContent>
+        )}
+
+        {access.visitors && (
+          <TabsContent value="visitors" className="space-y-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={visitorView === "all" ? "default" : "outline"}
                 onClick={() => {
                   setVisitorView("all");
                   setVisitorTodayOnly(false);
-                  setVisitorSearch("");
                 }}
               >
-                View all visitors <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+                All
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={visitorView === "expected" ? "default" : "outline"}
+                onClick={() => {
+                  setVisitorView("expected");
+                  setVisitorTodayOnly(false);
+                }}
+              >
+                Expected Today
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={visitorView === "inside" ? "default" : "outline"}
+                onClick={() => {
+                  setVisitorView("inside");
+                  setVisitorTodayOnly(false);
+                }}
+              >
+                Inside
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={visitorView === "checked_out" ? "default" : "outline"}
+                onClick={() => {
+                  setVisitorView("checked_out");
+                  setVisitorTodayOnly(false);
+                }}
+              >
+                Checked Out
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by visitor, host, room, or phone"
+                  className="pl-8 text-sm placeholder:text-sm"
+                  value={visitorSearch}
+                  onChange={(e) => setVisitorSearch(e.target.value)}
+                />
+              </div>
+              {access.registerVisitor && (
+                <Button size="sm" className="shrink-0" onClick={() => setRegisterOpen(true)}>
+                  <UserPlus className="h-4 w-4" /> Register
+                </Button>
+              )}
+            </div>
+            {visitors.isLoading && <GateSkeletonList />}
+            {!visitors.isLoading && visitors.error && (
+              <QueryErrorAlert error={visitors.error} onRetry={() => visitors.refetch()} />
             )}
-        </TabsContent>
+            {!visitors.isLoading &&
+              !visitors.error &&
+              visibleVisitors.map((v, i) => (
+                <VisitorCard
+                  key={v.id}
+                  visitor={v}
+                  avatarIndex={i}
+                  onOpenDetails={() => setDetailsVisitor(v)}
+                />
+              ))}
+            {!visitors.isLoading && !visitors.error && visibleVisitors.length === 0 && (
+              <EmptyState
+                title={
+                  visitorSearch.trim()
+                    ? "No visitors match your search"
+                    : visitorView === "expected"
+                      ? "No visitors expected today"
+                      : visitorView === "inside"
+                        ? "No visitors currently inside"
+                        : visitorView === "checked_out"
+                          ? "No visitors checked out yet"
+                          : "No visitors"
+                }
+              />
+            )}
+            {!visitors.isLoading &&
+              !visitors.error &&
+              visibleVisitors.length > 0 &&
+              (visitorView !== "all" || visitorTodayOnly || visitorSearch.trim()) && (
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+                  onClick={() => {
+                    setVisitorView("all");
+                    setVisitorTodayOnly(false);
+                    setVisitorSearch("");
+                  }}
+                >
+                  View all visitors <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+          </TabsContent>
+        )}
 
-        <TabsContent value="feed" className="space-y-2">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={feedFilter === "all" ? "default" : "outline"}
-              onClick={() => {
-                setFeedFilter("all");
-                setFeedTodayOnly(false);
-              }}
-            >
-              All
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={feedFilter === "entry" ? "default" : "outline"}
-              onClick={() => {
-                setFeedFilter("entry");
-                setFeedTodayOnly(false);
-              }}
-            >
-              Entry
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={feedFilter === "exit" ? "default" : "outline"}
-              onClick={() => {
-                setFeedFilter("exit");
-                setFeedTodayOnly(false);
-              }}
-            >
-              Exit
-            </Button>
-            <Button
-              size="sm"
-              className="shrink-0"
-              variant={feedFilter === "alerts" ? "default" : "outline"}
-              onClick={() => {
-                setFeedFilter("alerts");
-                setFeedTodayOnly(false);
-              }}
-            >
-              Alerts
-            </Button>
-          </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by name"
-              className="pl-8 text-sm placeholder:text-sm"
-              value={feedSearch}
-              onChange={(e) => setFeedSearch(e.target.value)}
-            />
-          </div>
-          {events.isLoading && <GateSkeletonList compact />}
-          {!events.isLoading && events.error && (
-            <QueryErrorAlert error={events.error} onRetry={() => events.refetch()} />
-          )}
-          {!events.isLoading && !events.error && feedList.length === 0 && (
-            <EmptyState
-              title={
-                feedSearch.trim() || feedFilter !== "all"
-                  ? "No activity matches your filters"
-                  : "No live activity yet"
-              }
-            />
-          )}
-          {!events.isLoading &&
-            !events.error &&
-            feedList.map((ev, i) => <FeedEventCard key={ev.id} event={ev} avatarIndex={i} />)}
-          {!events.isLoading &&
-            !events.error &&
-            feedList.length > 0 &&
-            (feedFilter !== "all" || feedSearch.trim()) && (
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+        {access.feed && (
+          <TabsContent value="feed" className="space-y-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={feedFilter === "all" ? "default" : "outline"}
                 onClick={() => {
                   setFeedFilter("all");
                   setFeedTodayOnly(false);
-                  setFeedSearch("");
                 }}
               >
-                View all activity <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+                All
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={feedFilter === "entry" ? "default" : "outline"}
+                onClick={() => {
+                  setFeedFilter("entry");
+                  setFeedTodayOnly(false);
+                }}
+              >
+                Entry
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={feedFilter === "exit" ? "default" : "outline"}
+                onClick={() => {
+                  setFeedFilter("exit");
+                  setFeedTodayOnly(false);
+                }}
+              >
+                Exit
+              </Button>
+              <Button
+                size="sm"
+                className="shrink-0"
+                variant={feedFilter === "alerts" ? "default" : "outline"}
+                onClick={() => {
+                  setFeedFilter("alerts");
+                  setFeedTodayOnly(false);
+                }}
+              >
+                Alerts
+              </Button>
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name"
+                className="pl-8 text-sm placeholder:text-sm"
+                value={feedSearch}
+                onChange={(e) => setFeedSearch(e.target.value)}
+              />
+            </div>
+            {events.isLoading && <GateSkeletonList compact />}
+            {!events.isLoading && events.error && (
+              <QueryErrorAlert error={events.error} onRetry={() => events.refetch()} />
             )}
-        </TabsContent>
+            {!events.isLoading && !events.error && feedList.length === 0 && (
+              <EmptyState
+                title={
+                  feedSearch.trim() || feedFilter !== "all"
+                    ? "No activity matches your filters"
+                    : "No live activity yet"
+                }
+              />
+            )}
+            {!events.isLoading &&
+              !events.error &&
+              feedList.map((ev, i) => <FeedEventCard key={ev.id} event={ev} avatarIndex={i} />)}
+            {!events.isLoading &&
+              !events.error &&
+              feedList.length > 0 &&
+              (feedFilter !== "all" || feedSearch.trim()) && (
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent/40"
+                  onClick={() => {
+                    setFeedFilter("all");
+                    setFeedTodayOnly(false);
+                    setFeedSearch("");
+                  }}
+                >
+                  View all activity <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+          </TabsContent>
+        )}
       </Tabs>
 
-      {detailsPass && (
+      {detailsPass && access.passes && (
         <ApprovalDetailsDialog
           pass={detailsPass}
           onOpenChange={(open) => {
@@ -883,17 +1009,18 @@ export function WardenGatePage() {
         />
       )}
 
-      {detailsVisitor && (
+      {detailsVisitor && access.visitors && (
         <VisitorDetailsDialog
           visitor={detailsVisitor}
           visMut={visMut}
+          canCheck={access.checkVisitors}
           onOpenChange={(open) => {
             if (!open) setDetailsVisitor(null);
           }}
         />
       )}
 
-      {registerOpen && (
+      {registerOpen && access.registerVisitor && (
         <RegisterVisitorDialog
           open={registerOpen}
           onOpenChange={setRegisterOpen}
@@ -959,9 +1086,12 @@ function VisitorCard({
 function VisitorDetailsDialog({
   visitor,
   visMut,
+  canCheck,
   onOpenChange,
 }: {
   visitor: VisitorWithRelations;
+  /** Check IN / OUT needs Visitors edit (+ gate events) — view alone only shows the details. */
+  canCheck: boolean;
   visMut: ReturnType<
     typeof useMutation<unknown, unknown, { visitor_id: string; direction: "IN" | "OUT" }>
   >;
@@ -1010,7 +1140,7 @@ function VisitorDetailsDialog({
           <Badge variant="outline" className={statusBadgeClass(visitor.status)}>
             {visitor.status}
           </Badge>
-          {visitor.status !== "CHECKED_IN" && visitor.status !== "CHECKED_OUT" && (
+          {canCheck && visitor.status !== "CHECKED_IN" && visitor.status !== "CHECKED_OUT" && (
             <Button
               className="w-full"
               onClick={() => {
@@ -1021,7 +1151,7 @@ function VisitorDetailsDialog({
               <LogIn className="h-4 w-4" /> Check IN
             </Button>
           )}
-          {visitor.status === "CHECKED_IN" && (
+          {canCheck && visitor.status === "CHECKED_IN" && (
             <Button
               className="w-full"
               variant="outline"

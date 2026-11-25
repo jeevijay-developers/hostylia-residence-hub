@@ -120,7 +120,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
       icon: MessageSquareWarning,
       module: "complaints",
     },
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
     // Previously desktop-sidebar-invisible regardless of grant (only ever
     // reachable via the mobile "More" sheet, which stays suppressed for
     // Warden — see warden.tsx) — same existing /warden/* routes, now a real
@@ -139,7 +139,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     // own permission allows. "finance_any" is a synthetic key handled only
     // in this file's WARDEN moduleFilter (see warden.tsx), not a real
     // `role_assignments.permissions` entry. A Warden has none of the
-    // underlying keys by default (see WARDEN_FINANCE_KEYS in staff-scope.ts).
+    // underlying keys by default (see FINANCE_KEYS in warden-permissions.ts).
     { label: "Finance", to: "/warden/finance", icon: Wallet, module: "finance_any" },
     { label: "Notices", to: "/warden/notices", icon: BellRing, module: "notices" },
     { label: "Reports", to: "/warden/reports", icon: FileBarChart, module: "reports_view" },
@@ -147,6 +147,7 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
     { label: "Fees", to: "/student/fees", icon: Receipt, module: "finance" },
+    { label: "Refunds", to: "/student/refunds", icon: Wallet, module: "finance" },
     { label: "Attendance", to: "/student/attendance", icon: CalendarCheck, module: "attendance" },
     { label: "Gate Pass", to: "/student/gate-pass", icon: Ticket, module: "gate_passes" },
     { label: "Mess", to: "/student/mess", icon: Utensils, module: "mess" },
@@ -182,7 +183,7 @@ export const BOTTOM_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
       icon: MessageSquareWarning,
       module: "complaints",
     },
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
   ],
   STUDENT: [
     { label: "Home", to: "/student/home", icon: Home },
@@ -236,7 +237,7 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Reports", to: "/accountant/reports", icon: FileBarChart, module: "reports_view" },
   ],
   WARDEN: [
-    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_passes_view" },
+    { label: "Gate", to: "/warden/gate", icon: DoorOpen, module: "gate_any" },
     { label: "Mess", to: "/warden/mess", icon: Utensils, module: "mess_menus" },
     { label: "Notices", to: "/warden/notices", icon: BellRing, module: "notices" },
     {
@@ -247,7 +248,10 @@ export const MORE_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     },
     { label: "Reports", to: "/warden/reports", icon: FileBarChart, module: "reports_view" },
   ],
-  STUDENT: [{ label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" }],
+  STUDENT: [
+    { label: "Notices", to: "/student/notices", icon: BellRing, module: "notices" },
+    { label: "Refunds", to: "/student/refunds", icon: Wallet, module: "finance" },
+  ],
 };
 
 /**

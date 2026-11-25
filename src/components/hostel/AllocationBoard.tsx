@@ -7,6 +7,7 @@ import {
   ArrowRightLeft,
   BedSingle,
   Check,
+  ChevronDown,
   ChevronRight,
   ChevronsUpDown,
   DoorOpen,
@@ -21,6 +22,7 @@ import { useResolvedRole } from "@/lib/user-role";
 import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
+import { BedStatusInline } from "@/components/hostel/BedStatusInline";
 import { describeBedRestriction, formatBedLabel } from "@/lib/bed-label";
 import { PaginationBar } from "@/components/dashboard/PaginationBar";
 import { Badge } from "@/components/ui/badge";
@@ -110,9 +112,21 @@ export function AllocationBoard({
   const [bedPage, setBedPage] = useState(0);
   const [bedSearch, setBedSearch] = useState("");
   const [debouncedBedSearch, setDebouncedBedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<BedTile["status"] | null>(null);
   const [studentPage, setStudentPage] = useState(0);
   const [studentSearch, setStudentSearch] = useState("");
   const [debouncedStudentSearch, setDebouncedStudentSearch] = useState("");
+
+  // Property switch: drop the page and search in the same render, so no request is ever
+  // made for the new property with the previous property's page number / search term.
+  const [bedsPropertyId, setBedsPropertyId] = useState(effectiveProp);
+  if (bedsPropertyId !== effectiveProp) {
+    setBedsPropertyId(effectiveProp);
+    setBedPage(0);
+    setBedSearch("");
+    setDebouncedBedSearch("");
+    setStatusFilter(null);
+  }
 
   useEffect(() => {
     if (bedSearch === debouncedBedSearch) return;
@@ -184,8 +198,12 @@ export function AllocationBoard({
   });
 
   const bedsQ = useQuery({
-    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch],
+    queryKey: ["allocation-beds", effectiveProp, bedPage, debouncedBedSearch, statusFilter],
     enabled: !!effectiveProp,
+    // Keep the previous page on screen while the next one loads (no grid unmount, so the
+    // grid/list toggle survives paging) — but never carry it across a property switch.
+    placeholderData: (prev, prevQuery) =>
+      prevQuery?.queryKey[1] === effectiveProp ? prev : undefined,
     queryFn: async () => {
       if (!effectiveProp) return { beds: [] as BedTile[], total: 0 };
 
@@ -196,12 +214,16 @@ export function AllocationBoard({
         })
         .eq("property_id", effectiveProp)
         .is("deleted_at", null)
+        // `code` alone is not unique (every room has its own B1, B2 …), so the order was
+        // undefined between equal codes and rows could repeat or vanish across pages.
+        // `id` makes the sort total and stable.
         .order("code")
+        .order("id")
         .range(bedPage * BEDS_PAGE_SIZE, bedPage * BEDS_PAGE_SIZE + BEDS_PAGE_SIZE - 1);
+      // Status card filter — ANDed with the search below (.or() is its own group).
+      if (statusFilter) bedQuery = bedQuery.eq("status", statusFilter);
       const token = ilikeToken(debouncedBedSearch);
-      if (!token) {
-        bedQuery = bedQuery.eq("status", "VACANT");
-      } else {
+      if (token) {
         const [roomRes, nameRes] = await Promise.all([
           supabase
             .from("rooms")
@@ -271,6 +293,14 @@ export function AllocationBoard({
     },
   });
 
+  // If the last page disappears (e.g. beds removed elsewhere), step back to the new last page.
+  const bedsTotal = bedsQ.data?.total;
+  useEffect(() => {
+    if (bedsTotal === undefined || bedsTotal === 0) return;
+    const lastPage = Math.ceil(bedsTotal / BEDS_PAGE_SIZE) - 1;
+    if (bedPage > lastPage) setBedPage(lastPage);
+  }, [bedsTotal, bedPage]);
+
   // Eligible = every student in this property who could plausibly need a
   // bed: not-yet-allocated applicants/verified students, plus already
   // allocated ACTIVE/NOTICE_GIVEN students (picking one of those routes to
@@ -304,6 +334,7 @@ export function AllocationBoard({
 
   const [viewBed, setViewBed] = useState<BedTile | null>(null);
   const [statusBed, setStatusBed] = useState<BedTile | null>(null);
+  const [statusPanelOpen, setStatusPanelOpen] = useState(false);
   const bedDetailQ = useQuery({
     queryKey: ["bed-allocation-detail", viewBed?.id],
     enabled: !!viewBed && viewBed.status === "OCCUPIED",
@@ -453,7 +484,25 @@ export function AllocationBoard({
     setSelectedBed(null);
     setStudentId("");
     setFeePlanId("");
+    setStatusPanelOpen(false);
   }
+
+  // Inline "Manage status" toggle shown in the Allocate dialog (collapsed by default).
+  const statusTrigger =
+    canManageBedStatus && selectedBed ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        aria-expanded={statusPanelOpen}
+        onClick={() => setStatusPanelOpen((v) => !v)}
+      >
+        <Settings2 className="h-4 w-4" /> Manage status
+        <ChevronDown
+          className={cn("ml-auto h-4 w-4 transition-transform", statusPanelOpen && "rotate-180")}
+        />
+      </Button>
+    ) : null;
 
   return (
     <div className="space-y-6">
@@ -521,6 +570,11 @@ export function AllocationBoard({
             queryValue={bedSearch}
             onQueryChange={setBedSearch}
             serverFiltered
+            statusFilter={statusFilter}
+            onStatusFilterChange={(next) => {
+              setStatusFilter(next);
+              setBedPage(0);
+            }}
             // Same dialog the card click opens for a VACANT bed, for that exact bed.
             onAllocate={setSelectedBed}
             onSelect={(b) => {
@@ -750,29 +804,33 @@ export function AllocationBoard({
                       onChange={(e) => setDeposit(Math.round(+e.target.value * 100))}
                     />
                   </div>
+                  {statusTrigger && <div className="flex items-end">{statusTrigger}</div>}
                 </div>
               </>
+            )}
+            {canManageBedStatus && selectedBed && openAllocationQ.data && (
+              <div>{statusTrigger}</div>
+            )}
+            {canManageBedStatus && selectedBed && statusPanelOpen && (
+              <BedStatusInline
+                key={selectedBed.id}
+                bed={selectedBed}
+                onClose={() => setStatusPanelOpen(false)}
+                onDone={() => {
+                  qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+                  qc.invalidateQueries({ queryKey: ["structure"] });
+                  closeAllocateDialog();
+                }}
+              />
             )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={closeAllocateDialog}>
               Cancel
             </Button>
-            {canManageBedStatus && selectedBed && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const bed = selectedBed;
-                  closeAllocateDialog();
-                  setStatusBed(bed);
-                }}
-              >
-                <Settings2 className="h-4 w-4" /> Manage status
-              </Button>
-            )}
             {openAllocationQ.data ? (
               canEdit ? (
-                <Button disabled={swap.isPending} onClick={() => swap.mutate()}>
+                <Button disabled={swap.isPending || statusPanelOpen} onClick={() => swap.mutate()}>
                   <ArrowRightLeft className="h-4 w-4" /> Swap
                 </Button>
               ) : (
@@ -782,7 +840,7 @@ export function AllocationBoard({
               )
             ) : canCreate ? (
               <Button
-                disabled={!studentId || !feePlanId || create.isPending}
+                disabled={!studentId || !feePlanId || create.isPending || statusPanelOpen}
                 onClick={() => create.mutate()}
               >
                 <BedSingle className="h-4 w-4" /> Allocate

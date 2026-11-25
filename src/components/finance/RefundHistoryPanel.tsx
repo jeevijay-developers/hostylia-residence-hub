@@ -6,14 +6,24 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInr } from "@/lib/finance";
-import { processRefund, recordManualRefundPayout, syncRefundStatus } from "@/lib/finance.functions";
+import { processRefund, syncRefundStatus } from "@/lib/finance.functions";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+
+const STATUS_FILTERS = [
+  "ALL",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "REJECTED",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
+] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 const REFUND_STATUS_TONE: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -45,8 +55,9 @@ const refundRowSchema = z.object({
   attempt_count: z.number().optional(),
   last_error: z.string().nullable().optional(),
   failure_reason: z.string().nullable().optional(),
-  students: z.object({ full_name: z.string() }).nullable(),
+  students: z.object({ full_name: z.string(), admission_number: z.string().nullable() }).nullable(),
   payments: z.object({ provider: z.string().nullable() }).nullable(),
+  properties: z.object({ name: z.string() }).nullable(),
 });
 type RefundRow = z.infer<typeof refundRowSchema>;
 
@@ -60,9 +71,10 @@ interface RefundQuery extends PromiseLike<{ data: unknown; error: { message: str
 /**
  * Refund status/history — RefundRequestForm only submits new refunds and
  * had no view of what was already requested/approved/rejected. With `canProcess`
- * (Accountant / Admin) it also carries an approved refund through to completion:
- * gateway payments are sent to the gateway and COMPLETED only when the gateway
- * confirms; offline payments are completed with a recorded payout reference.
+ * (Accountant / Admin) it also carries an approved gateway refund through to
+ * completion: gateway payments are sent to the gateway and COMPLETED only when
+ * the gateway confirms. Offline (CASH/cheque/bank-transfer) refunds have no
+ * in-app completion action here — they stay APPROVED until completed another way.
  */
 export function RefundHistoryPanel({
   propertyId,
@@ -77,7 +89,7 @@ export function RefundHistoryPanel({
     queryFn: async () => {
       const { data, error } = await (supabase.from("refunds" as never) as unknown as RefundQuery)
         .select(
-          "id, refund_number, amount_paise, reason, status, decision_reason, initiated_at, approved_at, provider_refund_ref, provider_status, attempt_count, last_error, failure_reason, students(full_name), payments(provider)",
+          "id, refund_number, amount_paise, reason, status, decision_reason, initiated_at, approved_at, provider_refund_ref, provider_status, attempt_count, last_error, failure_reason, students(full_name, admission_number), payments(provider), properties(name)",
         )
         .eq("property_id", propertyId)
         .order("initiated_at", { ascending: false })
@@ -94,9 +106,6 @@ export function RefundHistoryPanel({
 
   const processFn = useServerFn(processRefund);
   const syncFn = useServerFn(syncRefundStatus);
-  const manualFn = useServerFn(recordManualRefundPayout);
-  const [payoutFor, setPayoutFor] = useState<string | null>(null);
-  const [reference, setReference] = useState("");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["refunds"] });
@@ -122,38 +131,63 @@ export function RefundHistoryPanel({
     onSuccess: report,
     onError: (e) => toast.error(getErrorMessage(e, "Could not check the refund status")),
   });
-  const manualMut = useMutation({
-    mutationFn: (v: { id: string; reference: string }) =>
-      manualFn({ data: { refund_id: v.id, reference: v.reference } }),
-    onSuccess: () => {
-      toast.success("Refund payout recorded");
-      setPayoutFor(null);
-      setReference("");
-      refresh();
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "Could not record the payout")),
-  });
-  const busy = processMut.isPending || syncMut.isPending || manualMut.isPending;
+  const busy = processMut.isPending || syncMut.isPending;
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const filtered = (q.data ?? []).filter(
+    (r) => statusFilter === "ALL" || r.status === statusFilter,
+  );
 
   return (
     <div className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-6">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
-          <History className="h-4 w-4" />
-        </span>
-        <h2 className="font-display text-base font-semibold text-foreground">Refund history</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-accent/15 text-neutral-accent">
+            <History className="h-4 w-4" />
+          </span>
+          <h2 className="font-display text-base font-semibold text-foreground">Refund history</h2>
+        </div>
+        {!!q.data?.length && (
+          <div className="flex flex-wrap gap-1.5">
+            {STATUS_FILTERS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  statusFilter === s
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border/80 text-muted-foreground hover:bg-muted/40",
+                )}
+              >
+                {s === "ALL" ? "All" : s.replaceAll("_", " ")}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {q.isLoading ? (
         <Skeleton className="h-24 w-full rounded-xl" />
+      ) : q.isError ? (
+        <EmptyState
+          title="Couldn't load refund history"
+          description={getErrorMessage(q.error, "Something went wrong while fetching refunds.")}
+          action={{ label: "Retry", onClick: () => q.refetch() }}
+        />
       ) : !q.data?.length ? (
         <EmptyState
           title="No refund requests yet"
           description="Your refund requests will appear here."
         />
+      ) : !filtered.length ? (
+        <EmptyState
+          title="No matching refund requests"
+          description="Try a different status filter."
+        />
       ) : (
         <div className="space-y-2">
-          {q.data.map((r) => {
+          {filtered.map((r) => {
             const viaGateway = r.payments?.provider === "razorpay";
             const attempts = r.attempt_count ?? 0;
             const canRetry = r.status === "FAILED" && viaGateway && attempts < MAX_GATEWAY_ATTEMPTS;
@@ -165,11 +199,20 @@ export function RefundHistoryPanel({
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 truncate font-medium text-foreground">
                     {r.refund_number} · {r.students?.full_name ?? "—"}
+                    {r.students?.admission_number && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        ({r.students.admission_number})
+                      </span>
+                    )}
                   </p>
                   <Badge className={cn("shrink-0", REFUND_STATUS_TONE[r.status] ?? "")}>
                     {r.status.replaceAll("_", " ")}
                   </Badge>
                 </div>
+                {r.properties?.name && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{r.properties.name}</p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatInr(r.amount_paise)} · {r.reason}
                 </p>
@@ -239,36 +282,6 @@ export function RefundHistoryPanel({
                     )}
                   </div>
                 )}
-
-                {canProcess &&
-                  !viaGateway &&
-                  (r.status === "APPROVED" || r.status === "PROCESSING") &&
-                  (payoutFor === r.id ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Input
-                        value={reference}
-                        onChange={(e) => setReference(e.target.value)}
-                        placeholder="Transaction / cheque reference"
-                        className="h-9 w-64"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={busy || reference.trim().length < 3}
-                        onClick={() => manualMut.mutate({ id: r.id, reference: reference.trim() })}
-                      >
-                        Confirm payout
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setPayoutFor(null)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" onClick={() => setPayoutFor(r.id)}>
-                        Record payout
-                      </Button>
-                    </div>
-                  ))}
               </div>
             );
           })}

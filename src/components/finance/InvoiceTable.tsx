@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, ReceiptText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, ReceiptText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatInr, INVOICE_STATUS_TONE, type InvoiceStatus } from "@/lib/finance";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { Button } from "@/components/ui/button";
 
 interface InvoiceRow {
   id: string;
@@ -46,15 +47,14 @@ export function InvoiceTable({
               <th className="px-3 py-3 sm:px-6 sm:py-4">Status</th>
               <th className="px-3 py-3 text-right sm:px-6 sm:py-4">Total</th>
               <th className="px-3 py-3 text-right sm:px-6 sm:py-4">Remaining Balance</th>
+              <th className="sticky right-0 z-10 bg-card px-3 py-3 text-right sm:px-6 sm:py-4">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {rows.map((r) => (
-              <tr
-                key={r.id}
-                className="cursor-pointer transition-colors hover:bg-accent/30"
-                onClick={() => onSelect?.(r)}
-              >
+              <tr key={r.id} className="group transition-colors hover:bg-accent/30">
                 <td className="px-3 py-3 align-top font-mono text-[11px] text-muted-foreground sm:px-6 sm:py-4 sm:text-xs">
                   {r.invoice_number}
                 </td>
@@ -72,6 +72,19 @@ export function InvoiceTable({
                 </td>
                 <td className="px-3 py-3 text-right align-top text-xs font-semibold text-foreground sm:px-6 sm:py-4 sm:text-sm">
                   {formatInr(r.balance_paise)}
+                </td>
+                <td className="sticky right-0 z-10 bg-card px-3 py-3 text-right align-top transition-colors group-hover:bg-accent/30 sm:px-6 sm:py-4">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Open invoice ${r.invoice_number}`}
+                    title="Open invoice"
+                    className="h-8 w-8 rounded-xl border border-border/80 bg-background/80 text-blue-600 transition-all hover:border-blue-500/30 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 sm:h-9 sm:w-9"
+                    onClick={() => onSelect?.(r)}
+                  >
+                    <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Button>
                 </td>
               </tr>
             ))}
