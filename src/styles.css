@@ -15,6 +15,9 @@
 
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Sora", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Marketing site (landing page + site header) typography */
+  --font-heading: "Manrope", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
   /* shadcn semantic tokens */
   --color-background: var(--background);
@@ -63,10 +66,8 @@
   --color-soft-teal: var(--soft-teal);
   --color-gold: var(--gold);
   --color-soft-grey: var(--soft-grey);
-  --color-light-bg: var(--light-bg);
   --color-dark-border: var(--dark-border);
 
-  --shadow-glow: 0 0 60px -10px color-mix(in oklab, var(--soft-teal) 35%, transparent);
   --shadow-card: 0 10px 40px -12px rgb(0 0 0 / 0.5);
   /* Ambient card shadow tuned to read consistently in both light and dark —
      replaces per-mode ad hoc shadow strings on individual components. */
@@ -76,6 +77,14 @@
 
   --color-neutral-accent: var(--neutral-accent);
   --color-neutral-accent-foreground: var(--neutral-accent-foreground);
+
+  /* Marketing-site emerald brand (landing page + site header). Decorative /
+     CTA only — never a status colour (status keeps success/warning/etc.). */
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-strong: var(--brand-green-strong);
+  --color-brand-green-foreground: var(--brand-green-foreground);
+  --color-brand-green-soft: var(--brand-green-soft);
+  --color-mint: var(--mint);
 
   --animate-fade-in: fade-in 0.6s ease-out;
   --animate-fade-up: fade-up 0.7s ease-out;
@@ -160,29 +169,29 @@
      a flat, washed-out surface. Widened the steps between background → muted
      → border → input so panels, dividers and field boundaries read clearly
      without going darker/heavier than the brand's soft, airy tone. */
-  --background: #F6F8F8;
-  --foreground: #0A141E;
-  --card: #FFFFFF;
-  --card-foreground: #0A141E;
-  --popover: #FFFFFF;
-  --popover-foreground: #0A141E;
-  --primary: #00696F;
-  --primary-foreground: #FFFFFF;
-  --secondary: #00609C;
-  --secondary-foreground: #FFFFFF;
-  --muted: #E7ECEC;
-  --muted-foreground: #4A5A64;
+  --background: #f6f8f8;
+  --foreground: #0a141e;
+  --card: #ffffff;
+  --card-foreground: #0a141e;
+  --popover: #ffffff;
+  --popover-foreground: #0a141e;
+  --primary: #00696f;
+  --primary-foreground: #ffffff;
+  --secondary: #00609c;
+  --secondary-foreground: #ffffff;
+  --muted: #e7ecec;
+  --muted-foreground: #4a5a64;
   /* `accent` is shadcn's quiet hover/focus surface (hover:bg-accent on ghost
      buttons, dropdown/select items, etc.) — it must stay a soft neutral tint,
      not a saturated brand colour, or every hover state in the app reads as a
      loud blue flash. Mirrors dark mode's "raised, quiet" accent surface. */
-  --accent: #DFEBEB;
-  --accent-foreground: #0A141E;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #D2DBDE;
-  --input: #BFCBCF;
-  --ring: #00D8CC;
+  --accent: #dfebeb;
+  --accent-foreground: #0a141e;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #d2dbde;
+  --input: #bfcbcf;
+  --ring: #00d8cc;
 
   /* Light-mode-only elevation: the shared `--shadow-card-ambient` formula
      (below, in `@theme inline`) derives its shadow colour from `--foreground`
@@ -193,8 +202,7 @@
      richer multi-layer shadow instead; this only overrides the token inside
      `:root`, so `.dark` keeps computing the original formula unchanged. */
   --shadow-card-ambient:
-    0 1px 2px rgba(10, 20, 30, 0.06),
-    0 6px 16px -6px rgba(10, 20, 30, 0.10),
+    0 1px 2px rgba(10, 20, 30, 0.06), 0 6px 16px -6px rgba(10, 20, 30, 0.1),
     0 20px 36px -20px rgba(10, 20, 30, 0.14);
 
   --success: #15803d;
@@ -208,6 +216,13 @@
 
   --brand-teal: #00b4b4;
   --brand-cyan: #00d8cc;
+
+  /* Marketing emerald (landing redesign) */
+  --brand-green: #0f7a55;
+  --brand-green-strong: #0a5f42;
+  --brand-green-foreground: #ffffff;
+  --brand-green-soft: #e2f4ea;
+  --mint: #eaf6f0;
 
   /* Bed-status palette — Design.md Sec 4.3 (light mode only for now) */
   --bed-vacant: #8a98a0;
@@ -229,7 +244,6 @@
   --soft-teal: #0e8a7a;
   --gold: #b8842e;
   --soft-grey: var(--muted-foreground);
-  --light-bg: #f7f8fb;
   --dark-border: var(--border);
 }
 
@@ -263,6 +277,12 @@
   --border: #263247; /* dark-border — same as marketing */
   --input: #263247;
   --ring: #4fb7a8; /* soft-teal focus ring */
+
+  --brand-green: #3fcf98;
+  --brand-green-strong: #2aa678;
+  --brand-green-foreground: #04140d;
+  --brand-green-soft: #11302a;
+  --mint: #0b1428;
 
   /* Restore the legacy marketing tokens' original dark-mode values — :root
      above now gives soft-grey/dark-border/gold/soft-teal lighter, split
@@ -410,7 +430,8 @@
   /* Soft tone-tinted glow behind stat/icon badges (success/warning/destructive/
      info/muted/neutral-accent) — pass the token via `--glow-tone`. */
   .shadow-tone-glow {
-    box-shadow: 0 0 0 1px color-mix(in oklab, var(--glow-tone, var(--primary)) 20%, transparent),
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--glow-tone, var(--primary)) 20%, transparent),
       0 8px 24px -8px color-mix(in oklab, var(--glow-tone, var(--primary)) 45%, transparent);
   }
 
@@ -424,16 +445,109 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-card-ambient);
   }
-  .text-gradient-teal {
-    background: linear-gradient(135deg, #4fb7a8 0%, #2f8f6b 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* ------------------------------------------------------------------
+     Landing redesign utilities
+     ------------------------------------------------------------------ */
+
+  /* Marketing typography: Inter body, Manrope headings. */
+  .landing-type {
+    font-family: var(--font-body);
   }
-  .text-gradient-brand {
-    background: linear-gradient(135deg, #ffffff 0%, #b8c0cc 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .landing-type :where(h1, h2, h3, h4) {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+  }
+
+  /* Liquid glass: translucent fill + heavy blur/saturation, a specular top
+     highlight, a soft inner rim and a faint tinted caustic in the corner.
+     Used by the floating site header and glass chips. */
+  /* No `position` here: callers add relative/absolute themselves so this
+     utility never overrides Tailwind positioning classes. */
+  .liquid-glass {
+    isolation: isolate;
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--card) 68%, transparent) 0%,
+      color-mix(in oklab, var(--card) 42%, transparent) 100%
+    );
+    backdrop-filter: blur(18px) saturate(185%);
+    -webkit-backdrop-filter: blur(18px) saturate(185%);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.25),
+      inset 0 0 0 1px rgb(255 255 255 / 0.15),
+      0 12px 32px -14px color-mix(in oklab, var(--brand-green-strong) 28%, transparent),
+      0 2px 8px -2px rgb(10 20 30 / 0.08);
+    transition:
+      background-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+  .liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 160% at 8% -30%, rgb(255 255 255 / 0.65), transparent 45%),
+      radial-gradient(
+        70% 140% at 100% 130%,
+        color-mix(in oklab, var(--brand-green) 12%, transparent),
+        transparent 65%
+      );
+  }
+  .liquid-glass[data-scrolled="true"] {
+    background-color: color-mix(in oklab, var(--card) 35%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.25),
+      0 18px 40px -16px color-mix(in oklab, var(--brand-green-strong) 35%, transparent),
+      0 4px 12px -4px rgb(10 20 30 / 0.12);
+  }
+  .dark .liquid-glass {
+    border-color: rgb(255 255 255 / 0.12);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.14),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.04),
+      0 14px 36px -14px rgb(0 0 0 / 0.7);
+  }
+  .dark .liquid-glass::before {
+    background:
+      radial-gradient(120% 160% at 8% -30%, rgb(255 255 255 / 0.1), transparent 45%),
+      radial-gradient(
+        70% 140% at 100% 130%,
+        color-mix(in oklab, var(--brand-green) 14%, transparent),
+        transparent 65%
+      );
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .liquid-glass {
+      background: color-mix(in oklab, var(--card) 94%, transparent);
+    }
+  }
+
+  /* Brand CTA depth: emerald drop shadow + a subtle top highlight. */
+  .shadow-brand-cta {
+    box-shadow:
+      0 10px 24px -10px color-mix(in oklab, var(--brand-green-strong) 70%, transparent),
+      inset 0 1px 0 0 color-mix(in oklab, var(--brand-green-foreground) 25%, transparent);
+  }
+
+  /* Hero ground: mint wash with emerald glows. */
+  .bg-landing-hero {
+    background:
+      radial-gradient(
+        55% 65% at 88% 18%,
+        color-mix(in oklab, var(--brand-green) 16%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        40% 45% at 0% 0%,
+        color-mix(in oklab, var(--brand-green) 9%, transparent),
+        transparent 70%
+      ),
+      linear-gradient(180deg, var(--mint) 0%, var(--background) 100%);
   }
 }

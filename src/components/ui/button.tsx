@@ -17,12 +17,26 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        /* Marketing-site CTAs (landing redesign) */
+        brand:
+          "bg-linear-to-b from-brand-green to-brand-green-strong font-semibold text-brand-green-foreground shadow-brand-cta transition-[filter,box-shadow,transform] hover:brightness-110 active:translate-y-px",
+        "brand-soft":
+          "border border-brand-green/15 bg-brand-green-soft font-semibold text-brand-green hover:bg-brand-green/15",
+        /* On an emerald surface (CtaBanner): solid and outlined. */
+        "on-brand":
+          "bg-card font-semibold text-brand-green shadow-lg shadow-brand-green-strong/30 hover:bg-card/90 focus-visible:ring-2 focus-visible:ring-brand-green-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-brand-green",
+        "on-brand-outline":
+          "border border-brand-green-foreground/70 bg-transparent font-semibold text-brand-green-foreground hover:bg-brand-green-foreground/10 focus-visible:ring-2 focus-visible:ring-brand-green-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-brand-green",
+        glass:
+          "border border-border/80 bg-card/75 font-semibold text-foreground shadow-card-ambient backdrop-blur-md hover:bg-card",
       },
       size: {
         default: "h-10 rounded-lg px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-11 rounded-xl px-8",
         icon: "h-10 w-10 rounded-lg",
+        pill: "h-10 rounded-full px-5",
+        "pill-lg": "h-12 rounded-full px-7 text-[15px]",
       },
     },
     defaultVariants: {

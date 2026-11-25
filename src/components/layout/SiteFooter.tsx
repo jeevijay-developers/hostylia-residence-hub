@@ -1,32 +1,22 @@
 import { Link } from "@tanstack/react-router";
+import { Mail, Phone } from "lucide-react";
 import { Logo } from "@/components/site/Logo";
+import { cn } from "@/lib/utils";
 import {
   PUBLIC_EMAIL,
   PUBLIC_EMAIL_MAILTO,
   PUBLIC_PHONE_DISPLAY,
   PUBLIC_PHONE_TEL,
 } from "@/lib/site";
-import { Mail, MapPin, Globe, Phone } from "lucide-react";
 
-const cols = [
-  {
-    title: "Solutions",
-    links: [
-      { label: "Student Hostels", to: "/solutions" },
-      { label: "Boarding Schools", to: "/solutions" },
-      { label: "PG Accommodation", to: "/solutions" },
-      { label: "Co-Living Spaces", to: "/solutions" },
-      { label: "Multi-Property Owners", to: "/solutions" },
-    ],
-  },
+const FOOTER_COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Features", to: "/features" },
-      { label: "Platform", to: "/platform" },
+      { label: "Solutions", to: "/solutions" },
       { label: "AI Suite", to: "/ai-suite" },
       { label: "Pricing", to: "/pricing" },
-      { label: "Book Demo", to: "/book-demo" },
+      { label: "Book a Demo", to: "/book-demo" },
     ],
   },
   {
@@ -34,7 +24,7 @@ const cols = [
     links: [
       { label: "About", to: "/about" },
       { label: "Founder", to: "/founder" },
-      { label: "Contact", to: "/contact" },
+      { label: "Support", to: "/contact" },
     ],
   },
   {
@@ -46,61 +36,61 @@ const cols = [
       { label: "Delete account", to: "/account-deletion" },
     ],
   },
-];
+] as const;
+
+const linkClass =
+  "rounded-sm text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-dark-border bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
-          <div className="lg:col-span-2">
-            <Logo className="h-14 w-auto md:h-16" />
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-soft-grey">
-              Smart Residential Management for hostels, boarding schools, student housing and
-              institutional residences. One intelligent platform.
+    <footer className="landing-type border-t border-border bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
+        <div className="flex flex-col gap-10 md:flex-row md:justify-between">
+          <div className="max-w-xs">
+            <Logo variant="lockup" className="h-8" />
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              All-in-one residential management for hostels, PGs and boarding schools.
             </p>
-            <div className="mt-5 space-y-2 text-sm text-soft-grey">
-              <p className="flex items-center gap-2">
-                <Globe size={14} className="text-soft-teal" /> hostylia.com
-              </p>
-              <a
-                href={PUBLIC_EMAIL_MAILTO}
-                className="flex items-center gap-2 hover:text-foreground"
-              >
-                <Mail size={14} className="text-soft-teal" /> {PUBLIC_EMAIL}
-              </a>
-              <a href={PUBLIC_PHONE_TEL} className="flex items-center gap-2 hover:text-foreground">
-                <Phone size={14} className="text-soft-teal" /> {PUBLIC_PHONE_DISPLAY}
-              </a>
-              <p className="flex items-start gap-2">
-                <MapPin size={14} className="mt-0.5 text-soft-teal" /> H No 1, Sai Extension Colony,
-                Bengaluru — Jeevijay Technologies Pvt Ltd
-              </p>
-            </div>
           </div>
-          {cols.map((col) => (
-            <div key={col.title}>
-              <p className="mb-4 text-xs font-bold uppercase tracking-widest text-gold">
-                {col.title}
-              </p>
-              <ul className="space-y-2.5">
-                {col.links.map((l) => (
-                  <li key={l.label}>
-                    <Link
-                      to={l.to}
-                      className="text-sm text-soft-grey transition-colors hover:text-foreground"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+
+          <div className="grid grid-cols-2 gap-x-12 gap-y-8 sm:grid-cols-3">
+            {FOOTER_COLUMNS.map((col) => (
+              <nav key={col.title} aria-label={col.title}>
+                <p className="text-sm font-semibold text-foreground">{col.title}</p>
+                <ul className="mt-3 space-y-2">
+                  {col.links.map((link) => (
+                    <li key={link.label}>
+                      <Link to={link.to} className={linkClass}>
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
+          </div>
         </div>
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-dark-border pt-6 text-xs text-soft-grey md:flex-row md:items-center">
-          <p>© {new Date().getFullYear()} Hostylia. All rights reserved.</p>
-          <p>Powered by Jeevijay Technologies Private Limited</p>
+
+        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <p>
+            © {new Date().getFullYear()} Hostylia · Powered by Jeevijay Technologies Private Limited
+          </p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <a
+              href={PUBLIC_EMAIL_MAILTO}
+              className={cn(linkClass, "inline-flex items-center gap-1.5 text-xs")}
+            >
+              <Mail aria-hidden className="size-3.5 text-brand-green" />
+              {PUBLIC_EMAIL}
+            </a>
+            <a
+              href={PUBLIC_PHONE_TEL}
+              className={cn(linkClass, "inline-flex items-center gap-1.5 text-xs")}
+            >
+              <Phone aria-hidden className="size-3.5 text-brand-green" />
+              {PUBLIC_PHONE_DISPLAY}
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
 import {
-  BedDouble,
-  IndianRupee,
   Wifi,
   Utensils,
   ShieldCheck,
   Check,
   Clock,
   ArrowUpRight,
-  ArrowDownRight,
   Bell,
   Search,
   Wallet,
@@ -224,49 +221,6 @@ export function MockComplaintBoard() {
         <div className="text-sm font-extrabold text-soft-teal">3h 12m</div>
       </div>
     </BrowserFrame>
-  );
-}
-
-export function MockRoomBooking() {
-  return (
-    <PhoneFrame>
-      <div className="rounded-xl bg-linear-to-br from-brand-blue to-soft-teal p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-white/80">
-          Featured Stay
-        </div>
-        <div className="mt-1 text-base font-extrabold text-white">Hostylia House — Pune</div>
-        <div className="mt-0.5 text-[10px] text-white/80">Twin Sharing · AC · Meals</div>
-        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white">
-          <ShieldCheck size={10} /> Verified Property
-        </div>
-      </div>
-      <div className="mt-3 space-y-2">
-        {[
-          { i: BedDouble, t: "Single Room", p: "₹14,500/mo" },
-          { i: BedDouble, t: "Twin Sharing", p: "₹9,800/mo" },
-          { i: BedDouble, t: "Triple Sharing", p: "₹7,200/mo" },
-        ].map((r) => (
-          <div
-            key={r.t}
-            className="flex items-center justify-between rounded-lg border border-dark-border bg-white/5 px-2.5 py-2"
-          >
-            <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-soft-teal/15 text-soft-teal">
-                <r.i size={14} />
-              </span>
-              <div>
-                <div className="text-[11px] font-bold text-white">{r.t}</div>
-                <div className="text-[9px] text-soft-grey">Includes Wi-Fi · Laundry</div>
-              </div>
-            </div>
-            <div className="text-[11px] font-extrabold text-gold">{r.p}</div>
-          </div>
-        ))}
-      </div>
-      <button className="mt-3 w-full rounded-lg bg-gold py-2 text-[11px] font-extrabold text-navy">
-        Book a Visit
-      </button>
-    </PhoneFrame>
   );
 }
 
@@ -507,28 +461,5 @@ export function TestimonialCard({
         </div>
       </figcaption>
     </figure>
-  );
-}
-
-export function IndustryBadge({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-full border border-dark-border bg-foreground/5 px-3 py-1.5 text-xs font-semibold text-foreground">
-      <Icon size={14} className="text-soft-teal" />
-      {label}
-    </div>
-  );
-}
-
-export function IndianRupeeBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-soft-teal/15 px-2 py-0.5 text-xs font-semibold text-soft-teal">
-      <IndianRupee size={11} /> INR ready
-    </span>
   );
 }

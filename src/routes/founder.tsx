@@ -4,9 +4,8 @@ import { canonicalUrl } from "@/lib/site";
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
-import vikasPhoto from "@/assets/vikas-patel.jpeg";
+import { marketingAssets } from "@/components/site/marketing/marketing-assets";
 import buildingHero from "@/assets/illustrations/building-hero.jpg";
-import aiInsights from "@/assets/illustrations/ai-insights.jpg";
 import {
   MockOccupancyDashboard,
   MockAiInsights,
@@ -44,7 +43,9 @@ function FounderPage() {
             <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--soft-teal)_30%,transparent),transparent_70%)] blur-2xl" />
             <div className="grid items-center gap-8 md:grid-cols-[auto_1fr]">
               <img
-                src={vikasPhoto}
+                src={marketingAssets.founder.src}
+                width={marketingAssets.founder.w}
+                height={marketingAssets.founder.h}
                 alt="Vikas Patel, Founder & CEO of Hostylia"
                 className="h-40 w-40 rounded-2xl object-cover ring-2 ring-soft-teal/40 shadow-2xl"
               />
