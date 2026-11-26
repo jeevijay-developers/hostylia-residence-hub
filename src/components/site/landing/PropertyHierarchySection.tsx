@@ -65,6 +65,8 @@ export function PropertyHierarchySection() {
             />
             <img
               src={marketingAssets.room.src}
+              srcSet={marketingAssets.room.srcSet}
+              sizes="(min-width: 1280px) 611px, (min-width: 1024px) 47vw, calc(100vw - 32px)"
               alt="Isometric hostel room B2-204 with two of three beds occupied"
               width={marketingAssets.room.w}
               height={marketingAssets.room.h}

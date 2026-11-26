@@ -65,7 +65,7 @@ import {
 } from "@/schemas/complaint";
 // Same details view the Warden dashboard uses (description, student, category/priority, resolution,
 // timeline, comments) — reused, not duplicated.
-import { ComplaintDetailsDialog } from "./warden.complaints";
+import { ComplaintDetailsDialog } from "@/components/warden/WardenComplaintsPage";
 
 const complaintsSearchSchema = z.object({
   // Deep-link target for the "View complaint →" toast action fired when a

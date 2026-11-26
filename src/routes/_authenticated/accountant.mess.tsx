@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
-import { WardenMessPage } from "./warden.mess";
+import { WardenMessPage } from "@/components/warden/WardenMessPage";
 
 // Admin-granted Mess Menu for an Accountant — reuses the existing Warden
 // mess page as-is; the guard + RLS enforce the `mess_menus` key.

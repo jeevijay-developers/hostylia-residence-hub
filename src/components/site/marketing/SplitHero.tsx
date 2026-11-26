@@ -48,17 +48,22 @@ export function SplitHero({
       </div>
 
       <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 pb-16 pt-8 md:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-4 lg:pb-20 lg:pt-10">
-        <div className="animate-fade-up">
-          <SectionChip icon={chipIcon}>{chip}</SectionChip>
+        {/* The h1 is the page's LCP element, so it paints immediately: fading it in
+            from opacity 0 delayed LCP by the full 0.7s animation. The surrounding copy
+            keeps the entrance motion. */}
+        <div>
+          <SectionChip icon={chipIcon} className="animate-fade-up">
+            {chip}
+          </SectionChip>
           <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] text-foreground sm:text-5xl lg:text-4xl xl:text-[3.15rem]">
             {title}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
+          <p className="mt-5 max-w-xl animate-fade-up text-base leading-relaxed text-muted-foreground md:text-lg">
             {desc}
           </p>
 
           {actions && (
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex animate-fade-up flex-wrap gap-3">
               {actions.map((a) => (
                 <Button key={a.label} asChild variant={a.variant} size="pill-lg">
                   <Link to={a.to}>
@@ -72,7 +77,7 @@ export function SplitHero({
           )}
 
           {highlights && (
-            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <ul className="mt-8 flex animate-fade-up flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               {highlights.map((h) => (
                 <li key={h} className="inline-flex items-center gap-2">
                   <CircleCheck className="size-4 text-brand-green" aria-hidden />

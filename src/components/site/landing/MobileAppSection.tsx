@@ -88,6 +88,8 @@ export function MobileAppSection() {
           />
           <img
             src={img.src}
+            srcSet={img.srcSet}
+            sizes="(min-width: 1280px) 576px, (min-width: 640px) 512px, calc(100vw - 32px)"
             alt="Hostylia mobile app preview showing attendance, room status, fees, notices and parent updates"
             width={img.w}
             height={img.h}

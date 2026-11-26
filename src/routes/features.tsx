@@ -34,11 +34,11 @@ import {
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
-import tenantAgreement from "@/assets/illustrations/tenant-agreement.jpg";
-import servicesPanel from "@/assets/illustrations/services-panel.jpg";
-import attendanceOutpass from "@/assets/illustrations/attendance-outpass.jpg";
-import duesLock from "@/assets/illustrations/dues-lock.jpg";
-import collectionChart from "@/assets/illustrations/collection-chart.jpg";
+import tenantAgreement from "@/assets/illustrations/tenant-agreement.webp";
+import servicesPanel from "@/assets/illustrations/services-panel.webp";
+import attendanceOutpass from "@/assets/illustrations/attendance-outpass.webp";
+import duesLock from "@/assets/illustrations/dues-lock.webp";
+import collectionChart from "@/assets/illustrations/collection-chart.webp";
 import {
   MockFinanceDashboard,
   MockComplaintBoard,

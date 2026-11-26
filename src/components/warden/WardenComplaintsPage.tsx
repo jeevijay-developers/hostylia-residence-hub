@@ -1,0 +1,416 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Eye, EyeOff, Search } from "lucide-react";
+
+import { PageHeader } from "@/components/dashboard/PageHeader";
+import { ComplaintCard } from "@/components/complaints/ComplaintCard";
+import { ComplaintTimeline } from "@/components/complaints/ComplaintTimeline";
+import { ComplaintCommentThread } from "@/components/complaints/ComplaintCommentThread";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ListSkeleton } from "@/components/dashboard/ListSkeleton";
+import {
+  useComplaints,
+  useComplaintCategories,
+  useResolvedByLabel,
+  type ComplaintWithRelations,
+} from "@/lib/complaint";
+import { useResolvedRole } from "@/lib/user-role";
+import { useMyStaffProperty, useStaffPermissions } from "@/lib/staff-scope";
+import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/utils";
+import {
+  complaintPriorityEnum,
+  complaintStatusEnum,
+  resolutionSchema,
+  resolutionSummaryError,
+  wardenStatusOptions,
+  COMPLAINT_STATUS_TRANSITIONS,
+  UNSUPPORTED_COMPLAINT_STATUSES,
+  type ComplaintStatus,
+} from "@/schemas/complaint";
+
+// Lets the Daily Brief's Pending Complaints card open this page pre-filtered.
+import { complaintsSearchSchema } from "@/schemas/staff-search";
+
+// Same set the Daily Brief counts as "Pending Complaints".
+const PENDING_COMPLAINT_STATUSES = [
+  "OPEN",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "WAITING_FOR_STUDENT",
+  "REOPENED",
+];
+
+const STATUS_FILTER_OPTIONS = [
+  "ALL",
+  "PENDING",
+  ...complaintStatusEnum.options.filter(
+    (s) => !(UNSUPPORTED_COMPLAINT_STATUSES as readonly string[]).includes(s),
+  ),
+];
+const PRIORITY_FILTER_OPTIONS = ["ALL", ...complaintPriorityEnum.options];
+
+export function WardenComplaintsPage() {
+  const role = useResolvedRole();
+  const userId = role.data?.userId ?? null;
+  const propQ = useMyStaffProperty(userId);
+  const propertyId = propQ.data ?? null;
+  const categoriesQ = useComplaintCategories(propertyId);
+
+  const [search, setSearch] = useState("");
+  const { status: initialStatus, complaintId } = useSearch({ strict: false }) as z.infer<
+    typeof complaintsSearchSchema
+  >;
+  const [status, setStatus] = useState(initialStatus ?? "ALL");
+  const [priority, setPriority] = useState("ALL");
+  const [category, setCategory] = useState("ALL");
+  const [activeComplaint, setActiveComplaint] = useState<ComplaintWithRelations | null>(null);
+
+  // Warden sees all in-scope complaints via RLS, newest first.
+  const all = useComplaints({});
+  const scoped = useMemo(
+    () => (all.data ?? []).filter((c) => !c.assigned_to || c.assigned_to === userId),
+    [all.data, userId],
+  );
+
+  // Open the complaint a notification pointed at, once the list has loaded.
+  const openedFromLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!complaintId || openedFromLink.current === complaintId) return;
+    const match = scoped.find((c) => c.id === complaintId);
+    if (match) {
+      openedFromLink.current = complaintId;
+      setActiveComplaint(match);
+    }
+  }, [complaintId, scoped]);
+
+  const list = useMemo(() => {
+    let l = scoped;
+    if (status === "PENDING") l = l.filter((c) => PENDING_COMPLAINT_STATUSES.includes(c.status));
+    else if (status !== "ALL") l = l.filter((c) => c.status === status);
+    if (priority !== "ALL") l = l.filter((c) => c.priority === priority);
+    if (category !== "ALL") l = l.filter((c) => c.category_id === category);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      l = l.filter(
+        (c) =>
+          c.complaint_number.toLowerCase().includes(q) ||
+          (c.student_full_name ?? "").toLowerCase().includes(q) ||
+          (c.room_number ?? "").toLowerCase().includes(q),
+      );
+    }
+    // Newest raised first (created_at DESC), same order as the query — filters
+    // above only narrow the list, they never reorder it.
+    return [...l].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }, [scoped, status, priority, category, search]);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by complaint ID, student name, or room number"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FILTER_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s === "ALL"
+                    ? "All statuses"
+                    : s === "PENDING"
+                      ? "Pending"
+                      : s.replaceAll("_", " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={priority} onValueChange={setPriority}>
+            <SelectTrigger>
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              {PRIORITY_FILTER_OPTIONS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p === "ALL" ? "All priorities" : p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger>
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {(categoriesQ.data ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {all.isLoading && <ListSkeleton rows={5} />}
+        {!all.isLoading &&
+          list.map((c) => (
+            <ComplaintCard
+              key={c.id}
+              complaint={c}
+              identityVisibility="strict"
+              actions={
+                <Button size="sm" variant="outline" onClick={() => setActiveComplaint(c)}>
+                  <Eye className="h-4 w-4" /> View Details
+                </Button>
+              }
+            />
+          ))}
+        {!all.isLoading && list.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nothing matches your filters.</p>
+        )}
+      </div>
+
+      {activeComplaint && (
+        <ComplaintDetailsDialog
+          complaint={activeComplaint}
+          userId={userId}
+          onOpenChange={(open) => {
+            if (!open) setActiveComplaint(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Shared with the Admin complaints page. `showStatusControls` defaults to true (Warden UI unchanged);
+// Admin passes false because it keeps its own Assign / Start Working / Resolve / Reopen actions.
+export function ComplaintDetailsDialog({
+  complaint,
+  userId,
+  onOpenChange,
+  showStatusControls = true,
+}: {
+  complaint: ComplaintWithRelations;
+  userId: string | null;
+  onOpenChange: (open: boolean) => void;
+  showStatusControls?: boolean;
+}) {
+  const qc = useQueryClient();
+  const { can } = useStaffPermissions();
+  const [status, setStatus] = useState<string>(complaint.status);
+  const [resolutionSummary, setResolutionSummary] = useState(complaint.resolution_summary ?? "");
+  const [summaryTouched, setSummaryTouched] = useState(false);
+  // Validated on every change; only matters while the RESOLVED status is selected.
+  const summaryError = status === "RESOLVED" ? resolutionSummaryError(resolutionSummary) : null;
+  const showSummaryError = summaryTouched && summaryError !== null;
+
+  const resolvedByQ = useResolvedByLabel(complaint.resolved_by);
+
+  // Only transitions the server accepts from the current status (plus the current one, so the
+  // select always shows where the complaint is now).
+  const allowedNext = COMPLAINT_STATUS_TRANSITIONS[complaint.status as ComplaintStatus] ?? [];
+  const statusOptions = Array.from(
+    new Set([
+      complaint.status,
+      ...wardenStatusOptions.filter((s) => (allowedNext as readonly string[]).includes(s)),
+    ]),
+  );
+  const canStartWorking = complaint.status === "ASSIGNED";
+
+  const updateStatus = useMutation({
+    mutationFn: async () => {
+      if (status === "RESOLVED") {
+        const parsed = resolutionSchema.safeParse({ resolution_summary: resolutionSummary });
+        if (!parsed.success)
+          throw new Error(
+            resolutionSummaryError(resolutionSummary) ?? "Resolution notes are required",
+          );
+        const { error } = await supabase
+          .from("complaints")
+          .update({
+            status: "RESOLVED",
+            resolution_summary: parsed.data.resolution_summary,
+            resolved_by: userId,
+          })
+          .eq("id", complaint.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("complaints")
+          .update({ status })
+          .eq("id", complaint.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Status updated");
+      qc.invalidateQueries({ queryKey: ["complaints"] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "Could not update status")),
+  });
+
+  const startWorking = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("complaints")
+        .update({ status: "IN_PROGRESS" })
+        .eq("id", complaint.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Work started");
+      setStatus("IN_PROGRESS");
+      qc.invalidateQueries({ queryKey: ["complaints"] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "Could not start work")),
+  });
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-base">
+            {complaint.complaint_number} — {complaint.title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1 text-sm">
+            <p className="text-muted-foreground">{complaint.description}</p>
+            <p className="text-xs text-muted-foreground">
+              {complaint.category_name ?? "Uncategorised"} · {complaint.priority}
+            </p>
+          </div>
+
+          {complaint.is_anonymous ? (
+            <div className="flex items-center gap-1.5 rounded-md border border-border bg-card p-3 text-xs">
+              <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-muted-foreground">Anonymous student</p>
+            </div>
+          ) : (
+            complaint.student_full_name && (
+              <div className="rounded-md border border-border bg-card p-3 text-xs">
+                <p className="font-medium text-foreground">{complaint.student_full_name}</p>
+                <p className="text-muted-foreground">
+                  {complaint.student_admission_number}
+                  {complaint.room_number ? ` · Room ${complaint.room_number}` : ""}
+                  {complaint.block_name ? ` · ${complaint.block_name}` : ""}
+                </p>
+              </div>
+            )
+          )}
+
+          {showStatusControls && can("complaints") && (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <Label className="text-xs">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.replaceAll("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {status === "RESOLVED" && (
+                <div className="space-y-1.5">
+                  <Textarea
+                    placeholder="Example: Water leakage repaired and plumbing issue fixed."
+                    aria-label="Resolution summary (required)"
+                    value={resolutionSummary}
+                    onChange={(e) => {
+                      setResolutionSummary(e.target.value);
+                      setSummaryTouched(true);
+                    }}
+                    onBlur={() => setSummaryTouched(true)}
+                    rows={3}
+                    aria-invalid={showSummaryError}
+                    aria-describedby={showSummaryError ? "resolve-summary-error" : undefined}
+                  />
+                  {showSummaryError && (
+                    <p id="resolve-summary-error" role="alert" className="text-xs text-destructive">
+                      {summaryError}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {canStartWorking && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={startWorking.isPending || updateStatus.isPending}
+                    onClick={() => startWorking.mutate()}
+                  >
+                    Start Working
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  disabled={
+                    updateStatus.isPending ||
+                    startWorking.isPending ||
+                    summaryError !== null ||
+                    (status === complaint.status && status !== "RESOLVED")
+                  }
+                  onClick={() => {
+                    setSummaryTouched(true);
+                    updateStatus.mutate();
+                  }}
+                >
+                  Save status
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {complaint.resolved_at && (
+            <div className="rounded-md border border-success/30 bg-success/5 p-3 text-xs">
+              <p className="font-semibold text-success">Resolved</p>
+              <p className="text-muted-foreground">
+                By {resolvedByQ.data ?? "—"} on {new Date(complaint.resolved_at).toLocaleString()}
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-md border border-border bg-card p-3">
+            <ComplaintTimeline complaint={complaint} />
+          </div>
+
+          <ComplaintCommentThread complaint={complaint} userId={userId} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -3,19 +3,19 @@ import type { LucideIcon } from "lucide-react";
 import { Building, Building2, ChevronLeft, ChevronRight, School, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarketingHeading } from "@/components/site/marketing/MarketingPrimitives";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { marketingAssets, type MarketingImage } from "@/components/site/marketing/marketing-assets";
 
 type Slide = {
   title: string;
   meta: string;
   icon: LucideIcon;
-  image: { src: string; w: number; h: number };
+  image: MarketingImage;
 };
 
 // Three slides: one centred, one either side.
 const slides: Slide[] = [
   {
-    title: "Hostylia Kota Residency",
+    title: "Residency",
     meta: "1,200+ Residents",
     icon: Building2,
     image: marketingAssets.propertyColiving,
@@ -167,6 +167,8 @@ function SlideCard({
     >
       <img
         src={slide.image.src}
+        srcSet={slide.image.srcSet}
+        sizes="(min-width: 1280px) 471px, (min-width: 1024px) 44vw, (min-width: 640px) 55vw, 80vw"
         alt={slide.title}
         width={slide.image.w}
         height={slide.image.h}

@@ -1,28 +1,80 @@
+export type MarketingImage = { src: string; srcSet: string; w: number; h: number };
+
+/** Narrower copies generated next to every image as `<name>-<width>.webp`. */
+const VARIANT_WIDTHS = [320, 480, 800] as const;
+
+function image(name: string, w: number, h: number): MarketingImage {
+  const variants = VARIANT_WIDTHS.filter((v) => v < w).map(
+    (v) => `/marketing/${name}-${v}.webp ${v}w`,
+  );
+  const src = `/marketing/${name}.webp`;
+  return { src, srcSet: [...variants, `${src} ${w}w`].join(", "), w, h };
+}
+
 /**
- * Marketing-site images (landing + solutions pages), served from public/marketing/ (WebP, converted from the
- * supplied design PNGs). Plain URL paths, not bundler imports.
+ * Marketing-site images, served from public/marketing/ (WebP, converted from the
+ * supplied design PNGs). Plain URL paths, not bundler imports. Each one ships with
+ * 320/480/800px variants: pass `srcSet` plus a `sizes` that matches the rendered
+ * width so phones don't download desktop-sized files.
  */
 export const marketingAssets = {
-  hero: { src: "/marketing/hero-laptop-pedestal.webp", w: 1357, h: 845 },
-  stepOnboard: { src: "/marketing/step-onboard.webp", w: 640, h: 607 },
-  stepOperate: { src: "/marketing/step-operate.webp", w: 640, h: 445 },
-  stepAi: { src: "/marketing/step-ai.webp", w: 640, h: 595 },
-  room: { src: "/marketing/room-isometric.webp", w: 1100, h: 825 },
-  visitorPass: { src: "/marketing/visitor-pass.webp", w: 560, h: 715 },
-  complaintBoard: { src: "/marketing/complaint-board.webp", w: 820, h: 683 },
-  roleDashboards: { src: "/marketing/role-dashboards.webp", w: 820, h: 686 },
-  aiSuite: { src: "/marketing/ai-suite.webp", w: 640, h: 569 },
-  planStarter: { src: "/marketing/plan-starter.webp", w: 720, h: 477 },
-  planProfessional: { src: "/marketing/plan-professional.webp", w: 720, h: 555 },
-  planEnterprise: { src: "/marketing/plan-enterprise.webp", w: 720, h: 506 },
-  ctaBuilding: { src: "/marketing/cta-building.webp", w: 1000, h: 451 },
-  mobileApp: { src: "/marketing/mobile-app.webp", w: 1000, h: 1021 },
-  devices: { src: "/marketing/devices.webp", w: 1200, h: 625 },
-  propertyHostel: { src: "/marketing/property-hostel.webp", w: 1200, h: 528 },
-  propertyColiving: { src: "/marketing/property-coliving.webp", w: 1200, h: 528 },
-  propertySchool: { src: "/marketing/property-school.webp", w: 1200, h: 675 },
-  propertyCoaching: { src: "/marketing/property-coaching.webp", w: 1200, h: 675 },
-  propertyCollege: { src: "/marketing/property-college.webp", w: 1200, h: 675 },
-  propertyStaff: { src: "/marketing/property-staff.webp", w: 1200, h: 676 },
-  founder: { src: "/marketing/founder-vikas-patel.webp", w: 640, h: 912 },
+  hero: image("hero-laptop-pedestal", 1357, 845),
+  stepOnboard: image("step-onboard", 640, 607),
+  stepOperate: image("step-operate", 640, 445),
+  stepAi: image("step-ai", 640, 595),
+  room: image("room-isometric", 1100, 825),
+  visitorPass: image("visitor-pass", 560, 715),
+  complaintBoard: image("complaint-board", 820, 683),
+  roleDashboards: image("role-dashboards", 820, 686),
+  aiSuite: image("ai-suite", 640, 569),
+  planStarter: image("plan-starter", 720, 477),
+  planProfessional: image("plan-professional", 720, 555),
+  planEnterprise: image("plan-enterprise", 720, 506),
+  ctaBuilding: image("cta-building", 1000, 451),
+  mobileApp: image("mobile-app", 1000, 1021),
+  devices: image("devices", 1200, 625),
+  propertyHostel: image("property-hostel", 1200, 528),
+  propertyColiving: image("property-coliving", 1200, 528),
+  propertySchool: image("property-school", 1200, 675),
+  propertyCoaching: image("property-coaching", 1200, 675),
+  propertyCollege: image("property-college", 1200, 675),
+  propertyStaff: image("property-staff", 1200, 676),
+  founder: image("founder-vikas-patel", 640, 912),
+} as const;
+
+/**
+ * <link rel="preload"> entries for the fonts the redesigned marketing pages paint
+ * above the fold (Manrope headings, Inter body; @font-face lives in styles.css).
+ * Spread into a marketing route's head().links. Fonts need crossOrigin even
+ * when same-origin, or the preload is fetched twice.
+ */
+export const marketingFontPreloads = [
+  {
+    rel: "preload",
+    as: "font",
+    type: "font/woff2",
+    href: "/fonts/manrope-latin.woff2",
+    crossOrigin: "anonymous",
+  },
+  {
+    rel: "preload",
+    as: "font",
+    type: "font/woff2",
+    href: "/fonts/inter-latin.woff2",
+    crossOrigin: "anonymous",
+  },
+] as const;
+
+/**
+ * Extra preload for pages whose Manrope text contains ₹ (U+20B9 lives in the
+ * latin-ext subset): the pricing cards on / and /pricing. Without it the subset
+ * is discovered late, and its arrival re-lays out every Manrope heading,
+ * including the hero h1, which pushes LCP back by ~0.6s.
+ */
+export const rupeeFontPreload = {
+  rel: "preload",
+  as: "font",
+  type: "font/woff2",
+  href: "/fonts/manrope-latin-ext.woff2",
+  crossOrigin: "anonymous",
 } as const;

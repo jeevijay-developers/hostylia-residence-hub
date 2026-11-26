@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useThemeStore } from "@/stores/theme-store";
-import darkLogoAsset from "@/assets/hostylia-logo.png";
-import lightLogoAsset from "@/assets/hostylia-logo-light.png";
+import darkLogoAsset from "@/assets/hostylia-logo.webp";
+import lightLogoAsset from "@/assets/hostylia-logo-light.webp";
 
 /**
  * The brand has one lockup per theme, each a single raster asset (icon +
@@ -25,7 +25,7 @@ import lightLogoAsset from "@/assets/hostylia-logo-light.png";
  * different resolution. The geometry has to be inline style: it is computed
  * from those fractions, not a value the spacing scale could express.
  *
- * The light-theme asset (src/assets/hostylia-logo-light.png) has no alpha
+ * The light-theme asset (src/assets/hostylia-logo-light.webp) has no alpha
  * channel — its background is an off-white ~#F7F7F7, close enough to the
  * light theme's --card (#FFFFFF) to be imperceptible at icon sizes, but it
  * would show as a visible box on the dark theme's navy chrome. That's why
@@ -51,7 +51,7 @@ interface AssetSpec {
 
 const DARK_ASSET: AssetSpec = {
   src: darkLogoAsset,
-  natural: { w: 1491, h: 584 },
+  natural: { w: 480, h: 188 },
   mark: { x: 0.015, y: 0.02, w: 0.255, h: 0.96 },
   wordmark: { x: 0.3, y: 0.43, w: 0.68, h: 0.31 },
   wordmarkScale: "42%",
@@ -60,7 +60,7 @@ const DARK_ASSET: AssetSpec = {
 
 const LIGHT_ASSET: AssetSpec = {
   src: lightLogoAsset,
-  natural: { w: 1536, h: 1024 },
+  natural: { w: 480, h: 320 },
   mark: { x: 0.0807, y: 0.2471, w: 0.2402, h: 0.5137 },
   wordmark: { x: 0.3522, y: 0.5039, w: 0.6042, h: 0.1455 },
   wordmarkScale: "37%",

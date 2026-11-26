@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, MessageCircle } from "lucide-react";
 import { canonicalUrl } from "@/lib/site";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { marketingFontPreloads } from "@/components/site/marketing/marketing-assets";
 import { SolutionsHero } from "@/components/site/solutions/SolutionsHero";
 import { PropertyTypes } from "@/components/site/solutions/PropertyTypes";
 import { SolutionsFeatures } from "@/components/site/solutions/SolutionsFeatures";
@@ -25,15 +25,7 @@ export const Route = createFileRoute("/solutions")({
       },
       { property: "og:url", content: canonicalUrl("/solutions") },
     ],
-    links: [
-      { rel: "canonical", href: canonicalUrl("/solutions") },
-      {
-        rel: "preload",
-        as: "image",
-        href: marketingAssets.planProfessional.src,
-        fetchPriority: "high",
-      },
-    ],
+    links: [{ rel: "canonical", href: canonicalUrl("/solutions") }, ...marketingFontPreloads],
   }),
   component: SolutionsPage,
 });

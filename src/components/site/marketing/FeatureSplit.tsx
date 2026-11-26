@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { ChecklistCopy } from "./MarketingPrimitives";
+import type { MarketingImage } from "./marketing-assets";
 
 /**
  * Section with checklist copy on one side and an illustration on a soft mint
@@ -14,7 +15,7 @@ export function FeatureSplit({
   sectionClassName,
 }: {
   copy: ComponentProps<typeof ChecklistCopy>;
-  image: { src: string; w: number; h: number };
+  image: MarketingImage;
   imageAlt: string;
   imageSide?: "left" | "right";
   sectionClassName?: string;
@@ -48,6 +49,8 @@ export function FeatureSplit({
           />
           <img
             src={image.src}
+            srcSet={image.srcSet}
+            sizes="(min-width: 1280px) 672px, (min-width: 1024px) 54vw, (min-width: 704px) 672px, calc(100vw - 32px)"
             alt={imageAlt}
             width={image.w}
             height={image.h}

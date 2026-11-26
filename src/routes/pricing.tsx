@@ -9,7 +9,11 @@ import {
   Wallet,
 } from "lucide-react";
 import { canonicalUrl } from "@/lib/site";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import {
+  marketingAssets,
+  marketingFontPreloads,
+  rupeeFontPreload,
+} from "@/components/site/marketing/marketing-assets";
 import { PricingPlans } from "@/components/site/landing/PricingPlans";
 import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/FeatureGrid";
 import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
@@ -73,7 +77,11 @@ export const Route = createFileRoute("/pricing")({
       { property: "og:url", content: canonicalUrl("/pricing") },
       { "script:ld+json": faqPageJsonLd(faqs) },
     ],
-    links: [{ rel: "canonical", href: canonicalUrl("/pricing") }],
+    links: [
+      { rel: "canonical", href: canonicalUrl("/pricing") },
+      ...marketingFontPreloads,
+      rupeeFontPreload,
+    ],
   }),
   component: PricingPage,
 });

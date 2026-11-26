@@ -32,6 +32,8 @@ export function SolutionsHero() {
           </div>
           <img
             src={image.src}
+            srcSet={image.srcSet}
+            sizes="(min-width: 1280px) 650px, (min-width: 1024px) 50vw, (min-width: 640px) 576px, calc(100vw - 32px)"
             alt="Modern four-storey residential building with glass balconies, a covered entrance and landscaped gardens"
             width={image.w}
             height={image.h}

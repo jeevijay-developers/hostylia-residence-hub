@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { MessageSquareText, Monitor, ShieldCheck, Sparkles } from "lucide-react";
 import { ChecklistCopy } from "@/components/site/marketing/MarketingPrimitives";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { marketingAssets, type MarketingImage } from "@/components/site/marketing/marketing-assets";
 
 type Panel = {
   chip: string;
@@ -9,7 +9,7 @@ type Panel = {
   title: string;
   desc: string;
   points: string[];
-  image: { src: string; w: number; h: number };
+  image: MarketingImage;
   imageAlt: string;
   /** Tailwind width for the illustration column on sm+. */
   imageWidth: string;
@@ -105,6 +105,8 @@ export function ShowcasePanels() {
             </div>
             <img
               src={p.image.src}
+              srcSet={p.image.srcSet}
+              sizes="(min-width: 640px) 288px, 50vw"
               alt={p.imageAlt}
               aria-hidden={p.imageAlt === "" ? true : undefined}
               width={p.image.w}

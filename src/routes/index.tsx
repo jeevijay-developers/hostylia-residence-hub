@@ -10,7 +10,10 @@ import { OperatorTestimonials } from "@/components/site/landing/OperatorTestimon
 import { PricingPlans } from "@/components/site/landing/PricingPlans";
 import { MobileAppSection } from "@/components/site/landing/MobileAppSection";
 import { CtaBanner } from "@/components/site/marketing/CtaBanner";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import {
+  marketingFontPreloads,
+  rupeeFontPreload,
+} from "@/components/site/marketing/marketing-assets";
 import { canonicalUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/")({
@@ -44,7 +47,8 @@ export const Route = createFileRoute("/")({
     ],
     links: [
       { rel: "canonical", href: canonicalUrl("/") },
-      { rel: "preload", as: "image", href: marketingAssets.hero.src, fetchPriority: "high" },
+      ...marketingFontPreloads,
+      rupeeFontPreload,
     ],
   }),
   component: HomePage,

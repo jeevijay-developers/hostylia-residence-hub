@@ -15,7 +15,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { PUBLIC_EMAIL, PUBLIC_PHONE_DISPLAY, SITE_ORIGIN } from "@/lib/site";
 import "@/i18n";
 
@@ -147,13 +146,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "image/png",
         media: "(prefers-color-scheme: dark)",
       },
+      // Web fonts are self-hosted via @font-face in styles.css (public/fonts/).
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -262,19 +256,32 @@ function isAppRoute(pathname: string): boolean {
 function useClearQueryCacheOnIdentityChange(queryClient: QueryClient) {
   const lastUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      const uid = session?.user?.id ?? null;
-      if (event === "SIGNED_OUT") {
-        queryClient.clear();
-        lastUserId.current = null;
-        return;
-      }
-      if (lastUserId.current !== undefined && uid !== lastUserId.current) {
-        queryClient.clear();
-      }
-      lastUserId.current = uid;
+    // The Supabase SDK is loaded on demand so it stays out of the entry bundle
+    // every marketing visitor downloads. Subscribing a moment later misses
+    // nothing: onAuthStateChange replays the current session (INITIAL_SESSION)
+    // to every new subscriber.
+    let isDisposed = false;
+    let unsubscribe: (() => void) | undefined;
+    void import("@/integrations/supabase/client").then(({ supabase }) => {
+      if (isDisposed) return;
+      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+        const uid = session?.user?.id ?? null;
+        if (event === "SIGNED_OUT") {
+          queryClient.clear();
+          lastUserId.current = null;
+          return;
+        }
+        if (lastUserId.current !== undefined && uid !== lastUserId.current) {
+          queryClient.clear();
+        }
+        lastUserId.current = uid;
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      isDisposed = true;
+      unsubscribe?.();
+    };
   }, [queryClient]);
 }
 

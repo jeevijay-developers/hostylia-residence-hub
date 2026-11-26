@@ -10,14 +10,14 @@ import {
   School,
   Users,
 } from "lucide-react";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { marketingAssets, type MarketingImage } from "@/components/site/marketing/marketing-assets";
 import { MarketingHeading } from "@/components/site/marketing/MarketingPrimitives";
 
 type PropertyType = {
   title: string;
   desc: string;
   icon: LucideIcon;
-  image: { src: string; w: number; h: number };
+  image: MarketingImage;
   alt: string;
 };
 
@@ -89,6 +89,8 @@ export function PropertyTypes() {
                   <div className="aspect-video overflow-hidden bg-muted">
                     <img
                       src={p.image.src}
+                      srcSet={p.image.srcSet}
+                      sizes="(min-width: 1280px) 393px, (min-width: 1024px) 30vw, (min-width: 768px) 45vw, calc(100vw - 32px)"
                       width={p.image.w}
                       height={p.image.h}
                       alt={p.alt}

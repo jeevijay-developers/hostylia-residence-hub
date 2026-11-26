@@ -5,7 +5,7 @@ import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { SectionHeading, FeatureCard } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
 import { marketingAssets } from "@/components/site/marketing/marketing-assets";
-import buildingHero from "@/assets/illustrations/building-hero.jpg";
+import buildingHero from "@/assets/illustrations/building-hero.webp";
 import {
   MockOccupancyDashboard,
   MockAiInsights,

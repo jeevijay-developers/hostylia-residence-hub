@@ -32,6 +32,8 @@ export function LandingHero() {
         <div className="relative lg:-mr-16 xl:-mr-24">
           <img
             src={image.src}
+            srcSet={image.srcSet}
+            sizes="(min-width: 1280px) 746px, (min-width: 1024px) 56vw, calc(100vw - 32px)"
             alt="Hostylia admin dashboard on a laptop showing occupancy, residents, collections and attendance for Kota Residency"
             width={image.w}
             height={image.h}

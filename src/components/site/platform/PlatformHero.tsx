@@ -35,6 +35,8 @@ export function PlatformHero() {
           />
           <img
             src={devices.src}
+            srcSet={devices.srcSet}
+            sizes="(min-width: 1280px) 650px, (min-width: 1024px) 50vw, (min-width: 704px) 672px, calc(100vw - 32px)"
             alt="Hostylia admin dashboard on a laptop alongside the Hostylia resident view on a phone"
             width={devices.w}
             height={devices.h}

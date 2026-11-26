@@ -21,7 +21,10 @@ import {
   Users,
 } from "lucide-react";
 import { canonicalUrl } from "@/lib/site";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import {
+  marketingAssets,
+  marketingFontPreloads,
+} from "@/components/site/marketing/marketing-assets";
 import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/FeatureGrid";
 import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
 import { FaqSection } from "@/components/site/marketing/FaqSection";
@@ -151,15 +154,7 @@ export const Route = createFileRoute("/platform")({
       { property: "og:url", content: canonicalUrl("/platform") },
       { "script:ld+json": faqPageJsonLd(faqs) },
     ],
-    links: [
-      { rel: "canonical", href: canonicalUrl("/platform") },
-      {
-        rel: "preload",
-        as: "image",
-        href: marketingAssets.devices.src,
-        fetchPriority: "high",
-      },
-    ],
+    links: [{ rel: "canonical", href: canonicalUrl("/platform") }, ...marketingFontPreloads],
   }),
   component: PlatformPage,
 });

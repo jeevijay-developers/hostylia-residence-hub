@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
-import { WardenGatePage, gateSearchSchema } from "./warden.gate";
+import { gateSearchSchema } from "@/schemas/staff-search";
+import { WardenGatePage } from "@/components/warden/WardenGatePage";
 
 // Admin-granted Gate Pass / Visitors for an Accountant — reuses the existing
 // Warden gate page as-is; the guard + RLS (can_*_gate_passes/visitors) enforce the keys.

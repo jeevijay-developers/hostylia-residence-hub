@@ -48,6 +48,8 @@ export function HowItWorksSteps() {
                 </div>
                 <img
                   src={s.asset.src}
+                  srcSet={s.asset.srcSet}
+                  sizes="160px"
                   alt=""
                   aria-hidden
                   width={s.asset.w}

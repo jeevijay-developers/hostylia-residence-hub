@@ -38,6 +38,8 @@ export function CtaBanner({
             <div className="absolute -bottom-32 right-1/4 size-72 rounded-full bg-brand-green-strong/60 blur-3xl" />
             <img
               src={building.src}
+              srcSet={building.srcSet}
+              sizes="(min-width: 1280px) 567px, 44vw"
               alt=""
               width={building.w}
               height={building.h}
@@ -49,6 +51,8 @@ export function CtaBanner({
 
           <img
             src={building.src}
+            srcSet={building.srcSet}
+            sizes="(min-width: 640px) 384px, 288px"
             alt=""
             aria-hidden
             width={building.w}

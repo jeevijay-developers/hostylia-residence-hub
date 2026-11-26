@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
-import { WardenNoticesPage } from "./warden.notices";
+import { WardenNoticesPage } from "@/components/warden/WardenNoticesPage";
 
 // Admin-granted Notices for an Accountant — reuses the existing Warden
 // notices page as-is; the guard + RLS enforce the `notices` key.

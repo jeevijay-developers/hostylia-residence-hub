@@ -19,6 +19,8 @@ export function FounderNote() {
         <figure className="mx-auto mt-12 grid max-w-5xl items-center gap-8 rounded-[2rem] border border-brand-green/10 bg-linear-to-br from-mint via-mint/60 to-card p-6 shadow-card-ambient md:grid-cols-[auto_1fr] md:gap-12 md:p-10">
           <img
             src={photo.src}
+            srcSet={photo.srcSet}
+            sizes="(min-width: 768px) 224px, 192px"
             alt="Vikas Patel, Founder & CEO of Hostylia"
             width={photo.w}
             height={photo.h}

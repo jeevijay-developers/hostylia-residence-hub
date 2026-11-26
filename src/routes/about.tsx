@@ -9,7 +9,10 @@ import {
   Target,
 } from "lucide-react";
 import { canonicalUrl } from "@/lib/site";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import {
+  marketingAssets,
+  marketingFontPreloads,
+} from "@/components/site/marketing/marketing-assets";
 import { FeatureSplit } from "@/components/site/marketing/FeatureSplit";
 import { FeatureGrid, type FeatureItem } from "@/components/site/marketing/FeatureGrid";
 import { CtaBanner } from "@/components/site/marketing/CtaBanner";
@@ -32,15 +35,7 @@ export const Route = createFileRoute("/about")({
       },
       { property: "og:url", content: canonicalUrl("/about") },
     ],
-    links: [
-      { rel: "canonical", href: canonicalUrl("/about") },
-      {
-        rel: "preload",
-        as: "image",
-        href: marketingAssets.propertyColiving.src,
-        fetchPriority: "high",
-      },
-    ],
+    links: [{ rel: "canonical", href: canonicalUrl("/about") }, ...marketingFontPreloads],
   }),
   component: AboutPage,
 });

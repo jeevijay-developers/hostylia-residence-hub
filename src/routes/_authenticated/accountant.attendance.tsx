@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffModuleGuard } from "@/components/dashboard/RoleGuard";
-import { WardenAttendancePage, attendanceSearchSchema } from "./warden.attendance";
+import { attendanceSearchSchema } from "@/schemas/staff-search";
+import { WardenAttendancePage } from "@/components/warden/WardenAttendancePage";
 
 // Admin-granted Attendance for an Accountant — reuses the existing Warden
 // attendance page as-is; the guard + RLS (can_*_attendance) enforce the keys.

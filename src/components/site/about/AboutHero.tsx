@@ -36,6 +36,8 @@ export function AboutHero() {
           />
           <img
             src={photo.src}
+            srcSet={photo.srcSet}
+            sizes="(min-width: 1280px) 650px, (min-width: 1024px) 50vw, (min-width: 640px) 576px, calc(100vw - 32px)"
             alt="Modern residential building with balconies and a landscaped courtyard at dusk"
             width={photo.w}
             height={photo.h}

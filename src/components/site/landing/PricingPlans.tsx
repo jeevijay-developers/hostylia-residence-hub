@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { IconTile, MarketingHeading } from "@/components/site/marketing/MarketingPrimitives";
-import { marketingAssets } from "@/components/site/marketing/marketing-assets";
+import { marketingAssets, type MarketingImage } from "@/components/site/marketing/marketing-assets";
 
 type Plan = {
   name: string;
@@ -29,7 +29,7 @@ type Plan = {
   /** Display string only — pricing is not computed money. */
   price: string;
   features: { label: string; icon: LucideIcon }[];
-  image: { src: string; w: number; h: number };
+  image: MarketingImage;
   isFeatured?: boolean;
 };
 
@@ -129,6 +129,8 @@ function PlanCard({ plan, isPageHero }: { plan: Plan; isPageHero: boolean }) {
           edges so the art's soft foliage edges blend in both themes. */}
       <img
         src={plan.image.src}
+        srcSet={plan.image.srcSet}
+        sizes="(min-width: 640px) 288px, 58vw"
         alt=""
         aria-hidden
         width={plan.image.w}

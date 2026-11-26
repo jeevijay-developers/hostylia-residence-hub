@@ -13,7 +13,7 @@ import {
 import { PageHero, CTAStrip } from "@/components/site/PageHero";
 import { FeatureCard, SectionHeading } from "@/components/site/Primitives";
 import { IllustrationCard } from "@/components/site/IllustrationCard";
-import aiInsights from "@/assets/illustrations/ai-insights.jpg";
+import aiInsights from "@/assets/illustrations/ai-insights.webp";
 import {
   MockAiInsights,
   StatBand,
