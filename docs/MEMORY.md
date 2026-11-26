@@ -580,3 +580,247 @@ _End of Memory.md_
 - /access-pending card: subtitle + 3 numbered steps + Sign out + one "Need help? support@hostylia.com · Home" line (was an info box, a bullet list and a separate help card). Student/parent wording kept, same sign-out behaviour.
 - AuthLayout no longer renders the LanguageSwitcher on any auth page (login and verify-otp already hid it); the hideLanguageSwitcher prop is removed. The hostylia_locale cookie still applies, and dashboards keep their switcher.
 - Verified: eslint clean, tsc unchanged (18 pre-existing), screenshots at 1440 and 390 px for both roles, both signup steps and access-pending (student + parent), no page errors after a dev-server restart (the dev server caches i18n, so a hydration warning about the old subtitle before the restart is expected). Not run: an actual account creation (needs live Supabase + Turnstile).
+
+## Hostel Admin dashboard redesign (2026-11-26)
+- /admin/dashboard rebuilt to the supplied mockup, with softer SaaS-style tints and semantic tokens only (no gradients except the chart fill). New components in src/components/dashboard/admin/: AdminDashboardHeader (time-of-day greeting + property name/city + property-timezone clock), PlanExpiryBanner, DashboardStatCard (+ DeltaPill/StatProgress/StatSparkline), OccupancyTowerCard, CollectionsTrendCard, AttentionCard, RecentActivityCard. Data hooks in src/lib/admin-dashboard.ts.
+- Asset: src/assets/illustrations/occupancy-tower.webp (720 px, alpha). The supplied PNG had an opaque black backdrop; only that backdrop was keyed out (flood fill from the edges + fringe un-blend). The building itself is unchanged.
+- Kept as before: occupancy formula (occupied / (occupied + vacant)), the collections rule (CAPTURED, provider ≠ simulated, by paid_at, browser-local month), every KPI's click-through (properties, students?status=ACTIVE, finance/pnl, complaints?status=OPEN), the Recent Activity sources (useAdminRecentActivity), the KYC approval queue card (now full width at the bottom, anchor #kyc-approvals), the no-property / no-beds empty states.
+- Changed or new logic:
+  - Bed/student/complaint counts are head-count queries now (the old code fetched every bed row).
+  - Payments are paged in 1000-row chunks, because PostgREST's row cap could silently truncate a busy month.
+  - Open complaints moved from the KPI row into "Needs Your Attention". Approvals = pending KYC documents (key ["kyc-pending-queue","count"], refreshed by the card's own invalidation). The third tile is move-out notices (NOTICE_GIVEN allocations) → /admin/students.
+  - The new Attendance KPI = today's (Present+Late)/(Present+Late+Absent) on the property-local date, with a pp change vs yesterday. It shows "Not marked yet today" when there are no rows.
+  - Deltas are only shown where they can be computed honestly. Collections = vs the same elapsed days last month. Residents = active students created this month. Occupancy has no history, so it gets a "X of Y beds occupied" caption instead of a delta.
+  - Plan banner uses the shared subscription-expiry.ts threshold (7 days). It can be dismissed per browser session.
+  - /admin/settings accepts an optional ?tab=property|organization|billing.
+- Added formatInrCompact (₹12.48L / ₹1.2Cr / ₹45.5K) to src/lib/finance.ts.
+- Not changed: Sidebar/Topbar. The mockup's grouped sidebar sections and nav count badges are shared-shell work for a separate task. RoomOccupancyChart.tsx is no longer used by any page but was left in place.
+- Verified: tsc unchanged (18 pre-existing errors, none in touched files); eslint + prettier clean on the new/rewritten files; Vite dev compiles every module. Headless Chrome screenshots of the components with sample data on a temporary route (since deleted): 1440 light + dark and 390 px, no console errors. Not verified against live data: the real page needs a signed-in admin.
+
+## Admin shell (sidebar + top bar) and Properties page redesign (2026-11-26)
+- Dashboard follow-up:
+  - Recent Activity rows are single-line (type · detail, full text in the tooltip). Simulated payments show a "Test" chip instead of the long suffix.
+  - The item cap is MAX_ITEMS in RecentActivityCard.tsx. It was set to 5 per the request; the file currently reads 4 after an edit outside this task.
+  - With compact rows, the "Needs Your Attention" tiles no longer stretch tall.
+- Nav config (src/lib/dashboard-nav.ts): NavItem gained optional `section` (group heading) and `badge` (NavBadgeKey). Only HOSTEL_ADMIN uses them: Overview / Residents / Money / Operations / Admin, with clearer icons (Allocations no longer shares Attendance's icon). The "Staff" label is kept (the mockup says "Users", but the page manages Wardens/Accountants). isNavItemActive moved here.
+- New shared NavList (src/components/dashboard/NavList.tsx) renders the Sidebar and the mobile nav sheet. It handles section headings, badges (a dot when the sidebar is collapsed) and the KYC-locked items. Roles without sections render a flat list as before.
+- Badges (src/lib/nav-badges.ts, key ["nav-badges", tenantId, propertyId], refetched every 2 min, head counts only):
+  - Complaints = open complaints at the active property.
+  - Finance = refunds in PENDING_APPROVAL at the active property.
+  - Support = tenant support tickets in WAITING_FOR_ADMIN.
+  - A failed count just hides its badge.
+- Sidebar: "Property" label, switcher card (name + city/state, "TBD" placeholders hidden), and an "All properties" link (DesktopShell/Topbar prop allPropertiesHref, set in admin.tsx). The header has no bottom border, and the active-item glow was dropped. Other roles get the same sidebar chrome but keep their flat list.
+- Topbar, admin only:
+  - Home-icon breadcrumb (Home > nav label > sub-page), derived from navItems.
+  - Plain card background instead of the tinted gradient.
+  - Avatar with a chevron.
+  - The mobile sheet shows the switcher + All properties + grouped nav with badges.
+- Properties page (admin.properties.index.tsx), data in src/lib/admin-properties.ts:
+  - Header + 4 summary cards (properties, beds, residents, overall occupancy ring).
+  - Status filter pills (All / Active / Setup pending / Inactive, plus Suspended only when present).
+  - Grid/list toggle and sort, all kept in the URL (?status, ?view, ?sort).
+  - Cards (src/components/hostel/PropertyCard.tsx) show a status chip (icon + label), a "Selected" chip for the active property, a ⋮ menu (Setup/Structure as before), an occupancy ring, Beds/Residents/Blocks, and quick actions. Rooms → structure; Students/Finance/Reports switch the active property, then open that page. The list view keeps the old table plus a Residents column.
+- Logic changes on Properties:
+  - Bed counts come from v_occupancy_summary instead of fetching every bed row (PostgREST's 1000-row cap made totals wrong on big portfolios).
+  - Occupancy % is now occupied/(occupied+vacant), the same as the dashboard and the view. It was occupied/total, which counted maintenance/blocked beds as empty.
+  - Residents = ACTIVE students per property.
+  - Status is upper-cased (old rows were stored as 'active').
+  - The create-property dialog and mutation are unchanged.
+- Cover images: properties have no photo column. The marketing property photos carry signage ("SCHOOL", "COACHING HOSTELS") and would read as the owner's own building, so cards use a tinted cover with the occupancy-tower illustration. Real photos need an upload field + storage path first.
+- Verified:
+  - tsc unchanged (18 pre-existing errors); eslint + prettier clean on every touched file.
+  - Headless Chrome on a temporary /zzpreview route (deleted; routeTree.gen.ts unchanged). The route used the real Sidebar/Topbar with seeded query cache and a generated copy of the real Properties page.
+  - Captured at 1586 px light + dark and 390 px (page + nav sheet), plus the collapsed sidebar. No console errors.
+  - Not verified with a real signed-in admin or live data.
+
+## Add-property wizard, Setup rewrite, default property photo (2026-11-26)
+- Property cards use src/assets/illustrations/property-default.webp (supplied photo, 960x480 WebP) as the shared cover.
+- "Add property" now opens /admin/properties/new (admin.properties.new.tsx) instead of the old name+city dialog, which inserted "TBD"/"000000" placeholders. The new page is a 3-step wizard (src/components/hostel/PropertyWizard.tsx), shared with Setup:
+  - Basics: name*, type*, who can stay*.
+  - Location: address 1*, address 2, landmark, country*, city*, state*, PIN*, time zone*.
+  - Contact & review: phone, email, summary with Edit links.
+  - Required fields have a red asterisk; optional ones say "(optional)".
+  - Each step is validated before moving on. Errors appear under the field in plain language, and the stepper marks steps that need attention.
+- Location:
+  - City is a type-ahead (PropertyLocationPickers.tsx). It searches a bundled Indian city→state list (src/lib/locations.ts) on a 250 ms debounced value (src/hooks/use-debounced-value.ts). Picking a suggestion fills the state; any city can still be typed.
+  - State is a dropdown of the 36 states/UTs for India, free text elsewhere.
+  - Country and time zone are searchable dropdowns: ISO-3166 codes named by Intl.DisplayNames, IANA zones from Intl.supportedValuesOf, with GMT offsets.
+  - On Add, both default to this device's settings (time zone + explicit locale region; Asia/Kolkata ⇒ IN). Changing the country picks its zone when the browser knows it (Intl.Locale timeZones).
+- Slug:
+  - The admin never types it. createProperty (src/lib/property.functions.ts, requireSupabaseAuth + has_tenant_role HOSTEL_ADMIN) builds it from the name, then name-city, then -2…-19, then a random suffix.
+  - Candidates are checked against ALL tenants (service role), deleted rows included. The DB index is only unique per tenant, but /apply/$slug looks up by slug alone.
+  - The row is inserted with the caller's RLS client, with retries on a 23505 race, plus a PROPERTY_CREATED audit log. New properties are created ACTIVE (everything Setup used to collect is now required up front). The admin then goes to Structure, with the new property selected.
+  - Slugs are now read-only in Setup, so shared links never break.
+- Setup (admin.properties.$id.setup.tsx) uses the same wizard in edit mode:
+  - Branding step and logo upload removed (the DB columns are untouched).
+  - Legacy "TBD"/"000000" placeholders show as empty.
+  - "Finish setup" activates a DRAFT. Other statuses keep their status ("Save changes"); the old code always forced ACTIVE.
+- Errors:
+  - propertyFormSchema (src/schemas/hostel.ts) has a written message on every rule. India rules (6-digit PIN, state from the list) are in propertyCrossFieldIssues, so they show even while other fields are empty. propertyCreateSchema is the server input.
+  - friendlyPropertyError (src/lib/property-form.ts) maps ZodError, serialized Zod JSON, 23505, RLS/42501, network and session errors to sentences, and hides anything technical.
+  - This fixes the raw `[{"code":"too_small"…country_code}]` toast from Setup step 2.
+- The admin breadcrumb reads "Properties > Add new" on the new page.
+- Verified:
+  - tsc unchanged (18 pre-existing); eslint + prettier clean on the touched files.
+  - Headless Chrome on a temporary route (deleted), driving the whole wizard: empty-step messages, debounced suggestions (none on the first keystroke, Kerala/Kochi… after 250 ms, Enter fills the state), PIN and email messages, a clean submit payload, no console errors.
+  - Not run: a real createProperty call (needs a signed-in admin + service-role env).
+
+## Dashboard polish, PIN auto-fill, slug routes, Structure redesign (2026-11-26)
+- Dashboard:
+  - "Needs Your Attention" tiles always keep their colour (red Complaints, amber Approvals with a user-plus icon, blue Notices with a bell icon), even at 0.
+  - KPI deltas are plain "▲ +2 pp" text (DeltaPill `plain`); the Collections card keeps the pill.
+  - Charts always render: the MTD sparkline is padded to a flat line, and the Collections chart draws a flat line on a ₹0–10K axis with "No payments captured …" as the caption.
+  - Attendance shows "0%" (never "—") when not marked; Residents always shows its +N.
+  - Occupancy Tower matches the mockup: teal Occupied / grey Available legend, no bar, no total row, no "Manage rooms" link. With 0 beds it still shows the tower at 0% plus an "add rooms and beds" link.
+- Property wizard, Location step:
+  - The PIN code comes first. A valid 6-digit PIN (India) is looked up 300 ms after typing through lookupIndianPincode (src/lib/pincode.functions.ts): an authenticated server fn calling India Post's api.postalpincode.in (only the PIN is sent), with a 6 s timeout and an in-memory cache.
+  - It fills city (district, old names mapped: Bangalore→Bengaluru, Gurgaon→Gurugram…), state (mapped to INDIAN_STATES, India Post spellings aliased), country IN and Asia/Kolkata.
+  - Each PIN is applied once, so later corrections stick. In edit mode the stored PIN counts as applied.
+  - "Areas in this PIN" chips fill address line 2.
+  - If the PIN isn't found or the service is unreachable, the hint asks the admin to type the city and state.
+- Phone is now required. India: 10 digits, +91 / 91 / 0 prefixes accepted (propertyCrossFieldIssues). Existing properties without a phone are asked for one on their next save in Setup.
+- Routes: admin.properties.$id.{index,setup,structure} were renamed (git mv) to $slug.
+  - usePropertyByRouteParam looks up by slug (RLS = own tenant; unique per tenant among non-deleted) and still accepts a UUID, redirecting it to the slug URL so old bookmarks work.
+  - Links updated: PropertyCard, the properties list, the new-property redirect (createProperty returns the slug), and AllocationBoard's "Manage rooms & beds" (usePropertySlug, falling back to the id).
+- Structure (RoomsBedsBoard, shared with /warden/rooms-beds; same props, dialogs, CSV import, bed-status dialog and permissions):
+  - Layout: header + Import CSV / Add Block, then 5 stat tiles (blocks, floors, rooms, beds, occupancy).
+  - Blocks: collapsible cards showing floors/rooms/beds counts, a "% Occupied" pill, "+ Floor", and a ⋯ menu (expand/collapse all floors). Blocks start collapsed after the first when there are more than 3.
+  - Floors: grey panels with room/bed count pills, "+ Room" and a chevron.
+  - Rooms: cards showing the type badge, capacity, and a status pill. The explicit room status wins; otherwise it shows Occupied / n/m occupied / Vacant from the beds.
+  - Beds: chips "115-B1" with a per-status icon and the bed-status colours; clicking one opens BedStatusDialog when allowed.
+  - The room grid uses container queries (@md 2 / @2xl 3 columns).
+  - The property query key changed to ["structure-property", id]. It used to share ["property", id] with Setup, which selected a different shape.
+  - The empty property shows EmptyState with Add Block, and error text is plain.
+- Verified:
+  - tsc unchanged (18 pre-existing); eslint + prettier clean on touched files.
+  - Headless Chrome on a temporary route (deleted; routeTree has no preview entries) with seeded data: Structure at 1200 light/dark + 390, the zero-value dashboard, and the wizard PIN flow (seeded lookup → Kota/Rajasthan filled, hint shown).
+  - India Post API probed directly: 324005 → Kota/Rajasthan; 560001 → Bangalore/Karnataka; 999999 → not found.
+
+## Property routes: Edit vs Structure, ⋯ menu actions, PIN auto-fill fix (2026-11-26)
+- Routes:
+  - "Setup" is the structure. The old Setup page (the PropertyWizard in edit mode) moved to /admin/properties/$slug/edit (git mv to admin.properties.$slug.edit.tsx), titled "Edit property — <name>". Its draft button is now "Save & activate".
+  - /admin/properties/$slug/setup and the bare /admin/properties/$slug both redirect to /structure.
+  - The card's arrow and the list view's name link open Structure.
+- ⋯ menu (src/components/hostel/PropertyActionsMenu.tsx), shared by the card and the list view: Edit details · Change status (Active / Inactive radio submenu) · Delete property.
+  - setPropertyStatus and deleteProperty are server fns in src/lib/property.functions.ts (requireSupabaseAuth + has_tenant_role HOSTEL_ADMIN through the caller's RLS client, plus audit_logs PROPERTY_STATUS_CHANGED / PROPERTY_DELETED). SUSPENDED is Super-Admin territory and can't be changed here.
+  - Delete is a soft delete (deleted_at + INACTIVE; records and slug kept). It needs the property name typed to confirm, and it is refused while ACTIVE/NOTICE_GIVEN students or ACTIVE/NOTICE_GIVEN/MOVE_OUT_INSPECTION allocations exist.
+  - Deleting the active property clears the store, and PropertySwitcher now filters out deleted_at rows (it listed deleted ones before).
+- PIN auto-fill bug: in edit mode the saved PIN counted as "already applied", so 324005 never replaced a wrong saved city ("rajstan") or an empty state. Now:
+  - Typing a PIN always applies its city/state/country.
+  - On open, an incomplete saved address (no city or no valid state) is corrected automatically. A complete but different one gets a "This PIN is in Kota, Rajasthan. [Use Kota]" button.
+  - The effect also re-runs on every PIN-field edit, so a quick retype of the same PIN (the debounced value never changes) still applies it.
+  - India Post confirms 324005 → Kota/Rajasthan; 354005 (the PIN in the user's screenshot) really doesn't exist.
+- Verified: tsc unchanged (18), eslint clean. Headless Chrome on a temporary route (deleted): menu items, status submenu, delete confirm enables on a case-insensitive name match, and all three PIN cases (auto-correct, offer button, retype → Kota/Rajasthan). No console errors.
+
+## Property Overview page, Setup in ⋯ menu, CSV instructions as a list (2026-11-26)
+- /admin/properties/$slug (admin.properties.$slug.index.tsx) is now the property's **Overview** (from the dark mockup). It used to redirect to /structure.
+  - The card's arrow and the list view's name link open it. /setup still redirects to /structure; /edit is unchanged.
+  - Page body: src/components/hostel/overview/PropertyOverview.tsx. The route only resolves the slug, redirects a UUID to the slug, and shows not-found/loading.
+  - Pieces: PropertyHero (header + the user-supplied building art, src/assets/illustrations/property-banner.webp with alpha, masked at the edges, lg+ only), PropertyTabs, OverviewCharts (Student trend area, Block-wise bars, Gender donut), PropertyStudentsCard, QuickActionsCard.
+- PropertyTabs: Overview · Rooms & Beds (this property's own pages) · Residents/Finance/Attendance/Complaints/Notices/Staff (the shared admin pages).
+  - The shared pages follow activePropertyId. useMakePropertyActive(id) (admin-properties.ts) sets it once when the Overview or Structure page opens.
+  - The Structure page now shows the tabs above RoomsBedsBoard.
+- Numbers come from server fns in src/lib/property-overview.functions.ts. They run on the caller's RLS client, paginate past PostgREST's 1000-row cap, and return only aggregates.
+  - getPropertyOverviewStats:
+    - beds total/occupied/vacant, with occupancy = occ/(occ+vacant);
+    - residents = ACTIVE students (same rule as the dashboard and cards);
+    - new this month = ACTIVE students created this month (IST);
+    - moved out this month;
+    - leaving this month = NOTICE_GIVEN/MOVE_OUT_INSPECTION allocations with requested_move_out_date before month end;
+    - block-wise live stays;
+    - gender of ACTIVE students.
+  - getPropertyStudentTrend(30d|90d|12m): students staying per day, rebuilt from allocation history (ACTIVE/NOTICE_GIVEN/MOVE_OUT_INSPECTION/CLOSED, start_date until actual_end_date or closed_at). 12m is sampled weekly.
+  - "Total students" delta = new − moved out this month.
+- Charts:
+  - Always drawn: empty data gives a flat line, 0 bars and a grey ring.
+  - Axis ticks use niceTicks() (1/2/5×10ⁿ steps).
+  - Donut uses new categorical tokens --chart-cat-1/2/3 (bg-chart-cat-*), validated with the dataviz palette validator. Light #0e6ba8/#6d28d9/#b8842e; dark re-stepped #2a6fbf/#a184ee/#c38d2f.
+- Students card:
+  - Server-side search (name or roll no via or(ilike)), block filter (allocations!inner on live stays), status filter, 8 per page, list/grid toggle.
+  - Row ⋯: View profile / Change room (or Allocate a bed) → /admin/allocations?student=<id> / Move out.
+  - /admin/allocations now accepts ?student= (uuid, optional) and passes it as initialStudentId, the same as the Warden route.
+- Quick actions:
+  - Add student and Bulk import reuse AddStudentDialog / StudentBulkImportModal.
+  - Allocate room and Change room → /admin/allocations.
+  - Check out → /admin/students?status=NOTICE_GIVEN.
+  - The mockup's "Extend stay" has no backing feature (no doc or schema evidence), so the tile is **Admission link** (copies /apply/<slug>; disabled unless the property is ACTIVE).
+- ⋯ menu now: Edit details · Setup rooms & beds (→ /structure) · Change status · Delete. It takes onDeleted (the Overview navigates back to /admin/properties) and className.
+- Topbar admin breadcrumb on property pages: Properties › <property name> (links to Overview) › Rooms & beds / Edit. It reuses the ["property-by-slug", slug] query; usePropertyByRouteParam now accepts null.
+- CsvImportModal: the instruction paragraph is now a bulleted list (same content).
+- Verified: tsc unchanged (18 pre-existing), eslint clean. Headless Chrome on a temporary seeded route (deleted): 1600/1280/390 px, empty state, menu hrefs, grid view, CSV modal. No console errors.
+- Known gaps:
+  - Dark mode was not screenshotted (the public preview layout pins light tokens); everything uses theme tokens.
+  - Live data paths (server fns, students query joins) are not exercised against the real DB.
+
+## Rooms & Beds tab, room photos + amenities, even property tabs (2026-11-26)
+- New route /admin/properties/$slug/rooms (admin.properties.$slug.rooms.tsx → src/components/hostel/rooms/PropertyRoomsBeds.tsx).
+  - The "Rooms & Beds" tab now opens it. The tab stays highlighted on /structure, which the breadcrumb now calls "Setup".
+  - The property card's "Rooms" quick link opens it too.
+  - Structure is still edited at /structure: ⋯ menu "Setup rooms & beds", the "Setup" button on the occupancy card, or the empty state.
+- Page contents:
+  - Hero + tabs.
+  - KPIs: total rooms, with maintenance/blocked *bed* counts beside it; total beds; occupied % and vacant %, both occupied/(occupied+vacant).
+  - **OccupancyTowersCard**:
+    - Each block is an SVG building, one band per floor, filled green (--success) bottom-up to its occupancy %.
+    - **3 blocks per page** with arrows plus a block dropdown that jumps to a block's page. Floors without a block show as "No block" (or "Main building" when there are no blocks).
+    - Floor picker uses floorShortLabel (new in floor-order.ts: GF/F1/B1/T).
+    - The selected floor's rooms, beds, occupied, vacant, maintenance and blocked counts are listed beside it.
+  - **RoomDetailCard**: steps through the selected floor's rooms. It shows the cover photo (or the default room-default.webp, labelled "Sample photo"), type, capacity, occupied, vacant, rent, status, amenity chips and Allocate bed (→ /admin/allocations, disabled with no vacant bed). An "Upload/Add photo" button adds photos to existing rooms.
+  - **RoomBedsCard**: search, status chips with counts, grid/list. Occupied → student profile; vacant → allocations; maintenance/blocked → BedStatusDialog.
+  - **RoomActivityCard**: built in src/lib/room-activity.ts from the room's own allocations, bed statuses and room timestamps, because audit_logs is service-only. Shows 4 items; "View all" expands.
+- Data: src/lib/rooms-beds.ts.
+  - usePropertyRoomsStructure pages rooms and beds past the 1000-row cap (RoomsBedsBoard's own beds query still doesn't — pre-existing).
+  - useRoomStays reads one room's allocations with the student embed.
+  - Hero/KPI stats share usePropertyOverviewStats (src/lib/property-overview.ts) with the Overview tab.
+  - KpiTile/SharePill moved to overview/KpiTile.tsx (it gained `aside`).
+- **Room photos**:
+  - Private bucket `property-media`, path {tenant}/{property}/rooms/{room}/{uuid}.{ext}, ≤5 MB, JPG/PNG/WebP, up to 5 per room, first = cover.
+  - No DB column: photos are listed from the folder and shown via signed URLs (src/lib/room-photos.ts).
+  - **Migration supabase/migrations/20261202090000_property_media_room_photos.sql must be applied** (not applied from here — the Supabase MCP wasn't authorised). It creates:
+    - the bucket;
+    - is_valid_room_media_path(), which checks room ∈ property ∈ tenant;
+    - storage policies: read = super admin or tenant member; insert/delete = super admin or tenant HOSTEL_ADMIN.
+  - Until it's applied, uploads fail with "Room photos aren't switched on yet…" and the default picture shows.
+- Add room dialog (RoomsBedsBoard → AddRoomDialog):
+  - New Amenities toggles (keys in src/lib/room-amenities.ts, saved to rooms.amenities by an RLS update after fn_create_room_with_beds).
+  - New Photos picker with previews, cover badge and remove.
+  - The room is still created first; amenity or photo failures show "Room + beds added, but …".
+- PropertyTabs: tabs are flex-auto + shrink-0 so they spread across the whole bar (and scroll on phones).
+- Default room picture: room-default.webp was cropped from the user's mockup (only ~250 px wide in it). Swap in the original photo when the user provides it.
+- Verified: tsc unchanged (18), eslint/prettier clean on changed files. Headless Chrome on a temporary seeded route (deleted): 1600 px and 390 px, block paging (pages 1–2, 98%/47%/0% fills), floor/room switching, Add room with 2 photos + amenities. No runtime errors. Not exercised against the live DB (uploads need the migration).
+
+## Rooms & Beds polish: one-row bed toolbar, bed pagination, no tabs on Setup (2026-11-26)
+- RoomBedsCard:
+  - The title and every control (search, status chips, grid/list toggle) sit on one row; chips scroll sideways instead of wrapping.
+  - Beds are naturally sorted (B1, B2 … B10).
+  - Paginated: 8 cards per page (4 columns from lg up, 2 below), 10 rows in list view, with "1–8 of 40 beds" and prev/next. It resets when the room, filter, search or view changes.
+  - Vacant text shortened to "No student yet".
+- Layout: the bottom row (beds + activity) splits side by side only at 2xl (activity 340 px). Below that, activity sits under the beds so the toolbar never gets squeezed.
+- "Allocation details unavailable" bug:
+  - useRoomStays capped all stays at 30 rows, so big dorm rooms lost current occupants.
+  - It also ignored PENDING_AGREEMENT / PENDING_PAYMENT, which hold the bed (same list as the beds' unique-allocation index, now exported as BED_HOLDING).
+  - Now current stays load uncapped (≤ one per bed), plus the last 15 closed stays for activity. Pending ones show "Allocation pending payment/agreement".
+  - An occupied bed with no stay on record says "No active allocation on record".
+- Setup (/admin/properties/$slug/structure) no longer shows the property tabs (user: tab switching only from the Overview pages). It has a "Back to Rooms & beds" link instead. The tabs remain on Overview and Rooms & Beds.
+- Verified: tsc unchanged (18), eslint clean on changed files. Headless Chrome on a temporary 40-bed dorm route (deleted) at 1300 and 1600 px: one-row toolbar, 5 pages, page 2 shows the pending bed with its student. No runtime errors.
+
+## Residents tab + self-sizing activity cards (2026-11-26)
+- New route /admin/properties/$slug/residents (admin.properties.$slug.residents.tsx → src/components/hostel/residents/PropertyResidents.tsx), from the dark mockup.
+  - The "Residents" property tab now opens it; it used to open the shared /admin/students. Breadcrumb label "Residents".
+- Page contents:
+  - KPIs: total (all non-deleted statuses), active (ACTIVE), applicants (APPLICANT + VERIFIED), move-outs due (overview stats leavingThisMonth).
+  - **ResidentsDirectoryCard**:
+    - Search by name, admission ID or phone (or/ilike, debounced).
+    - Status chips with counts on one row, plus Add resident (AddStudentDialog).
+    - 8 rows per page from the DB.
+    - Columns: avatar + name, admission ID, room/bed (current bed-holding stay), phone, status pill, Dues/Payment, 30-day attendance %, chevron → student.
+    - Dues and attendance are read only for the rows on screen. Dues = sum of balance_paise on ISSUED/PARTIALLY_PAID/OVERDUE invoices: Due ₹X / Paid / Settled (moved out, nothing owed) / Not billed (no issued invoice). Attendance uses the dashboard rule (PRESENT+LATE)/(PRESENT+LATE+ABSENT).
+  - ResidentInsightsCard donut: Active, Applicants, Notice given, Moved out, using status tokens with labels and shares (<1% shows one decimal).
+  - MoveOutNoticesCard: next 3 NOTICE_GIVEN / MOVE_OUT_INSPECTION stays by move-out date; View all → /admin/students?status=NOTICE_GIVEN.
+  - GenderOccupancyCard: active residents as one split bar, chart-cat-1/2 like the Overview donut.
+  - Recent resident activity: useResidentActivity, rebuilt from students.created_at, allocations activated/notice/closed and documents verified (KYC), because audit_logs is service-only. "Room changed" isn't shown: a bed swap leaves no history row.
+- Data: src/lib/property-residents.ts.
+- New shared ActivityTimelineCard (src/components/dashboard):
+  - The collapsed list is absolutely positioned, so it fills the height the grid row gives it without making the row taller. It shows only the items that fit completely, never fewer than 4. Its minimum height is measured from what the first 4 items really need, so wrapped text on phones doesn't clip.
+  - RoomActivityCard now uses it: beside a Beds card with one row of beds it shows 4; with two rows, more (5 in testing).
+- Verified: tsc unchanged (18), eslint/prettier clean on changed files. Headless Chrome on a temporary seeded route (deleted) at 1700, 1300 and 390 px. Activity count 5 with two rows of beds; all 4 items visible on mobile. No runtime errors.

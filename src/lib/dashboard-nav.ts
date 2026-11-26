@@ -22,6 +22,13 @@ import {
   User,
   Activity,
   BellRing,
+  BedDouble,
+  ChartColumn,
+  Headset,
+  House,
+  IndianRupee,
+  TriangleAlert,
+  UserPlus,
 } from "lucide-react";
 
 import type { AppRole } from "./user-role";
@@ -45,6 +52,21 @@ export interface NavItem {
    * student.tsx, never in the static nav config below.
    */
   locked?: boolean;
+  /**
+   * Optional group heading (e.g. "Residents"). Shells render consecutive items
+   * with the same section under one heading; roles that set none keep the
+   * plain flat list.
+   */
+  section?: string;
+  /** Live count shown next to the label (see src/lib/nav-badges.ts). */
+  badge?: NavBadgeKey;
+}
+
+export type NavBadgeKey = "complaints" | "finance" | "support";
+
+/** A nav item is active on its own path and on any page beneath it. */
+export function isNavItemActive(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 /**
@@ -62,18 +84,36 @@ export const SIDEBAR_NAV: Partial<Record<NonNullable<AppRole>, NavItem[]>> = {
     { label: "Impersonation", to: "/super-admin/impersonation", icon: LifeBuoy },
   ],
   HOSTEL_ADMIN: [
-    { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
-    { label: "Properties", to: "/admin/properties", icon: Building2 },
-    { label: "Students", to: "/admin/students", icon: Users },
-    { label: "Allocations", to: "/admin/allocations", icon: CalendarCheck },
-    { label: "Attendance", to: "/admin/attendance", icon: CalendarCheck },
-    { label: "Finance", to: "/admin/finance", icon: Wallet },
-    { label: "Complaints", to: "/admin/complaints", icon: MessageSquareWarning },
-    { label: "Support", to: "/admin/support", icon: LifeBuoy },
-    { label: "Notices", to: "/admin/notices", icon: BellRing },
-    { label: "Staff", to: "/admin/staff", icon: UserCog },
-    { label: "Reports", to: "/admin/reports", icon: FileBarChart },
-    { label: "Settings", to: "/admin/settings", icon: Settings },
+    { label: "Dashboard", to: "/admin/dashboard", icon: House, section: "Overview" },
+    { label: "Properties", to: "/admin/properties", icon: Building2, section: "Overview" },
+    { label: "Students", to: "/admin/students", icon: UserPlus, section: "Residents" },
+    { label: "Allocations", to: "/admin/allocations", icon: BedDouble, section: "Residents" },
+    { label: "Attendance", to: "/admin/attendance", icon: CalendarCheck, section: "Residents" },
+    {
+      label: "Finance",
+      to: "/admin/finance",
+      icon: IndianRupee,
+      section: "Money",
+      badge: "finance",
+    },
+    {
+      label: "Complaints",
+      to: "/admin/complaints",
+      icon: TriangleAlert,
+      section: "Operations",
+      badge: "complaints",
+    },
+    {
+      label: "Support",
+      to: "/admin/support",
+      icon: Headset,
+      section: "Operations",
+      badge: "support",
+    },
+    { label: "Notices", to: "/admin/notices", icon: BellRing, section: "Operations" },
+    { label: "Staff", to: "/admin/staff", icon: UserCog, section: "Admin" },
+    { label: "Reports", to: "/admin/reports", icon: ChartColumn, section: "Admin" },
+    { label: "Settings", to: "/admin/settings", icon: Settings, section: "Admin" },
   ],
   ACCOUNTANT: [
     { label: "Dashboard", to: "/accountant/dashboard", icon: LayoutDashboard },

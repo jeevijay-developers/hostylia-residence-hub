@@ -23,6 +23,8 @@ interface PropertySwitcherProps {
 interface PropertyRow {
   id: string;
   name: string;
+  city: string | null;
+  state: string | null;
 }
 
 export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps) {
@@ -35,8 +37,9 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
       if (!tenantId) return [];
       const { data, error } = await supabase
         .from("properties")
-        .select("id, name")
+        .select("id, name, city, state")
         .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
         .order("name");
       if (error) throw error;
       return (data ?? []) as PropertyRow[];
@@ -55,7 +58,7 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
   }, [active, activePropertyId, setActivePropertyId]);
 
   if (isLoading) {
-    return <Skeleton className={cn("h-10 rounded-lg", collapsed ? "w-10" : "w-full")} />;
+    return <Skeleton className={cn("rounded-xl", collapsed ? "h-10 w-10" : "h-14 w-full")} />;
   }
 
   if (list.length === 0) {
@@ -75,16 +78,27 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        aria-label={`Active property: ${active?.name ?? "none"}. Switch property`}
+        title={collapsed ? active?.name : undefined}
         className={cn(
-          "flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left text-sm shadow-sm transition hover:bg-muted",
+          "flex w-full items-center gap-2.5 rounded-xl border border-border/80 bg-background px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           collapsed && "justify-center px-2",
         )}
       >
-        <Building2 className="h-4 w-4 shrink-0 text-primary" />
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Building2 className="h-4 w-4" />
+        </span>
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-              {active?.name ?? "Select property"}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold leading-tight text-foreground">
+                {active?.name ?? "Select property"}
+              </span>
+              {active && (active.city || active.state) ? (
+                <span className="block truncate text-xs leading-tight text-muted-foreground">
+                  {[active.city, active.state].filter((v) => v && v !== "TBD").join(", ")}
+                </span>
+              ) : null}
             </span>
             <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </>
@@ -99,7 +113,12 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
             onSelect={() => setActivePropertyId(p.id)}
             className="flex items-center justify-between"
           >
-            <span className="truncate">{p.name}</span>
+            <span className="min-w-0">
+              <span className="block truncate">{p.name}</span>
+              {p.city && p.city !== "TBD" ? (
+                <span className="block truncate text-xs text-muted-foreground">{p.city}</span>
+              ) : null}
+            </span>
             {p.id === active?.id ? <Check className="h-4 w-4 text-primary" /> : null}
           </DropdownMenuItem>
         ))}

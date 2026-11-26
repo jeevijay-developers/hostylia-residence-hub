@@ -131,3 +131,18 @@ export function compareFloors(a: SortableFloor, b: SortableFloor): number {
 export function sortFloors<T extends SortableFloor>(floors: readonly T[]): T[] {
   return [...floors].sort(compareFloors);
 }
+
+/**
+ * Compact floor label for tight UI (the Rooms & Beds floor picker): "GF",
+ * "F1", "F12", "B1", "T". Anything unrecognised falls back to its first
+ * characters. Display only.
+ */
+export function floorShortLabel(rawName: string): string {
+  const { group, n } = floorRank(rawName);
+  if (group === GROUP.GROUND) return "GF";
+  if (group === GROUP.BASEMENT) return `B${Math.max(1, -n)}`;
+  if (group === GROUP.NUMBERED) return `F${n}`;
+  if (group === GROUP.TERRACE) return "T";
+  const trimmed = rawName.trim();
+  return trimmed.length <= 4 ? trimmed : trimmed.slice(0, 3);
+}

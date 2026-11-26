@@ -51,7 +51,15 @@ import { cancelMySubscription } from "@/lib/hostel.functions";
 import { CANCELLATION_REASON_LABELS, cancellationReasonSchema } from "@/schemas/subscription";
 import type { CancellationReason } from "@/schemas/subscription";
 
+const SETTINGS_TABS = ["property", "organization", "billing"] as const;
+
 export const Route = createFileRoute("/_authenticated/admin/settings")({
+  // Optional deep link to a tab (e.g. the Dashboard's plan-renewal banner opens
+  // ?tab=billing). Omitted or unknown values fall back to the Property tab.
+  validateSearch: (search: Record<string, unknown>): { tab?: (typeof SETTINGS_TABS)[number] } => {
+    const tab = SETTINGS_TABS.find((t) => t === search.tab);
+    return tab ? { tab } : {};
+  },
   component: AdminSettingsPage,
 });
 
@@ -59,11 +67,12 @@ function AdminSettingsPage() {
   const { data: role } = useResolvedRole();
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   const tenantId = role?.tenantId ?? null;
+  const { tab } = Route.useSearch();
 
   return (
     <div className="space-y-6 max-w-4xl pb-10 lg:max-w-6xl">
       {/* Tabs Container */}
-      <Tabs defaultValue="property" className="space-y-6">
+      <Tabs key={tab ?? "property"} defaultValue={tab ?? "property"} className="space-y-6">
         <TabsList className="bg-card/80 border border-border/80 p-1.5 rounded-xl h-auto inline-flex w-full sm:w-auto gap-1 overflow-x-auto">
           <TabsTrigger
             value="property"

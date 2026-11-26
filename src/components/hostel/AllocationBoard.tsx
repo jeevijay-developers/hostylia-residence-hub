@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { useResolvedRole } from "@/lib/user-role";
+import { usePropertySlug } from "@/lib/admin-properties";
 import { useWardenPermissions } from "@/lib/staff-scope";
 import { BedGrid, type BedTile } from "@/components/hostel/BedGrid";
 import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
@@ -157,7 +158,9 @@ export function AllocationBoard({
   const { can: canWarden } = useWardenPermissions();
   const isAdmin = resolvedRole?.role === "HOSTEL_ADMIN";
   const canManageStructure = isAdmin || canWarden("rooms_beds_view");
-  const structureTo = isAdmin ? "/admin/properties/$id/structure" : "/warden/rooms-beds";
+  const structureTo = isAdmin ? "/admin/properties/$slug/structure" : "/warden/rooms-beds";
+  // The admin route is addressed by slug; until it loads, the id works too (the route redirects it).
+  const { data: structureSlug } = usePropertySlug(isAdmin ? effectiveProp : null);
 
   // Status summary: counted in the database for the WHOLE property (every block,
   // floor and room), independent of the vacant/search bed list and its page. Same
@@ -510,7 +513,7 @@ export function AllocationBoard({
         (canManageStructure ? (
           <Link
             to={structureTo}
-            params={isAdmin ? { id: effectiveProp } : undefined}
+            params={isAdmin ? { slug: structureSlug ?? effectiveProp } : undefined}
             className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md sm:gap-6 sm:p-6"
           >
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14">

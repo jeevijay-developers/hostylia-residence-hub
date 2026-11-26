@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, LogOut, User, MessageSquare } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  House,
+  Layers,
+  Menu,
+  Search,
+  LogOut,
+  User,
+  MessageSquare,
+} from "lucide-react";
 
 import { ProfileAvatarMenu } from "@/components/dashboard/ProfileAvatarMenu";
 import { MessagesPanel } from "@/components/warden/MessagesPanel";
@@ -33,7 +43,11 @@ import { PropertySwitcher } from "@/components/dashboard/PropertySwitcher";
 import { supabase } from "@/integrations/supabase/client";
 import { useAvatarUrl } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "@/lib/dashboard-nav";
+import { isNavItemActive, type NavItem } from "@/lib/dashboard-nav";
+import { useNavBadges } from "@/lib/nav-badges";
+import { usePropertyStore } from "@/stores/property-store";
+import { usePropertyByRouteParam } from "@/lib/admin-properties";
+import { NavList } from "@/components/dashboard/NavList";
 
 interface TopbarProps {
   navItems?: NavItem[];
@@ -43,9 +57,52 @@ interface TopbarProps {
   hideMobileNavTrigger?: boolean;
   /** Extra permission-filtered links shown in the account dropdown between Profile and Sign out, below `lg` only. */
   mobileProfileMenuItems?: NavItem[];
+  /** "All properties" link under the property switcher in the mobile nav sheet. */
+  allPropertiesHref?: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** "Finance > Invoices" crumbs for roles whose pages are all in `navItems` (Hostel Admin). */
+function sectionCrumbs(pathname: string, navItems: NavItem[], propertyName?: string | null) {
+  const match = navItems
+    .filter((i) => isNavItemActive(pathname, i.to))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  if (!match) return [];
+  const crumbs: { label: string; to?: string }[] = [{ label: match.label, to: match.to }];
+  const rest = pathname
+    .slice(match.to.length)
+    .split("/")
+    .filter(Boolean)
+    .filter((seg) => !UUID_RE.test(seg) && !/^\d+$/.test(seg));
+  // A property's own pages: Properties › <name> › Rooms & beds / Edit.
+  if (match.to === "/admin/properties" && rest.length > 0 && rest[0] !== "new") {
+    const sub = rest[1];
+    crumbs.push({
+      label: propertyName ?? "Property",
+      to: sub ? `/admin/properties/${rest[0]}` : undefined,
+    });
+    if (sub)
+      crumbs.push({
+        label:
+          (
+            {
+              rooms: "Rooms & beds",
+              residents: "Residents",
+              structure: "Setup",
+              edit: "Edit",
+            } as Record<string, string>
+          )[sub] ?? sub,
+      });
+    return crumbs;
+  }
+  const last = rest.at(-1);
+  if (last) {
+    const words = last === "new" ? "add new" : last.replace(/-/g, " ");
+    crumbs.push({ label: words.charAt(0).toUpperCase() + words.slice(1) });
+  }
+  return crumbs;
+}
 
 export function Topbar({
   navItems = [],
@@ -53,6 +110,7 @@ export function Topbar({
   tenantId,
   hideMobileNavTrigger,
   mobileProfileMenuItems = [],
+  allPropertiesHref,
 }: TopbarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const crumbs = pathname.split("/").filter(Boolean);
@@ -131,7 +189,22 @@ export function Topbar({
   // theme change while the app stays open.
   useAutoTheme(isAutoThemeRole);
 
-  const isBrightHeaderRole = isStudent || isParent || isAccountant || isWarden || isAdmin;
+  const isBrightHeaderRole = isStudent || isParent || isAccountant || isWarden;
+  const activePropertyId = usePropertyStore((s) => s.activePropertyId);
+  // Same query key as the Sidebar's, so this shares its cache (no extra requests).
+  const navBadges = useNavBadges(
+    navItems.some((i) => i.badge),
+    tenantId ?? null,
+    activePropertyId,
+  );
+  const propertySlug = isAdmin
+    ? (/^\/admin\/properties\/([^/]+)/.exec(pathname)?.[1] ?? null)
+    : null;
+  // Shares the property page's own query (same key), so no extra request.
+  const crumbProperty = usePropertyByRouteParam(
+    propertySlug && propertySlug !== "new" ? decodeURIComponent(propertySlug) : null,
+  );
+  const adminCrumbs = isAdmin ? sectionCrumbs(pathname, navItems, crumbProperty.data?.name) : [];
 
   return (
     <header
@@ -140,7 +213,9 @@ export function Topbar({
         isBrightHeaderRole ? "border-b border-transparent" : "border-b border-border/80",
         isBrightHeaderRole
           ? "bg-[linear-gradient(180deg,color-mix(in_srgb,var(--card)_92%,var(--primary)_8%)_0%,color-mix(in_srgb,var(--card)_80%,var(--background)_20%)_100%)]"
-          : "bg-background/90",
+          : isAdmin
+            ? "bg-card/85"
+            : "bg-background/90",
       )}
     >
       {navItems.length > 0 && !hideMobileNavTrigger && (
@@ -160,32 +235,28 @@ export function Topbar({
               <BrandLockup variant="lockup" className="h-8" />
             </SheetHeader>
             {showPropertySwitcher ? (
-              <div className="border-b border-border p-3">
+              <div className="space-y-2 border-b border-border p-3">
                 <PropertySwitcher tenantId={tenantId ?? null} />
+                {allPropertiesHref ? (
+                  <Link
+                    to={allPropertiesHref}
+                    onClick={() => setNavOpen(false)}
+                    className="flex items-center gap-2 rounded-lg border border-border/80 px-3 py-2 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted"
+                  >
+                    <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1">All properties</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Link>
+                ) : null}
               </div>
             ) : null}
-            <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-              {navItems.map((item) => {
-                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setNavOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+            <NavList
+              items={navItems}
+              pathname={pathname}
+              badges={navBadges}
+              onNavigate={() => setNavOpen(false)}
+              className="flex-1 overflow-y-auto p-3 pl-4"
+            />
           </SheetContent>
         </Sheet>
       )}
@@ -202,6 +273,45 @@ export function Topbar({
       ) : (
         <nav aria-label="Breadcrumb" className="min-w-0 flex-1 overflow-hidden">
           <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            {isAdmin && (
+              <>
+                <li className="flex shrink-0 items-center">
+                  <Link
+                    to="/admin/dashboard"
+                    aria-label="Dashboard home"
+                    className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <House className="h-[18px] w-[18px]" />
+                  </Link>
+                </li>
+                {adminCrumbs.map((c, i) => {
+                  const isLast = i === adminCrumbs.length - 1;
+                  return (
+                    <li
+                      key={c.label + "-" + i}
+                      className={cn(
+                        "flex min-w-0 items-center gap-1.5",
+                        !isLast && "hidden sm:flex",
+                      )}
+                    >
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                      {isLast || !c.to ? (
+                        <span
+                          aria-current="page"
+                          className="truncate text-base font-semibold text-foreground"
+                        >
+                          {c.label}
+                        </span>
+                      ) : (
+                        <Link to={c.to} className="truncate hover:text-foreground">
+                          {c.label}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </>
+            )}
             {!isParent &&
               !isWarden &&
               !isAccountant &&
@@ -316,116 +426,133 @@ export function Topbar({
         )}
         {isAdmin || isWarden || isStudent || isAccountant || isParent ? (
           <>
-          {(isWarden || isAccountant) && (
-            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Open menu"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-foreground transition-colors hover:bg-muted lg:hidden"
-                >
-                  <Menu className="h-6 w-6" />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="flex w-72 flex-col p-0 lg:hidden">
-                <SheetHeader className="p-4 pb-2 text-left">
-                  <SheetTitle className="sr-only">Menu</SheetTitle>
-                </SheetHeader>
-                <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-8">
-                  <Link
-                    to={isAccountant ? "/accountant/profile" : "/warden/profile"}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+            {(isWarden || isAccountant) && (
+              <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open menu"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-foreground transition-colors hover:bg-muted lg:hidden"
                   >
-                    <User className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Profile</span>
-                  </Link>
-                  {mobileProfileMenuItems.map((item) => (
+                    <Menu className="h-6 w-6" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right" className="flex w-72 flex-col p-0 lg:hidden">
+                  <SheetHeader className="p-4 pb-2 text-left">
+                    <SheetTitle className="sr-only">Menu</SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-8">
                     <Link
-                      key={item.to}
-                      to={item.to}
+                      to={isAccountant ? "/accountant/profile" : "/warden/profile"}
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{item.label}</span>
+                      <User className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Profile</span>
                     </Link>
-                  ))}
-                </nav>
-                <div className="p-4">
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setSignOutOpen(true);
-                    }}
-                  >
-                    <LogOut className="h-4 w-4" /> Sign out
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Account menu"
-                className={cn(
-                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
-                  (isWarden || isAccountant) && "max-lg:hidden",
-                )}
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  avatarInitial
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-47.5 p-2">
-              <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
-                <Link
-                  to={
+                    {mobileProfileMenuItems.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    ))}
+                  </nav>
+                  <div className="p-4">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setSignOutOpen(true);
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" /> Sign out
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  className={cn(
                     isAdmin
-                      ? "/admin/profile"
-                      : isWarden
-                        ? "/warden/profile"
-                        : isAccountant
-                          ? "/accountant/profile"
-                          : isParent
-                            ? "/parent/profile"
-                            : "/student/profile"
-                  }
+                      ? "flex shrink-0 items-center gap-1 rounded-full p-0.5 pr-1.5 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                      : "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary shadow-tone-glow ring-2 ring-primary/40 outline-none transition hover:ring-primary/60",
+                    (isWarden || isAccountant) && "max-lg:hidden",
+                  )}
                 >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                    <User className="h-4 w-4" />
-                  </span>
-                  <span className="text-sm font-medium text-foreground">Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              {mobileProfileMenuItems.map((item) => (
-                <DropdownMenuItem key={item.to} asChild className="gap-3 rounded-lg px-2 py-2 lg:hidden">
-                  <Link to={item.to}>
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-                      <item.icon className="h-4 w-4" />
+                  {isAdmin ? (
+                    <>
+                      <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary ring-1 ring-primary/25">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          avatarInitial
+                        )}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    </>
+                  ) : avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    avatarInitial
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-47.5 p-2">
+                <DropdownMenuItem asChild className="gap-3 rounded-lg px-2 py-2">
+                  <Link
+                    to={
+                      isAdmin
+                        ? "/admin/profile"
+                        : isWarden
+                          ? "/warden/profile"
+                          : isAccountant
+                            ? "/accountant/profile"
+                            : isParent
+                              ? "/parent/profile"
+                              : "/student/profile"
+                    }
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <User className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                    <span className="text-sm font-medium text-foreground">Profile</span>
                   </Link>
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                onSelect={() => setSignOutOpen(true)}
-                className="gap-3 rounded-lg px-2 py-2"
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground">
-                  <LogOut className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-medium text-destructive">Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {mobileProfileMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.to}
+                    asChild
+                    className="gap-3 rounded-lg px-2 py-2 lg:hidden"
+                  >
+                    <Link to={item.to}>
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                        <item.icon className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm font-medium text-foreground">{item.label}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuItem
+                  onSelect={() => setSignOutOpen(true)}
+                  className="gap-3 rounded-lg px-2 py-2"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground">
+                    <LogOut className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium text-destructive">Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : (
           <ProfileAvatarMenu

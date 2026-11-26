@@ -35,6 +35,8 @@ interface DesktopShellProps {
   mobileHeaderScrollsWithContent?: boolean;
   /** Forwarded to Topbar: extra links in the mobile account dropdown (Warden). */
   mobileProfileMenuItems?: NavItem[];
+  /** Shows an "All properties" link under the property switcher (Hostel Admin). */
+  allPropertiesHref?: string;
 }
 
 export function DesktopShell({
@@ -46,6 +48,7 @@ export function DesktopShell({
   hideMobileNavTrigger,
   mobileHeaderScrollsWithContent,
   mobileProfileMenuItems,
+  allPropertiesHref,
 }: DesktopShellProps) {
   const { data } = useResolvedRole();
   return (
@@ -56,11 +59,14 @@ export function DesktopShell({
           items={navItems}
           showPropertySwitcher={showPropertySwitcher}
           tenantId={data?.tenantId ?? null}
+          allPropertiesHref={allPropertiesHref}
         />
         <div
           className={cn(
             "flex min-w-0 flex-1 flex-col min-h-0",
-            mobileHeaderScrollsWithContent ? "overflow-y-auto lg:overflow-hidden" : "overflow-hidden",
+            mobileHeaderScrollsWithContent
+              ? "overflow-y-auto lg:overflow-hidden"
+              : "overflow-hidden",
           )}
         >
           <Topbar
@@ -69,6 +75,7 @@ export function DesktopShell({
             tenantId={data?.tenantId ?? null}
             hideMobileNavTrigger={hideMobileNavTrigger}
             mobileProfileMenuItems={mobileProfileMenuItems}
+            allPropertiesHref={allPropertiesHref}
           />
           <main
             className={cn(

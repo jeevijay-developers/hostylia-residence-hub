@@ -109,21 +109,64 @@ export function CsvImportModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Columns:{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
-              block_name, block_code, floor_name, floor_number, room_number, room_type, capacity,
-              base_rent
-            </code>
-            . <code className="rounded bg-muted px-1 py-0.5 text-xs">capacity</code> is derived for
-            SINGLE (1), DOUBLE (2) and TRIPLE (3) — leave it blank or match the type; DORM and
-            CUSTOM require a capacity. Beds are generated from the validated capacity. Leave{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">block_name</code> empty if you
-            don't use blocks;{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">block_code</code> is optional.
-            Wrap values containing commas in quotes. Fix any errors shown below before importing; if
-            a row still fails during import, only that row is rolled back.
-          </p>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground marker:text-muted-foreground/60">
+            <li>
+              Columns, in this order:{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                block_name
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                block_code
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                floor_name
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                floor_number
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                room_number
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                room_type
+              </code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">capacity</code>
+              ,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                base_rent
+              </code>
+              .
+            </li>
+            <li>
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">capacity</code>{" "}
+              is set automatically for SINGLE (1), DOUBLE (2) and TRIPLE (3) — leave it blank or
+              match the type.
+            </li>
+            <li>DORM and CUSTOM rooms need a capacity.</li>
+            <li>Beds are created from the room's capacity.</li>
+            <li>
+              Leave{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                block_name
+              </code>{" "}
+              empty if you don't use blocks;{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
+                block_code
+              </code>{" "}
+              is optional.
+            </li>
+            <li>Wrap any value that contains a comma in quotes.</li>
+            <li>
+              Fix the errors shown below before importing. If a row still fails during import, only
+              that row is skipped — the rest are saved.
+            </li>
+          </ul>
           <Button
             type="button"
             variant="outline"

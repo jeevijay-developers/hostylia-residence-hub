@@ -1,29 +1,53 @@
+import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Users, Wallet, MessageSquareWarning } from "lucide-react";
+import {
+  BedDouble,
+  Bell,
+  CalendarCheck,
+  CircleAlert,
+  IndianRupee,
+  UserPlus,
+  Users,
+} from "lucide-react";
 
-import { KpiSummaryCard } from "@/components/dashboard/KpiCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ActivityIcon } from "@/components/warden/ActivityIcon";
-import { RoomOccupancyChart } from "@/components/dashboard/RoomOccupancyChart";
+import { AdminDashboardHeader } from "@/components/dashboard/admin/AdminDashboardHeader";
+import { AttentionCard, type AttentionItem } from "@/components/dashboard/admin/AttentionCard";
+import { CollectionsTrendCard } from "@/components/dashboard/admin/CollectionsTrendCard";
+import {
+  DashboardStatCard,
+  StatProgress,
+  StatSparkline,
+} from "@/components/dashboard/admin/DashboardStatCard";
+import { OccupancyTowerCard } from "@/components/dashboard/admin/OccupancyTowerCard";
+import { PlanExpiryBanner } from "@/components/dashboard/admin/PlanExpiryBanner";
+import { RecentActivityCard } from "@/components/dashboard/admin/RecentActivityCard";
 import { KycApprovalQueueCard } from "@/components/students/KycApprovalQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
-import { formatInr } from "@/lib/finance";
+import { formatInr, formatInrCompact } from "@/lib/finance";
 import { useAdminRecentActivity } from "@/lib/admin-activity";
-import { OPEN_COMPLAINT_STATUSES } from "@/lib/complaint";
+import {
+  useAdminKpis,
+  useAttendanceToday,
+  useCollectionsSummary,
+  useDashboardProperty,
+  useMoveOutNoticeCount,
+  usePendingKycCount,
+  usePlanExpiry,
+  type CollectionsRange,
+} from "@/lib/admin-dashboard";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
 });
 
-function currentMonthRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-  return { start, end };
+const KYC_SECTION_ID = "kyc-approvals";
+
+function signed(n: number, unit = "") {
+  return `${n > 0 ? "+" : ""}${n}${unit}`;
 }
 
 function AdminDashboardPage() {
@@ -31,6 +55,7 @@ function AdminDashboardPage() {
   const tenantId = role?.tenantId ?? null;
   const propertyId = usePropertyStore((s) => s.activePropertyId);
   const navigate = useNavigate();
+  const [collectionsRange, setCollectionsRange] = useState<CollectionsRange>("this-month");
 
   // Whether this tenant has any property at all — distinct from "no property
   // selected yet" (PropertySwitcher auto-selects the first one once loaded).
@@ -38,83 +63,85 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-property-count", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
+      if (!tenantId) return 0;
       const { count } = await supabase
         .from("properties")
         .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId!);
+        .eq("tenant_id", tenantId);
       return count ?? 0;
     },
     staleTime: 60_000,
   });
-
-  const kpis = useQuery({
-    queryKey: ["admin-kpis", propertyId],
-    enabled: !!propertyId,
-    queryFn: async () => {
-      const { start, end } = currentMonthRange();
-      const [bedsRes, paymentsRes, complaintsRes, studentsRes] = await Promise.all([
-        supabase
-          .from("beds")
-          .select("status")
-          .eq("property_id", propertyId!)
-          .is("deleted_at", null),
-        supabase
-          .from("payments")
-          .select("amount_paise")
-          .eq("property_id", propertyId!)
-          .eq("status", "CAPTURED")
-          .neq("provider", "simulated")
-          .gte("paid_at", start)
-          .lt("paid_at", end),
-        supabase
-          .from("complaints")
-          .select("id", { count: "exact", head: true })
-          .eq("property_id", propertyId!)
-          .is("deleted_at", null)
-          .in("status", OPEN_COMPLAINT_STATUSES),
-        supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("property_id", propertyId!)
-          .is("deleted_at", null)
-          .eq("status", "ACTIVE"),
-      ]);
-      if (bedsRes.error) throw new Error(bedsRes.error.message);
-      if (paymentsRes.error) throw new Error(paymentsRes.error.message);
-      if (complaintsRes.error) throw new Error(complaintsRes.error.message);
-      if (studentsRes.error) throw new Error(studentsRes.error.message);
-
-      const beds = bedsRes.data ?? [];
-      // Matches v_occupancy_summary's own formula: occupied / (occupied + vacant),
-      // excluding MAINTENANCE/BLOCKED beds from the denominator.
-      const occupied = beds.filter((b) => b.status === "OCCUPIED").length;
-      const vacant = beds.filter((b) => b.status === "VACANT").length;
-      const occupiable = occupied + vacant;
-      const occupancyPct = occupiable > 0 ? Math.round((occupied / occupiable) * 100) : 0;
-
-      const collectionsPaise = (paymentsRes.data ?? []).reduce((sum, p) => sum + p.amount_paise, 0);
-
-      return {
-        occupancyPct,
-        collectionsPaise,
-        openComplaints: complaintsRes.count ?? 0,
-        activeStudents: studentsRes.count ?? 0,
-        totalBeds: beds.length,
-        occupiedBeds: occupied,
-        vacantBeds: vacant,
-      };
-    },
-    staleTime: 60_000,
-  });
-
   const hasNoProperties = propertiesQ.data === 0;
+
+  const propertyQ = useDashboardProperty(propertyId);
+  const property = propertyQ.data;
+  const kpis = useAdminKpis(propertyId);
+  // The KPI tile always shows month-to-date; the chart card has its own range.
+  const collectionsMtd = useCollectionsSummary(propertyId, "this-month");
+  const collectionsChart = useCollectionsSummary(propertyId, collectionsRange);
+  const attendance = useAttendanceToday(propertyId, property?.timezone);
+  const pendingKyc = usePendingKycCount();
+  const moveOutNotices = useMoveOutNoticeCount(tenantId, propertyId);
+  const planExpiry = usePlanExpiry(tenantId);
   const { items: recentActivity, isLoading: activityLoading } = useAdminRecentActivity(
     tenantId,
     propertyId,
   );
 
+  const k = kpis.data;
+  const mtd = collectionsMtd.data;
+  const att = attendance.data;
+
+  const attentionItems: AttentionItem[] = [
+    {
+      key: "complaints",
+      icon: CircleAlert,
+      label: "Complaints",
+      count: k?.openComplaints,
+      isLoading: kpis.isLoading,
+      tone: "destructive",
+      actionLabel: "View open complaints",
+      onSelect: () => navigate({ to: "/admin/complaints", search: { status: "OPEN" } }),
+    },
+    {
+      key: "approvals",
+      icon: UserPlus,
+      label: "Approvals",
+      count: pendingKyc.data,
+      isLoading: pendingKyc.isLoading,
+      tone: "warning",
+      actionLabel: "Review pending KYC documents",
+      onSelect: () =>
+        document
+          .getElementById(KYC_SECTION_ID)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    },
+    {
+      key: "move-out",
+      icon: Bell,
+      label: "Move-out notices",
+      count: moveOutNotices.data,
+      isLoading: moveOutNotices.isLoading,
+      tone: "info",
+      actionLabel: "Review move-out notices on the Students page",
+      onSelect: () => navigate({ to: "/admin/students" }),
+    },
+  ];
+
   return (
-    <div className="max-w-6xl space-y-6 sm:space-y-8">
+    <div className="w-full space-y-5 sm:space-y-6">
+      {planExpiry.data ? <PlanExpiryBanner expiry={planExpiry.data} /> : null}
+
+      <AdminDashboardHeader
+        propertyName={property?.name}
+        propertyLocation={
+          property ? [property.city, property.state].filter(Boolean).join(", ") : null
+        }
+        timeZone={property?.timezone}
+        isLoading={!!propertyId && propertyQ.isLoading}
+      />
+
       {!propertyId ? (
         <p className="text-sm text-muted-foreground">
           {hasNoProperties
@@ -123,38 +150,75 @@ function AdminDashboardPage() {
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiSummaryCard
-            icon={Building2}
+          <DashboardStatCard
+            icon={BedDouble}
             label="Occupancy"
-            value={`${kpis.data?.occupancyPct ?? 0}%`}
-            progressPercent={kpis.data?.occupancyPct ?? 0}
-            loading={kpis.isLoading}
-            tone="warning"
+            value={`${k?.occupancyPct ?? 0}%`}
+            isLoading={kpis.isLoading}
+            caption={
+              k ? `${k.occupiedBeds} of ${k.occupiedBeds + k.vacantBeds} beds occupied` : undefined
+            }
+            footer={<StatProgress percent={k?.occupancyPct ?? 0} label="Bed occupancy" />}
             onNavigate={() => navigate({ to: "/admin/properties" })}
           />
-          <KpiSummaryCard
-            icon={Wallet}
-            label="Collections this month"
-            value={formatInr(kpis.data?.collectionsPaise ?? 0)}
-            loading={kpis.isLoading}
-            tone="info"
+          <DashboardStatCard
+            icon={Users}
+            label="Residents"
+            value={k?.activeStudents ?? 0}
+            isLoading={kpis.isLoading}
+            delta={
+              k
+                ? {
+                    value: k.newStudentsThisMonth,
+                    label: signed(k.newStudentsThisMonth),
+                    description: "new active residents this month",
+                  }
+                : null
+            }
+            caption="Active students"
+            onNavigate={() => navigate({ to: "/admin/students", search: { status: "ACTIVE" } })}
+          />
+          <DashboardStatCard
+            icon={IndianRupee}
+            label="Collections (MTD)"
+            value={formatInrCompact(mtd?.totalPaise ?? 0)}
+            valueTitle={formatInr(mtd?.totalPaise ?? 0)}
+            isLoading={collectionsMtd.isLoading}
+            delta={
+              mtd?.deltaPct != null
+                ? {
+                    value: mtd.deltaPct,
+                    label: signed(mtd.deltaPct, "%"),
+                    description: "vs the same days last month",
+                  }
+                : mtd && mtd.totalPaise === 0
+                  ? { value: 0, label: "0%", description: "no payments this month or last" }
+                  : null
+            }
+            footer={
+              <StatSparkline
+                id="collections-mtd"
+                values={(mtd?.points ?? []).map((p) => p.cumulativePaise)}
+              />
+            }
             onNavigate={() => navigate({ to: "/admin/finance/pnl" })}
           />
-          <KpiSummaryCard
-            icon={MessageSquareWarning}
-            label="Open complaints"
-            value={kpis.data?.openComplaints ?? 0}
-            loading={kpis.isLoading}
-            tone="destructive"
-            onNavigate={() => navigate({ to: "/admin/complaints", search: { status: "OPEN" } })}
-          />
-          <KpiSummaryCard
-            icon={Users}
-            label="Active students"
-            value={kpis.data?.activeStudents ?? 0}
-            loading={kpis.isLoading}
-            tone="success"
-            onNavigate={() => navigate({ to: "/admin/students", search: { status: "ACTIVE" } })}
+          <DashboardStatCard
+            icon={CalendarCheck}
+            label="Attendance"
+            value={`${att?.pct ?? 0}%`}
+            isLoading={attendance.isLoading}
+            delta={
+              att?.deltaPp != null
+                ? {
+                    value: att.deltaPp,
+                    label: signed(att.deltaPp, " pp"),
+                    description: "vs yesterday",
+                  }
+                : null
+            }
+            caption={att?.pct != null ? "Today, present + late" : "Not marked yet today"}
+            onNavigate={() => navigate({ to: "/admin/attendance" })}
           />
         </div>
       )}
@@ -171,55 +235,34 @@ function AdminDashboardPage() {
       )}
 
       {propertyId && (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <div className="space-y-4 sm:space-y-6">
-            <RoomOccupancyChart
-              totalBeds={kpis.data?.totalBeds ?? 0}
-              occupiedBeds={kpis.data?.occupiedBeds ?? 0}
-              vacantBeds={kpis.data?.vacantBeds ?? 0}
-              occupancyPct={kpis.data?.occupancyPct ?? 0}
-              loading={kpis.isLoading}
+        <>
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <OccupancyTowerCard
+              totalBeds={k?.totalBeds ?? 0}
+              occupiedBeds={k?.occupiedBeds ?? 0}
+              vacantBeds={k?.vacantBeds ?? 0}
+              occupancyPct={k?.occupancyPct ?? 0}
+              isLoading={kpis.isLoading}
+              onManage={() => navigate({ to: "/admin/properties" })}
             />
-            <KycApprovalQueueCard />
+            <CollectionsTrendCard
+              range={collectionsRange}
+              onRangeChange={setCollectionsRange}
+              data={collectionsChart.data}
+              isLoading={collectionsChart.isLoading}
+              isError={collectionsChart.isError}
+            />
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activityLoading ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
-              ) : recentActivity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent activity yet.</p>
-              ) : (
-                <ol className="divide-y divide-border text-sm">
-                  {recentActivity.slice(0, 8).map((item, i) => (
-                    <li
-                      key={i}
-                      className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-                    >
-                      <div className="flex min-w-0 items-start gap-3">
-                        <ActivityIcon type={item.type} />
-                        <div className="min-w-0">
-                          <div className="font-medium leading-tight">{item.type}</div>
-                          <div className="break-words text-xs text-muted-foreground">
-                            {item.detail}
-                          </div>
-                        </div>
-                      </div>
-                      <time
-                        dateTime={item.at}
-                        className="shrink-0 pl-11 font-mono text-xs tabular-nums text-muted-foreground sm:pl-0 sm:text-right"
-                      >
-                        {new Date(item.at).toLocaleString()}
-                      </time>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <AttentionCard items={attentionItems} />
+            <RecentActivityCard items={recentActivity} isLoading={activityLoading} />
+          </div>
+
+          <section id={KYC_SECTION_ID} className="scroll-mt-24">
+            <KycApprovalQueueCard />
+          </section>
+        </>
       )}
     </div>
   );

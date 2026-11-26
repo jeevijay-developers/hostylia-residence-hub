@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { INDIAN_STATES, isValidTimeZone } from "@/lib/locations";
+
 export const propertyTypeEnum = z.enum(["HOSTEL", "PG", "DORMITORY", "COACHING_HOSTEL"]);
 export const genderPolicyEnum = z.enum(["MALE", "FEMALE", "COED", "CUSTOM"]);
 export const propertyStatusEnum = z.enum(["DRAFT", "ACTIVE", "INACTIVE", "SUSPENDED"]);
@@ -8,29 +10,124 @@ export const roomStatusEnum = z.enum(["ACTIVE", "BLOCKED", "MAINTENANCE", "INACT
 export const bedStatusEnum = z.enum(["VACANT", "OCCUPIED", "BLOCKED", "MAINTENANCE"]);
 export const blockStatusEnum = z.enum(["ACTIVE", "INACTIVE"]);
 
+/** Optional free text: blank is allowed, only the length is limited. */
+const optionalText = (max: number, tooLong: string) =>
+  z.string().trim().max(max, tooLong).optional().default("");
+
+/**
+ * Property details form (Add property wizard + Setup). Every message is written
+ * for the person filling the form. The slug is not here: the server generates
+ * it (createProperty) and it never changes afterwards, because the public
+ * admission link is built from it. Branding (logo/colours) is not collected.
+ * Rules that depend on more than one field (PIN format and state list for
+ * India) live in propertyCrossFieldIssues so they show up even while other
+ * fields are still empty.
+ */
 export const propertyFormSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  slug: z
+  name: z
     .string()
     .trim()
-    .min(2)
-    .max(64)
-    .regex(/^[a-z0-9-]+$/, "Lowercase letters, digits and dashes only"),
-  property_type: propertyTypeEnum,
-  gender_policy: genderPolicyEnum,
-  address_line_1: z.string().trim().min(2).max(200),
-  address_line_2: z.string().trim().max(200).optional().or(z.literal("")),
-  landmark: z.string().trim().max(200).optional().or(z.literal("")),
-  city: z.string().trim().min(2).max(100),
-  state: z.string().trim().min(2).max(100),
-  postal_code: z.string().trim().min(3).max(20),
-  country_code: z.string().trim().length(2).default("IN"),
-  timezone: z.string().trim().min(2).max(64).default("Asia/Kolkata"),
-  phone: z.string().trim().max(20).optional().or(z.literal("")),
-  email: z.string().trim().email().max(255).optional().or(z.literal("")),
-  logo_path: z.string().max(500).optional().or(z.literal("")),
+    .min(1, "Enter the property name")
+    .min(2, "Property name must be at least 2 characters")
+    .max(120, "Property name can be at most 120 characters")
+    .regex(/\p{L}/u, "Property name must include letters, not just numbers"),
+  property_type: z.enum(propertyTypeEnum.options, {
+    errorMap: () => ({ message: "Choose the type of property" }),
+  }),
+  gender_policy: z.enum(genderPolicyEnum.options, {
+    errorMap: () => ({ message: "Choose who can stay at this property" }),
+  }),
+  address_line_1: z
+    .string()
+    .trim()
+    .min(1, "Enter the building and street address")
+    .min(3, "The street address looks too short")
+    .max(200, "Address line 1 can be at most 200 characters"),
+  address_line_2: optionalText(200, "Address line 2 can be at most 200 characters"),
+  landmark: optionalText(200, "Landmark can be at most 200 characters"),
+  city: z
+    .string()
+    .trim()
+    .min(1, "Enter the city")
+    .min(2, "The city name looks too short")
+    .max(100, "City can be at most 100 characters"),
+  state: z
+    .string()
+    .trim()
+    .min(1, "Choose the state")
+    .min(2, "The state name looks too short")
+    .max(100, "State can be at most 100 characters"),
+  postal_code: z
+    .string()
+    .trim()
+    .min(1, "Enter the PIN / postal code")
+    .regex(/^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/, "Enter a valid PIN / postal code"),
+  country_code: z
+    .string()
+    .trim()
+    .regex(/^[A-Z]{2}$/, "Choose the country"),
+  timezone: z
+    .string()
+    .trim()
+    .min(1, "Choose the time zone")
+    .refine(isValidTimeZone, "Choose a time zone from the list"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Enter the property's phone number")
+    .max(20, "Phone number is too long")
+    .regex(/^\+?\d[\d\s-]{6,18}$/, "Enter a valid phone number, e.g. 98765 43210"),
+  email: optionalText(255, "Email address is too long").refine(
+    (v) => v === "" || z.string().email().safeParse(v).success,
+    "Enter a valid email address, e.g. office@yourhostel.com",
+  ),
 });
 export type PropertyFormInput = z.infer<typeof propertyFormSchema>;
+export type PropertyFormField = keyof PropertyFormInput;
+
+/** India-specific rules that need the country to decide. */
+export function propertyCrossFieldIssues(
+  v: Partial<Record<PropertyFormField, unknown>>,
+): { path: PropertyFormField; message: string }[] {
+  const issues: { path: PropertyFormField; message: string }[] = [];
+  if (v.country_code !== "IN") return issues;
+  const pin = typeof v.postal_code === "string" ? v.postal_code.trim() : "";
+  if (pin && !/^[1-9]\d{5}$/.test(pin)) {
+    issues.push({ path: "postal_code", message: "Enter a valid 6-digit PIN code, e.g. 324005" });
+  }
+  const state = typeof v.state === "string" ? v.state.trim() : "";
+  if (state && !(INDIAN_STATES as readonly string[]).includes(state)) {
+    issues.push({ path: "state", message: "Choose the state from the list" });
+  }
+  // Indian numbers: 10 digits, optionally written with +91 / 91 / a leading 0.
+  const phone = typeof v.phone === "string" ? v.phone.trim() : "";
+  if (phone) {
+    const digits = phone.replace(/\D/g, "");
+    const national =
+      digits.length === 12 && digits.startsWith("91")
+        ? digits.slice(2)
+        : digits.length === 11 && digits.startsWith("0")
+          ? digits.slice(1)
+          : digits;
+    if (national.length !== 10) {
+      issues.push({
+        path: "phone",
+        message: "Enter a 10-digit phone number, e.g. 98765 43210",
+      });
+    }
+  }
+  return issues;
+}
+
+/** Server-side create input: the form plus the tenant it belongs to. */
+export const propertyCreateSchema = propertyFormSchema
+  .extend({ tenant_id: z.string().uuid("Your organization could not be identified") })
+  .superRefine((v, ctx) => {
+    for (const issue of propertyCrossFieldIssues(v)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [issue.path], message: issue.message });
+    }
+  });
+export type PropertyCreateInput = z.infer<typeof propertyCreateSchema>;
 
 // Normalization mirrors uniq_blocks_property_name_norm_active /
 // uniq_blocks_property_code_norm_active (20261102120000): the database is the

@@ -1,11 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { BedDouble, ChevronRight, Plus, Upload, Building2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Ban,
+  Bed,
+  BedDouble,
+  Building2,
+  ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  DoorClosed,
+  Download,
+  ImagePlus,
+  Layers,
+  MoreHorizontal,
+  PieChart,
+  Plus,
+  Users,
+  Wrench,
+  X,
+} from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/PageHeader";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,13 +41,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { BedGrid, type BedStatus, type BedTile } from "@/components/hostel/BedGrid";
+import type { BedStatus, BedTile } from "@/components/hostel/BedGrid";
 import { BedStatusDialog } from "@/components/hostel/BedStatusDialog";
 import { CsvImportModal } from "@/components/hostel/CsvImportModal";
+import { describeBedRestriction } from "@/lib/bed-label";
 import { sortFloors } from "@/lib/floor-order";
 import {
   blockCodeKey,
@@ -46,19 +69,25 @@ import {
 } from "@/schemas/hostel";
 import { useServerFn } from "@tanstack/react-start";
 import { createRoomWithBeds } from "@/lib/hostel.functions";
+import { ROOM_AMENITIES } from "@/lib/room-amenities";
+import {
+  ROOM_PHOTO_ACCEPT,
+  ROOM_PHOTO_MAX_FILES,
+  roomPhotoProblem,
+  uploadRoomPhotos,
+} from "@/lib/room-photos";
 
 /**
+ * Property structure: blocks → floors → rooms → beds, with Add Block / Floor /
+ * Room, CSV import and per-bed status management.
+ *
  * Lives outside src/routes so it can be imported from both
- * admin.properties.$id.structure.tsx and warden.rooms-beds.tsx without
- * either route file re-exporting a non-Route symbol (see AllocationBoard.tsx
- * for the same reasoning). `canCreate` defaults to `true` so the existing
- * Admin call site (which passes none of these) keeps its unconditional
- * Add Block/Floor/Room + CSV import access exactly as before — only the
- * Warden rooms/beds route passes an explicit, permission-derived value.
- * `canManageBedStatus` (default `true`, Admin) gates the bed "Manage status"
- * action; the Warden route passes its `rooms_beds_edit` permission. The
- * database enforces the same rule, this only hides the affordance. There's no
- * room edit/delete action here, so `rooms_beds_delete` still has nothing to gate.
+ * admin.properties.$slug.structure.tsx and warden.rooms-beds.tsx. `canCreate`
+ * defaults to `true` (Admin) — only the Warden route passes an explicit,
+ * permission-derived value. `canManageBedStatus` (default `true`, Admin) gates
+ * clicking a bed to change its status; the Warden route passes its
+ * `rooms_beds_edit` permission. The database enforces the same rules, this
+ * only hides the affordances.
  */
 export function RoomsBedsBoard({
   propertyId,
@@ -80,7 +109,7 @@ export function RoomsBedsBoard({
   const [roomParentBlock, setRoomParentBlock] = useState<string | null>(null);
 
   const propertyQ = useQuery({
-    queryKey: ["property", propertyId],
+    queryKey: ["structure-property", propertyId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("properties")
@@ -141,135 +170,134 @@ export function RoomsBedsBoard({
     qc.invalidateQueries({ queryKey: ["structure", propertyId] });
     // Allocations page shows this property's bed list + status summary.
     qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+    // Properties list / dashboard totals.
+    qc.invalidateQueries({ queryKey: ["admin-properties"] });
+    qc.invalidateQueries({ queryKey: ["admin-kpis"] });
   }
 
   if (propertyQ.isError || treeQ.isError) {
-    const err = propertyQ.error ?? treeQ.error;
     return (
-      <div className="space-y-4">
-        <PageHeader title="Structure" />
-        <Card>
-          <CardContent className="space-y-3 py-6 text-center">
-            <p className="text-sm text-destructive">
-              {err instanceof Error ? err.message : "This property's structure couldn't be loaded."}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                propertyQ.refetch();
-                treeQ.refetch();
-              }}
-            >
-              Try again
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="rounded-2xl border border-border/80 bg-card p-8 text-center">
+        <p className="text-sm text-foreground">
+          We couldn't load this property's blocks and rooms. Please try again.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            propertyQ.refetch();
+            treeQ.refetch();
+          }}
+        >
+          Try again
+        </Button>
       </div>
     );
   }
 
   if (propertyQ.isLoading || treeQ.isLoading || !tenantId || !treeQ.data) {
-    return <Skeleton className="h-96 w-full" />;
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-12 w-80" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-96 rounded-2xl" />
+      </div>
+    );
   }
 
-  const { blocks, floors, rooms, beds } = treeQ.data!;
+  const { blocks, floors, rooms, beds } = treeQ.data;
   const noBlockFloors = floors.filter((f) => !f.block_id);
+  const totals = summarize(floors, rooms, beds);
+  const isEmpty = blocks.length === 0 && floors.length === 0;
+  // Big properties start collapsed past the first block so the page stays scannable.
+  const expandFirstOnly = blocks.length > 3;
+
+  const openAddRoom = (floorId: string, blockId: string | null) => {
+    setRoomParentFloor(floorId);
+    setRoomParentBlock(blockId);
+    setAddRoomOpen(true);
+  };
+  const openAddFloor = (blockId: string | null) => {
+    setFloorParentBlock(blockId);
+    setAddFloorOpen(true);
+  };
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <PageHeader
-        title={`Structure — ${propertyQ.data?.name ?? ""}`}
-        description="Manage blocks, floors and rooms"
-        actions={
-          canCreate ? (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                className="rounded-xl border-border bg-card font-semibold shadow-sm"
-                onClick={() => setCsvOpen(true)}
-              >
-                <Upload className="h-4 w-4" /> Import CSV
-              </Button>
-              <Button
-                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 font-bold dark:text-slate-950 shadow-lg shadow-primary/20 dark:shadow-amber-500/20 dark:hover:from-amber-400 dark:hover:to-amber-500"
-                onClick={() => setAddBlockOpen(true)}
-              >
-                <Plus className="h-4 w-4" /> Block
-              </Button>
-            </div>
-          ) : undefined
-        }
-      />
+    <div className="w-full space-y-5 sm:space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">
+            Structure — {propertyQ.data?.name ?? ""}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage blocks, floors, rooms and bed allocation
+          </p>
+        </div>
+        {canCreate ? (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button variant="outline" className="h-10 rounded-xl" onClick={() => setCsvOpen(true)}>
+              <Download className="h-4 w-4" /> Import CSV
+            </Button>
+            <Button className="h-10 rounded-xl" onClick={() => setAddBlockOpen(true)}>
+              <Plus className="h-4 w-4" /> Add Block
+            </Button>
+          </div>
+        ) : null}
+      </header>
 
-      <div className="space-y-4">
-        {blocks.map((b) => (
-          <BlockCard
-            key={b.id}
-            block={b}
-            floors={floors.filter((f) => f.block_id === b.id)}
-            rooms={rooms}
-            beds={beds}
-            canCreate={canCreate}
-            onSelectBed={canManageBedStatus ? setStatusBed : undefined}
-            onAddFloor={() => {
-              setFloorParentBlock(b.id);
-              setAddFloorOpen(true);
-            }}
-            onAddRoom={(fId) => {
-              setRoomParentFloor(fId);
-              setRoomParentBlock(b.id);
-              setAddRoomOpen(true);
-            }}
-          />
-        ))}
-
-        {(noBlockFloors.length > 0 || blocks.length === 0) && (
-          <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-              <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                  <Building2 className="h-4 w-4" />
-                </span>
-                <span className="truncate">No block (floors direct on property)</span>
-              </CardTitle>
-              {canCreate && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
-                  onClick={() => {
-                    setFloorParentBlock(null);
-                    setAddFloorOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" /> Floor
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {noBlockFloors.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No floors yet.</p>
-              ) : (
-                noBlockFloors.map((f) => (
-                  <FloorRow
-                    key={f.id}
-                    floor={f}
-                    rooms={rooms.filter((r) => r.floor_id === f.id)}
-                    beds={beds}
-                    canCreate={canCreate}
-                    onSelectBed={canManageBedStatus ? setStatusBed : undefined}
-                    onAddRoom={() => {
-                      setRoomParentFloor(f.id);
-                      setRoomParentBlock(null);
-                      setAddRoomOpen(true);
-                    }}
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
-        )}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+        <StatTile icon={Building2} value={blocks.length} label={plural(blocks.length, "Block")} />
+        <StatTile icon={Layers} value={floors.length} label={plural(floors.length, "Floor")} />
+        <StatTile icon={DoorClosed} value={rooms.length} label={plural(rooms.length, "Room")} />
+        <StatTile icon={BedDouble} value={beds.length} label={plural(beds.length, "Bed")} />
+        <StatTile icon={PieChart} value={`${totals.occupancyPct}%`} label="Occupancy" />
       </div>
+
+      {isEmpty ? (
+        <EmptyState
+          title="No blocks yet"
+          description="Start by adding a block (or import a CSV), then add its floors, rooms and beds."
+          action={
+            canCreate ? { label: "Add Block", onClick: () => setAddBlockOpen(true) } : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-4">
+          {blocks.map((b, i) => (
+            <BlockSection
+              key={b.id}
+              title={b.name}
+              code={b.code}
+              defaultOpen={!expandFirstOnly || i === 0}
+              floors={floors.filter((f) => f.block_id === b.id)}
+              rooms={rooms}
+              beds={beds}
+              canCreate={canCreate}
+              onSelectBed={canManageBedStatus ? setStatusBed : undefined}
+              onAddFloor={() => openAddFloor(b.id)}
+              onAddRoom={(fId) => openAddRoom(fId, b.id)}
+            />
+          ))}
+          {noBlockFloors.length > 0 || (blocks.length === 0 && floors.length > 0) ? (
+            <BlockSection
+              title="Floors without a block"
+              code={null}
+              defaultOpen
+              floors={noBlockFloors}
+              rooms={rooms}
+              beds={beds}
+              canCreate={canCreate}
+              onSelectBed={canManageBedStatus ? setStatusBed : undefined}
+              onAddFloor={() => openAddFloor(null)}
+              onAddRoom={(fId) => openAddRoom(fId, null)}
+            />
+          ) : null}
+        </div>
+      )}
 
       {canManageBedStatus && (
         <BedStatusDialog
@@ -301,6 +329,8 @@ export function RoomsBedsBoard({
           <AddRoomDialog
             open={addRoomOpen}
             onOpenChange={setAddRoomOpen}
+            tenantId={tenantId}
+            propertyId={propertyId}
             floorId={roomParentFloor}
             floorName={floors.find((f) => f.id === roomParentFloor)?.name ?? ""}
             blockName={blocks.find((b) => b.id === roomParentBlock)?.name ?? null}
@@ -319,12 +349,6 @@ export function RoomsBedsBoard({
   );
 }
 
-interface Block {
-  id: string;
-  name: string;
-  code: string | null;
-  status: string;
-}
 interface Floor {
   id: string;
   name: string;
@@ -349,36 +373,66 @@ interface Bed {
   maintenance_until: string | null;
 }
 
-const ROOM_STATUS_TONE: Record<string, string> = {
-  ACTIVE: "bg-success/15 text-success border-success/30",
-  MAINTENANCE: "bg-warning/15 text-warning border-warning/30",
-  BLOCKED: "bg-destructive/15 text-destructive border-destructive/30",
-  INACTIVE: "bg-muted text-muted-foreground border-border",
-};
+const plural = (n: number, word: string) => (n === 1 ? word : `${word}s`);
 
-function RoomStatusBadge({ status }: { status: string }) {
+/** Counts for a set of floors; occupancy = occupied / (occupied + vacant), as everywhere else. */
+function summarize(floors: Floor[], rooms: Room[], beds: Bed[]) {
+  const floorIds = new Set(floors.map((f) => f.id));
+  const roomList = rooms.filter((r) => floorIds.has(r.floor_id));
+  const roomIds = new Set(roomList.map((r) => r.id));
+  const bedList = beds.filter((b) => roomIds.has(b.room_id));
+  const occupied = bedList.filter((b) => b.status === "OCCUPIED").length;
+  const vacant = bedList.filter((b) => b.status === "VACANT").length;
+  return {
+    rooms: roomList.length,
+    beds: bedList.length,
+    occupancyPct: occupied + vacant > 0 ? Math.round((occupied / (occupied + vacant)) * 100) : 0,
+  };
+}
+
+function StatTile({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: LucideIcon;
+  value: number | string;
+  label: string;
+}) {
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wide",
-        ROOM_STATUS_TONE[status] ?? "bg-muted text-muted-foreground border-border",
-      )}
-    >
-      {status}
+    <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card-ambient sm:p-5">
+      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+      </span>
+      <p className="mt-3 font-display text-2xl font-semibold leading-tight text-foreground tabular-nums">
+        {value}
+      </p>
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function MetaChip({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {children}
     </span>
   );
 }
 
-function RoomTypeBadge({ type }: { type: string }) {
+function CountPill({ children }: { children: ReactNode }) {
   return (
-    <Badge variant="outline" className="shrink-0 rounded-full border-border bg-card font-semibold">
-      {type}
-    </Badge>
+    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+      {children}
+    </span>
   );
 }
 
-function BlockCard({
-  block,
+function BlockSection({
+  title,
+  code,
+  defaultOpen,
   floors,
   rooms,
   beds,
@@ -387,7 +441,9 @@ function BlockCard({
   onAddFloor,
   onAddRoom,
 }: {
-  block: Block;
+  title: string;
+  code: string | null;
+  defaultOpen: boolean;
   floors: Floor[];
   rooms: Room[];
   beds: Bed[];
@@ -396,56 +452,139 @@ function BlockCard({
   onAddFloor: () => void;
   onAddRoom: (floorId: string) => void;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  // Floors start open when there are only a few, otherwise just the first one.
+  const [openFloors, setOpenFloors] = useState<Set<string>>(
+    () =>
+      new Set(floors.length <= 3 ? floors.map((f) => f.id) : floors.slice(0, 1).map((f) => f.id)),
+  );
+  const stats = summarize(floors, rooms, beds);
+  const bodyId = `block-${title.replace(/\W+/g, "-")}-body`;
+
+  const toggleFloor = (id: string) =>
+    setOpenFloors((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
-    <Card className="rounded-2xl border-border/80 bg-card shadow-xl">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-        <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-            <Building2 className="h-4 w-4" />
+    <section className="rounded-2xl border border-border/80 bg-card p-3 shadow-card-ambient sm:p-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={bodyId}
+          className="flex min-w-0 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronDown
+            className={cn(
+              "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+              !open && "-rotate-90",
+            )}
+            aria-hidden="true"
+          />
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Building2 className="h-5 w-5" aria-hidden="true" />
           </span>
-          <span className="truncate">{block.name}</span>
-          {block.code && (
-            <Badge variant="secondary" className="shrink-0 rounded-full">
-              {block.code}
-            </Badge>
+          <span className="truncate font-display text-lg font-semibold text-foreground">
+            {title}
+          </span>
+          {code && code !== title ? (
+            <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {code}
+            </span>
+          ) : null}
+        </button>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <MetaChip icon={Layers}>
+            {floors.length} {plural(floors.length, "Floor")}
+          </MetaChip>
+          <MetaChip icon={DoorClosed}>
+            {stats.rooms} {plural(stats.rooms, "Room")}
+          </MetaChip>
+          <MetaChip icon={BedDouble}>
+            {stats.beds} {plural(stats.beds, "Bed")}
+          </MetaChip>
+          {stats.beds > 0 ? (
+            <span className="rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success">
+              {stats.occupancyPct}% Occupied
+            </span>
+          ) : null}
+        </div>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {canCreate ? (
+            <Button variant="outline" size="sm" className="h-8 rounded-lg" onClick={onAddFloor}>
+              <Plus className="h-3.5 w-3.5" /> Floor
+            </Button>
+          ) : null}
+          {floors.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  aria-label={`More actions for ${title}`}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setOpen(true);
+                    setOpenFloors(new Set(floors.map((f) => f.id)));
+                  }}
+                >
+                  <ChevronsUpDown className="mr-2 h-4 w-4" /> Expand all floors
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setOpenFloors(new Set())}>
+                  <ChevronsDownUp className="mr-2 h-4 w-4" /> Collapse all floors
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
+      </div>
+
+      {open ? (
+        <div id={bodyId} className="mt-3 space-y-3 sm:mt-4">
+          {floors.length === 0 ? (
+            <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              No floors yet.{canCreate ? " Use “+ Floor” to add one." : ""}
+            </p>
+          ) : (
+            floors.map((f) => (
+              <FloorSection
+                key={f.id}
+                floor={f}
+                rooms={rooms.filter((r) => r.floor_id === f.id)}
+                beds={beds}
+                open={openFloors.has(f.id)}
+                onToggle={() => toggleFloor(f.id)}
+                canCreate={canCreate}
+                onSelectBed={onSelectBed}
+                onAddRoom={() => onAddRoom(f.id)}
+              />
+            ))
           )}
-        </CardTitle>
-        {canCreate && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
-            onClick={onAddFloor}
-          >
-            <Plus className="h-4 w-4" /> Floor
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {floors.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No floors yet.</p>
-        ) : (
-          floors.map((f) => (
-            <FloorRow
-              key={f.id}
-              floor={f}
-              rooms={rooms.filter((r) => r.floor_id === f.id)}
-              beds={beds}
-              canCreate={canCreate}
-              onSelectBed={onSelectBed}
-              onAddRoom={() => onAddRoom(f.id)}
-            />
-          ))
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
-function FloorRow({
+function FloorSection({
   floor,
   rooms,
   beds,
+  open,
+  onToggle,
   canCreate,
   onSelectBed,
   onAddRoom,
@@ -453,92 +592,222 @@ function FloorRow({
   floor: Floor;
   rooms: Room[];
   beds: Bed[];
+  open: boolean;
+  onToggle: () => void;
   canCreate: boolean;
   onSelectBed?: (bed: BedTile) => void;
   onAddRoom: () => void;
 }) {
-  const [open, setOpen] = useState(true);
+  const roomIds = new Set(rooms.map((r) => r.id));
+  const bedCount = beds.filter((b) => roomIds.has(b.room_id)).length;
+  const bodyId = `floor-${floor.id}-body`;
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="rounded-xl border border-border/80 bg-background/40"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-        <CollapsibleTrigger className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <ChevronRight
-            className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-              open && "rotate-90",
-            )}
-          />
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-            <Building2 className="h-3.5 w-3.5" />
-          </span>
-          <span className="truncate font-semibold text-foreground">{floor.name}</span>
-          {floor.floor_number != null && (
-            <span className="shrink-0 font-medium text-indigo-600 dark:text-indigo-400">
-              · L{floor.floor_number}
-            </span>
-          )}
-          <Badge variant="outline" className="ml-1 shrink-0 rounded-full border-border bg-card">
-            {rooms.length} rooms
-          </Badge>
-        </CollapsibleTrigger>
-        {canCreate && (
+    <div className="rounded-xl bg-muted/40">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
+        <Layers className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+        <span className="font-semibold text-foreground">{floor.name}</span>
+        <CountPill>
+          {rooms.length} {plural(rooms.length, "Room")}
+        </CountPill>
+        <CountPill>
+          {bedCount} {plural(bedCount, "Bed")}
+        </CountPill>
+        <div className="ml-auto flex items-center gap-1.5">
+          {canCreate ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-lg bg-card"
+              onClick={onAddRoom}
+            >
+              <Plus className="h-3.5 w-3.5" /> Room
+            </Button>
+          ) : null}
           <Button
-            size="sm"
             variant="ghost"
-            className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 dark:hover:text-indigo-300"
-            onClick={onAddRoom}
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-controls={bodyId}
+            aria-label={`${open ? "Collapse" : "Expand"} ${floor.name}`}
           >
-            <Plus className="h-4 w-4" /> Room
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
+              aria-hidden="true"
+            />
           </Button>
-        )}
+        </div>
       </div>
-      <CollapsibleContent className="space-y-3 border-t border-border/80 px-3 py-3">
-        {rooms.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No rooms yet.</p>
-        ) : (
-          rooms.map((r) => {
-            const rBeds = beds
-              .filter((b) => b.room_id === r.id)
-              .map((b) => ({
-                ...b,
-                status: b.status as BedStatus,
-                roomNumber: r.room_number,
-                notes: b.notes,
-                maintenanceUntil: b.maintenance_until,
-              }));
-            return (
-              <div
-                key={r.id}
-                className="rounded-xl border border-border/80 bg-card p-3.5 shadow-sm"
-              >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-foreground">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                      <BedDouble className="h-4 w-4" />
-                    </span>
-                    <span className="truncate">
-                      Room {r.room_number}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        · Capacity {r.capacity}
-                      </span>
-                    </span>
-                  </span>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <RoomTypeBadge type={r.room_type} />
-                    <RoomStatusBadge status={r.status} />
-                  </div>
-                </div>
-                <BedGrid beds={rBeds} onSelect={onSelectBed} />
-              </div>
-            );
-          })
+      {open ? (
+        <div id={bodyId} className="@container px-3 pb-3 sm:px-4 sm:pb-4">
+          {rooms.length === 0 ? (
+            <p className="rounded-lg bg-card px-4 py-3 text-sm text-muted-foreground">
+              No rooms on this floor yet.
+            </p>
+          ) : (
+            // Columns follow the floor panel width (container query), not the window,
+            // so cards fit with or without the sidebar.
+            <div className="grid gap-3 @md:grid-cols-2 @2xl:grid-cols-3">
+              {rooms.map((r) => (
+                <RoomCard
+                  key={r.id}
+                  room={r}
+                  beds={beds.filter((b) => b.room_id === r.id)}
+                  onSelectBed={onSelectBed}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const ROOM_TYPE_LABEL: Record<string, string> = {
+  SINGLE: "Single",
+  DOUBLE: "Double",
+  TRIPLE: "Triple",
+  DORM: "Dorm",
+  CUSTOM: "Custom",
+};
+
+/** Room-level state: an explicit room status wins, otherwise it follows its beds. */
+function roomState(room: Room, beds: Bed[]): { label: string; className: string; dot: string } {
+  if (room.status === "MAINTENANCE")
+    return { label: "Maintenance", className: "bg-warning/10 text-warning", dot: "bg-warning" };
+  if (room.status === "BLOCKED")
+    return {
+      label: "Blocked",
+      className: "bg-destructive/10 text-destructive",
+      dot: "bg-destructive",
+    };
+  if (room.status === "INACTIVE")
+    return {
+      label: "Inactive",
+      className: "bg-muted text-muted-foreground",
+      dot: "bg-muted-foreground",
+    };
+  const occupied = beds.filter((b) => b.status === "OCCUPIED").length;
+  if (beds.length > 0 && occupied === beds.length)
+    return { label: "Occupied", className: "bg-success/10 text-success", dot: "bg-success" };
+  if (occupied > 0)
+    return {
+      label: `${occupied}/${beds.length} occupied`,
+      className: "bg-success/10 text-success",
+      dot: "bg-success",
+    };
+  return {
+    label: "Vacant",
+    className: "bg-muted text-muted-foreground",
+    dot: "bg-muted-foreground",
+  };
+}
+
+const BED_CHIP: Record<BedStatus, { label: string; className: string; Icon: LucideIcon }> = {
+  OCCUPIED: {
+    label: "Occupied",
+    className: "border-bed-occupied/30 bg-bed-occupied/10 text-bed-occupied",
+    Icon: BedDouble,
+  },
+  VACANT: {
+    label: "Vacant",
+    className: "border-border bg-card text-muted-foreground",
+    Icon: Bed,
+  },
+  MAINTENANCE: {
+    label: "Maintenance",
+    className: "border-bed-maintenance/30 bg-bed-maintenance/10 text-bed-maintenance",
+    Icon: Wrench,
+  },
+  BLOCKED: {
+    label: "Blocked",
+    className: "border-bed-blocked/30 bg-bed-blocked/10 text-bed-blocked",
+    Icon: Ban,
+  },
+};
+
+function RoomCard({
+  room,
+  beds,
+  onSelectBed,
+}: {
+  room: Room;
+  beds: Bed[];
+  onSelectBed?: (bed: BedTile) => void;
+}) {
+  const state = roomState(room, beds);
+  return (
+    <div className="rounded-xl border border-border/80 bg-card p-3.5 shadow-xs">
+      <div className="flex items-start justify-between gap-2">
+        <p className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
+          <DoorClosed className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate">Room {room.room_number}</span>
+        </p>
+        <span className="shrink-0 rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          {ROOM_TYPE_LABEL[room.room_type] ?? room.room_type}
+        </span>
+      </div>
+      <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+        <Users className="h-3.5 w-3.5" aria-hidden="true" /> Capacity: {room.capacity}
+      </p>
+      <span
+        className={cn(
+          "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+          state.className,
         )}
-      </CollapsibleContent>
-    </Collapsible>
+      >
+        <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", state.dot)} />
+        {state.label}
+      </span>
+      {beds.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {beds.map((b) => {
+            const status = (b.status as BedStatus) in BED_CHIP ? (b.status as BedStatus) : "VACANT";
+            const meta = BED_CHIP[status];
+            const tile: BedTile = {
+              id: b.id,
+              code: b.code,
+              status,
+              roomNumber: room.room_number,
+              notes: b.notes,
+              maintenanceUntil: b.maintenance_until,
+            };
+            const restriction = describeBedRestriction(tile);
+            const label = `${room.room_number}-${b.code}`;
+            const description = `Bed ${label}: ${meta.label}${restriction ? ` — ${restriction}` : ""}`;
+            const chipClass = cn(
+              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold tabular-nums",
+              meta.className,
+            );
+            return onSelectBed ? (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => onSelectBed(tile)}
+                title={`${description}. Click to manage status.`}
+                aria-label={`${description}. Manage status`}
+                className={cn(
+                  chipClass,
+                  "transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+              >
+                <meta.Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {label}
+              </button>
+            ) : (
+              <span key={b.id} title={description} aria-label={description} className={chipClass}>
+                <meta.Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">No beds in this room.</p>
+      )}
+    </div>
   );
 }
 
@@ -789,6 +1058,8 @@ function AddFloorDialog({
 function AddRoomDialog({
   open,
   onOpenChange,
+  tenantId,
+  propertyId,
   floorId,
   floorName,
   blockName,
@@ -796,17 +1067,23 @@ function AddRoomDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  tenantId: string | null;
+  propertyId: string;
   floorId: string | null;
   floorName: string;
   blockName: string | null;
   onDone: () => void;
 }) {
   const createFn = useServerFn(createRoomWithBeds);
+  const qc = useQueryClient();
   const [number, setNumber] = useState("");
   const [type, setType] = useState<RoomType>("DOUBLE");
   // Only used for DORM/CUSTOM; SINGLE/DOUBLE/TRIPLE derive capacity from the type.
   const [capacity, setCapacity] = useState("");
   const [rent, setRent] = useState("");
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ number?: string; capacity?: string; rent?: string }>({});
   const fixedCapacity = fixedCapacityForType(type);
 
@@ -814,7 +1091,25 @@ function AddRoomDialog({
     setNumber("");
     setCapacity("");
     setRent("");
+    setAmenities([]);
+    setPhotos([]);
+    setPhotoError(null);
     setErrors({});
+  }
+
+  function addPhotos(list: FileList | null) {
+    const picked = Array.from(list ?? []);
+    if (!picked.length) return;
+    const bad = picked.map(roomPhotoProblem).find(Boolean);
+    const good = picked.filter((f) => !roomPhotoProblem(f));
+    const next = [...photos, ...good].slice(0, ROOM_PHOTO_MAX_FILES);
+    setPhotos(next);
+    setPhotoError(
+      bad ??
+        (photos.length + good.length > ROOM_PHOTO_MAX_FILES
+          ? `You can add up to ${ROOM_PHOTO_MAX_FILES} photos.`
+          : null),
+    );
   }
 
   const mut = useMutation({
@@ -824,9 +1119,33 @@ function AddRoomDialog({
       room_type: RoomType;
       capacity: number | null;
       base_rent_paise: number | null;
-    }) => createFn({ data: input }),
-    onSuccess: () => {
-      toast.success("Room + beds added");
+    }) => {
+      const created = await createFn({ data: input });
+      // The room exists from here on; amenities and photos are best-effort extras.
+      const problems: string[] = [];
+      if (amenities.length) {
+        const { error } = await supabase
+          .from("rooms")
+          .update({ amenities })
+          .eq("id", created.room_id);
+        if (error) problems.push("the amenities couldn't be saved");
+      }
+      if (photos.length && tenantId) {
+        try {
+          await uploadRoomPhotos({ tenantId, propertyId, roomId: created.room_id }, photos);
+        } catch (e) {
+          problems.push(e instanceof Error ? e.message : "the photos couldn't be uploaded");
+        }
+      }
+      return { created, problems };
+    },
+    onSuccess: ({ problems }) => {
+      if (problems.length) {
+        toast.warning(`Room + beds added, but ${problems.join("; ")}`);
+      } else {
+        toast.success("Room + beds added");
+      }
+      qc.invalidateQueries({ queryKey: ["room-photos"] });
       onDone();
       onOpenChange(false);
       reset();
@@ -885,7 +1204,7 @@ function AddRoomDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add room</DialogTitle>
         </DialogHeader>
@@ -977,6 +1296,74 @@ function AddRoomDialog({
               {errors.rent && <p className="mt-1 text-sm text-destructive">{errors.rent}</p>}
             </div>
           </div>
+          <fieldset>
+            <legend className="text-sm font-medium leading-none">Amenities</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ROOM_AMENITIES.map(({ key, label, icon: Icon }) => {
+                const on = amenities.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setAmenities((list) => (on ? list.filter((k) => k !== key) : [...list, key]))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      on
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div>
+            <Label htmlFor="room-photos">Photos</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Optional · up to {ROOM_PHOTO_MAX_FILES} JPG, PNG or WebP images, 5 MB each. The first
+              one is shown on the room card.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {photos.map((file, i) => (
+                <RoomPhotoThumb
+                  key={`${file.name}-${file.size}-${i}`}
+                  file={file}
+                  isCover={i === 0}
+                  onRemove={() => {
+                    setPhotos((list) => list.filter((_, j) => j !== i));
+                    setPhotoError(null);
+                  }}
+                />
+              ))}
+              {photos.length < ROOM_PHOTO_MAX_FILES ? (
+                <label
+                  htmlFor="room-photos"
+                  className="flex h-20 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-within:ring-2 focus-within:ring-ring"
+                >
+                  <ImagePlus className="h-5 w-5" aria-hidden="true" />
+                  Add photo
+                  <input
+                    id="room-photos"
+                    type="file"
+                    accept={ROOM_PHOTO_ACCEPT}
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => {
+                      addPhotos(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+            {photoError ? <p className="mt-1 text-sm text-destructive">{photoError}</p> : null}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -988,5 +1375,41 @@ function AddRoomDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Local preview of a picked room photo, with remove. */
+function RoomPhotoThumb({
+  file,
+  isCover,
+  onRemove,
+}: {
+  file: File;
+  isCover: boolean;
+  onRemove: () => void;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return (
+    <div className="relative h-20 w-24 overflow-hidden rounded-lg border border-border bg-muted">
+      {url ? <img src={url} alt={file.name} className="h-full w-full object-cover" /> : null}
+      {isCover ? (
+        <span className="absolute bottom-1 left-1 rounded bg-card/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+          Cover
+        </span>
+      ) : null}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+        className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-card/90 text-foreground shadow-sm hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }

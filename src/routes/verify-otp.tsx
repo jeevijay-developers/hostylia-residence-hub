@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,12 +20,18 @@ import {
   OTP_RESEND_COOLDOWN_SECONDS,
 } from "@/schemas/auth";
 
+// A missing/garbled phone (e.g. the page opened directly or a stale bookmark)
+// must not throw during SSR — it becomes "" and beforeLoad sends the visitor
+// back to /login instead of a 500 page.
 const searchSchema = z.object({
-  phone: z.string().min(1),
+  phone: z.string().catch(""),
 });
 
 export const Route = createFileRoute("/verify-otp")({
   validateSearch: searchSchema,
+  beforeLoad: ({ search }) => {
+    if (!search.phone.trim()) throw redirect({ to: "/login", replace: true });
+  },
   head: () => ({
     meta: [{ title: "Verify code — Hostylia" }, { name: "robots", content: "noindex" }],
   }),

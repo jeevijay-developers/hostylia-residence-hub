@@ -11,6 +11,27 @@ export function formatInr(paise: number | null | undefined): string {
   }).format(rupees);
 }
 
+/**
+ * Indian short-scale amount for dense UI (KPI tiles, chart axes): ₹12.48L,
+ * ₹1.2Cr, ₹45.5K. Display only — always pair with the exact formatInr value
+ * somewhere reachable (title/tooltip) when the figure is money.
+ */
+export function formatInrCompact(
+  paise: number | null | undefined,
+  { symbol = true }: { symbol?: boolean } = {},
+): string {
+  const rupees = (typeof paise === "number" ? paise : 0) / 100;
+  const abs = Math.abs(rupees);
+  const trim = (n: number, digits: number) =>
+    n.toFixed(digits).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+  let out: string;
+  if (abs >= 1e7) out = `${trim(rupees / 1e7, 2)}Cr`;
+  else if (abs >= 1e5) out = `${trim(rupees / 1e5, 2)}L`;
+  else if (abs >= 1e3) out = `${trim(rupees / 1e3, 1)}K`;
+  else out = trim(rupees, 0);
+  return symbol ? `₹${out}` : out;
+}
+
 export function agingBucket(
   dueDate: string,
   today = new Date(),

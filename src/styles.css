@@ -149,6 +149,11 @@
   --color-bed-maintenance: var(--bed-maintenance);
   --color-bed-blocked: var(--bed-blocked);
 
+  /* Categorical chart series (e.g. the Boys / Girls / Others split). Never status. */
+  --color-chart-cat-1: var(--chart-cat-1);
+  --color-chart-cat-2: var(--chart-cat-2);
+  --color-chart-cat-3: var(--chart-cat-3);
+
   /* Legacy marketing-site brand tokens (kept so existing landing pages don't break) */
   --color-navy: var(--navy);
   --color-indigo-deep: var(--indigo-deep);
@@ -304,6 +309,10 @@
   --info-foreground: #ffffff;
   --neutral-accent: #6d28d9;
   --neutral-accent-foreground: #ffffff;
+  /* Categorical chart series — validated for colour-blind separation on the light card. */
+  --chart-cat-1: #0e6ba8;
+  --chart-cat-2: #6d28d9;
+  --chart-cat-3: #b8842e;
 
   --brand-teal: #00b4b4;
   --brand-cyan: #00d8cc;
@@ -392,6 +401,10 @@
   --info-foreground: #070b18;
   --neutral-accent: #a78bfa;
   --neutral-accent-foreground: #070b18;
+  /* Same three series, re-stepped and validated against the dark card (#111b3d). */
+  --chart-cat-1: #2a6fbf;
+  --chart-cat-2: #a184ee;
+  --chart-cat-3: #c38d2f;
 
   /* Re-pin the original theme-formula shadow explicitly. `:root`'s light
      block (above) now overrides `--shadow-card-ambient` with a fixed light

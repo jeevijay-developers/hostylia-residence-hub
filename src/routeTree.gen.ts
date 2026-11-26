@@ -119,6 +119,7 @@ import { Route as AuthenticatedAdminProfileIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminProfileChangePasswordRouteImport } from './routes/_authenticated/admin.profile.change-password'
 import { Route as AuthenticatedAdminProfileEditRouteImport } from './routes/_authenticated/admin.profile.edit'
 import { Route as AuthenticatedAdminPropertiesIndexRouteImport } from './routes/_authenticated/admin.properties.index'
+import { Route as AuthenticatedAdminPropertiesNewRouteImport } from './routes/_authenticated/admin.properties.new'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/admin.students.index'
 import { Route as AuthenticatedAdminStudentsIdRouteImport } from './routes/_authenticated/admin.students.$id'
 import { Route as AuthenticatedAdminSupportIdRouteImport } from './routes/_authenticated/admin.support.$id'
@@ -132,9 +133,12 @@ import { Route as AuthenticatedWardenProfileChangePasswordRouteImport } from './
 import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_authenticated/warden.profile.edit'
 import { Route as AuthenticatedWardenStudentsIndexRouteImport } from './routes/_authenticated/warden.students.index'
 import { Route as AuthenticatedWardenStudentsIdRouteImport } from './routes/_authenticated/warden.students.$id'
-import { Route as AuthenticatedAdminPropertiesIdIndexRouteImport } from './routes/_authenticated/admin.properties.$id.index'
-import { Route as AuthenticatedAdminPropertiesIdSetupRouteImport } from './routes/_authenticated/admin.properties.$id.setup'
-import { Route as AuthenticatedAdminPropertiesIdStructureRouteImport } from './routes/_authenticated/admin.properties.$id.structure'
+import { Route as AuthenticatedAdminPropertiesSlugIndexRouteImport } from './routes/_authenticated/admin.properties.$slug.index'
+import { Route as AuthenticatedAdminPropertiesSlugEditRouteImport } from './routes/_authenticated/admin.properties.$slug.edit'
+import { Route as AuthenticatedAdminPropertiesSlugResidentsRouteImport } from './routes/_authenticated/admin.properties.$slug.residents'
+import { Route as AuthenticatedAdminPropertiesSlugRoomsRouteImport } from './routes/_authenticated/admin.properties.$slug.rooms'
+import { Route as AuthenticatedAdminPropertiesSlugSetupRouteImport } from './routes/_authenticated/admin.properties.$slug.setup'
+import { Route as AuthenticatedAdminPropertiesSlugStructureRouteImport } from './routes/_authenticated/admin.properties.$slug.structure'
 import { Route as AuthenticatedAdminStudentsIdIndexRouteImport } from './routes/_authenticated/admin.students.$id.index'
 import { Route as AuthenticatedAdminStudentsIdMoveOutRouteImport } from './routes/_authenticated/admin.students.$id.move-out'
 
@@ -762,6 +766,12 @@ const AuthenticatedAdminPropertiesIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
+const AuthenticatedAdminPropertiesNewRoute =
+  AuthenticatedAdminPropertiesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminStudentsIndexRoute =
   AuthenticatedAdminStudentsIndexRouteImport.update({
     id: '/',
@@ -840,22 +850,40 @@ const AuthenticatedWardenStudentsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedWardenStudentsRoute,
   } as any)
-const AuthenticatedAdminPropertiesIdIndexRoute =
-  AuthenticatedAdminPropertiesIdIndexRouteImport.update({
-    id: '/$id/',
-    path: '/$id/',
+const AuthenticatedAdminPropertiesSlugIndexRoute =
+  AuthenticatedAdminPropertiesSlugIndexRouteImport.update({
+    id: '/$slug/',
+    path: '/$slug/',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
-const AuthenticatedAdminPropertiesIdSetupRoute =
-  AuthenticatedAdminPropertiesIdSetupRouteImport.update({
-    id: '/$id/setup',
-    path: '/$id/setup',
+const AuthenticatedAdminPropertiesSlugEditRoute =
+  AuthenticatedAdminPropertiesSlugEditRouteImport.update({
+    id: '/$slug/edit',
+    path: '/$slug/edit',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
-const AuthenticatedAdminPropertiesIdStructureRoute =
-  AuthenticatedAdminPropertiesIdStructureRouteImport.update({
-    id: '/$id/structure',
-    path: '/$id/structure',
+const AuthenticatedAdminPropertiesSlugResidentsRoute =
+  AuthenticatedAdminPropertiesSlugResidentsRouteImport.update({
+    id: '/$slug/residents',
+    path: '/$slug/residents',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugRoomsRoute =
+  AuthenticatedAdminPropertiesSlugRoomsRouteImport.update({
+    id: '/$slug/rooms',
+    path: '/$slug/rooms',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugSetupRoute =
+  AuthenticatedAdminPropertiesSlugSetupRouteImport.update({
+    id: '/$slug/setup',
+    path: '/$slug/setup',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugStructureRoute =
+  AuthenticatedAdminPropertiesSlugStructureRouteImport.update({
+    id: '/$slug/structure',
+    path: '/$slug/structure',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
 const AuthenticatedAdminStudentsIdIndexRoute =
@@ -976,6 +1004,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
   '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
+  '/admin/properties/new': typeof AuthenticatedAdminPropertiesNewRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
@@ -994,10 +1023,13 @@ export interface FileRoutesByFullPath {
   '/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
   '/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/warden/students/': typeof AuthenticatedWardenStudentsIndexRoute
-  '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
-  '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
+  '/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
+  '/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
+  '/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
-  '/admin/properties/$id/': typeof AuthenticatedAdminPropertiesIdIndexRoute
+  '/admin/properties/$slug/': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -1100,6 +1132,7 @@ export interface FileRoutesByTo {
   '/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
   '/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
+  '/admin/properties/new': typeof AuthenticatedAdminPropertiesNewRoute
   '/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
   '/parent/profile/edit': typeof AuthenticatedParentProfileEditRoute
@@ -1117,10 +1150,13 @@ export interface FileRoutesByTo {
   '/parent/profile': typeof AuthenticatedParentProfileIndexRoute
   '/warden/profile': typeof AuthenticatedWardenProfileIndexRoute
   '/warden/students': typeof AuthenticatedWardenStudentsIndexRoute
-  '/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
-  '/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
+  '/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
+  '/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
+  '/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
-  '/admin/properties/$id': typeof AuthenticatedAdminPropertiesIdIndexRoute
+  '/admin/properties/$slug': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRoutesById {
@@ -1230,6 +1266,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/finance/pnl': typeof AuthenticatedAdminFinancePnlRoute
   '/_authenticated/admin/profile/change-password': typeof AuthenticatedAdminProfileChangePasswordRoute
   '/_authenticated/admin/profile/edit': typeof AuthenticatedAdminProfileEditRoute
+  '/_authenticated/admin/properties/new': typeof AuthenticatedAdminPropertiesNewRoute
   '/_authenticated/admin/students/$id': typeof AuthenticatedAdminStudentsIdRouteWithChildren
   '/_authenticated/admin/support/$id': typeof AuthenticatedAdminSupportIdRoute
   '/_authenticated/parent/profile/change-password': typeof AuthenticatedParentProfileChangePasswordRoute
@@ -1248,10 +1285,13 @@ export interface FileRoutesById {
   '/_authenticated/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
   '/_authenticated/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/_authenticated/warden/students/': typeof AuthenticatedWardenStudentsIndexRoute
-  '/_authenticated/admin/properties/$id/setup': typeof AuthenticatedAdminPropertiesIdSetupRoute
-  '/_authenticated/admin/properties/$id/structure': typeof AuthenticatedAdminPropertiesIdStructureRoute
+  '/_authenticated/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/_authenticated/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
+  '/_authenticated/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
+  '/_authenticated/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/_authenticated/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
-  '/_authenticated/admin/properties/$id/': typeof AuthenticatedAdminPropertiesIdIndexRoute
+  '/_authenticated/admin/properties/$slug/': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/_authenticated/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -1361,6 +1401,7 @@ export interface FileRouteTypes {
     | '/admin/finance/pnl'
     | '/admin/profile/change-password'
     | '/admin/profile/edit'
+    | '/admin/properties/new'
     | '/admin/students/$id'
     | '/admin/support/$id'
     | '/parent/profile/change-password'
@@ -1379,10 +1420,13 @@ export interface FileRouteTypes {
     | '/parent/profile/'
     | '/warden/profile/'
     | '/warden/students/'
-    | '/admin/properties/$id/setup'
-    | '/admin/properties/$id/structure'
+    | '/admin/properties/$slug/edit'
+    | '/admin/properties/$slug/residents'
+    | '/admin/properties/$slug/rooms'
+    | '/admin/properties/$slug/setup'
+    | '/admin/properties/$slug/structure'
     | '/admin/students/$id/move-out'
-    | '/admin/properties/$id/'
+    | '/admin/properties/$slug/'
     | '/admin/students/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1485,6 +1529,7 @@ export interface FileRouteTypes {
     | '/admin/finance/pnl'
     | '/admin/profile/change-password'
     | '/admin/profile/edit'
+    | '/admin/properties/new'
     | '/admin/support/$id'
     | '/parent/profile/change-password'
     | '/parent/profile/edit'
@@ -1502,10 +1547,13 @@ export interface FileRouteTypes {
     | '/parent/profile'
     | '/warden/profile'
     | '/warden/students'
-    | '/admin/properties/$id/setup'
-    | '/admin/properties/$id/structure'
+    | '/admin/properties/$slug/edit'
+    | '/admin/properties/$slug/residents'
+    | '/admin/properties/$slug/rooms'
+    | '/admin/properties/$slug/setup'
+    | '/admin/properties/$slug/structure'
     | '/admin/students/$id/move-out'
-    | '/admin/properties/$id'
+    | '/admin/properties/$slug'
     | '/admin/students/$id'
   id:
     | '__root__'
@@ -1614,6 +1662,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/finance/pnl'
     | '/_authenticated/admin/profile/change-password'
     | '/_authenticated/admin/profile/edit'
+    | '/_authenticated/admin/properties/new'
     | '/_authenticated/admin/students/$id'
     | '/_authenticated/admin/support/$id'
     | '/_authenticated/parent/profile/change-password'
@@ -1632,10 +1681,13 @@ export interface FileRouteTypes {
     | '/_authenticated/parent/profile/'
     | '/_authenticated/warden/profile/'
     | '/_authenticated/warden/students/'
-    | '/_authenticated/admin/properties/$id/setup'
-    | '/_authenticated/admin/properties/$id/structure'
+    | '/_authenticated/admin/properties/$slug/edit'
+    | '/_authenticated/admin/properties/$slug/residents'
+    | '/_authenticated/admin/properties/$slug/rooms'
+    | '/_authenticated/admin/properties/$slug/setup'
+    | '/_authenticated/admin/properties/$slug/structure'
     | '/_authenticated/admin/students/$id/move-out'
-    | '/_authenticated/admin/properties/$id/'
+    | '/_authenticated/admin/properties/$slug/'
     | '/_authenticated/admin/students/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -2440,6 +2492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPropertiesIndexRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
+    '/_authenticated/admin/properties/new': {
+      id: '/_authenticated/admin/properties/new'
+      path: '/new'
+      fullPath: '/admin/properties/new'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesNewRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/students/': {
       id: '/_authenticated/admin/students/'
       path: '/'
@@ -2531,25 +2590,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWardenStudentsIdRouteImport
       parentRoute: typeof AuthenticatedWardenStudentsRoute
     }
-    '/_authenticated/admin/properties/$id/': {
-      id: '/_authenticated/admin/properties/$id/'
-      path: '/$id'
-      fullPath: '/admin/properties/$id/'
-      preLoaderRoute: typeof AuthenticatedAdminPropertiesIdIndexRouteImport
+    '/_authenticated/admin/properties/$slug/': {
+      id: '/_authenticated/admin/properties/$slug/'
+      path: '/$slug'
+      fullPath: '/admin/properties/$slug/'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugIndexRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
-    '/_authenticated/admin/properties/$id/setup': {
-      id: '/_authenticated/admin/properties/$id/setup'
-      path: '/$id/setup'
-      fullPath: '/admin/properties/$id/setup'
-      preLoaderRoute: typeof AuthenticatedAdminPropertiesIdSetupRouteImport
+    '/_authenticated/admin/properties/$slug/edit': {
+      id: '/_authenticated/admin/properties/$slug/edit'
+      path: '/$slug/edit'
+      fullPath: '/admin/properties/$slug/edit'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugEditRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
-    '/_authenticated/admin/properties/$id/structure': {
-      id: '/_authenticated/admin/properties/$id/structure'
-      path: '/$id/structure'
-      fullPath: '/admin/properties/$id/structure'
-      preLoaderRoute: typeof AuthenticatedAdminPropertiesIdStructureRouteImport
+    '/_authenticated/admin/properties/$slug/residents': {
+      id: '/_authenticated/admin/properties/$slug/residents'
+      path: '/$slug/residents'
+      fullPath: '/admin/properties/$slug/residents'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugResidentsRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/rooms': {
+      id: '/_authenticated/admin/properties/$slug/rooms'
+      path: '/$slug/rooms'
+      fullPath: '/admin/properties/$slug/rooms'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugRoomsRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/setup': {
+      id: '/_authenticated/admin/properties/$slug/setup'
+      path: '/$slug/setup'
+      fullPath: '/admin/properties/$slug/setup'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugSetupRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/structure': {
+      id: '/_authenticated/admin/properties/$slug/structure'
+      path: '/$slug/structure'
+      fullPath: '/admin/properties/$slug/structure'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugStructureRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
     '/_authenticated/admin/students/$id/': {
@@ -2665,22 +2745,33 @@ const AuthenticatedAdminFinanceRouteWithChildren =
   )
 
 interface AuthenticatedAdminPropertiesRouteChildren {
+  AuthenticatedAdminPropertiesNewRoute: typeof AuthenticatedAdminPropertiesNewRoute
   AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
-  AuthenticatedAdminPropertiesIdSetupRoute: typeof AuthenticatedAdminPropertiesIdSetupRoute
-  AuthenticatedAdminPropertiesIdStructureRoute: typeof AuthenticatedAdminPropertiesIdStructureRoute
-  AuthenticatedAdminPropertiesIdIndexRoute: typeof AuthenticatedAdminPropertiesIdIndexRoute
+  AuthenticatedAdminPropertiesSlugEditRoute: typeof AuthenticatedAdminPropertiesSlugEditRoute
+  AuthenticatedAdminPropertiesSlugResidentsRoute: typeof AuthenticatedAdminPropertiesSlugResidentsRoute
+  AuthenticatedAdminPropertiesSlugRoomsRoute: typeof AuthenticatedAdminPropertiesSlugRoomsRoute
+  AuthenticatedAdminPropertiesSlugSetupRoute: typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  AuthenticatedAdminPropertiesSlugStructureRoute: typeof AuthenticatedAdminPropertiesSlugStructureRoute
+  AuthenticatedAdminPropertiesSlugIndexRoute: typeof AuthenticatedAdminPropertiesSlugIndexRoute
 }
 
 const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRouteChildren =
   {
+    AuthenticatedAdminPropertiesNewRoute: AuthenticatedAdminPropertiesNewRoute,
     AuthenticatedAdminPropertiesIndexRoute:
       AuthenticatedAdminPropertiesIndexRoute,
-    AuthenticatedAdminPropertiesIdSetupRoute:
-      AuthenticatedAdminPropertiesIdSetupRoute,
-    AuthenticatedAdminPropertiesIdStructureRoute:
-      AuthenticatedAdminPropertiesIdStructureRoute,
-    AuthenticatedAdminPropertiesIdIndexRoute:
-      AuthenticatedAdminPropertiesIdIndexRoute,
+    AuthenticatedAdminPropertiesSlugEditRoute:
+      AuthenticatedAdminPropertiesSlugEditRoute,
+    AuthenticatedAdminPropertiesSlugResidentsRoute:
+      AuthenticatedAdminPropertiesSlugResidentsRoute,
+    AuthenticatedAdminPropertiesSlugRoomsRoute:
+      AuthenticatedAdminPropertiesSlugRoomsRoute,
+    AuthenticatedAdminPropertiesSlugSetupRoute:
+      AuthenticatedAdminPropertiesSlugSetupRoute,
+    AuthenticatedAdminPropertiesSlugStructureRoute:
+      AuthenticatedAdminPropertiesSlugStructureRoute,
+    AuthenticatedAdminPropertiesSlugIndexRoute:
+      AuthenticatedAdminPropertiesSlugIndexRoute,
   }
 
 const AuthenticatedAdminPropertiesRouteWithChildren =
