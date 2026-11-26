@@ -25,11 +25,7 @@ function LoginPage() {
   const { mode } = Route.useSearch();
   const { t } = useTranslation();
   return (
-    <AuthLayout
-      title={t("auth.loginTitle")}
-      subtitle={t("auth.loginSubtitle")}
-      hideLanguageSwitcher
-    >
+    <AuthLayout title={t("auth.loginTitle")} subtitle={t("auth.loginSubtitle")}>
       <LoginForm defaultMode={mode ?? "phone"} />
     </AuthLayout>
   );

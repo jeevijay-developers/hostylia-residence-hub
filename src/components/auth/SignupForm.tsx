@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
-  Check,
   GraduationCap,
   Loader2,
   LogIn,
@@ -49,7 +48,9 @@ import { listPublicActiveProperties } from "@/lib/public-property.functions";
 import { checkStudentAdmissionDuplicate, submitPublicAdmission } from "@/lib/student.functions";
 
 type Mode = "phone" | "email";
-type Step = 0 | 1 | 2 | 3;
+/** 0 = your details (incl. role), 1 = sign-in details, 2 = check inbox (email only). */
+type Step = 0 | 1 | 2;
+const FORM_STEPS = 2;
 type IdentityValues = {
   fullName: string;
   hostelName?: string;
@@ -59,13 +60,14 @@ type IdentityValues = {
 };
 
 /**
- * Three-step signup wizard (+ a confirmation step), rather than one long
- * form: pick who you are → tell us about you → create credentials.
+ * Two-step signup (+ a confirmation step for email): your details, with the
+ * role picked at the top, then sign-in details. Required fields carry a `*`.
  *
- * The role picked in step 1 is what makes the rest of the flow work —
- * it's stored as `signup_role` user metadata, and a HOSTEL_ADMIN also
- * carries `hostel_name`, which `RoleRedirect` uses on first sign-in to
- * provision the tenant and drop them straight on /admin/dashboard.
+ * The role is what makes the rest of the flow work: it's stored as
+ * `signup_role` user metadata, and a HOSTEL_ADMIN also carries `hostel_name`,
+ * which `RoleRedirect` uses on first sign-in to provision the tenant and drop
+ * them straight on /admin/dashboard. It is never preselected, because picking
+ * the wrong one would provision a tenant for a student.
  */
 export function SignupForm({ defaultMode = "email" as Mode }: { defaultMode?: Mode }) {
   const { t } = useTranslation();
@@ -86,50 +88,52 @@ export function SignupForm({ defaultMode = "email" as Mode }: { defaultMode?: Mo
 
   return (
     <div className="space-y-6">
-      {step < 3 ? <StepIndicator current={step} /> : null}
+      {step < FORM_STEPS ? <StepHeader current={step} /> : null}
 
       {/* `key` forces React to remount on step change so the CSS entry
           animation replays each time. */}
       <div key={step} className={anim}>
         {step === 0 ? (
-          <RoleStep
-            value={role}
-            onSelect={(r) => {
-              setRole(r);
-              go(1, "next");
-            }}
-          />
+          <div className="space-y-5">
+            <RolePicker
+              value={role}
+              onChange={(r) => {
+                setRole(r);
+                // Details typed for the other role don't carry over.
+                if (r !== role) setIdentity(null);
+              }}
+            />
+            {role ? (
+              <IdentityStep
+                key={role}
+                role={role}
+                initial={identity}
+                onNext={(values) => {
+                  setIdentity(values);
+                  go(1, "next");
+                }}
+              />
+            ) : null}
+          </div>
         ) : null}
 
-        {step === 1 && role ? (
-          <IdentityStep
+        {step === 1 && role && identity ? (
+          <CredentialsStep
             role={role}
-            initial={identity}
+            identity={identity}
+            defaultMode={defaultMode}
             onBack={() => go(0, "prev")}
-            onNext={(values) => {
-              setIdentity(values);
+            onEmailSignedUp={(email) => {
+              setSignedUpEmail(email);
               go(2, "next");
             }}
           />
         ) : null}
 
-        {step === 2 && role && identity ? (
-          <CredentialsStep
-            role={role}
-            identity={identity}
-            defaultMode={defaultMode}
-            onBack={() => go(1, "prev")}
-            onEmailSignedUp={(email) => {
-              setSignedUpEmail(email);
-              go(3, "next");
-            }}
-          />
-        ) : null}
-
-        {step === 3 && signedUpEmail ? <CheckInboxStep email={signedUpEmail} /> : null}
+        {step === 2 && signedUpEmail ? <CheckInboxStep email={signedUpEmail} /> : null}
       </div>
 
-      {step < 3 ? (
+      {step < FORM_STEPS ? (
         <p className="text-center text-sm text-muted-foreground">
           {t("auth.haveAccount")}{" "}
           <Link to="/login" className="text-primary underline-offset-4 hover:underline">
@@ -143,66 +147,78 @@ export function SignupForm({ defaultMode = "email" as Mode }: { defaultMode?: Mo
 
 /* ------------------------------------------------------------------ */
 
-function StepIndicator({ current }: { current: Step }) {
+/** "Step 1 of 2 · Your details" with a thin progress bar and the required-field legend. */
+function StepHeader({ current }: { current: Step }) {
   const { t } = useTranslation();
-  const labels = [t("auth.stepRole"), t("auth.stepAbout"), t("auth.stepCredentials")];
-
+  const label = current === 0 ? t("auth.stepDetails") : t("auth.stepCredentials");
   return (
-    <div className="flex items-center gap-2" aria-hidden>
-      {labels.map((label, i) => {
-        const done = i < current;
-        const active = i === current;
-        return (
-          <div key={label} className="flex flex-1 flex-col gap-1.5">
-            <div
-              className={cn(
-                "h-1 rounded-full transition-colors duration-300",
-                done || active ? "bg-primary" : "bg-border",
-              )}
-            />
-            <span
-              className={cn(
-                "text-[11px] font-medium transition-colors duration-300",
-                active ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-          </div>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <p className="font-medium text-foreground">
+          <span className="text-muted-foreground">
+            {t("auth.stepOf", { current: current + 1, total: FORM_STEPS })} ·{" "}
+          </span>
+          {label}
+        </p>
+        <p className="text-muted-foreground">
+          <span className="text-destructive" aria-hidden>
+            *
+          </span>{" "}
+          {t("auth.requiredHint")}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5" aria-hidden>
+        {Array.from({ length: FORM_STEPS }, (_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1 rounded-full transition-colors duration-300",
+              i <= current ? "bg-primary" : "bg-border",
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
+/** Form label with a red `*` for required fields (the `*` is hidden from screen readers; inputs carry aria-required). */
+function RequiredLabel({ htmlFor, children }: { htmlFor?: string; children: ReactNode }) {
+  return (
+    <Label htmlFor={htmlFor}>
+      {children}
+      <span className="text-destructive" aria-hidden>
+        {" "}
+        *
+      </span>
+    </Label>
+  );
+}
+
 const ROLE_OPTIONS = [
-  {
-    value: "HOSTEL_ADMIN" as const,
-    icon: Building2,
-    titleKey: "auth.roleOwnerTitle",
-    descKey: "auth.roleOwnerDesc",
-  },
-  {
-    value: "STUDENT" as const,
-    icon: GraduationCap,
-    titleKey: "auth.roleStudentTitle",
-    descKey: "auth.roleStudentDesc",
-  },
+  { value: "HOSTEL_ADMIN" as const, icon: Building2, labelKey: "auth.roleOwnerShort" },
+  { value: "STUDENT" as const, icon: GraduationCap, labelKey: "auth.roleStudentShort" },
 ];
 
-function RoleStep({
+/** Compact two-option toggle; nothing is selected until the user picks. */
+function RolePicker({
   value,
-  onSelect,
+  onChange,
 }: {
   value: SignupRole | null;
-  onSelect: (role: SignupRole) => void;
+  onChange: (role: SignupRole) => void;
 }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">{t("auth.rolePrompt")}</p>
-      <div className="grid gap-3" role="radiogroup" aria-label={t("auth.rolePrompt")}>
-        {ROLE_OPTIONS.map((option, i) => {
+    <div className="space-y-2">
+      <RequiredLabel>{t("auth.signupAs")}</RequiredLabel>
+      <div
+        role="radiogroup"
+        aria-label={t("auth.signupAs")}
+        aria-required="true"
+        className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
+      >
+        {ROLE_OPTIONS.map((option) => {
           const Icon = option.icon;
           const selected = value === option.value;
           return (
@@ -211,35 +227,17 @@ function RoleStep({
               type="button"
               role="radio"
               aria-checked={selected}
-              onClick={() => onSelect(option.value)}
-              style={{ animationDelay: `${i * 70}ms` }}
+              onClick={() => onChange(option.value)}
               className={cn(
-                "animate-rise group flex items-start gap-4 rounded-xl border p-4 text-left transition-all duration-200",
-                "hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                selected ? "border-primary bg-primary/5" : "border-border bg-muted/30",
+                "flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span
-                className={cn(
-                  "grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-colors",
-                  selected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-primary/10 text-primary group-hover:bg-primary/20",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{t(option.titleKey)}</span>
-                  {selected ? <Check className="h-4 w-4 text-primary" /> : null}
-                </span>
-                <span className="mt-0.5 block text-sm text-muted-foreground">
-                  {t(option.descKey)}
-                </span>
-              </span>
-              <ArrowRight className="mt-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary" />
+              <Icon className={cn("h-4 w-4", selected && "text-primary")} aria-hidden />
+              {t(option.labelKey)}
             </button>
           );
         })}
@@ -251,12 +249,10 @@ function RoleStep({
 function IdentityStep({
   role,
   initial,
-  onBack,
   onNext,
 }: {
   role: SignupRole;
   initial: IdentityValues | null;
-  onBack: () => void;
   onNext: (values: IdentityValues) => void;
 }) {
   const { t } = useTranslation();
@@ -313,9 +309,10 @@ function IdentityStep({
       <input type="hidden" value={role} {...register("role")} />
 
       <div className="space-y-2">
-        <Label htmlFor="fullName">{t("auth.fullNameLabel")}</Label>
+        <RequiredLabel htmlFor="fullName">{t("auth.fullNameLabel")}</RequiredLabel>
         <Input
           id="fullName"
+          aria-required="true"
           type="text"
           autoComplete="name"
           autoFocus
@@ -333,9 +330,10 @@ function IdentityStep({
 
       {isOwner ? (
         <div className="space-y-2">
-          <Label htmlFor="hostelName">{t("auth.hostelNameLabel")}</Label>
+          <RequiredLabel htmlFor="hostelName">{t("auth.hostelNameLabel")}</RequiredLabel>
           <Input
             id="hostelName"
+            aria-required="true"
             type="text"
             autoComplete="organization"
             placeholder="e.g. Sunrise Hostels"
@@ -356,9 +354,10 @@ function IdentityStep({
       {isStudent ? (
         <>
           <div className="space-y-2">
-            <Label htmlFor="guardianName">{t("auth.guardianNameLabel")}</Label>
+            <RequiredLabel htmlFor="guardianName">{t("auth.guardianNameLabel")}</RequiredLabel>
             <Input
               id="guardianName"
+              aria-required="true"
               type="text"
               autoComplete="off"
               placeholder="Parent/guardian's name"
@@ -373,9 +372,10 @@ function IdentityStep({
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="guardianPhone">{t("auth.guardianPhoneLabel")}</Label>
+            <RequiredLabel htmlFor="guardianPhone">{t("auth.guardianPhoneLabel")}</RequiredLabel>
             <Input
               id="guardianPhone"
+              aria-required="true"
               type="tel"
               inputMode="tel"
               autoComplete="off"
@@ -395,13 +395,13 @@ function IdentityStep({
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="propertySlug">{t("auth.selectHostelLabel")}</Label>
+            <RequiredLabel htmlFor="propertySlug">{t("auth.selectHostelLabel")}</RequiredLabel>
             <input type="hidden" {...register("propertySlug")} />
             <Select
               value={propertySlugValue || undefined}
               onValueChange={(v) => setValue("propertySlug", v, { shouldValidate: true })}
             >
-              <SelectTrigger id="propertySlug" className="min-h-11">
+              <SelectTrigger id="propertySlug" aria-required="true" className="min-h-11">
                 <SelectValue
                   placeholder={
                     propertiesQ.isLoading ? t("common.loading") : t("auth.selectHostelPlaceholder")
@@ -421,16 +421,14 @@ function IdentityStep({
               <p className="text-sm text-destructive" role="alert">
                 {errors.propertySlug.message}
               </p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("auth.studentJoinNote")}</p>
+            )}
           </div>
-          <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-            {t("auth.studentJoinNote")}
-          </p>
         </>
       ) : null}
 
       <StepButtons
-        onBack={onBack}
         nextLabel={t("auth.continue")}
         disabled={!guardianPhoneValid || (isStudent && !propertySlugValue)}
       />
@@ -654,9 +652,10 @@ function EmailCredentialsForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <Label htmlFor="email">{t("auth.emailLabel")}</Label>
+        <RequiredLabel htmlFor="email">{t("auth.emailLabel")}</RequiredLabel>
         <Input
           id="email"
+          aria-required="true"
           type="email"
           autoComplete="email"
           placeholder="you@hostel.com"
@@ -671,9 +670,10 @@ function EmailCredentialsForm({
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">{t("auth.passwordLabel")}</Label>
+        <RequiredLabel htmlFor="password">{t("auth.passwordLabel")}</RequiredLabel>
         <PasswordInput
           id="password"
+          aria-required="true"
           autoComplete="new-password"
           className="min-h-11"
           showLabel={t("auth.showPassword")}
@@ -688,9 +688,10 @@ function EmailCredentialsForm({
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">{t("auth.confirmPasswordLabel")}</Label>
+        <RequiredLabel htmlFor="confirmPassword">{t("auth.confirmPasswordLabel")}</RequiredLabel>
         <PasswordInput
           id="confirmPassword"
+          aria-required="true"
           autoComplete="new-password"
           className="min-h-11"
           showLabel={t("auth.showPassword")}
@@ -800,9 +801,10 @@ function PhoneCredentialsForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <Label htmlFor="phone">{t("auth.phoneLabel")}</Label>
+        <RequiredLabel htmlFor="phone">{t("auth.phoneLabel")}</RequiredLabel>
         <Input
           id="phone"
+          aria-required="true"
           type="tel"
           inputMode="tel"
           autoComplete="tel"
@@ -845,7 +847,7 @@ function StepButtons({
   submitting,
   disabled,
 }: {
-  onBack: () => void;
+  onBack?: () => void;
   nextLabel: string;
   submitting?: boolean;
   /** Blocks only the forward/submit button — e.g. current step has an invalid field. */
@@ -854,16 +856,18 @@ function StepButtons({
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 pt-1">
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={onBack}
-        disabled={submitting}
-        className="min-h-11 shrink-0 px-3"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span className="sr-only sm:not-sr-only">{t("common.back")}</span>
-      </Button>
+      {onBack ? (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onBack}
+          disabled={submitting}
+          className="min-h-11 shrink-0 px-3"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only">{t("common.back")}</span>
+        </Button>
+      ) : null}
       <Button type="submit" disabled={submitting || disabled} className="min-h-11 flex-1">
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {nextLabel}

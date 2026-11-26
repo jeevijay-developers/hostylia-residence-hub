@@ -12,7 +12,7 @@ export const Route = createFileRoute("/post-login")({
 
 function PostLoginPage() {
   return (
-    <AuthLayout title="Just a moment" subtitle="Taking you to the right place." hideLanguageSwitcher>
+    <AuthLayout title="Just a moment" subtitle="Taking you to the right place.">
       <RoleRedirect />
     </AuthLayout>
   );

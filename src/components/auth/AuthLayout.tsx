@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Building2 } from "lucide-react";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAutoTheme } from "@/stores/theme-store";
 import { CheckList, SectionChip } from "@/components/site/marketing/MarketingPrimitives";
 import { marketingAssets } from "@/components/site/marketing/marketing-assets";
@@ -11,7 +10,6 @@ interface AuthLayoutProps {
   children: ReactNode;
   title: string;
   subtitle?: string;
-  hideLanguageSwitcher?: boolean;
 }
 
 const showcaseImage = marketingAssets.devices;
@@ -21,9 +19,10 @@ const showcaseImage = marketingAssets.devices;
  * /reset-password, /access-pending, /post-login and /403, in the marketing-site
  * style: form card on the left, emerald brand panel on the right (lg+).
  * `auth-brand` re-points the primary/ring tokens at the brand emerald for the
- * forms inside. Supports light and dark mode.
+ * forms inside. Supports light and dark mode. There is deliberately no language
+ * switcher here: auth screens stay minimal, and the saved locale cookie still applies.
  */
-export function AuthLayout({ children, title, subtitle, hideLanguageSwitcher }: AuthLayoutProps) {
+export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const { t, i18n } = useTranslation();
   const langAttr = i18n.language?.startsWith("hi") ? "hi" : "en";
   useAutoTheme();
@@ -33,12 +32,6 @@ export function AuthLayout({ children, title, subtitle, hideLanguageSwitcher }: 
       lang={langAttr}
     >
       <div className="flex min-h-screen flex-col bg-linear-to-b from-mint/60 via-background to-background lg:bg-none">
-        {!hideLanguageSwitcher && (
-          <header className="flex justify-end px-4 pt-6 sm:px-8 sm:pt-8">
-            <LanguageSwitcher />
-          </header>
-        )}
-
         <main className="flex flex-1 items-start justify-center px-4 pb-12 pt-8 sm:items-center sm:px-8">
           <div className="w-full max-w-md">
             <div className="rounded-[2rem] border border-border bg-card p-6 shadow-card-ambient sm:p-8">

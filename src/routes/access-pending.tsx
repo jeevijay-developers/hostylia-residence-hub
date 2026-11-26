@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Clock } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { z } from "zod";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
@@ -18,82 +18,73 @@ export const Route = createFileRoute("/access-pending")({
   component: AccessPendingPage,
 });
 
+const NEXT_STEPS = {
+  student: [
+    "Tell your hostel admin the phone number or email you signed up with.",
+    "They confirm your admission and link it to this account.",
+    "Sign in again — you'll land on your student home.",
+  ],
+  parent: [
+    "Tell your hostel admin the phone number you signed in with.",
+    "They link it to your child's profile.",
+    "Sign in again with the same number.",
+  ],
+} as const;
+
 function AccessPendingPage() {
   const { as } = Route.useSearch();
   const isStudent = as === "student";
+  const steps = isStudent ? NEXT_STEPS.student : NEXT_STEPS.parent;
 
   return (
     <AuthLayout
       title="You're almost in"
-      subtitle="Your account is verified — we just need your hostel to finish linking it."
+      subtitle={
+        isStudent
+          ? "Your hostel just needs to link your admission to this account."
+          : "Your hostel just needs to link your number to your child's profile."
+      }
     >
-      <div className="space-y-6 text-sm text-muted-foreground">
-        <div className="flex items-start gap-3 rounded-xl bg-muted/50 p-4 text-foreground">
-          <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-          {isStudent ? (
-            <p>
-              You're signed up, but your admission record isn't linked to this account yet. Once
-              your hostel admin or warden confirms your admission, you'll see your room, fees,
-              attendance and complaints here.
-            </p>
-          ) : (
-            <p>
-              Your phone number isn't linked to a student profile yet. Once your hostel warden or
-              admin adds you as a guardian, you'll be able to sign in and see everything about your
-              child's stay — attendance, fees, gate events, and more.
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <p className="font-medium text-foreground">What to do next</p>
-          <ul className="list-disc space-y-1 pl-5">
-            {isStudent ? (
-              <>
-                <li>
-                  Contact your hostel administration and share the phone/email you signed up with.
-                </li>
-                <li>Ask them to confirm your admission and link this account to your record.</li>
-                <li>Once linked, sign in again — you'll land straight on your student home.</li>
-              </>
-            ) : (
-              <>
-                <li>
-                  Contact your hostel administration and share the phone number you used to sign in.
-                </li>
-                <li>Ask them to link it to your child's profile in Hostylia.</li>
-                <li>Once linked, sign in again with the same number.</li>
-              </>
-            )}
-          </ul>
-        </div>
-        <div className="space-y-2 rounded-xl border border-border p-4">
-          <p className="font-medium text-foreground">Need help?</p>
-          <p>
-            Reach us at{" "}
-            <a href="mailto:support@hostylia.com" className="text-primary underline">
-              support@hostylia.com
-            </a>
-            .
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full"
-          onClick={async () => {
-            await signOut();
-            window.location.href = "/login";
-          }}
-          asChild={false}
+      <ol className="space-y-3">
+        {steps.map((step, i) => (
+          <li key={step} className="flex items-start gap-3 text-sm text-foreground">
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+            >
+              {i + 1}
+            </span>
+            <span className="pt-0.5">{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-6 min-h-11 w-full"
+        onClick={async () => {
+          await signOut();
+          window.location.href = "/login";
+        }}
+      >
+        <LogOut className="h-4 w-4" aria-hidden />
+        Sign out
+      </Button>
+
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        Need help?{" "}
+        <a
+          href="mailto:support@hostylia.com"
+          className="text-primary underline-offset-4 hover:underline"
         >
-          Sign out
-        </Button>
-        <p className="text-center text-xs">
-          <Link to="/" className="underline hover:text-foreground">
-            Back to Hostylia home
-          </Link>
-        </p>
-      </div>
+          support@hostylia.com
+        </a>
+        <span aria-hidden> · </span>
+        <Link to="/" className="underline-offset-4 hover:text-foreground hover:underline">
+          Home
+        </Link>
+      </p>
     </AuthLayout>
   );
 }
