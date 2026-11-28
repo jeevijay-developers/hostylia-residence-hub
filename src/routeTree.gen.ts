@@ -134,11 +134,17 @@ import { Route as AuthenticatedWardenProfileEditRouteImport } from './routes/_au
 import { Route as AuthenticatedWardenStudentsIndexRouteImport } from './routes/_authenticated/warden.students.index'
 import { Route as AuthenticatedWardenStudentsIdRouteImport } from './routes/_authenticated/warden.students.$id'
 import { Route as AuthenticatedAdminPropertiesSlugIndexRouteImport } from './routes/_authenticated/admin.properties.$slug.index'
+import { Route as AuthenticatedAdminPropertiesSlugAttendanceRouteImport } from './routes/_authenticated/admin.properties.$slug.attendance'
+import { Route as AuthenticatedAdminPropertiesSlugComplaintsRouteImport } from './routes/_authenticated/admin.properties.$slug.complaints'
 import { Route as AuthenticatedAdminPropertiesSlugEditRouteImport } from './routes/_authenticated/admin.properties.$slug.edit'
+import { Route as AuthenticatedAdminPropertiesSlugFinanceRouteImport } from './routes/_authenticated/admin.properties.$slug.finance'
+import { Route as AuthenticatedAdminPropertiesSlugNoticesRouteImport } from './routes/_authenticated/admin.properties.$slug.notices'
 import { Route as AuthenticatedAdminPropertiesSlugResidentsRouteImport } from './routes/_authenticated/admin.properties.$slug.residents'
 import { Route as AuthenticatedAdminPropertiesSlugRoomsRouteImport } from './routes/_authenticated/admin.properties.$slug.rooms'
 import { Route as AuthenticatedAdminPropertiesSlugSetupRouteImport } from './routes/_authenticated/admin.properties.$slug.setup'
+import { Route as AuthenticatedAdminPropertiesSlugStaffRouteImport } from './routes/_authenticated/admin.properties.$slug.staff'
 import { Route as AuthenticatedAdminPropertiesSlugStructureRouteImport } from './routes/_authenticated/admin.properties.$slug.structure'
+import { Route as AuthenticatedAdminPropertiesSlugStudentsRouteImport } from './routes/_authenticated/admin.properties.$slug.students'
 import { Route as AuthenticatedAdminStudentsIdIndexRouteImport } from './routes/_authenticated/admin.students.$id.index'
 import { Route as AuthenticatedAdminStudentsIdMoveOutRouteImport } from './routes/_authenticated/admin.students.$id.move-out'
 
@@ -856,10 +862,34 @@ const AuthenticatedAdminPropertiesSlugIndexRoute =
     path: '/$slug/',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
+const AuthenticatedAdminPropertiesSlugAttendanceRoute =
+  AuthenticatedAdminPropertiesSlugAttendanceRouteImport.update({
+    id: '/$slug/attendance',
+    path: '/$slug/attendance',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugComplaintsRoute =
+  AuthenticatedAdminPropertiesSlugComplaintsRouteImport.update({
+    id: '/$slug/complaints',
+    path: '/$slug/complaints',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminPropertiesSlugEditRoute =
   AuthenticatedAdminPropertiesSlugEditRouteImport.update({
     id: '/$slug/edit',
     path: '/$slug/edit',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugFinanceRoute =
+  AuthenticatedAdminPropertiesSlugFinanceRouteImport.update({
+    id: '/$slug/finance',
+    path: '/$slug/finance',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugNoticesRoute =
+  AuthenticatedAdminPropertiesSlugNoticesRouteImport.update({
+    id: '/$slug/notices',
+    path: '/$slug/notices',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
 const AuthenticatedAdminPropertiesSlugResidentsRoute =
@@ -880,10 +910,22 @@ const AuthenticatedAdminPropertiesSlugSetupRoute =
     path: '/$slug/setup',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
+const AuthenticatedAdminPropertiesSlugStaffRoute =
+  AuthenticatedAdminPropertiesSlugStaffRouteImport.update({
+    id: '/$slug/staff',
+    path: '/$slug/staff',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
 const AuthenticatedAdminPropertiesSlugStructureRoute =
   AuthenticatedAdminPropertiesSlugStructureRouteImport.update({
     id: '/$slug/structure',
     path: '/$slug/structure',
+    getParentRoute: () => AuthenticatedAdminPropertiesRoute,
+  } as any)
+const AuthenticatedAdminPropertiesSlugStudentsRoute =
+  AuthenticatedAdminPropertiesSlugStudentsRouteImport.update({
+    id: '/$slug/students',
+    path: '/$slug/students',
     getParentRoute: () => AuthenticatedAdminPropertiesRoute,
   } as any)
 const AuthenticatedAdminStudentsIdIndexRoute =
@@ -1023,11 +1065,17 @@ export interface FileRoutesByFullPath {
   '/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
   '/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/warden/students/': typeof AuthenticatedWardenStudentsIndexRoute
+  '/admin/properties/$slug/attendance': typeof AuthenticatedAdminPropertiesSlugAttendanceRoute
+  '/admin/properties/$slug/complaints': typeof AuthenticatedAdminPropertiesSlugComplaintsRoute
   '/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/admin/properties/$slug/finance': typeof AuthenticatedAdminPropertiesSlugFinanceRoute
+  '/admin/properties/$slug/notices': typeof AuthenticatedAdminPropertiesSlugNoticesRoute
   '/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
   '/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
   '/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/admin/properties/$slug/staff': typeof AuthenticatedAdminPropertiesSlugStaffRoute
   '/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
+  '/admin/properties/$slug/students': typeof AuthenticatedAdminPropertiesSlugStudentsRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
   '/admin/properties/$slug/': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
@@ -1150,11 +1198,17 @@ export interface FileRoutesByTo {
   '/parent/profile': typeof AuthenticatedParentProfileIndexRoute
   '/warden/profile': typeof AuthenticatedWardenProfileIndexRoute
   '/warden/students': typeof AuthenticatedWardenStudentsIndexRoute
+  '/admin/properties/$slug/attendance': typeof AuthenticatedAdminPropertiesSlugAttendanceRoute
+  '/admin/properties/$slug/complaints': typeof AuthenticatedAdminPropertiesSlugComplaintsRoute
   '/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/admin/properties/$slug/finance': typeof AuthenticatedAdminPropertiesSlugFinanceRoute
+  '/admin/properties/$slug/notices': typeof AuthenticatedAdminPropertiesSlugNoticesRoute
   '/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
   '/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
   '/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/admin/properties/$slug/staff': typeof AuthenticatedAdminPropertiesSlugStaffRoute
   '/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
+  '/admin/properties/$slug/students': typeof AuthenticatedAdminPropertiesSlugStudentsRoute
   '/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
   '/admin/properties/$slug': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/admin/students/$id': typeof AuthenticatedAdminStudentsIdIndexRoute
@@ -1285,11 +1339,17 @@ export interface FileRoutesById {
   '/_authenticated/parent/profile/': typeof AuthenticatedParentProfileIndexRoute
   '/_authenticated/warden/profile/': typeof AuthenticatedWardenProfileIndexRoute
   '/_authenticated/warden/students/': typeof AuthenticatedWardenStudentsIndexRoute
+  '/_authenticated/admin/properties/$slug/attendance': typeof AuthenticatedAdminPropertiesSlugAttendanceRoute
+  '/_authenticated/admin/properties/$slug/complaints': typeof AuthenticatedAdminPropertiesSlugComplaintsRoute
   '/_authenticated/admin/properties/$slug/edit': typeof AuthenticatedAdminPropertiesSlugEditRoute
+  '/_authenticated/admin/properties/$slug/finance': typeof AuthenticatedAdminPropertiesSlugFinanceRoute
+  '/_authenticated/admin/properties/$slug/notices': typeof AuthenticatedAdminPropertiesSlugNoticesRoute
   '/_authenticated/admin/properties/$slug/residents': typeof AuthenticatedAdminPropertiesSlugResidentsRoute
   '/_authenticated/admin/properties/$slug/rooms': typeof AuthenticatedAdminPropertiesSlugRoomsRoute
   '/_authenticated/admin/properties/$slug/setup': typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  '/_authenticated/admin/properties/$slug/staff': typeof AuthenticatedAdminPropertiesSlugStaffRoute
   '/_authenticated/admin/properties/$slug/structure': typeof AuthenticatedAdminPropertiesSlugStructureRoute
+  '/_authenticated/admin/properties/$slug/students': typeof AuthenticatedAdminPropertiesSlugStudentsRoute
   '/_authenticated/admin/students/$id/move-out': typeof AuthenticatedAdminStudentsIdMoveOutRoute
   '/_authenticated/admin/properties/$slug/': typeof AuthenticatedAdminPropertiesSlugIndexRoute
   '/_authenticated/admin/students/$id/': typeof AuthenticatedAdminStudentsIdIndexRoute
@@ -1420,11 +1480,17 @@ export interface FileRouteTypes {
     | '/parent/profile/'
     | '/warden/profile/'
     | '/warden/students/'
+    | '/admin/properties/$slug/attendance'
+    | '/admin/properties/$slug/complaints'
     | '/admin/properties/$slug/edit'
+    | '/admin/properties/$slug/finance'
+    | '/admin/properties/$slug/notices'
     | '/admin/properties/$slug/residents'
     | '/admin/properties/$slug/rooms'
     | '/admin/properties/$slug/setup'
+    | '/admin/properties/$slug/staff'
     | '/admin/properties/$slug/structure'
+    | '/admin/properties/$slug/students'
     | '/admin/students/$id/move-out'
     | '/admin/properties/$slug/'
     | '/admin/students/$id/'
@@ -1547,11 +1613,17 @@ export interface FileRouteTypes {
     | '/parent/profile'
     | '/warden/profile'
     | '/warden/students'
+    | '/admin/properties/$slug/attendance'
+    | '/admin/properties/$slug/complaints'
     | '/admin/properties/$slug/edit'
+    | '/admin/properties/$slug/finance'
+    | '/admin/properties/$slug/notices'
     | '/admin/properties/$slug/residents'
     | '/admin/properties/$slug/rooms'
     | '/admin/properties/$slug/setup'
+    | '/admin/properties/$slug/staff'
     | '/admin/properties/$slug/structure'
+    | '/admin/properties/$slug/students'
     | '/admin/students/$id/move-out'
     | '/admin/properties/$slug'
     | '/admin/students/$id'
@@ -1681,11 +1753,17 @@ export interface FileRouteTypes {
     | '/_authenticated/parent/profile/'
     | '/_authenticated/warden/profile/'
     | '/_authenticated/warden/students/'
+    | '/_authenticated/admin/properties/$slug/attendance'
+    | '/_authenticated/admin/properties/$slug/complaints'
     | '/_authenticated/admin/properties/$slug/edit'
+    | '/_authenticated/admin/properties/$slug/finance'
+    | '/_authenticated/admin/properties/$slug/notices'
     | '/_authenticated/admin/properties/$slug/residents'
     | '/_authenticated/admin/properties/$slug/rooms'
     | '/_authenticated/admin/properties/$slug/setup'
+    | '/_authenticated/admin/properties/$slug/staff'
     | '/_authenticated/admin/properties/$slug/structure'
+    | '/_authenticated/admin/properties/$slug/students'
     | '/_authenticated/admin/students/$id/move-out'
     | '/_authenticated/admin/properties/$slug/'
     | '/_authenticated/admin/students/$id/'
@@ -2597,11 +2675,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugIndexRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
+    '/_authenticated/admin/properties/$slug/attendance': {
+      id: '/_authenticated/admin/properties/$slug/attendance'
+      path: '/$slug/attendance'
+      fullPath: '/admin/properties/$slug/attendance'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugAttendanceRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/complaints': {
+      id: '/_authenticated/admin/properties/$slug/complaints'
+      path: '/$slug/complaints'
+      fullPath: '/admin/properties/$slug/complaints'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugComplaintsRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/properties/$slug/edit': {
       id: '/_authenticated/admin/properties/$slug/edit'
       path: '/$slug/edit'
       fullPath: '/admin/properties/$slug/edit'
       preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugEditRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/finance': {
+      id: '/_authenticated/admin/properties/$slug/finance'
+      path: '/$slug/finance'
+      fullPath: '/admin/properties/$slug/finance'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugFinanceRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/notices': {
+      id: '/_authenticated/admin/properties/$slug/notices'
+      path: '/$slug/notices'
+      fullPath: '/admin/properties/$slug/notices'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugNoticesRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
     '/_authenticated/admin/properties/$slug/residents': {
@@ -2625,11 +2731,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugSetupRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
+    '/_authenticated/admin/properties/$slug/staff': {
+      id: '/_authenticated/admin/properties/$slug/staff'
+      path: '/$slug/staff'
+      fullPath: '/admin/properties/$slug/staff'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugStaffRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
     '/_authenticated/admin/properties/$slug/structure': {
       id: '/_authenticated/admin/properties/$slug/structure'
       path: '/$slug/structure'
       fullPath: '/admin/properties/$slug/structure'
       preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugStructureRouteImport
+      parentRoute: typeof AuthenticatedAdminPropertiesRoute
+    }
+    '/_authenticated/admin/properties/$slug/students': {
+      id: '/_authenticated/admin/properties/$slug/students'
+      path: '/$slug/students'
+      fullPath: '/admin/properties/$slug/students'
+      preLoaderRoute: typeof AuthenticatedAdminPropertiesSlugStudentsRouteImport
       parentRoute: typeof AuthenticatedAdminPropertiesRoute
     }
     '/_authenticated/admin/students/$id/': {
@@ -2747,11 +2867,17 @@ const AuthenticatedAdminFinanceRouteWithChildren =
 interface AuthenticatedAdminPropertiesRouteChildren {
   AuthenticatedAdminPropertiesNewRoute: typeof AuthenticatedAdminPropertiesNewRoute
   AuthenticatedAdminPropertiesIndexRoute: typeof AuthenticatedAdminPropertiesIndexRoute
+  AuthenticatedAdminPropertiesSlugAttendanceRoute: typeof AuthenticatedAdminPropertiesSlugAttendanceRoute
+  AuthenticatedAdminPropertiesSlugComplaintsRoute: typeof AuthenticatedAdminPropertiesSlugComplaintsRoute
   AuthenticatedAdminPropertiesSlugEditRoute: typeof AuthenticatedAdminPropertiesSlugEditRoute
+  AuthenticatedAdminPropertiesSlugFinanceRoute: typeof AuthenticatedAdminPropertiesSlugFinanceRoute
+  AuthenticatedAdminPropertiesSlugNoticesRoute: typeof AuthenticatedAdminPropertiesSlugNoticesRoute
   AuthenticatedAdminPropertiesSlugResidentsRoute: typeof AuthenticatedAdminPropertiesSlugResidentsRoute
   AuthenticatedAdminPropertiesSlugRoomsRoute: typeof AuthenticatedAdminPropertiesSlugRoomsRoute
   AuthenticatedAdminPropertiesSlugSetupRoute: typeof AuthenticatedAdminPropertiesSlugSetupRoute
+  AuthenticatedAdminPropertiesSlugStaffRoute: typeof AuthenticatedAdminPropertiesSlugStaffRoute
   AuthenticatedAdminPropertiesSlugStructureRoute: typeof AuthenticatedAdminPropertiesSlugStructureRoute
+  AuthenticatedAdminPropertiesSlugStudentsRoute: typeof AuthenticatedAdminPropertiesSlugStudentsRoute
   AuthenticatedAdminPropertiesSlugIndexRoute: typeof AuthenticatedAdminPropertiesSlugIndexRoute
 }
 
@@ -2760,16 +2886,28 @@ const AuthenticatedAdminPropertiesRouteChildren: AuthenticatedAdminPropertiesRou
     AuthenticatedAdminPropertiesNewRoute: AuthenticatedAdminPropertiesNewRoute,
     AuthenticatedAdminPropertiesIndexRoute:
       AuthenticatedAdminPropertiesIndexRoute,
+    AuthenticatedAdminPropertiesSlugAttendanceRoute:
+      AuthenticatedAdminPropertiesSlugAttendanceRoute,
+    AuthenticatedAdminPropertiesSlugComplaintsRoute:
+      AuthenticatedAdminPropertiesSlugComplaintsRoute,
     AuthenticatedAdminPropertiesSlugEditRoute:
       AuthenticatedAdminPropertiesSlugEditRoute,
+    AuthenticatedAdminPropertiesSlugFinanceRoute:
+      AuthenticatedAdminPropertiesSlugFinanceRoute,
+    AuthenticatedAdminPropertiesSlugNoticesRoute:
+      AuthenticatedAdminPropertiesSlugNoticesRoute,
     AuthenticatedAdminPropertiesSlugResidentsRoute:
       AuthenticatedAdminPropertiesSlugResidentsRoute,
     AuthenticatedAdminPropertiesSlugRoomsRoute:
       AuthenticatedAdminPropertiesSlugRoomsRoute,
     AuthenticatedAdminPropertiesSlugSetupRoute:
       AuthenticatedAdminPropertiesSlugSetupRoute,
+    AuthenticatedAdminPropertiesSlugStaffRoute:
+      AuthenticatedAdminPropertiesSlugStaffRoute,
     AuthenticatedAdminPropertiesSlugStructureRoute:
       AuthenticatedAdminPropertiesSlugStructureRoute,
+    AuthenticatedAdminPropertiesSlugStudentsRoute:
+      AuthenticatedAdminPropertiesSlugStudentsRoute,
     AuthenticatedAdminPropertiesSlugIndexRoute:
       AuthenticatedAdminPropertiesSlugIndexRoute,
   }

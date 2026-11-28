@@ -8,27 +8,50 @@ import {
   CirclePause,
   ChevronLeft,
   ChevronRight,
+  ImageOff,
   ImagePlus,
   IndianRupee,
   Loader2,
+  Trash2,
   User,
   UserPlus,
   Users,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import roomDefault from "@/assets/illustrations/room-default.webp";
-import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readRoomAmenities } from "@/lib/room-amenities";
 import {
   ROOM_PHOTO_ACCEPT,
   ROOM_PHOTO_MAX_FILES,
+  removeRoomPhoto,
   uploadRoomPhotos,
   useRoomPhotos,
+  type RoomPhoto,
 } from "@/lib/room-photos";
 import type { BedCounts, StructureRoom } from "@/lib/rooms-beds";
 import { cn } from "@/lib/utils";
@@ -64,8 +87,9 @@ function Fact({
 
 /**
  * One room at a time (arrows step through the rooms on the selected floor):
- * cover photo, type, capacity, occupancy, rent, status and amenities. The
- * Hostel Admin can add photos here for rooms created before photos existed.
+ * cover photo, type, capacity, occupancy, rent, status and amenities. A strip
+ * shows every photo (the first is the cover; click one to view it larger), and
+ * the Hostel Admin can add or remove photos here (up to 5 per room).
  */
 export function RoomDetailCard({
   room,
@@ -90,26 +114,64 @@ export function RoomDetailCard({
 }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [imgFailed, setImgFailed] = useState<string | null>(null);
+  const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(() => new Set());
+  const [viewPath, setViewPath] = useState<string | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<RoomPhoto | null>(null);
   const photosQ = useRoomPhotos(room ? { tenantId, propertyId, roomId: room.id } : null);
-  const cover = photosQ.data?.[0];
-  const coverUrl = cover && imgFailed !== cover.url ? cover.url : roomDefault;
-  const photoCount = photosQ.data?.length ?? 0;
+  const photos = photosQ.data ?? [];
+  // The first photo (oldest) is the cover.
+  const cover = photos[0];
+  const coverUrl = cover && !failedUrls.has(cover.url) ? cover.url : roomDefault;
+  const photoCount = photos.length;
+  const viewIndex = viewPath ? photos.findIndex((p) => p.path === viewPath) : -1;
+  const viewed = viewIndex >= 0 ? photos[viewIndex] : null;
+
+  const markFailed = (url: string) =>
+    setFailedUrls((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
 
   const upload = useMutation({
-    mutationFn: async (files: File[]) => {
-      if (!room) return;
-      await uploadRoomPhotos(
-        { tenantId, propertyId, roomId: room.id },
-        files.slice(0, Math.max(0, ROOM_PHOTO_MAX_FILES - photoCount)),
-      );
-    },
-    onSuccess: () => {
-      toast.success("Photo added");
-      qc.invalidateQueries({ queryKey: ["room-photos", room?.id] });
-    },
+    mutationFn: ({ roomId, files }: { roomId: string; files: File[] }) =>
+      uploadRoomPhotos({ tenantId, propertyId, roomId }, files),
+    onSuccess: (n) => toast.success(n === 1 ? "Photo added" : `${n} photos added`),
     onError: (e) => toast.error(e instanceof Error ? e.message : "We couldn't upload the photo."),
+    // Also after a failure part-way through, so photos that did upload show up.
+    onSettled: (_d, _e, vars) => qc.invalidateQueries({ queryKey: ["room-photos", vars.roomId] }),
   });
+
+  const remove = useMutation({
+    mutationFn: ({ photo }: { roomId: string; photo: RoomPhoto }) => removeRoomPhoto(photo.path),
+    onSuccess: (_d, { photo }) => {
+      toast.success("Photo removed");
+      setPendingRemove(null);
+      // Keep the viewer open on a neighbouring photo, if any.
+      if (viewPath === photo.path) {
+        const i = photos.findIndex((p) => p.path === photo.path);
+        const next = photos[i + 1] ?? photos[i - 1];
+        setViewPath(next ? next.path : null);
+      }
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "We couldn't remove the photo."),
+    onSettled: (_d, _e, vars) => qc.invalidateQueries({ queryKey: ["room-photos", vars.roomId] }),
+  });
+
+  const pickFiles = (files: File[]) => {
+    if (!room || !files.length) return;
+    const roomLeft = ROOM_PHOTO_MAX_FILES - photoCount;
+    if (roomLeft <= 0) {
+      toast.error(
+        `This room already has ${ROOM_PHOTO_MAX_FILES} photos. Remove one to add another.`,
+      );
+      return;
+    }
+    const accepted = files.slice(0, roomLeft);
+    const dropped = files.length - accepted.length;
+    if (dropped > 0) {
+      toast.warning(
+        `A room can have ${ROOM_PHOTO_MAX_FILES} photos, so only ${roomLeft} more fit — ${dropped} ${dropped === 1 ? "file was" : "files were"} not added.`,
+      );
+    }
+    upload.mutate({ roomId: room.id, files: accepted });
+  };
 
   const status = ROOM_STATUS[room?.status.toUpperCase() ?? ""] ?? ROOM_STATUS.INACTIVE;
   const StatusIcon = status.icon;
@@ -163,12 +225,25 @@ export function RoomDetailCard({
               <div className="relative aspect-[3/2] overflow-hidden rounded-xl bg-muted">
                 {photosQ.isLoading ? (
                   <Skeleton className="h-full w-full" />
+                ) : cover ? (
+                  <button
+                    type="button"
+                    onClick={() => setViewPath(cover.path)}
+                    className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    aria-label={`View photos of room ${room.room_number}`}
+                  >
+                    <img
+                      src={coverUrl}
+                      alt={`Room ${room.room_number}`}
+                      className="h-full w-full object-cover"
+                      onError={() => markFailed(cover.url)}
+                    />
+                  </button>
                 ) : (
                   <img
-                    src={coverUrl}
-                    alt={cover ? `Room ${room.room_number}` : "Sample room photo"}
+                    src={roomDefault}
+                    alt="Sample room photo"
                     className="h-full w-full object-cover"
-                    onError={() => cover && setImgFailed(cover.url)}
                   />
                 )}
                 {!cover && !photosQ.isLoading ? (
@@ -202,7 +277,7 @@ export function RoomDetailCard({
                       onChange={(e) => {
                         const files = Array.from(e.target.files ?? []);
                         e.target.value = "";
-                        if (files.length) upload.mutate(files);
+                        pickFiles(files);
                       }}
                     />
                   </>
@@ -241,6 +316,53 @@ export function RoomDetailCard({
                 </Fact>
               </dl>
             </div>
+            {!photosQ.isLoading && (photoCount > 0 || canEditPhotos) ? (
+              <div className="mt-3 flex items-center gap-3">
+                <ul
+                  className="flex min-w-0 flex-1 gap-2 overflow-x-auto pr-2 pt-2 pb-1"
+                  aria-label={`Photos of room ${room.room_number}`}
+                >
+                  {photos.map((photo, i) => (
+                    <li key={photo.path} className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setViewPath(photo.path)}
+                        className={cn(
+                          "grid h-14 w-14 place-items-center overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          i === 0 ? "border-primary" : "border-border",
+                        )}
+                        aria-label={`View photo ${i + 1}${i === 0 ? " (cover)" : ""}`}
+                      >
+                        {failedUrls.has(photo.url) ? (
+                          <ImageOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                        ) : (
+                          <img
+                            src={photo.url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            onError={() => markFailed(photo.url)}
+                          />
+                        )}
+                      </button>
+                      {canEditPhotos ? (
+                        <button
+                          type="button"
+                          onClick={() => setPendingRemove(photo)}
+                          disabled={remove.isPending}
+                          className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={`Remove photo ${i + 1}`}
+                        >
+                          <X className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {photoCount}/{ROOM_PHOTO_MAX_FILES} photos
+                </span>
+              </div>
+            ) : null}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <ul className="flex flex-wrap gap-1.5" aria-label="Amenities">
                 {amenities.length ? (
@@ -272,6 +394,106 @@ export function RoomDetailCard({
           </>
         )}
       </CardContent>
+
+      <Dialog open={!!viewed} onOpenChange={(open) => !open && setViewPath(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {room ? `Room ${room.room_number}` : "Room"} — photo {viewIndex + 1} of {photoCount}
+            </DialogTitle>
+            <DialogDescription>
+              {viewIndex === 0
+                ? "This is the cover photo shown on the room card."
+                : "The first photo is used as the room's cover."}
+            </DialogDescription>
+          </DialogHeader>
+          {viewed ? (
+            <div className="relative grid min-h-48 place-items-center overflow-hidden rounded-xl bg-muted">
+              {failedUrls.has(viewed.url) ? (
+                <div className="flex flex-col items-center gap-2 py-16 text-sm text-muted-foreground">
+                  <ImageOff className="h-6 w-6" aria-hidden="true" />
+                  This photo couldn't be loaded.
+                </div>
+              ) : (
+                <img
+                  src={viewed.url}
+                  alt={`Room ${room?.room_number ?? ""} photo ${viewIndex + 1}`}
+                  className="max-h-[60vh] w-full object-contain"
+                  onError={() => markFailed(viewed.url)}
+                />
+              )}
+              {photoCount > 1 ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full"
+                    onClick={() => setViewPath(photos[viewIndex - 1]?.path ?? viewed.path)}
+                    disabled={viewIndex === 0}
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full"
+                    onClick={() => setViewPath(photos[viewIndex + 1]?.path ?? viewed.path)}
+                    disabled={viewIndex >= photoCount - 1}
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {canEditPhotos && viewed ? (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setPendingRemove(viewed)}
+                disabled={remove.isPending}
+              >
+                <Trash2 className="h-4 w-4" /> Remove photo
+              </Button>
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!pendingRemove}
+        onOpenChange={(open) => !open && !remove.isPending && setPendingRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this photo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It will be deleted from this room for good.
+              {pendingRemove && pendingRemove.path === cover?.path && photoCount > 1
+                ? " The next photo becomes the cover."
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              disabled={remove.isPending}
+              onClick={(e) => {
+                // Keep the dialog open until the delete finishes.
+                e.preventDefault();
+                if (room && pendingRemove) remove.mutate({ roomId: room.id, photo: pendingRemove });
+              }}
+            >
+              {remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -22,6 +22,20 @@ SET public = false,
     file_size_limit = EXCLUDED.file_size_limit,
     allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+-- Text -> uuid that returns NULL instead of raising for anything that is not a
+-- UUID. Policies must never throw on other buckets' object names, and Postgres
+-- does not guarantee AND-operand order, so a bare ::uuid cast is unsafe there.
+CREATE OR REPLACE FUNCTION public.try_uuid(_value text)
+RETURNS uuid
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+  SELECT CASE
+    WHEN _value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN _value::uuid
+  END;
+$$;
+
 -- True when `name` is {tenant}/{property}/rooms/{room}/<file> and the room sits
 -- in that property, which sits in that tenant (all live rows).
 CREATE OR REPLACE FUNCTION public.is_valid_room_media_path(_name text)
@@ -34,16 +48,16 @@ AS $$
   SELECT
     array_length(storage.foldername(_name), 1) = 4
     AND (storage.foldername(_name))[3] = 'rooms'
-    AND (storage.foldername(_name))[1] ~ '^[0-9a-f-]{36}$'
-    AND (storage.foldername(_name))[2] ~ '^[0-9a-f-]{36}$'
-    AND (storage.foldername(_name))[4] ~ '^[0-9a-f-]{36}$'
+    AND public.try_uuid((storage.foldername(_name))[1]) IS NOT NULL
+    AND public.try_uuid((storage.foldername(_name))[2]) IS NOT NULL
+    AND public.try_uuid((storage.foldername(_name))[4]) IS NOT NULL
     AND EXISTS (
       SELECT 1
       FROM public.rooms r
       JOIN public.properties p ON p.id = r.property_id
-      WHERE r.id = ((storage.foldername(_name))[4])::uuid
-        AND r.property_id = ((storage.foldername(_name))[2])::uuid
-        AND p.tenant_id = ((storage.foldername(_name))[1])::uuid
+      WHERE r.id = public.try_uuid((storage.foldername(_name))[4])
+        AND r.property_id = public.try_uuid((storage.foldername(_name))[2])
+        AND p.tenant_id = public.try_uuid((storage.foldername(_name))[1])
         AND r.deleted_at IS NULL
         AND p.deleted_at IS NULL
     );
@@ -56,10 +70,10 @@ DROP POLICY IF EXISTS "property-media read" ON storage.objects;
 CREATE POLICY "property-media read" ON storage.objects
 FOR SELECT TO authenticated USING (
   bucket_id = 'property-media'
-  AND (storage.foldername(name))[1] ~ '^[0-9a-f-]{36}$'
+  AND public.try_uuid((storage.foldername(name))[1]) IS NOT NULL
   AND (
     public.is_super_admin(auth.uid())
-    OR public.is_tenant_member(auth.uid(), ((storage.foldername(name))[1])::uuid)
+    OR public.is_tenant_member(auth.uid(), public.try_uuid((storage.foldername(name))[1]))
   )
 );
 
@@ -70,7 +84,7 @@ FOR INSERT TO authenticated WITH CHECK (
   AND public.is_valid_room_media_path(name)
   AND (
     public.is_super_admin(auth.uid())
-    OR public.has_tenant_role(auth.uid(), ((storage.foldername(name))[1])::uuid, 'HOSTEL_ADMIN'::app_role)
+    OR public.has_tenant_role(auth.uid(), public.try_uuid((storage.foldername(name))[1]), 'HOSTEL_ADMIN'::app_role)
   )
 );
 
@@ -78,9 +92,9 @@ DROP POLICY IF EXISTS "property-media delete" ON storage.objects;
 CREATE POLICY "property-media delete" ON storage.objects
 FOR DELETE TO authenticated USING (
   bucket_id = 'property-media'
-  AND (storage.foldername(name))[1] ~ '^[0-9a-f-]{36}$'
+  AND public.try_uuid((storage.foldername(name))[1]) IS NOT NULL
   AND (
     public.is_super_admin(auth.uid())
-    OR public.has_tenant_role(auth.uid(), ((storage.foldername(name))[1])::uuid, 'HOSTEL_ADMIN'::app_role)
+    OR public.has_tenant_role(auth.uid(), public.try_uuid((storage.foldername(name))[1]), 'HOSTEL_ADMIN'::app_role)
   )
 );

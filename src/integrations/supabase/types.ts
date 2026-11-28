@@ -137,12 +137,12 @@ export type Database = {
           id: string
           lock_in_until: string | null
           notice_given_at: string | null
+          notice_period_days: number
           notice_reason: string | null
           notice_remarks: string | null
-          requested_move_out_date: string | null
-          notice_period_days: number
           property_id: string
           rent_snapshot_paise: number
+          requested_move_out_date: string | null
           room_id: string
           start_date: string
           status: string
@@ -170,12 +170,12 @@ export type Database = {
           id?: string
           lock_in_until?: string | null
           notice_given_at?: string | null
+          notice_period_days?: number
           notice_reason?: string | null
           notice_remarks?: string | null
-          requested_move_out_date?: string | null
-          notice_period_days?: number
           property_id: string
           rent_snapshot_paise: number
+          requested_move_out_date?: string | null
           room_id: string
           start_date: string
           status?: string
@@ -203,12 +203,12 @@ export type Database = {
           id?: string
           lock_in_until?: string | null
           notice_given_at?: string | null
+          notice_period_days?: number
           notice_reason?: string | null
           notice_remarks?: string | null
-          requested_move_out_date?: string | null
-          notice_period_days?: number
           property_id?: string
           rent_snapshot_paise?: number
+          requested_move_out_date?: string | null
           room_id?: string
           start_date?: string
           status?: string
@@ -280,6 +280,7 @@ export type Database = {
           attendance_date: string
           block_id: string | null
           id: string
+          leave_request_id: string | null
           marked_at: string
           marked_by: string
           notes: string | null
@@ -295,6 +296,7 @@ export type Database = {
           attendance_date: string
           block_id?: string | null
           id?: string
+          leave_request_id?: string | null
           marked_at?: string
           marked_by: string
           notes?: string | null
@@ -310,6 +312,7 @@ export type Database = {
           attendance_date?: string
           block_id?: string | null
           id?: string
+          leave_request_id?: string | null
           marked_at?: string
           marked_by?: string
           notes?: string | null
@@ -327,6 +330,13 @@ export type Database = {
             columns: ["block_id"]
             isOneToOne: false
             referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests"
             referencedColumns: ["id"]
           },
           {
@@ -624,6 +634,7 @@ export type Database = {
       }
       complaint_comments: {
         Row: {
+          author_role: string | null
           author_user_id: string
           body: string
           complaint_id: string
@@ -633,6 +644,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          author_role?: string | null
           author_user_id: string
           body: string
           complaint_id: string
@@ -642,6 +654,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          author_role?: string | null
           author_user_id?: string
           body?: string
           complaint_id?: string
@@ -702,6 +715,7 @@ export type Database = {
           rating: number | null
           rating_comment: string | null
           reopen_until: string | null
+          reopened_at: string | null
           resolution_summary: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -734,6 +748,7 @@ export type Database = {
           rating?: number | null
           rating_comment?: string | null
           reopen_until?: string | null
+          reopened_at?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -766,6 +781,7 @@ export type Database = {
           rating?: number | null
           rating_comment?: string | null
           reopen_until?: string | null
+          reopened_at?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -1012,6 +1028,44 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_reviews: {
+        Row: {
+          action: string
+          decided_at: string
+          document_id: string
+          id: string
+          rejection_reason: string | null
+          reviewer_id: string
+          reviewer_role: string
+        }
+        Insert: {
+          action: string
+          decided_at?: string
+          document_id: string
+          id?: string
+          rejection_reason?: string | null
+          reviewer_id: string
+          reviewer_role: string
+        }
+        Update: {
+          action?: string
+          decided_at?: string
+          document_id?: string
+          id?: string
+          rejection_reason?: string | null
+          reviewer_id?: string
+          reviewer_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_reviews_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
@@ -1933,6 +1987,99 @@ export type Database = {
           },
         ]
       }
+      leave_requests: {
+        Row: {
+          allocation_id: string
+          block_id: string | null
+          created_at: string
+          end_date: string
+          id: string
+          property_id: string
+          reason: string
+          rejection_reason: string | null
+          remarks: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocation_id: string
+          block_id?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          property_id: string
+          reason: string
+          rejection_reason?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          student_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocation_id?: string
+          block_id?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          property_id?: string
+          reason?: string
+          rejection_reason?: string | null
+          remarks?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          student_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mess_feedback: {
         Row: {
           comment: string | null
@@ -2254,10 +2401,64 @@ export type Database = {
           },
         ]
       }
+      notice_recipients: {
+        Row: {
+          created_at: string
+          notice_id: string
+          property_id: string
+          student_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          notice_id: string
+          property_id: string
+          student_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          notice_id?: string
+          property_id?: string
+          student_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notice_recipients_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notice_recipients_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notice_recipients_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notice_recipients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notices: {
         Row: {
           audience_type: string
           body: string
+          category: string
           channels: string[]
           created_at: string
           created_by: string | null
@@ -2277,6 +2478,7 @@ export type Database = {
         Insert: {
           audience_type?: string
           body: string
+          category?: string
           channels?: string[]
           created_at?: string
           created_by?: string | null
@@ -2296,6 +2498,7 @@ export type Database = {
         Update: {
           audience_type?: string
           body?: string
+          category?: string
           channels?: string[]
           created_at?: string
           created_by?: string | null
@@ -3014,6 +3217,158 @@ export type Database = {
           },
         ]
       }
+      property_staff: {
+        Row: {
+          block_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          designation: string
+          email: string | null
+          full_name: string
+          id: string
+          joined_on: string | null
+          notes: string | null
+          phone: string | null
+          property_id: string
+          shift_end: string | null
+          shift_name: string | null
+          shift_start: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          work_area: string | null
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          designation: string
+          email?: string | null
+          full_name: string
+          id?: string
+          joined_on?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id: string
+          shift_end?: string | null
+          shift_name?: string | null
+          shift_start?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          work_area?: string | null
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          designation?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          joined_on?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id?: string
+          shift_end?: string | null
+          shift_name?: string | null
+          shift_start?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          work_area?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_staff_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_staff_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_staff_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_staff_attendance: {
+        Row: {
+          attendance_date: string
+          id: string
+          marked_at: string
+          marked_by: string | null
+          note: string | null
+          property_id: string
+          staff_id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          attendance_date: string
+          id?: string
+          marked_at?: string
+          marked_by?: string | null
+          note?: string | null
+          property_id: string
+          staff_id: string
+          status: string
+          tenant_id: string
+        }
+        Update: {
+          attendance_date?: string
+          id?: string
+          marked_at?: string
+          marked_by?: string | null
+          note?: string | null
+          property_id?: string
+          staff_id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_staff_attendance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_staff_attendance_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "property_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_staff_attendance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           bucket_key: string
@@ -3046,11 +3401,11 @@ export type Database = {
       }
       refunds: {
         Row: {
-          amount_paise: number
           allocation_id: string | null
-          requires_deposit_clearance: boolean
+          amount_paise: number
           approved_at: string | null
           approved_by: string | null
+          attempt_count: number
           completed_at: string | null
           created_at: string
           currency: string
@@ -3060,23 +3415,34 @@ export type Database = {
           id: string
           initiated_at: string
           initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
           mode: string
           payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
           property_id: string
+          provider: string | null
           provider_refund_ref: string | null
+          provider_status: string | null
           reason: string
           refund_number: string
+          requires_deposit_clearance: boolean
           status: string
           student_id: string
           tenant_id: string
           updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
-          amount_paise: number
           allocation_id?: string | null
-          requires_deposit_clearance?: boolean
+          amount_paise: number
           approved_at?: string | null
           approved_by?: string | null
+          attempt_count?: number
           completed_at?: string | null
           created_at?: string
           currency?: string
@@ -3086,23 +3452,34 @@ export type Database = {
           id?: string
           initiated_at?: string
           initiated_by: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           mode: string
           payment_id: string
+          processed_by?: string | null
+          processing_started_at?: string | null
+          processing_started_by?: string | null
           property_id: string
+          provider?: string | null
           provider_refund_ref?: string | null
+          provider_status?: string | null
           reason: string
           refund_number: string
+          requires_deposit_clearance?: boolean
           status?: string
           student_id: string
           tenant_id: string
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
-          amount_paise?: number
           allocation_id?: string | null
-          requires_deposit_clearance?: boolean
+          amount_paise?: number
           approved_at?: string | null
           approved_by?: string | null
+          attempt_count?: number
           completed_at?: string | null
           created_at?: string
           currency?: string
@@ -3112,23 +3489,55 @@ export type Database = {
           id?: string
           initiated_at?: string
           initiated_by?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           mode?: string
           payment_id?: string
+          processed_by?: string | null
+          processing_started_at?: string | null
+          processing_started_by?: string | null
           property_id?: string
+          provider?: string | null
           provider_refund_ref?: string | null
+          provider_status?: string | null
           reason?: string
           refund_number?: string
+          requires_deposit_clearance?: boolean
           status?: string
           student_id?: string
           tenant_id?: string
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "refunds_allocation_id_fkey"
+            columns: ["allocation_id"]
+            isOneToOne: false
+            referencedRelation: "allocations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "refunds_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_processing_started_by_fkey"
+            columns: ["processing_started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3150,6 +3559,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -4180,6 +4596,7 @@ export type Database = {
       v_complaint_comments_feed: {
         Row: {
           author_full_name: string | null
+          author_role: string | null
           author_user_id: string | null
           body: string | null
           complaint_id: string | null
@@ -4461,6 +4878,14 @@ export type Database = {
         Args: { p_agreement_id: string }
         Returns: undefined
       }
+      attendance_room_counts: {
+        Args: { p_property_id: string }
+        Returns: {
+          room_id: string
+          room_number: string
+          student_count: number
+        }[]
+      }
       can_access_conversation: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -4667,6 +5092,23 @@ export type Database = {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      can_override_reopen_complaint: {
+        Args: { _property_id: string; _tenant_id: string }
+        Returns: boolean
+      }
+      can_read_profile_avatar: {
+        Args: { p_owner_folder: string }
+        Returns: boolean
+      }
+      can_student_attach_complaint_document: {
+        Args: {
+          _complaint_id: string
+          _property_id: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       can_student_edit_complaints: {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
@@ -4691,6 +5133,10 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      can_student_view_complaint_document: {
+        Args: { _complaint_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_student_view_complaints: {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
@@ -4711,6 +5157,10 @@ export type Database = {
       can_student_view_notices: { Args: { _user_id: string }; Returns: boolean }
       can_student_view_profile: {
         Args: { _student_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_verify_refunds: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       can_view_allocations: {
@@ -4770,29 +5220,49 @@ export type Database = {
         Args: { p_actual_end_date: string; p_allocation_id: string }
         Returns: undefined
       }
-      give_notice: {
-        Args: {
-          p_allocation_id: string
-          p_reason: string
-          p_remarks?: string
-          p_requested_move_out_date: string
-        }
-        Returns: Database["public"]["Tables"]["allocations"]["Row"]
-      }
-      move_out_settlement: {
-        Args: { p_allocation_id: string }
-        Returns: Json
-      }
       earliest_move_out_date: {
         Args: { p_allocation_id: string }
         Returns: string
       }
+      find_profile_id_by_phone: { Args: { p_phone: string }; Returns: string }
+      fn_admin_reopen_complaint: {
+        Args: { p_complaint_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_aging_buckets: {
+        Args: { p_property_id: string }
+        Returns: {
+          aging_bucket: string
+          balance_paise: number
+          invoice_count: number
+        }[]
+      }
+      fn_aging_invoices: {
+        Args: { p_limit?: number; p_offset?: number; p_property_id: string }
+        Returns: {
+          aging_bucket: string
+          balance_paise: number
+          days_overdue: number
+          due_date: string
+          id: string
+          invoice_number: string
+          status: string
+          student_name: string
+          total_count: number
+        }[]
+      }
+      fn_apply_leave_to_attendance: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: number
+      }
       fn_approve_refund: {
         Args: { p_decision: string; p_reason?: string; p_refund_id: string }
         Returns: {
+          allocation_id: string | null
           amount_paise: number
           approved_at: string | null
           approved_by: string | null
+          attempt_count: number
           completed_at: string | null
           created_at: string
           currency: string
@@ -4802,16 +5272,27 @@ export type Database = {
           id: string
           initiated_at: string
           initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
           mode: string
           payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
           property_id: string
+          provider: string | null
           provider_refund_ref: string | null
+          provider_status: string | null
           reason: string
           refund_number: string
+          requires_deposit_clearance: boolean
           status: string
           student_id: string
           tenant_id: string
           updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4820,6 +5301,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_archive_student: { Args: { p_student_id: string }; Returns: undefined }
       fn_assign_hostel_admin: {
         Args: {
           p_property_id?: string
@@ -4827,6 +5309,27 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: Json
+      }
+      fn_attendance_monthly_report: {
+        Args: { p_month: string; p_property_id: string }
+        Returns: {
+          absent_days: number
+          attendance_pct: number
+          block_id: string
+          late_days: number
+          leave_days: number
+          marked_days: number
+          month: string
+          out_pass_days: number
+          present_days: number
+          property_id: string
+          student_id: string
+          tenant_id: string
+        }[]
+      }
+      fn_can_manage_bed_status: {
+        Args: { _block_id: string; _property_id: string; _tenant_id: string }
+        Returns: boolean
       }
       fn_cancel_own_subscription: {
         Args: {
@@ -4838,9 +5341,150 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_claim_refund_gateway_attempt: {
+        Args: { p_refund_id: string; p_window_seconds?: number }
+        Returns: boolean
+      }
       fn_close_own_support_ticket: {
         Args: { p_ticket_id: string }
         Returns: Json
+      }
+      fn_close_resolved_complaints: { Args: never; Returns: number }
+      fn_collection_report: {
+        Args: { p_from?: string; p_property_id: string; p_to?: string }
+        Returns: {
+          as_of: string
+          billed_paise: number
+          collected_paise: number
+          collection_rate_pct: number
+          due_unpaid_count: number
+          eligible_invoice_count: number
+          overdue_balance_paise: number
+          overdue_count: number
+          overdue_pct: number
+          pending_paise: number
+          received_paise: number
+          refunded_paise: number
+        }[]
+      }
+      fn_collection_series: {
+        Args: {
+          p_from: string
+          p_granularity?: string
+          p_property_id: string
+          p_to: string
+        }
+        Returns: {
+          collected_paise: number
+          period: string
+          received_paise: number
+          refunded_paise: number
+        }[]
+      }
+      fn_complaint_comment_author_role: {
+        Args: { p_complaint_id: string; p_user_id: string }
+        Returns: string
+      }
+      fn_complaint_reopen_override_active: {
+        Args: { _complaint_id: string }
+        Returns: boolean
+      }
+      fn_complete_refund: {
+        Args: {
+          p_decision: string
+          p_failure_reason?: string
+          p_provider_refund_ref?: string
+          p_refund_id: string
+        }
+        Returns: {
+          allocation_id: string | null
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mode: string
+          payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
+          property_id: string
+          provider: string | null
+          provider_refund_ref: string | null
+          provider_status: string | null
+          reason: string
+          refund_number: string
+          requires_deposit_clearance: boolean
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_create_room_with_beds: {
+        Args: {
+          p_base_rent_paise?: number
+          p_capacity: number
+          p_floor_id: string
+          p_room_number: string
+          p_room_type: string
+        }
+        Returns: Json
+      }
+      fn_decide_kyc_document: {
+        Args: {
+          p_decision: string
+          p_document_id: string
+          p_rejection_reason?: string
+        }
+        Returns: {
+          checksum: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          document_type: string
+          id: string
+          mime_type: string
+          original_filename: string
+          owner_id: string
+          owner_type: string
+          property_id: string | null
+          rejection_reason: string | null
+          size_bytes: number | null
+          status: string
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       fn_dispatch_notification: {
         Args: {
@@ -4895,11 +5539,113 @@ export type Database = {
         }
         Returns: string
       }
+      fn_existing_student_identity_keys: {
+        Args: {
+          p_emails: string[]
+          p_phones: string[]
+          p_property_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      fn_expire_notices: { Args: never; Returns: number }
+      fn_finalize_completed_refund: {
+        Args: { p_refund_id: string }
+        Returns: undefined
+      }
+      fn_gate_pass_legs: {
+        Args: { p_property_id?: string }
+        Returns: {
+          block_id: string
+          expected_in_at: string
+          gate_pass_id: string
+          in_at: string
+          out_at: string
+          pass_number: string
+          property_id: string
+          student_id: string
+          tenant_id: string
+          tz: string
+        }[]
+      }
       fn_generate_invoices: { Args: never; Returns: number }
       fn_get_platform_metrics: { Args: never; Returns: Json }
+      fn_import_structure_row: {
+        Args: {
+          p_base_rent_paise: number
+          p_block_code: string
+          p_block_name: string
+          p_capacity: number
+          p_floor_name: string
+          p_floor_number: number
+          p_property_id: string
+          p_room_number: string
+          p_room_type: string
+        }
+        Returns: Json
+      }
       fn_is_acting_as_student_only: {
         Args: { _tenant: string }
         Returns: boolean
+      }
+      fn_is_service_role: { Args: never; Returns: boolean }
+      fn_link_public_applicant: { Args: { p_user_id: string }; Returns: Json }
+      fn_mark_overdue_invoices: { Args: never; Returns: number }
+      fn_mess_menu_has_feedback: {
+        Args: { p_mess_menu_id: string }
+        Returns: boolean
+      }
+      fn_notify_leave_event: {
+        Args: {
+          p_block_id: string
+          p_event: string
+          p_key: string
+          p_payload: Json
+          p_property_id: string
+          p_staff_body: string
+          p_staff_title: string
+          p_student_body: string
+          p_student_profile_id: string
+          p_student_title: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      fn_notify_move_out_event: {
+        Args: {
+          p_block_id: string
+          p_event: string
+          p_key: string
+          p_payload: Json
+          p_property_id: string
+          p_staff_body: string
+          p_staff_title: string
+          p_student_body: string
+          p_student_profile_id: string
+          p_student_title: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      fn_overdue_out_passes: {
+        Args: { p_property_id: string }
+        Returns: {
+          admission_number: string
+          bed_code: string
+          expected_in_at: string
+          full_name: string
+          gate_pass_id: string
+          out_at: string
+          overdue_minutes: number
+          pass_number: string
+          room_number: string
+          student_id: string
+          tz: string
+        }[]
+      }
+      fn_permanently_delete_student: {
+        Args: { p_student_id: string }
+        Returns: Json
       }
       fn_provision_tenant: {
         Args: { p_hostel_name: string }
@@ -4909,15 +5655,272 @@ export type Database = {
         }[]
       }
       fn_publish_scheduled_notices: { Args: never; Returns: number }
+      fn_recompute_invoice: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
+      }
+      fn_record_refund_gateway_result: {
+        Args: {
+          p_amount_paise?: number
+          p_error?: string
+          p_gateway_refund_id: string
+          p_gateway_status: string
+          p_refund_id: string
+        }
+        Returns: {
+          allocation_id: string | null
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mode: string
+          payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
+          property_id: string
+          provider: string | null
+          provider_refund_ref: string | null
+          provider_status: string | null
+          reason: string
+          refund_number: string
+          requires_deposit_clearance: boolean
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_register_student: {
+        Args: {
+          p_academic_institute: string
+          p_academic_year: string
+          p_admission_number: string
+          p_course_name: string
+          p_date_of_birth: string
+          p_email: string
+          p_full_name: string
+          p_gender: string
+          p_guardian_is_emergency: boolean
+          p_guardian_name: string
+          p_guardian_phone: string
+          p_guardian_relationship: string
+          p_is_minor: boolean
+          p_metadata: Json
+          p_phone: string
+          p_property_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      fn_retry_failed_notifications: { Args: never; Returns: number }
+      fn_retry_notification: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
       fn_scan_complaint_sla_breaches: { Args: never; Returns: number }
+      fn_scan_overdue_gate_passes: { Args: never; Returns: Json }
       fn_seed_default_complaint_categories: {
         Args: { p_property_id: string }
         Returns: undefined
       }
       fn_send_fee_reminders: { Args: never; Returns: number }
+      fn_set_bed_status: {
+        Args: {
+          p_bed_id: string
+          p_maintenance_until?: string
+          p_new_status: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      fn_start_refund_processing: {
+        Args: { p_refund_id: string }
+        Returns: {
+          allocation_id: string | null
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mode: string
+          payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
+          property_id: string
+          provider: string | null
+          provider_refund_ref: string | null
+          provider_status: string | null
+          reason: string
+          refund_number: string
+          requires_deposit_clearance: boolean
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_student_delete_check: { Args: { p_student_id: string }; Returns: Json }
+      fn_student_dependency_report: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      fn_student_identity_taken: {
+        Args: { p_email: string; p_phone: string; p_tenant_id: string }
+        Returns: Json
+      }
+      fn_students_on_out_pass: {
+        Args: { p_date: string; p_property_id: string }
+        Returns: {
+          expected_in_at: string
+          gate_pass_id: string
+          is_overdue: boolean
+          out_at: string
+          pass_number: string
+          student_id: string
+          tz: string
+        }[]
+      }
+      fn_user_can_override_reopen: {
+        Args: { _property_id: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      fn_verify_refund_clearance: {
+        Args: { p_decision: string; p_notes?: string; p_refund_id: string }
+        Returns: {
+          allocation_id: string | null
+          amount_paise: number
+          approved_at: string | null
+          approved_by: string | null
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          decision_reason: string | null
+          expected_completion_at: string | null
+          failure_reason: string | null
+          id: string
+          initiated_at: string
+          initiated_by: string
+          last_attempt_at: string | null
+          last_error: string | null
+          mode: string
+          payment_id: string
+          processed_by: string | null
+          processing_started_at: string | null
+          processing_started_by: string | null
+          property_id: string
+          provider: string | null
+          provider_refund_ref: string | null
+          provider_status: string | null
+          reason: string
+          refund_number: string
+          requires_deposit_clearance: boolean
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_user_role: {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      give_notice: {
+        Args: {
+          p_allocation_id: string
+          p_reason: string
+          p_remarks?: string
+          p_requested_move_out_date: string
+        }
+        Returns: {
+          activated_at: string | null
+          actual_end_date: string | null
+          agreement_id: string | null
+          bed_id: string
+          billing_cycle_day: number | null
+          block_id: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deposit_snapshot_paise: number
+          expected_end_date: string | null
+          fee_plan_id: string | null
+          floor_id: string
+          id: string
+          lock_in_until: string | null
+          notice_given_at: string | null
+          notice_period_days: number
+          notice_reason: string | null
+          notice_remarks: string | null
+          property_id: string
+          rent_snapshot_paise: number
+          requested_move_out_date: string | null
+          room_id: string
+          start_date: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "allocations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       has_any_tenant_role: {
         Args: { _tenant_id: string; _user_id: string }
@@ -5001,15 +6004,20 @@ export type Database = {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      is_student_kyc_verified: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_member: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_valid_room_media_path: { Args: { _name: string }; Returns: boolean }
       is_viewing_parent: {
         Args: { _student_id: string; _user_id: string }
         Returns: boolean
       }
+      move_out_settlement: { Args: { p_allocation_id: string }; Returns: Json }
+      normalize_phone: { Args: { p_phone: string }; Returns: string }
+      phone_registration_state: { Args: { p_phone: string }; Returns: string }
       provisional_refund_paise: {
         Args: { p_allocation_id: string }
         Returns: number
@@ -5054,10 +6062,83 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      request_leave: {
+        Args: {
+          p_end_date: string
+          p_reason: string
+          p_remarks?: string
+          p_start_date: string
+        }
+        Returns: {
+          allocation_id: string
+          block_id: string | null
+          created_at: string
+          end_date: string
+          id: string
+          property_id: string
+          reason: string
+          rejection_reason: string | null
+          remarks: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leave_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_leave_request: {
+        Args: {
+          p_decision: string
+          p_rejection_reason?: string
+          p_request_id: string
+        }
+        Returns: {
+          allocation_id: string
+          block_id: string | null
+          created_at: string
+          end_date: string
+          id: string
+          property_id: string
+          reason: string
+          rejection_reason: string | null
+          remarks: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          student_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leave_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      search_public_properties: {
+        Args: { result_limit?: number; search_query?: string }
+        Returns: {
+          city: string
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
       swap_allocation_bed: {
         Args: { p_allocation_id: string; p_new_bed_id: string }
         Returns: undefined
       }
+      try_uuid: { Args: { _value: string }; Returns: string }
       warden_can_read_property: {
         Args: { _property_id: string; _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -5095,12 +6176,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5124,11 +6205,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5149,11 +6230,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5174,11 +6255,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5191,11 +6272,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

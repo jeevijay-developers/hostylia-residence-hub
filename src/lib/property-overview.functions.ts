@@ -78,7 +78,7 @@ export const getPropertyOverviewStats = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<PropertyOverviewStats> => {
     const { supabase } = context;
     const pid = data.property_id;
-    const { start, end, endDate } = monthBounds();
+    const { start, startDate, endDate } = monthBounds();
 
     const beds = () =>
       supabase
@@ -102,8 +102,9 @@ export const getPropertyOverviewStats = createServerFn({ method: "GET" })
         students().eq("status", "ACTIVE").gte("created_at", start.toISOString()),
         students()
           .eq("status", "MOVED_OUT")
-          .gte("moved_out_at", start.toISOString())
-          .lt("moved_out_at", end.toISOString()),
+          // moved_out_at is a DATE, so compare with India-time calendar dates.
+          .gte("moved_out_at", startDate)
+          .lt("moved_out_at", endDate),
         // Notice given and due to leave before the month ends (overdue ones included).
         supabase
           .from("allocations")
@@ -176,13 +177,15 @@ export const getPropertyOverviewStats = createServerFn({ method: "GET" })
     const occupied = occRes.count ?? 0;
     const vacant = vacRes.count ?? 0;
     const occupiable = occupied + vacant;
+    const occupancyPct = occupiable > 0 ? Math.round((occupied / occupiable) * 100) : 0;
     return {
       beds: {
         total: totalRes.count ?? 0,
         occupied,
         vacant,
-        occupancyPct: occupiable > 0 ? Math.round((occupied / occupiable) * 100) : 0,
-        vacantPct: occupiable > 0 ? Math.round((vacant / occupiable) * 100) : 0,
+        occupancyPct,
+        // Same rule as the Rooms & Beds tab, so the two always add up to 100.
+        vacantPct: occupiable > 0 ? 100 - occupancyPct : 0,
       },
       blocksCount: (blocksRes.data ?? []).length,
       residents: residentsRes.count ?? 0,

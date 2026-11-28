@@ -258,13 +258,11 @@ export function useResolvedByLabel(resolvedBy: string | null | undefined) {
 }
 
 /**
- * `author_role` is the sender's role as verified by the database (stored by a trigger at insert time,
- * derived for historical rows) — see 20261117090000. It is not in the generated view type yet.
+ * A comment row from v_complaint_comments_feed. `author_role` is the sender's role as verified by the
+ * database (stored by a trigger at insert time, derived for historical rows) — see 20261117090000.
  */
 export type ComplaintCommentWithAuthor =
-  Database["public"]["Views"]["v_complaint_comments_feed"]["Row"] & {
-    author_role?: "STUDENT" | "WARDEN" | "ADMIN" | null;
-  };
+  Database["public"]["Views"]["v_complaint_comments_feed"]["Row"];
 
 /**
  * Reads from `v_complaint_comments_feed` (see the 20260819120000 migration)
@@ -289,18 +287,10 @@ export function useComplaintComments(complaintId: string | null) {
         .eq("complaint_id", complaintId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as ComplaintCommentWithAuthor[];
+      return data ?? [];
     },
   });
 }
-
-type LooseRpc = (
-  fn: string,
-  args: Record<string, unknown>,
-) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-// can_override_reopen_complaint / fn_admin_reopen_complaint (20261120090000) are not in the generated
-// types until they are regenerated, so they are called through this narrow, explicit signature.
-const callRpc: LooseRpc = (fn, args) => (supabase as unknown as { rpc: LooseRpc }).rpc(fn, args);
 
 /**
  * Whether the signed-in Admin holds the dedicated reopen-override permission (decided by the database,
@@ -315,7 +305,7 @@ export function useCanOverrideReopen(
     enabled: complaint.status === "RESOLVED" || complaint.status === "CLOSED",
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await callRpc("can_override_reopen_complaint", {
+      const { data, error } = await supabase.rpc("can_override_reopen_complaint", {
         _tenant_id: complaint.tenant_id,
         _property_id: complaint.property_id,
       });
@@ -327,7 +317,7 @@ export function useCanOverrideReopen(
 
 /** Exceptional Admin reopen: permission, reason and eligibility are all enforced in the database. */
 export async function reopenComplaintWithOverride(complaintId: string, reason: string) {
-  const { error } = await callRpc("fn_admin_reopen_complaint", {
+  const { error } = await supabase.rpc("fn_admin_reopen_complaint", {
     p_complaint_id: complaintId,
     p_reason: reason,
   });

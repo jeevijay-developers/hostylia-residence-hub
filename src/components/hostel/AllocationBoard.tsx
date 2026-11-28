@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowRightLeft,
@@ -58,6 +58,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createAllocation, swapAllocationBed } from "@/lib/student.functions";
 import { listActiveFeePlansForAllocation } from "@/lib/finance.functions";
+import { localDateInTimezone, usePropertyTimezone } from "@/lib/ops";
 import { usePropertyStore } from "@/stores/property-store";
 
 // Matches uidx_allocations_active_student (see student.functions.ts) — the
@@ -77,6 +78,25 @@ const ALLOCATION_STUDENTS_PAGE_SIZE = 20;
 
 function ilikeToken(value: string): string {
   return value.replace(/[%_,.()]/g, "").trim();
+}
+
+/** Rupees as typed in a money field → integer paise; null when empty or not a valid amount. */
+function rupeesToPaise(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const rupees = Number(trimmed);
+  if (!Number.isFinite(rupees) || rupees < 0) return null;
+  return Math.round(rupees * 100);
+}
+
+function paiseToRupeesInput(paise: number | null): string {
+  return paise === null ? "" : String(paise / 100);
+}
+
+/** A number input keeps "05" as typed (React sees it as equal to 5); drop leading zeros
+ * ("0.5" and a lone "0" are left alone). */
+function stripLeadingZeros(value: string): string {
+  return value.replace(/^(-?)0+(?=\d)/, "$1");
 }
 
 /**
@@ -127,6 +147,9 @@ export function AllocationBoard({
     setBedSearch("");
     setDebouncedBedSearch("");
     setStatusFilter(null);
+    setStudentPage(0);
+    setStudentSearch("");
+    setDebouncedStudentSearch("");
   }
 
   useEffect(() => {
@@ -405,23 +428,122 @@ export function AllocationBoard({
   });
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [feePlanId, setFeePlanId] = useState("");
-  const [rent, setRent] = useState<number>(500000);
-  const [deposit, setDeposit] = useState<number>(1000000);
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  // Rupees as typed. Seeded from the fee plan / room (below); empty when neither has a value.
+  const [rentInput, setRentInput] = useState("");
+  const [depositInput, setDepositInput] = useState("");
+  const rentPaise = rupeesToPaise(rentInput);
+  const depositPaise = rupeesToPaise(depositInput);
+  // null = not picked by the user yet → the property-local "today".
+  const [startDateInput, setStartDateInput] = useState<string | null>(null);
+  const timezoneQ = usePropertyTimezone(effectiveProp ?? null);
+  const startDate = startDateInput ?? localDateInTimezone(timezoneQ.data);
+
+  // Rent/deposit seeds. The selected fee plan's RENT / DEPOSIT components win; the room's
+  // base rent is the fallback for rent. Fee plan components are RLS-gated on fee-plan view
+  // access, so a Warden without it gets no rows here and falls back to the room rent.
+  const selectedBedId = selectedBed?.id ?? null;
+  const bedRentQ = useQuery({
+    queryKey: ["allocation-bed-rent", selectedBedId],
+    enabled: !!selectedBedId,
+    queryFn: async () => {
+      if (!selectedBedId) return null;
+      const { data, error } = await supabase
+        .from("beds")
+        .select("rooms(base_rent_paise)")
+        .eq("id", selectedBedId)
+        .maybeSingle();
+      if (error) throw error;
+      const room = data?.rooms as { base_rent_paise: number | null } | null | undefined;
+      return room?.base_rent_paise ?? null;
+    },
+  });
+  const planAmountsQ = useQuery({
+    queryKey: ["allocation-fee-plan-amounts", feePlanId],
+    enabled: !!feePlanId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fee_plan_components")
+        .select("component_type, amount_paise")
+        .eq("fee_plan_id", feePlanId)
+        .eq("is_active", true)
+        .in("component_type", ["RENT", "DEPOSIT"]);
+      if (error) throw error;
+      const rows = data ?? [];
+      const sum = (type: string) => {
+        const matching = rows.filter((row) => row.component_type === type);
+        return matching.length ? matching.reduce((acc, row) => acc + row.amount_paise, 0) : null;
+      };
+      return { rent: sum("RENT"), deposit: sum("DEPOSIT") };
+    },
+  });
+  // A failed lookup counts as settled with no value (the field is then left for the user).
+  const seedsReady =
+    (!selectedBedId || !bedRentQ.isPending) && (!feePlanId || !planAmountsQ.isPending);
+  const planRent = feePlanId ? (planAmountsQ.data?.rent ?? null) : null;
+  const planDeposit = feePlanId ? (planAmountsQ.data?.deposit ?? null) : null;
+  const roomRent = bedRentQ.data ?? null;
+  // Whether the user has typed into a field since it was last seeded. Their value is never
+  // replaced by a fallback (room rent) or by an empty seed; only an amount the picked fee plan
+  // actually defines replaces it, since picking that plan is an explicit choice.
+  const rentEditedRef = useRef(false);
+  const depositEditedRef = useRef(false);
+  // Re-seed when the bed or fee plan changes (or its amounts arrive). None of these change
+  // while the user types, so their edits are not touched in between.
+  useEffect(() => {
+    if (!selectedBedId || !seedsReady) return;
+    if (planRent !== null) {
+      setRentInput(paiseToRupeesInput(planRent));
+      rentEditedRef.current = false;
+    } else if (!rentEditedRef.current) {
+      setRentInput(paiseToRupeesInput(roomRent));
+    }
+    if (planDeposit !== null) {
+      setDepositInput(paiseToRupeesInput(planDeposit));
+      depositEditedRef.current = false;
+    } else if (!depositEditedRef.current) {
+      setDepositInput("");
+    }
+  }, [selectedBedId, feePlanId, seedsReady, planRent, planDeposit, roomRent]);
+
+  function resetAllocateForm() {
+    setSelectedBed(null);
+    setStudentId("");
+    setFeePlanId("");
+    setRentInput("");
+    setDepositInput("");
+    rentEditedRef.current = false;
+    depositEditedRef.current = false;
+    setStartDateInput(null);
+  }
+
+  // Everything that shows beds/occupancy for this property: the board itself, the
+  // structure pages and the property tabs.
+  function invalidateOccupancyCaches() {
+    qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+    qc.invalidateQueries({ queryKey: ["structure"] });
+    qc.invalidateQueries({ queryKey: ["rooms-beds"] });
+    if (effectiveProp) {
+      qc.invalidateQueries({ queryKey: ["property-overview", effectiveProp] });
+      qc.invalidateQueries({ queryKey: ["property-students", effectiveProp] });
+      qc.invalidateQueries({ queryKey: ["students-tab", effectiveProp] });
+    }
+  }
 
   const createFn = useServerFn(createAllocation);
   const create = useMutation({
     mutationFn: async () => {
       if (!selectedBed || !studentId) throw new Error("Pick bed + student");
       if (!feePlanId) throw new Error("Pick a fee plan — required to auto-generate invoices");
+      if (rentPaise === null) throw new Error("Enter the monthly rent");
+      if (depositPaise === null) throw new Error("Enter the security deposit");
       return createFn({
         data: {
           student_id: studentId,
           bed_id: selectedBed.id,
           fee_plan_id: feePlanId,
           start_date: startDate,
-          rent_snapshot_paise: rent,
-          deposit_snapshot_paise: deposit,
+          rent_snapshot_paise: rentPaise,
+          deposit_snapshot_paise: depositPaise,
           billing_cycle_day: 1,
           notice_period_days: 30,
         },
@@ -429,11 +551,9 @@ export function AllocationBoard({
     },
     onSuccess: () => {
       toast.success("Bed allocated — agreement sent to student");
-      qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+      invalidateOccupancyCaches();
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
-      setSelectedBed(null);
-      setStudentId("");
-      setFeePlanId("");
+      resetAllocateForm();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -474,19 +594,16 @@ export function AllocationBoard({
       toast.success(
         `Student moved to bed ${selectedBed ? formatBedLabel(selectedBed.roomNumber, selectedBed.code) : ""}`,
       );
-      qc.invalidateQueries({ queryKey: ["allocation-beds"] });
+      invalidateOccupancyCaches();
       qc.invalidateQueries({ queryKey: ["allocation-eligible-students"] });
       qc.invalidateQueries({ queryKey: ["student-open-allocation"] });
-      setSelectedBed(null);
-      setStudentId("");
+      resetAllocateForm();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Swap failed"),
   });
 
   function closeAllocateDialog() {
-    setSelectedBed(null);
-    setStudentId("");
-    setFeePlanId("");
+    resetAllocateForm();
     setStatusPanelOpen(false);
   }
 
@@ -604,18 +721,22 @@ export function AllocationBoard({
               </span>
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Tip: Click on any room to view detailed information
+                  Tip: Click a vacant bed to allocate it, or any other bed to see its details
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Occupancy status is updated in real-time
+                  Bed counts refresh when you open this page and after every allocation, swap or
+                  status change made here
                 </p>
               </div>
             </div>
-            <Button asChild variant="ghost" size="sm" className="shrink-0">
-              <Link to="/admin/support">
-                <HelpCircle className="h-4 w-4" /> Need help?
-              </Link>
-            </Button>
+            {/* Support tickets live under /admin only; there is no Warden support route. */}
+            {isAdmin && (
+              <Button asChild variant="ghost" size="sm" className="shrink-0">
+                <Link to="/admin/support">
+                  <HelpCircle className="h-4 w-4" /> Need help?
+                </Link>
+              </Button>
+            )}
           </div>
         </>
       )}
@@ -779,7 +900,7 @@ export function AllocationBoard({
                       // never sets — so it rendered dark-on-dark in the dark theme. Same picker,
                       // just a scheme that matches the theme.
                       className="[color-scheme:light] dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => setStartDateInput(e.target.value || null)}
                     />
                   </div>
                   <div>
@@ -787,14 +908,17 @@ export function AllocationBoard({
                     <Input
                       id="rent"
                       type="number"
-                      value={rent / 100}
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
+                      required
+                      placeholder={seedsReady ? "Enter monthly rent" : "Loading…"}
+                      disabled={!seedsReady}
+                      value={rentInput}
+                      aria-invalid={rentInput !== "" && rentPaise === null}
                       onChange={(e) => {
-                        // A number input keeps "05" as typed (React sees it as equal to 5), so
-                        // typing over the default 0 produced 05000. Drop leading zeros in the
-                        // field itself ("0.5" and a lone "0" are left alone).
-                        const cleaned = e.target.value.replace(/^(-?)0+(?=\d)/, "$1");
-                        if (cleaned !== e.target.value) e.target.value = cleaned;
-                        setRent(Math.round(+cleaned * 100));
+                        rentEditedRef.current = true;
+                        setRentInput(stripLeadingZeros(e.target.value));
                       }}
                     />
                   </div>
@@ -803,8 +927,18 @@ export function AllocationBoard({
                     <Input
                       id="dep"
                       type="number"
-                      value={deposit / 100}
-                      onChange={(e) => setDeposit(Math.round(+e.target.value * 100))}
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
+                      required
+                      placeholder={seedsReady ? "Enter security deposit" : "Loading…"}
+                      disabled={!seedsReady}
+                      value={depositInput}
+                      aria-invalid={depositInput !== "" && depositPaise === null}
+                      onChange={(e) => {
+                        depositEditedRef.current = true;
+                        setDepositInput(stripLeadingZeros(e.target.value));
+                      }}
                     />
                   </div>
                   {statusTrigger && <div className="flex items-end">{statusTrigger}</div>}
@@ -820,8 +954,7 @@ export function AllocationBoard({
                 bed={selectedBed}
                 onClose={() => setStatusPanelOpen(false)}
                 onDone={() => {
-                  qc.invalidateQueries({ queryKey: ["allocation-beds"] });
-                  qc.invalidateQueries({ queryKey: ["structure"] });
+                  invalidateOccupancyCaches();
                   closeAllocateDialog();
                 }}
               />
@@ -843,7 +976,15 @@ export function AllocationBoard({
               )
             ) : canCreate ? (
               <Button
-                disabled={!studentId || !feePlanId || create.isPending || statusPanelOpen}
+                disabled={
+                  !studentId ||
+                  !feePlanId ||
+                  !seedsReady ||
+                  rentPaise === null ||
+                  depositPaise === null ||
+                  create.isPending ||
+                  statusPanelOpen
+                }
                 onClick={() => create.mutate()}
               >
                 <BedSingle className="h-4 w-4" /> Allocate
@@ -862,10 +1003,7 @@ export function AllocationBoard({
           bed={statusBed}
           open={!!statusBed}
           onOpenChange={(v) => !v && setStatusBed(null)}
-          onDone={() => {
-            qc.invalidateQueries({ queryKey: ["allocation-beds"] });
-            qc.invalidateQueries({ queryKey: ["structure"] });
-          }}
+          onDone={invalidateOccupancyCaches}
         />
       )}
 
@@ -932,21 +1070,29 @@ export function AllocationBoard({
                 <Settings2 className="h-4 w-4" /> Manage status
               </Button>
             )}
-            {viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
+            {/* Role-specific targets: /admin/* is HOSTEL_ADMIN-only, so a Warden gets the
+                /warden equivalents. Rendered only once the role is known, so nobody is sent
+                down the wrong area while it loads. */}
+            {resolvedRole && viewBed?.status === "OCCUPIED" && bedDetailQ.data?.student_id && (
               <>
                 <Button asChild variant="outline">
-                  <Link to="/admin/students/$id" params={{ id: bedDetailQ.data.student_id }}>
+                  <Link
+                    to={isAdmin ? "/admin/students/$id" : "/warden/students/$id"}
+                    params={{ id: bedDetailQ.data.student_id }}
+                  >
                     <User className="h-4 w-4" /> View student
                   </Link>
                 </Button>
-                <Button asChild>
-                  <Link
-                    to="/admin/students/$id/move-out"
-                    params={{ id: bedDetailQ.data.student_id }}
-                  >
-                    <DoorOpen className="h-4 w-4" /> Deallocate / move out
-                  </Link>
-                </Button>
+                {canEdit && (
+                  <Button asChild>
+                    <Link
+                      to={isAdmin ? "/admin/students/$id/move-out" : "/warden/move-out/$id"}
+                      params={{ id: bedDetailQ.data.student_id }}
+                    >
+                      <DoorOpen className="h-4 w-4" /> Deallocate / move out
+                    </Link>
+                  </Button>
+                )}
               </>
             )}
           </DialogFooter>

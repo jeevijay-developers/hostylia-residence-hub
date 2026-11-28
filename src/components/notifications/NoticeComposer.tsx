@@ -31,12 +31,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import {
-  publishNotice,
-  cancelNotice,
-  editNotice,
-  getNoticeChannelAvailability,
-} from "@/lib/notice.functions";
+import { publishNotice, cancelNotice, editNotice } from "@/lib/notice.functions";
 import { useTenantNotices, type NoticeRow } from "@/lib/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -64,6 +59,22 @@ import { previewNoticeAudience } from "@/lib/notice-audience.functions";
 import { formatIstDate, formatIstDateTime, istInputToIso } from "@/lib/ist";
 import { effectiveNoticeStatus, useNowTick } from "@/lib/notice-time";
 import { SchedulePicker } from "@/components/notifications/SchedulePicker";
+import {
+  NOTICE_CATEGORIES,
+  isNoticeCategory,
+  withInApp,
+  type NoticeCategory,
+  type NoticeChannelKey,
+} from "@/lib/notice-defaults";
+import {
+  channelAvailability,
+  useNoticeChannelAvailability,
+  usePropertyNoticeDefaults,
+} from "@/lib/property-notices";
+import { CATEGORY_META } from "@/components/hostel/notices/notice-meta";
+/** notices.category is text (checked against NOTICE_CATEGORIES in the database): narrow it. */
+const categoryOf = (n: { category?: string | null }): NoticeCategory =>
+  isNoticeCategory(n.category) ? n.category : "GENERAL";
 
 const CHANNELS = [
   { key: "IN_APP", label: "In-app", icon: Smartphone },
@@ -94,13 +105,23 @@ export function NoticeComposer({ propertyId }: Props) {
   const publishFn = useServerFn(publishNotice);
   const cancelFn = useServerFn(cancelNotice);
 
-  const availabilityFn = useServerFn(getNoticeChannelAvailability);
-
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState<"NORMAL" | "IMPORTANT" | "URGENT">("NORMAL");
+  const [category, setCategory] = useState<NoticeCategory>("GENERAL");
   const [audience, setAudience] = useState<(typeof AUDIENCES)[number]>("ALL");
-  const [channels, setChannels] = useState<string[]>(["IN_APP"]);
+  // In-app is always on: the scheduled publisher delivers every notice in-app.
+  const [channels, setChannels] = useState<NoticeChannelKey[]>(["IN_APP"]);
+  // New notices start from the property's default channels (Notices tab > Broadcast channels) until the
+  // user picks channels themselves.
+  const defaultsQ = usePropertyNoticeDefaults(propertyId);
+  const [channelsTouched, setChannelsTouched] = useState(false);
+  useEffect(() => {
+    setChannelsTouched(false);
+  }, [propertyId]);
+  useEffect(() => {
+    if (!channelsTouched && defaultsQ.data) setChannels(withInApp(defaultsQ.data));
+  }, [defaultsQ.data, channelsTouched]);
   // What the admin types is Indian Standard Time ("YYYY-MM-DDTHH:mm"), whatever the device's timezone;
   // it is converted to the exact UTC instant only when sent.
   const [publishAt, setPublishAt] = useState("");
@@ -128,12 +149,7 @@ export function NoticeComposer({ propertyId }: Props) {
 
   // Which channels the platform can really deliver, asked of the server (which asks the sender). The
   // browser only gets booleans + a reason; nothing here is hardcoded.
-  const availabilityQ = useQuery({
-    queryKey: ["notice-channel-availability", tenantId],
-    enabled: !!tenantId,
-    staleTime: 60_000,
-    queryFn: () => availabilityFn({ data: { tenant_id: tenantId! } }),
-  });
+  const availabilityQ = useNoticeChannelAvailability(tenantId);
   // A custom selection belongs to one property.
   useEffect(() => {
     setCustomStudents([]);
@@ -162,7 +178,7 @@ export function NoticeComposer({ propertyId }: Props) {
     queryFn: () =>
       previewFn({
         data: {
-          tenant_id: tenantId!,
+          tenant_id: tenantId ?? "",
           property_id: propertyId,
           student_ids: customStudentIds,
           block_ids: customBlockIds,
@@ -171,14 +187,9 @@ export function NoticeComposer({ propertyId }: Props) {
   });
 
   // In-app never depends on a provider; every other channel is enabled only when the server says so.
-  const channelState = (key: string): { enabled: boolean; reason: string | null } => {
-    if (key === "IN_APP") return { enabled: true, reason: null };
-    if (availabilityQ.isPending) return { enabled: false, reason: "Checking provider status…" };
-    const a = availabilityQ.data?.[key as "SMS" | "WHATSAPP" | "EMAIL"];
-    if (!a) return { enabled: false, reason: "Could not verify provider status" };
-    return { enabled: a.available, reason: a.reason };
-  };
-  // A selected channel that is (or becomes) unavailable is never submitted.
+  const channelState = (key: NoticeChannelKey) => channelAvailability(availabilityQ, key);
+  // A selected channel that is (or becomes) unavailable is never submitted. In-app is always available,
+  // so this is never empty.
   const activeChannels = channels.filter((c) => channelState(c).enabled);
   const { data: notices = [] } = useTenantNotices(tenantId, propertyId, true);
   const sortedNotices = useMemo(
@@ -205,6 +216,7 @@ export function NoticeComposer({ propertyId }: Props) {
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [editPriority, setEditPriority] = useState<"NORMAL" | "IMPORTANT" | "URGENT">("NORMAL");
+  const [editCategory, setEditCategory] = useState<NoticeCategory>("GENERAL");
 
   const editFn = useServerFn(editNotice);
   const edit = useMutation({
@@ -216,6 +228,7 @@ export function NoticeComposer({ propertyId }: Props) {
           title: editTitle,
           body: editBody,
           priority: editPriority,
+          category: editCategory,
         },
       });
     },
@@ -227,11 +240,22 @@ export function NoticeComposer({ propertyId }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancel = useMutation({
+    mutationFn: (noticeId: string) => cancelFn({ data: { notice_id: noticeId } }),
+    onSuccess: () => {
+      toast.success("Notice cancelled — it won't be sent");
+      qc.invalidateQueries({ queryKey: ["notices"] });
+      qc.invalidateQueries({ queryKey: ["property-notices"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function openEdit(n: NoticeRow) {
     setEditingNotice(n);
     setEditTitle(n.title);
     setEditBody(n.body);
     setEditPriority(n.priority as "NORMAL" | "IMPORTANT" | "URGENT");
+    setEditCategory(categoryOf(n));
   }
 
   const publish = useMutation({
@@ -244,8 +268,9 @@ export function NoticeComposer({ propertyId }: Props) {
           title,
           body,
           priority,
+          category,
           audience_type: audience,
-          channels: activeChannels as ("IN_APP" | "SMS" | "WHATSAPP" | "EMAIL")[],
+          channels: activeChannels,
           publish_at: publishAtIso,
           publish_now: !publishAtIso,
           expires_at: expiresAtIso,
@@ -281,6 +306,7 @@ export function NoticeComposer({ propertyId }: Props) {
       }
       setTitle("");
       setBody("");
+      setCategory("GENERAL");
       setPublishAt("");
       setExpiresAt("");
       setCustomStudents([]);
@@ -297,11 +323,7 @@ export function NoticeComposer({ propertyId }: Props) {
   const customReady =
     audience !== "CUSTOM" || (previewQ.isSuccess && (previewQ.data?.count ?? 0) > 0);
   const canSubmit =
-    title.trim().length >= 3 &&
-    body.trim().length >= 3 &&
-    activeChannels.length > 0 &&
-    customReady &&
-    !timeError;
+    title.trim().length >= 3 && body.trim().length >= 3 && customReady && !timeError;
 
   return (
     <div className="grid w-full max-w-full gap-6 overflow-x-hidden">
@@ -332,6 +354,21 @@ export function NoticeComposer({ propertyId }: Props) {
               onChange={(e) => setBody(e.target.value)}
               rows={5}
             />
+          </div>
+          <div>
+            <Label>Category</Label>
+            <Select value={category} onValueChange={(v) => isNoticeCategory(v) && setCategory(v)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NOTICE_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {CATEGORY_META[c].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -390,21 +427,30 @@ export function NoticeComposer({ propertyId }: Props) {
             <TooltipProvider>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {CHANNELS.map((c) => {
+                  const alwaysOn = c.key === "IN_APP";
                   const { enabled, reason } = channelState(c.key);
-                  const selected = enabled && channels.includes(c.key);
+                  const selected = alwaysOn || (enabled && channels.includes(c.key));
                   const Icon = c.icon;
                   const button = (
                     <button
                       key={c.key}
                       type="button"
-                      disabled={!enabled}
-                      onClick={() =>
+                      disabled={alwaysOn || !enabled}
+                      aria-pressed={selected}
+                      title={alwaysOn ? "Always on" : undefined}
+                      onClick={() => {
+                        setChannelsTouched(true);
                         setChannels((prev) =>
-                          prev.includes(c.key) ? prev.filter((x) => x !== c.key) : [...prev, c.key],
-                        )
-                      }
+                          withInApp(
+                            prev.includes(c.key)
+                              ? prev.filter((x) => x !== c.key)
+                              : [...prev, c.key],
+                          ),
+                        );
+                      }}
                       className={cn(
-                        "inline-flex items-center gap-1 sm:gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+                        "inline-flex items-center gap-1 sm:gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm font-medium transition disabled:cursor-not-allowed",
+                        !alwaysOn && "disabled:opacity-50",
                         selected
                           ? "border-warning bg-warning/10 text-warning"
                           : "border-border bg-transparent text-muted-foreground hover:border-primary/40",
@@ -412,6 +458,7 @@ export function NoticeComposer({ propertyId }: Props) {
                     >
                       <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       {c.label}
+                      {alwaysOn ? <span className="sr-only"> (always on)</span> : null}
                     </button>
                   );
                   return !enabled ? (
@@ -427,6 +474,7 @@ export function NoticeComposer({ propertyId }: Props) {
                 })}
               </div>
             </TooltipProvider>
+            <p className="mt-1 text-xs text-muted-foreground">In-app is always on.</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -522,7 +570,8 @@ export function NoticeComposer({ propertyId }: Props) {
                       {n.title}
                     </p>
                     <p className="mt-0.5 break-words text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
-                      {n.audience_type} · {n.channels.join(", ")}
+                      {CATEGORY_META[categoryOf(n)].label} · {n.audience_type} ·{" "}
+                      {n.channels.join(", ")}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground sm:text-xs">
                       <span className="inline-flex items-center gap-1">
@@ -572,10 +621,8 @@ export function NoticeComposer({ propertyId }: Props) {
                         </DropdownMenuItem>
                         {(n.status === "DRAFT" || n.status === "SCHEDULED") && (
                           <DropdownMenuItem
-                            onClick={async () => {
-                              await cancelFn({ data: { notice_id: n.id } });
-                              qc.invalidateQueries({ queryKey: ["notices"] });
-                            }}
+                            disabled={cancel.isPending}
+                            onClick={() => cancel.mutate(n.id)}
                           >
                             Cancel
                           </DropdownMenuItem>
@@ -604,7 +651,7 @@ export function NoticeComposer({ propertyId }: Props) {
                   className={cn(
                     "rounded-full border-transparent",
                     toneClasses[
-                    STATUS_TONE[effectiveNoticeStatus(viewingNotice, nowTick)] ?? "muted"
+                      STATUS_TONE[effectiveNoticeStatus(viewingNotice, nowTick)] ?? "muted"
                     ],
                   )}
                 >
@@ -678,6 +725,24 @@ export function NoticeComposer({ propertyId }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Category</Label>
+              <Select
+                value={editCategory}
+                onValueChange={(v) => isNoticeCategory(v) && setEditCategory(v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NOTICE_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {CATEGORY_META[c].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {editingNotice?.status === "PUBLISHED" && (
               <p className="text-xs text-muted-foreground">
                 This notice was already sent — editing only corrects the stored record, it will not
@@ -711,7 +776,7 @@ function usePropertyTenantId(propertyId: string | null | undefined): string | nu
       const { data } = await supabase
         .from("properties")
         .select("tenant_id")
-        .eq("id", propertyId!)
+        .eq("id", propertyId ?? "")
         .maybeSingle();
       return data?.tenant_id ?? null;
     },

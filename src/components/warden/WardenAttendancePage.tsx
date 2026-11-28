@@ -30,6 +30,8 @@ import {
   useAttendanceRoomCounts,
   useAttendance,
   useStudentsInProperty,
+  localDateInTimezone,
+  usePropertyTimezone,
 } from "@/lib/ops";
 import { bulkMarkAttendance } from "@/lib/operations.functions";
 import { useServerFn } from "@tanstack/react-start";
@@ -71,7 +73,17 @@ export function WardenAttendancePage() {
   const role = useResolvedRole();
   const propQ = useMyStaffProperty(role.data?.userId);
   const propertyId = propQ.data ?? null;
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // "Today" is the property's local date, not UTC (UTC is still yesterday
+  // between 00:00 and 05:30 IST). Starts on the IST date (the DB default zone)
+  // and moves to the property's own zone once it loads, unless already changed.
+  const timezoneQ = usePropertyTimezone(propertyId);
+  const today = localDateInTimezone(timezoneQ.data);
+  const [date, setDate] = useState(() => localDateInTimezone(null));
+  useEffect(() => {
+    if (!timezoneQ.data) return;
+    const istToday = localDateInTimezone(null);
+    setDate((d) => (d === istToday ? localDateInTimezone(timezoneQ.data) : d));
+  }, [timezoneQ.data]);
   const [page, setPage] = useState(0);
   const [roomFilter, setRoomFilter] = useState("ALL");
   useEffect(() => {
@@ -177,7 +189,7 @@ export function WardenAttendancePage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!propertyId) return;
-      if (date !== new Date().toISOString().slice(0, 10)) {
+      if (date !== today) {
         throw new Error("Attendance can only be marked for today.");
       }
       // On Leave rows (approved leave, or a legacy mark) and Out-Pass students

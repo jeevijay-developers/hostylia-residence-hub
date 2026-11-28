@@ -77,6 +77,28 @@ import {
   uploadRoomPhotos,
 } from "@/lib/room-photos";
 
+/** PostgREST returns at most this many rows per request. */
+const PAGE_SIZE = 1000;
+/** Safety stop so a runaway loop can't hammer the API. */
+const MAX_ROWS = 20_000;
+
+/** Reads every row of a query in PAGE_SIZE chunks until a short page comes back. */
+async function readAllPages<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+    const { data, error } = await page(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(getErrorMessage(error, "We couldn't load this property's rooms and beds."));
+    }
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
 /**
  * Property structure: blocks → floors → rooms → beds, with Add Block / Floor /
  * Room, CSV import and per-bed status management.
@@ -139,29 +161,37 @@ export function RoomsBedsBoard({
           .eq("property_id", propertyId)
           .is("deleted_at", null)
           .order("display_order"),
-        supabase
-          .from("rooms")
-          .select("*")
-          .eq("property_id", propertyId)
-          .is("deleted_at", null)
-          .order("room_number"),
-        supabase
-          .from("beds")
-          .select("id, room_id, code, status, notes, maintenance_until")
-          .eq("property_id", propertyId)
-          .is("deleted_at", null)
-          .order("code"),
+        // Rooms and beds can exceed PostgREST's 1000-row cap on a large
+        // property, so they are read page by page (stable order via id).
+        readAllPages((from, to) =>
+          supabase
+            .from("rooms")
+            .select("*")
+            .eq("property_id", propertyId)
+            .is("deleted_at", null)
+            .order("room_number")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllPages((from, to) =>
+          supabase
+            .from("beds")
+            .select("id, room_id, code, status, notes, maintenance_until")
+            .eq("property_id", propertyId)
+            .is("deleted_at", null)
+            .order("code")
+            .order("id")
+            .range(from, to),
+        ),
       ]);
       if (blocks.error) throw blocks.error;
       if (floors.error) throw floors.error;
-      if (rooms.error) throw rooms.error;
-      if (beds.error) throw beds.error;
       return {
         blocks: blocks.data,
         // Logical order (Basement, Ground, First … Terrace) — display only.
         floors: sortFloors(floors.data),
-        rooms: rooms.data,
-        beds: beds.data,
+        rooms,
+        beds,
       };
     },
   });
@@ -173,6 +203,11 @@ export function RoomsBedsBoard({
     // Properties list / dashboard totals.
     qc.invalidateQueries({ queryKey: ["admin-properties"] });
     qc.invalidateQueries({ queryKey: ["admin-kpis"] });
+    // Property tabs (Rooms & Beds, Overview, Students) built on the same rooms/beds.
+    qc.invalidateQueries({ queryKey: ["rooms-beds"] });
+    qc.invalidateQueries({ queryKey: ["property-overview", propertyId] });
+    qc.invalidateQueries({ queryKey: ["property-students", propertyId] });
+    qc.invalidateQueries({ queryKey: ["students-tab", propertyId] });
   }
 
   if (propertyQ.isError || treeQ.isError) {

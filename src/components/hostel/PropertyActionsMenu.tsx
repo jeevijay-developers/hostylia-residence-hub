@@ -45,9 +45,6 @@ interface PropertyActionsMenuProps {
   property: { id: string; slug: string; name: string; status: string };
   /** "overlay" sits on the card photo; "ghost" is the plain table-row button. */
   variant?: "overlay" | "ghost";
-  /** Called after a successful delete, e.g. to leave the deleted property's own page. */
-  onDeleted?: () => void;
-  className?: string;
 }
 
 /**
@@ -56,12 +53,7 @@ interface PropertyActionsMenuProps {
  * caller is the tenant's Hostel Admin; delete is refused while the property
  * has residents and needs the name typed to confirm.
  */
-export function PropertyActionsMenu({
-  property,
-  variant = "ghost",
-  onDeleted,
-  className,
-}: PropertyActionsMenuProps) {
+export function PropertyActionsMenu({ property, variant = "ghost" }: PropertyActionsMenuProps) {
   const qc = useQueryClient();
   const changeStatus = useServerFn(setPropertyStatus);
   const remove = useServerFn(deleteProperty);
@@ -103,7 +95,6 @@ export function PropertyActionsMenu({
       refresh();
       setDeleteOpen(false);
       toast.success(`${property.name} was deleted.`);
-      onDeleted?.();
     },
     onError: (e) =>
       setDeleteError(
@@ -121,7 +112,6 @@ export function PropertyActionsMenu({
           className={cn(
             "grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             variant === "overlay" ? "bg-card/90 shadow-sm backdrop-blur" : "hover:bg-muted",
-            className,
           )}
         >
           <MoreVertical className="h-4 w-4" />

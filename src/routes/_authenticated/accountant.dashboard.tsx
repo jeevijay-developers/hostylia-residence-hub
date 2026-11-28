@@ -62,7 +62,7 @@ function useAccountantCollectionsOverview(propertyId: string | null) {
         .select("amount_paise, paid_at")
         .eq("property_id", propertyId!)
         .eq("status", "CAPTURED")
-        .neq("provider", "simulated")
+        .or("provider.is.null,provider.neq.simulated")
         .gte("paid_at", queryFrom.toISOString());
       if (error) throw new Error(error.message);
 
@@ -442,11 +442,7 @@ function AgingBucketRows({ buckets }: { buckets: ReturnType<typeof rebucketAging
 type RecentPaymentRow = NonNullable<ReturnType<typeof useAccountantRecentPayments>["data"]>[number];
 type RecentInvoiceRow = NonNullable<ReturnType<typeof useAccountantRecentInvoices>["data"]>[number];
 
-function RecentPaymentsCard({
-  query,
-}: {
-  query: ReturnType<typeof useAccountantRecentPayments>;
-}) {
+function RecentPaymentsCard({ query }: { query: ReturnType<typeof useAccountantRecentPayments> }) {
   const rows = (query.data ?? []) as RecentPaymentRow[];
   return (
     <Card>
@@ -493,7 +489,9 @@ function RecentPaymentsCard({
                     <td className="px-3 py-2.5 text-right font-semibold text-foreground max-sm:whitespace-nowrap">
                       {formatInr(p.amount_paise)}
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground max-sm:whitespace-nowrap">{p.mode}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground max-sm:whitespace-nowrap">
+                      {p.mode}
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground max-sm:whitespace-nowrap">
                       {new Date(p.paid_at ?? p.created_at).toLocaleDateString()}
                     </td>
@@ -526,11 +524,7 @@ function RecentPaymentsCard({
   );
 }
 
-function RecentInvoicesCard({
-  query,
-}: {
-  query: ReturnType<typeof useAccountantRecentInvoices>;
-}) {
+function RecentInvoicesCard({ query }: { query: ReturnType<typeof useAccountantRecentInvoices> }) {
   const rows = (query.data ?? []) as RecentInvoiceRow[];
   return (
     <Card>
@@ -541,7 +535,10 @@ function RecentInvoicesCard({
         {query.isLoading ? (
           <Skeleton className="h-40 w-full rounded-xl" />
         ) : rows.length === 0 ? (
-          <EmptyState title="No invoices yet" description="Invoices will appear here once generated." />
+          <EmptyState
+            title="No invoices yet"
+            description="Invoices will appear here once generated."
+          />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/80">
             <table className="w-full text-sm">

@@ -94,7 +94,7 @@ export function PaymentHistoryPanel({
         // which excludes simulated payments from real collections.
         query = query
           .eq("status", "CAPTURED")
-          .neq("provider", "simulated")
+          .or("provider.is.null,provider.neq.simulated")
           .gte("paid_at", startOfToday.toISOString());
       }
       const { data, error, count } = await query;

@@ -17,7 +17,8 @@ export function KpiTile({
 }: {
   icon: LucideIcon;
   label: string;
-  value: number;
+  /** null = the count could not be loaded; shown as an em dash, never a made-up 0. */
+  value: number | null;
   badge?: ReactNode;
   caption: string;
   isLoading?: boolean;
@@ -42,7 +43,7 @@ export function KpiTile({
         ) : (
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <p className="font-display text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-[28px]">
-              {value.toLocaleString("en-IN")}
+              {value === null ? "—" : value.toLocaleString("en-IN")}
             </p>
             {badge}
           </div>

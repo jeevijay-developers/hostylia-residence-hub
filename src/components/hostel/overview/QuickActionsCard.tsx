@@ -50,6 +50,7 @@ export function QuickActionsCard({
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["property-students", property.id] });
+    qc.invalidateQueries({ queryKey: ["students-tab", property.id] });
     qc.invalidateQueries({ queryKey: ["property-overview", property.id] });
     qc.invalidateQueries({ queryKey: ["students-list"] });
   };

@@ -49,22 +49,49 @@ function friendlyUploadError(message: string) {
   return "We couldn't upload the photo. Please try again.";
 }
 
-/** Uploads photos for one room. Throws a user-friendly Error on the first failure. */
-export async function uploadRoomPhotos(room: RoomRef, files: File[]) {
+/**
+ * Uploads photos for one room and resolves to how many were stored. Every file
+ * is checked before the first upload, so a bad file never leaves the room with
+ * only some of the batch. Throws a user-friendly Error on the first failure
+ * (saying how many had already been stored, if any).
+ */
+export async function uploadRoomPhotos(room: RoomRef, files: File[]): Promise<number> {
+  const problems = files.map(roomPhotoProblem).filter((p): p is string => p !== null);
+  if (problems.length) {
+    throw new Error(
+      problems.length === 1
+        ? `${problems[0]} No photos were uploaded.`
+        : `${problems.length} files can't be used (${problems[0]}). No photos were uploaded.`,
+    );
+  }
+  let uploaded = 0;
   for (const file of files) {
-    const problem = roomPhotoProblem(file);
-    if (problem) throw new Error(problem);
     const path = `${folderOf(room)}/${crypto.randomUUID()}.${ALLOWED[file.type]}`;
     const { error } = await supabase.storage
       .from(ROOM_PHOTO_BUCKET)
       .upload(path, file, { contentType: file.type, upsert: false });
-    if (error) throw new Error(friendlyUploadError(error.message));
+    if (error) {
+      const reason = friendlyUploadError(error.message);
+      throw new Error(
+        uploaded > 0 ? `${uploaded} of ${files.length} photos were added, then: ${reason}` : reason,
+      );
+    }
+    uploaded++;
   }
+  return uploaded;
 }
 
+/** Deletes one photo. Throws a user-friendly Error when nothing was removed. */
 export async function removeRoomPhoto(path: string) {
-  const { error } = await supabase.storage.from(ROOM_PHOTO_BUCKET).remove([path]);
+  const { data, error } = await supabase.storage.from(ROOM_PHOTO_BUCKET).remove([path]);
   if (error) throw new Error("We couldn't remove the photo. Please try again.");
+  // Storage reports success with an empty list when RLS hid the file or it was
+  // already gone.
+  if (!data?.length) {
+    throw new Error(
+      "The photo wasn't removed — it may already be gone, or only a Hostel Admin can remove room photos.",
+    );
+  }
 }
 
 export interface RoomPhoto {

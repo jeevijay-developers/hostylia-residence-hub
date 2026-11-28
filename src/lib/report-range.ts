@@ -120,6 +120,8 @@ export function formatRange(range: DateRange): string {
 export const invoiceScopeSearchSchema = z
   .object({
     scope: z.literal("overdue").optional().catch(undefined),
+    // Deep link that opens the Create invoice dialog (e.g. the property Finance tab).
+    create: z.boolean().optional().catch(undefined),
     from: isoDateSchema.optional().catch(undefined),
     to: isoDateSchema.optional().catch(undefined),
   })

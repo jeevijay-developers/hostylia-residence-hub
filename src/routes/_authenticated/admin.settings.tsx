@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  AlertCircle,
+  ArrowRight,
   Bell,
   Building2,
   Calendar,
@@ -14,6 +16,7 @@ import {
   Loader2,
   Mail,
   Phone,
+  RotateCw,
   Save,
   ShieldCheck,
   XCircle,
@@ -42,7 +45,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchableSelect } from "@/components/hostel/PropertyLocationPickers";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { usePropertySlug } from "@/lib/admin-properties";
+import { IST_TIME_ZONE, formatIstDate } from "@/lib/ist";
+import { allTimeZones, isValidTimeZone, timeZoneOffsetLabel } from "@/lib/locations";
+import { relevantEndDate } from "@/lib/subscription-expiry";
 import { getErrorMessage } from "@/lib/utils";
 import { useResolvedRole } from "@/lib/user-role";
 import { usePropertyStore } from "@/stores/property-store";
@@ -54,7 +63,7 @@ import type { CancellationReason } from "@/schemas/subscription";
 const SETTINGS_TABS = ["property", "organization", "billing"] as const;
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
-  // Optional deep link to a tab (e.g. the Dashboard's plan-renewal banner opens
+  // Optional deep link to a tab (e.g. the Dashboard's plan-expiry banner opens
   // ?tab=billing). Omitted or unknown values fall back to the Property tab.
   validateSearch: (search: Record<string, unknown>): { tab?: (typeof SETTINGS_TABS)[number] } => {
     const tab = SETTINGS_TABS.find((t) => t === search.tab);
@@ -96,7 +105,9 @@ function AdminSettingsPage() {
 
         <TabsContent value="property" className="mt-0 focus-visible:outline-none">
           {propertyId ? (
-            <PropertyForm propertyId={propertyId} />
+            // Keyed so switching property remounts the form: no state from the
+            // previous property can be saved against the new one.
+            <PropertyForm key={propertyId} propertyId={propertyId} />
           ) : (
             <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
               Pick a property from the switcher.
@@ -126,49 +137,88 @@ function AdminSettingsPage() {
   );
 }
 
+/** `settings.curfew_time` from the properties.settings JSON, if it is a string. */
+function readCurfewTime(settings: Json | null | undefined): string | null {
+  if (typeof settings !== "object" || settings === null || Array.isArray(settings)) return null;
+  const v = settings.curfew_time;
+  return typeof v === "string" && v ? v.slice(0, 5) : null;
+}
+
 function PropertyForm({ propertyId }: { propertyId: string }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updatePropertySettings);
-  const { data } = useQuery({
+  const slugQ = usePropertySlug(propertyId);
+  const propertyQ = useQuery({
     queryKey: ["property-settings", propertyId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("properties")
-        .select("id,name,timezone,gender_policy,settings")
+        .select("id,name,timezone,settings")
         .eq("id", propertyId)
         .single();
       if (error) throw error;
       return data;
     },
   });
+  const data = propertyQ.data;
   const curfewInputRef = useRef<HTMLInputElement>(null);
   const [curfewTime, setCurfewTime] = useState("21:00");
-  const [timezone, setTimezone] = useState("Asia/Kolkata");
-  const [notifyPref, setNotifyPref] = useState("IN_APP");
+  const [timezone, setTimezone] = useState(IST_TIME_ZONE);
+  // Id of the property row the form state was last seeded from. Save stays
+  // disabled until it matches, so the initial defaults (IST / 21:00) can never
+  // overwrite a property's real timezone and curfew.
+  const [seededFor, setSeededFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) {
-      const s = (data.settings as any) ?? {};
-      setCurfewTime(s.curfew_time ?? "21:00");
-      setTimezone(data.timezone ?? "Asia/Kolkata");
-      setNotifyPref(s.notification_default ?? "IN_APP");
+      setCurfewTime(readCurfewTime(data.settings) ?? "21:00");
+      setTimezone(data.timezone || IST_TIME_ZONE);
+      setSeededFor(data.id);
     }
   }, [data]);
 
+  const isFormReady = data?.id === propertyId && seededFor === propertyId;
+
+  const timeZoneOptions = useMemo(() => {
+    const zones = allTimeZones();
+    const ordered = zones.includes(timezone) ? zones : [timezone, ...zones];
+    return ordered.map((z) => ({
+      value: z,
+      label: z.replace(/_/g, " "),
+      hint: timeZoneOffsetLabel(z),
+    }));
+  }, [timezone]);
+
   const save = useMutation({
-    mutationFn: () =>
-      updateFn({
-        data: {
-          property_id: propertyId,
-          settings: { curfew_time: curfewTime, notification_default: notifyPref, timezone },
-        },
-      }),
+    mutationFn: () => {
+      if (!isFormReady) throw new Error("Property settings are still loading");
+      if (!curfewTime) throw new Error("Enter a curfew time");
+      if (!isValidTimeZone(timezone)) throw new Error("Choose a time zone from the list");
+      return updateFn({
+        data: { property_id: propertyId, curfew_time: curfewTime, timezone },
+      });
+    },
     onSuccess: () => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["property-settings", propertyId] });
+      // Everything that reads properties.timezone for this property.
+      qc.invalidateQueries({ queryKey: ["property-timezone"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-property"] });
+      qc.invalidateQueries({ queryKey: ["property-by-slug"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed"),
+    onError: (e) => toast.error(getErrorMessage(e, "Could not save property settings")),
   });
+
+  if (propertyQ.isError) {
+    return (
+      <SettingsLoadError
+        message={getErrorMessage(propertyQ.error, "Could not load property settings.")}
+        isRetrying={propertyQ.isFetching}
+        onRetry={() => void propertyQ.refetch()}
+      />
+    );
+  }
+  if (!isFormReady) return <Skeleton className="h-80 w-full rounded-2xl" />;
 
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-2xl">
@@ -218,43 +268,52 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
             <Globe className="w-5 h-5" />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
-            <Label className="text-foreground text-sm font-semibold">Timezone</Label>
-            <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger className="bg-background/90 border-border focus:border-blue-500 focus:ring-blue-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm">
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border text-foreground">
-                <SelectItem value="Asia/Kolkata">Asia/Kolkata</SelectItem>
-                <SelectItem value="UTC">UTC</SelectItem>
-                <SelectItem value="America/New_York">America/New_York</SelectItem>
-                <SelectItem value="Europe/London">Europe/London</SelectItem>
-                <SelectItem value="Asia/Dubai">Asia/Dubai</SelectItem>
-                <SelectItem value="Asia/Singapore">Asia/Singapore</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="property-timezone" className="text-foreground text-sm font-semibold">
+              Timezone
+            </Label>
+            <div className="sm:max-w-sm">
+              <SearchableSelect
+                id="property-timezone"
+                value={timezone}
+                options={timeZoneOptions}
+                onChange={setTimezone}
+                placeholder="Choose the time zone"
+                searchPlaceholder="Search time zones, e.g. Kolkata…"
+                emptyText="No time zone matches that search."
+                icon={
+                  <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used for attendance dates, curfew and gate-pass times.
+            </p>
           </div>
         </div>
 
-        {/* Default notification channel */}
+        {/* Notice channels live with the property's notices */}
         <div className="flex items-start gap-4 lg:col-span-2">
           <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 mt-1 shadow-sm shadow-emerald-500/10">
             <Bell className="w-5 h-5" />
           </div>
-          <div className="flex-1 space-y-1.5 min-w-0">
-            <Label className="text-foreground text-sm font-semibold">
-              Default notification channel
-            </Label>
-            <Select value={notifyPref} onValueChange={setNotifyPref}>
-              <SelectTrigger className="bg-background/90 border-border focus:border-emerald-500 focus:ring-emerald-500/30 text-foreground rounded-xl h-11 px-3.5 text-sm font-medium sm:max-w-sm">
-                <SelectValue placeholder="Select channel" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border text-foreground">
-                <SelectItem value="IN_APP">IN_APP</SelectItem>
-                <SelectItem value="SMS">SMS</SelectItem>
-                <SelectItem value="WHATSAPP">WHATSAPP</SelectItem>
-                <SelectItem value="EMAIL">EMAIL</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex-1 space-y-1 min-w-0 pt-1">
+            <p className="text-foreground text-sm font-semibold">Notice channels</p>
+            <p className="text-sm text-muted-foreground">
+              Default notice channels are set in this property&apos;s{" "}
+              {slugQ.data ? (
+                <Link
+                  to="/admin/properties/$slug/notices"
+                  params={{ slug: slugQ.data }}
+                  className="inline-flex items-center gap-1 rounded-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Notices tab
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              ) : (
+                "Notices tab"
+              )}
+              .
+            </p>
           </div>
         </div>
       </div>
@@ -262,7 +321,7 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
       <div className="pt-2">
         <Button
           onClick={() => save.mutate()}
-          disabled={save.isPending}
+          disabled={save.isPending || !isFormReady}
           className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-linear-to-r dark:from-amber-500 dark:via-amber-500 dark:to-amber-600 dark:hover:from-amber-400 dark:hover:to-amber-500 dark:text-slate-950 font-bold h-11 px-6 rounded-xl shadow-lg shadow-primary/20 dark:shadow-amber-500/20 border border-primary/30 dark:border-amber-300/40 transition-all duration-200 hover:shadow-primary/30 dark:hover:shadow-amber-500/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           {save.isPending ? (
@@ -273,6 +332,43 @@ function PropertyForm({ propertyId }: { propertyId: string }) {
           <span>{save.isPending ? "Saving…" : "Save changes"}</span>
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Error card for a settings query that failed, with a working retry. */
+function SettingsLoadError({
+  message,
+  isRetrying,
+  onRetry,
+}: {
+  message: string;
+  isRetrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-4 rounded-2xl border border-destructive/40 bg-destructive/5 p-6 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
+        <p className="text-sm font-medium text-destructive">{message}</p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        disabled={isRetrying}
+        className="shrink-0 gap-2 rounded-xl"
+      >
+        {isRetrying ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <RotateCw className="h-4 w-4" aria-hidden="true" />
+        )}
+        {isRetrying ? "Retrying…" : "Retry"}
+      </Button>
     </div>
   );
 }
@@ -307,21 +403,23 @@ function OrgForm({ tenantId }: { tenantId: string }) {
   }, [org]);
 
   const save = useMutation({
-    mutationFn: () =>
-      updateFn({
+    mutationFn: () => {
+      if (!org) throw new Error("No organization record yet");
+      return updateFn({
         data: {
-          organization_id: org!.id,
+          organization_id: org.id,
           legal_name: legal || null,
           gstin: gstin || null,
           billing_email: bEmail || null,
           billing_phone: bPhone || null,
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["organization", tenantId] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed"),
+    onError: (e) => toast.error(getErrorMessage(e, "Could not save organization settings")),
   });
 
   if (!org) {
@@ -442,7 +540,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
       const { data, error } = await supabase
         .from("subscriptions")
         .select(
-          "id,status,starts_at,current_period_end,custom_price_paise,plans(name,price_paise,billing_interval)",
+          "id,status,starts_at,trial_ends_at,current_period_end,custom_price_paise,plans(name,price_paise,billing_interval)",
         )
         .eq("tenant_id", tenantId)
         .in("status", ["TRIAL", "ACTIVE", "PAST_DUE", "PAUSED", "CANCELLED"])
@@ -455,6 +553,15 @@ function BillingTab({ tenantId }: { tenantId: string }) {
   });
 
   if (subQ.isLoading) return <Skeleton className="h-48 w-full rounded-2xl" />;
+  if (subQ.isError) {
+    return (
+      <SettingsLoadError
+        message={getErrorMessage(subQ.error, "Could not load your subscription.")}
+        isRetrying={subQ.isFetching}
+        onRetry={() => void subQ.refetch()}
+      />
+    );
+  }
 
   const sub = subQ.data;
   if (!sub) {
@@ -467,6 +574,8 @@ function BillingTab({ tenantId }: { tenantId: string }) {
 
   const plan = sub.plans as { name: string; price_paise: number; billing_interval: string } | null;
   const effectivePrice = sub.custom_price_paise ?? plan?.price_paise ?? null;
+  const isTrial = sub.status === "TRIAL";
+  const endDate = relevantEndDate(sub);
 
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-2xl">
@@ -504,13 +613,7 @@ function BillingTab({ tenantId }: { tenantId: string }) {
           <div>
             <p className="text-xs font-medium text-muted-foreground">Started Date</p>
             <p className="text-sm font-semibold text-foreground">
-              {sub.starts_at
-                ? new Date(sub.starts_at).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "—"}
+              {sub.starts_at ? formatIstDate(sub.starts_at) : "—"}
             </p>
           </div>
         </div>
@@ -520,15 +623,11 @@ function BillingTab({ tenantId }: { tenantId: string }) {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Period Ends</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {isTrial ? "Trial ends" : "Period ends"}
+            </p>
             <p className="text-sm font-semibold text-foreground">
-              {sub.current_period_end
-                ? new Date(sub.current_period_end).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "—"}
+              {endDate ? formatIstDate(endDate) : "—"}
             </p>
           </div>
         </div>
@@ -554,6 +653,9 @@ function BillingTab({ tenantId }: { tenantId: string }) {
         onClose={() => setCancelOpen(false)}
         onCancelled={() => {
           qc.invalidateQueries({ queryKey: ["my-subscription", tenantId] });
+          // The dashboard plan-expiry banner (usePlanExpiry) caches for 5 min;
+          // a cancelled plan must drop its "ends in N days" warning at once.
+          qc.invalidateQueries({ queryKey: ["admin-dashboard-plan-expiry", tenantId] });
         }}
       />
     </div>

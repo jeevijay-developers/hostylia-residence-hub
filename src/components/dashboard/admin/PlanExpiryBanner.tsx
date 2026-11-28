@@ -1,24 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Crown, X } from "lucide-react";
+import { CircleAlert, Clock, LifeBuoy, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatIstDate } from "@/lib/ist";
 import type { PlanExpiry } from "@/lib/admin-dashboard";
 
 const DISMISS_PREFIX = "hostylia_plan_banner_dismissed:";
 
 function message(expiry: PlanExpiry) {
   const noun = expiry.status === "TRIAL" ? "trial" : "plan";
-  if (expiry.indicator === "ENDED") return { lead: `Your ${noun} has ended.`, em: null };
-  if (expiry.indicator === "ENDS_TODAY") return { lead: `Your ${noun} ends`, em: "today" };
-  return { lead: `Your ${noun} ends in`, em: expiry.days === 1 ? "1 day" : `${expiry.days} days` };
+  const date = formatIstDate(expiry.endDate);
+  if (expiry.indicator === "ENDED") return { lead: `Your ${noun} ended on`, em: date };
+  if (expiry.indicator === "ENDS_TODAY") return { lead: `Your ${noun} ends`, em: `today, ${date}` };
+  const inDays = expiry.days === 1 ? "tomorrow" : `in ${expiry.days} days`;
+  return { lead: `Your ${noun} ends ${inDays}, on`, em: date };
 }
 
 /**
- * Renewal reminder shown when the tenant's subscription is inside the shared
- * "ending soon" window (subscription-expiry.ts). Dismissal lasts for the
- * browser session and is tied to the specific period end, so a new period
- * (or a later reminder state) shows again.
+ * Plan-end reminder shown when the tenant's subscription is inside the shared
+ * "ending soon" window (subscription-expiry.ts) or has ended. There is no
+ * self-serve renewal in the app — plans are changed by Hostylia — so the call
+ * to action is a support ticket, with Billing for the plan details. Dismissal
+ * lasts for the browser session and is tied to the specific period end, so a
+ * new period (or a later reminder state) shows again.
  */
 export function PlanExpiryBanner({ expiry }: { expiry: PlanExpiry }) {
   const dismissKey = `${DISMISS_PREFIX}${expiry.subscriptionId}:${expiry.endDate}:${expiry.indicator}`;
@@ -36,6 +41,7 @@ export function PlanExpiryBanner({ expiry }: { expiry: PlanExpiry }) {
 
   const ended = expiry.indicator === "ENDED";
   const { lead, em } = message(expiry);
+  const StatusIcon = ended ? CircleAlert : Clock;
 
   const dismiss = () => {
     setDismissed(true);
@@ -55,7 +61,7 @@ export function PlanExpiryBanner({ expiry }: { expiry: PlanExpiry }) {
       )}
     >
       <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
-        <Crown
+        <StatusIcon
           className={cn(
             "mt-0.5 h-4 w-4 shrink-0 sm:mt-0",
             ended ? "text-destructive" : "text-warning",
@@ -64,14 +70,14 @@ export function PlanExpiryBanner({ expiry }: { expiry: PlanExpiry }) {
         />
         <p className="min-w-0 text-foreground/90">
           {lead}{" "}
-          {em ? (
-            <span className={cn("font-semibold", ended ? "text-destructive" : "text-warning")}>
-              {em}
-            </span>
-          ) : null}
-          {em ? "." : null}{" "}
+          <span className={cn("font-semibold", ended ? "text-destructive" : "text-warning")}>
+            {em}
+          </span>
+          .{" "}
           <span className="text-muted-foreground">
-            Renew now to keep your data, reports and operations uninterrupted.
+            {ended
+              ? "Contact Hostylia support to continue."
+              : "Contact Hostylia support to continue without interruption."}
           </span>
         </p>
       </div>
@@ -79,10 +85,16 @@ export function PlanExpiryBanner({ expiry }: { expiry: PlanExpiry }) {
         <Link
           to="/admin/settings"
           search={{ tab: "billing" }}
+          className="inline-flex items-center rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          View billing
+        </Link>
+        <Link
+          to="/admin/support"
           className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Go to Billing
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+          Contact support
         </Link>
         <button
           type="button"

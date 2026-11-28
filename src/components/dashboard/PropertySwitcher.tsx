@@ -31,7 +31,11 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
   const activePropertyId = usePropertyStore((s) => s.activePropertyId);
   const setActivePropertyId = usePropertyStore((s) => s.setActivePropertyId);
 
-  const { data: properties, isLoading } = useQuery({
+  const {
+    data: properties,
+    isLoading,
+    isSuccess,
+  } = useQuery({
     queryKey: ["properties", tenantId],
     queryFn: async (): Promise<PropertyRow[]> => {
       if (!tenantId) return [];
@@ -51,11 +55,16 @@ export function PropertySwitcher({ tenantId, collapsed }: PropertySwitcherProps)
   const list = properties ?? [];
   const active = list.find((p) => p.id === activePropertyId) ?? list[0] ?? null;
 
+  // Only reconcile against a list that actually loaded — a failed or pending
+  // query must not wipe a valid selection. A stored id that isn't in the list
+  // (deleted property, or one from another tenant) falls back to the first
+  // property, or to nothing when the tenant has none.
+  const nextId = active?.id ?? null;
   useEffect(() => {
-    if (active && active.id !== activePropertyId) {
-      setActivePropertyId(active.id);
+    if (isSuccess && nextId !== activePropertyId) {
+      setActivePropertyId(nextId);
     }
-  }, [active, activePropertyId, setActivePropertyId]);
+  }, [isSuccess, nextId, activePropertyId, setActivePropertyId]);
 
   if (isLoading) {
     return <Skeleton className={cn("rounded-xl", collapsed ? "h-10 w-10" : "h-14 w-full")} />;

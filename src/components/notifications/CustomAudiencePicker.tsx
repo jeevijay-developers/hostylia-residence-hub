@@ -68,17 +68,22 @@ export function CustomAudiencePicker({
     queryKey: ["notice-audience-blocks", tenantId, propertyId],
     enabled: !!tenantId,
     staleTime: 60_000,
-    queryFn: () => blocksFn({ data: { tenant_id: tenantId!, property_id: propertyId } }),
+    queryFn: () => {
+      if (!tenantId) return Promise.resolve([]);
+      return blocksFn({ data: { tenant_id: tenantId, property_id: propertyId } });
+    },
   });
   const studentsQ = useQuery({
     queryKey: ["notice-audience-students", tenantId, propertyId, debouncedStudentSearch],
     enabled: !!tenantId,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
-    queryFn: () =>
-      studentsFn({
-        data: { tenant_id: tenantId!, property_id: propertyId, q: debouncedStudentSearch },
-      }),
+    queryFn: () => {
+      if (!tenantId) return Promise.resolve([]);
+      return studentsFn({
+        data: { tenant_id: tenantId, property_id: propertyId, q: debouncedStudentSearch },
+      });
+    },
   });
 
   const selectedBlockIds = useMemo(() => new Set(blocks.map((b) => b.id)), [blocks]);
@@ -188,13 +193,18 @@ export function CustomAudiencePicker({
                         : "border-border text-muted-foreground hover:border-primary/40",
                     )}
                   >
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      {selected && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
-                      <span className="truncate">{s.full_name}</span>
-                    </span>
-                    <span className="shrink-0 text-xs">
-                      {s.admission_number}
-                      {s.block_name ? ` · ${s.block_name}` : ""}
+                    {/* Name on its own line so the ID / block never squeeze it. */}
+                    <span className="flex min-w-0 items-start gap-1.5">
+                      {selected && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />}
+                      <span className="min-w-0">
+                        <span className="block truncate" title={s.full_name}>
+                          {s.full_name}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {s.admission_number}
+                          {s.block_name ? ` · ${s.block_name}` : ""}
+                        </span>
+                      </span>
                     </span>
                   </button>
                 </li>

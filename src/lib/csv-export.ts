@@ -1,6 +1,10 @@
 function csvCell(value: unknown): string {
-  const s = value == null ? "" : String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = value == null ? "" : String(value);
+  // Spreadsheet formula injection: text starting with = + - @ (or a tab/CR) is
+  // run as a formula by Excel/Sheets. Prefix such user text with an apostrophe
+  // so it stays plain text. Real numbers are left untouched.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /** Client-side CSV download — no server round-trip, exports whatever rows are already loaded. */

@@ -76,6 +76,35 @@ BEGIN
   RAISE EXCEPTION 'ASSERT FAIL [%]: expected error, statement succeeded', _label;
 END $$;
 
+-- Rows touched by a write. A WITH holding UPDATE/INSERT/DELETE is only legal at
+-- the top level of a statement (0A000 inside a sub-select), so writes whose row
+-- count is asserted run through EXECUTE here instead.
+CREATE OR REPLACE FUNCTION pg_temp.affected(_sql text) RETURNS bigint
+LANGUAGE plpgsql AS $$
+DECLARE n bigint;
+BEGIN
+  EXECUTE _sql;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n;
+END $$;
+
+-- The statement must fail with this exact SQLSTATE (e.g. a generic 42501, not
+-- an integrity error that would leak whether another tenant's row exists).
+CREATE OR REPLACE FUNCTION pg_temp.assert_sqlstate(_sql text, _state text, _label text) RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE _sql;
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLSTATE = _state THEN
+      RAISE NOTICE 'OK  [%] rejected with %', _label, SQLSTATE;
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'ASSERT FAIL [%]: expected SQLSTATE %, got % (%)', _label, _state, SQLSTATE, SQLERRM;
+  END;
+  RAISE EXCEPTION 'ASSERT FAIL [%]: expected SQLSTATE %, statement succeeded', _label, _state;
+END $$;
+
 -- =============================================================================
 -- SECTION 1 — Tenant isolation (every scoped table)
 -- =============================================================================
@@ -1003,7 +1032,7 @@ SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-111
 SELECT pg_temp.assert_throws($$SELECT public.give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 7, '  ', NULL)$$, 'blank reason rejected');
 -- direct writes stay blocked
 SELECT pg_temp.assert_throws($$UPDATE public.students SET status='NOTICE_GIVEN' WHERE id='11111111-1111-1111-1111-111111110001'$$, 'student cannot set own status directly');
-SELECT pg_temp.assert_eq((WITH u AS (UPDATE public.allocations SET status='NOTICE_GIVEN' WHERE id='11111111-1111-1111-1111-1111111100a1' RETURNING 1) SELECT count(*) FROM u), 0, 'student cannot update allocations directly');
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.allocations SET status='NOTICE_GIVEN' WHERE id='11111111-1111-1111-1111-1111111100a1'$sql$), 0, 'student cannot update allocations directly');
 -- Parent / student cannot run move-out or activation
 SELECT pg_temp.assert_throws($$SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date)$$, 'student cannot complete_move_out');
 RESET ROLE;
@@ -1143,6 +1172,260 @@ SELECT pg_temp.assume_service();
 SELECT public.complete_move_out('11111111-1111-1111-1111-1111111100a3', (now() AT TIME ZONE 'Asia/Kolkata')::date);
 RESET ROLE;
 SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a3' AND status='CLOSED'), 1, 'service_role can complete_move_out');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION — Property staff roster (20261203090000_property_staff_roster.sql)
+--   Hostel Admin of the tenant: full access; Warden of the property: read-only;
+--   other property / other tenant / accountant / student / parent: nothing.
+-- =============================================================================
+BEGIN;
+-- Seed (as postgres): one roster row in property A1, one in property A2.
+INSERT INTO public.property_staff (id, tenant_id, property_id, full_name, designation, block_id, shift_name, shift_start, shift_end)
+VALUES
+  ('11111111-1111-1111-1111-1111111150a1','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Roster A1 Caretaker','CARETAKER','11111111-1111-1111-1111-11111111b001','Day','08:00','16:00'),
+  ('11111111-1111-1111-1111-1111111150a2','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Roster A2 Security','SECURITY',NULL,'Night','20:00','08:00');
+INSERT INTO public.property_staff_attendance (tenant_id, property_id, staff_id, attendance_date, status)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-1111111150a1', current_date, 'PRESENT');
+
+-- Same-tenant Hostel Admin: sees both properties, can add / edit / soft-delete; writes are audited.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id IN ('11111111-1111-1111-1111-1111111150a1','11111111-1111-1111-1111-1111111150a2')), 2, 'AdminA sees roster rows of every own property');
+INSERT INTO public.property_staff (id, tenant_id, property_id, full_name, designation, work_area)
+VALUES ('11111111-1111-1111-1111-1111111150a3','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Roster A1 Housekeeping','HOUSEKEEPING','All Blocks');
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.property_staff SET status='ON_LEAVE' WHERE id='11111111-1111-1111-1111-1111111150a3'$sql$), 1, 'AdminA can update a roster row');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff_attendance WHERE staff_id='11111111-1111-1111-1111-1111111150a1'), 1, 'AdminA sees staff attendance');
+INSERT INTO public.property_staff_attendance (tenant_id, property_id, staff_id, attendance_date, status)
+VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-1111111150a3', current_date, 'ON_LEAVE');
+SELECT pg_temp.assert_throws($sql$DELETE FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a3'$sql$, 'roster has no hard DELETE (soft delete only)');
+-- Integrity: block of another property, moving property, foreign staff in attendance, non-staff login link.
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, block_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Wrong Block','OTHER','11111111-1111-1111-1111-11111111b001')$sql$, 'roster block must belong to the property');
+SELECT pg_temp.assert_throws($sql$UPDATE public.property_staff SET property_id='11111111-1111-1111-1111-11111111a002' WHERE id='11111111-1111-1111-1111-1111111150a1'$sql$, 'roster row cannot move to another property');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff_attendance (tenant_id, property_id, staff_id, attendance_date, status) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','11111111-1111-1111-1111-1111111150a1', current_date, 'PRESENT')$sql$, 'attendance staff must belong to the same property');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, user_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Linked Student','WARDEN','00000000-0000-0000-0000-000000000020')$sql$, 'roster can only link a Warden/Accountant login of the tenant');
+-- Linked login: must hold the row's role for THIS property; re-checked when the role changes.
+INSERT INTO public.property_staff (id, tenant_id, property_id, full_name, designation, user_id)
+VALUES ('11111111-1111-1111-1111-1111111150a4','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Warden BlockA','WARDEN','00000000-0000-0000-0000-000000000011');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a4' AND user_id='00000000-0000-0000-0000-000000000011'), 1, 'AdminA can link a Warden login of this property');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, user_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Warden Elsewhere','WARDEN','00000000-0000-0000-0000-000000000011')$sql$, 'login of another property cannot be linked');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, user_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Warden As Accountant','ACCOUNTANT','00000000-0000-0000-0000-000000000012')$sql$, 'linked login role must match the roster role');
+SELECT pg_temp.assert_throws($sql$UPDATE public.property_staff SET designation='CARETAKER' WHERE id='11111111-1111-1111-1111-1111111150a4'$sql$, 'linked row role cannot drift from the login role');
+-- Attendance marks: status / note can be corrected (audited); staff / day cannot be re-pointed.
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.property_staff_attendance SET note='Came late' WHERE staff_id='11111111-1111-1111-1111-1111111150a1' AND attendance_date=current_date$sql$), 1, 'AdminA can correct a staff attendance note');
+SELECT pg_temp.assert_throws($sql$UPDATE public.property_staff_attendance SET attendance_date=current_date - 1 WHERE staff_id='11111111-1111-1111-1111-1111111150a1' AND attendance_date=current_date$sql$, 'attendance mark cannot move to another day');
+SELECT pg_temp.assert_throws($sql$UPDATE public.property_staff_attendance SET staff_id='11111111-1111-1111-1111-1111111150a4' WHERE staff_id='11111111-1111-1111-1111-1111111150a1' AND attendance_date=current_date$sql$, 'attendance mark cannot move to another staff member');
+UPDATE public.property_staff SET deleted_at = now() WHERE id='11111111-1111-1111-1111-1111111150a3';
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a3' AND deleted_by='00000000-0000-0000-0000-000000000010'), 1, 'soft delete records deleted_by');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.audit_logs WHERE entity_type='property_staff' AND entity_id='11111111-1111-1111-1111-1111111150a3' AND actor_user_id='00000000-0000-0000-0000-000000000010' AND action IN ('STAFF_ADDED','STAFF_STATUS_CHANGED','STAFF_REMOVED')), 3, 'roster add / status change / removal audited');
+SELECT pg_temp.assert_ge((SELECT count(*) FROM public.audit_logs WHERE entity_type='property_staff_attendance' AND action='STAFF_ATTENDANCE_MARKED' AND actor_user_id='00000000-0000-0000-0000-000000000010'), 1, 'staff attendance marks audited');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.audit_logs WHERE entity_type='property_staff_attendance' AND action='STAFF_ATTENDANCE_CHANGED' AND actor_user_id='00000000-0000-0000-0000-000000000010'), 1, 'note-only attendance correction audited');
+
+-- Cross-tenant Hostel Admin: sees nothing, cannot write into Tenant A.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 0, 'AdminB cannot see Tenant A roster');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff_attendance WHERE tenant_id='11111111-1111-1111-1111-111111111111'), 0, 'AdminB cannot see Tenant A staff attendance');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Intruder','OTHER')$sql$, 'AdminB cannot add staff to Tenant A');
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.property_staff SET full_name='Hijacked' WHERE id='11111111-1111-1111-1111-1111111150a1'$sql$), 0, 'AdminB cannot edit Tenant A roster');
+-- Integrity errors must not leak across tenants: even a "wrong block" / "not a login"
+-- insert into Tenant A fails with the generic permission error, before any lookup.
+SELECT pg_temp.assert_sqlstate($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, block_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','Probe Block','OTHER','11111111-1111-1111-1111-11111111b001')$sql$, '42501', 'AdminB block probe gets a generic 42501');
+SELECT pg_temp.assert_sqlstate($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, user_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Probe Login','WARDEN','00000000-0000-0000-0000-000000000011')$sql$, '42501', 'AdminB login probe gets a generic 42501');
+SELECT pg_temp.assert_sqlstate($sql$INSERT INTO public.property_staff_attendance (tenant_id, property_id, staff_id, attendance_date, status) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a002','11111111-1111-1111-1111-1111111150a1', current_date, 'PRESENT')$sql$, '42501', 'AdminB attendance probe gets a generic 42501');
+RESET ROLE;
+
+-- Warden of property A1: read-only, own property only.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000011');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a1'), 1, 'WardenA reads roster of own property');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a2'), 0, 'WardenA cannot read roster of another property');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff WHERE id='11111111-1111-1111-1111-1111111150a3'), 0, 'WardenA does not see soft-deleted staff');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff_attendance WHERE staff_id='11111111-1111-1111-1111-1111111150a1'), 1, 'WardenA reads staff attendance of own property');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Warden Added','OTHER')$sql$, 'WardenA cannot add roster staff');
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.property_staff SET status='INACTIVE' WHERE id='11111111-1111-1111-1111-1111111150a1'$sql$), 0, 'WardenA cannot edit roster staff');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff_attendance (tenant_id, property_id, staff_id, attendance_date, status) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','11111111-1111-1111-1111-1111111150a1', current_date - 1, 'PRESENT')$sql$, 'WardenA cannot mark staff attendance');
+RESET ROLE;
+
+-- Accountant / Student / Parent / anon: no access.
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff), 0, 'Accountant cannot see the staff roster');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff), 0, 'Student cannot see the staff roster');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff_attendance), 0, 'Student cannot see staff attendance');
+SELECT pg_temp.assert_throws($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Student Added','OTHER')$sql$, 'Student cannot add roster staff');
+SELECT pg_temp.assert_sqlstate($sql$INSERT INTO public.property_staff (tenant_id, property_id, full_name, designation, user_id) VALUES ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-11111111a001','Probe Login','ACCOUNTANT','00000000-0000-0000-0000-000000000013')$sql$, '42501', 'Student login probe gets a generic 42501');
+RESET ROLE;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.property_staff), 0, 'Parent cannot see the staff roster');
+RESET ROLE;
+SELECT pg_temp.assume_anon();
+SELECT pg_temp.assert_throws($sql$SELECT count(*) FROM public.property_staff$sql$, 'anon has no access to the staff roster');
+RESET ROLE;
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION — Students tab admin flows (20261204090000_students_tab_admin_flows.sql)
+--   fn_set_student_review_status, fn_add_student_charge, fn_admit_student,
+--   fn_staff_give_notice. Student 15 (..000f, profile ..02e) is the seeded
+--   APPLICANT in property A2 with no allocation; Student 01 (..0001) is ACTIVE on
+--   allocation a1 (bed e001, block b001). Bed e007 (A-201) is vacant.
+-- =============================================================================
+
+-- 1) Review status: same-tenant admin walks the allowed edges; every move audited.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'VERIFIED', NULL);
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-11111111000f' AND status='VERIFIED'), 1, 'AdminA can mark an applicant verified');
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'REJECTED', 'no')$$, '23514', 'reject needs a reason of 3+ characters');
+SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'REJECTED', 'Documents not provided');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-11111111000f' AND status='REJECTED' AND metadata->'review'->>'reason'='Documents not provided'), 1, 'AdminA can reject with a reason (stored in metadata.review)');
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'VERIFIED', NULL)$$, '23514', 'REJECTED -> VERIFIED is not an allowed edge');
+SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'APPLICANT', NULL);
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-11111111000f' AND status='APPLICANT'), 1, 'AdminA can restore a rejected student to applicant');
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'ACTIVE', NULL)$$, '23514', 'ACTIVE can never be set through review status');
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-111111110001', 'REJECTED', 'Not allowed')$$, '23514', 'an ACTIVE student cannot be rejected');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.audit_logs WHERE action='STUDENT_STATUS_CHANGED' AND entity_id='11111111-1111-1111-1111-11111111000f' AND actor_user_id='00000000-0000-0000-0000-000000000010'), 3, 'every review-status move is audited');
+ROLLBACK;
+
+-- 2) Review status: cross-tenant admin, the student themself and a parent are refused
+--    with the same generic 42501 (no existence leak).
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100'); -- HOSTEL_ADMIN Tenant B
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'VERIFIED', NULL)$$, '42501', 'AdminB cannot change a Tenant A student status');
+SELECT pg_temp.assume('00000000-0000-0000-0000-00000000002e'); -- Student 15 (own record)
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-11111111000f', 'VERIFIED', NULL)$$, '42501', 'student cannot verify themselves');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_set_student_review_status('11111111-1111-1111-1111-111111110001', 'REJECTED', 'Parent attempt')$$, '42501', 'parent cannot change a student status');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-11111111000f' AND status='APPLICANT'), 1, 'refused calls leave the status untouched');
+ROLLBACK;
+
+-- 3) Opening-dues charge: accountant (unpaid, tied to the open allocation) and admin
+--    (paid offline in the same transaction, no allocation, student NOT activated).
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000013'); -- ACCOUNTANT Tenant A
+SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110001', 250000, current_date + 10, 'Admission fee');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 500000, current_date + 7, 'Back dues', 200000, 'UPI', 'UTR123456', NULL);
+-- validation
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 500000, current_date, NULL, 100000, 'UPI', NULL, NULL)$$, 'UPI payment needs a reference');
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 500000, current_date, NULL, 100000, 'CHEQUE', '000123', NULL)$$, 'cheque payment needs a cheque date');
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 500000, current_date, NULL, 500001, 'CASH', NULL, NULL)$$, 'payment cannot exceed the amount due');
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 500000, current_date, NULL, 100000, 'CARD', NULL, NULL)$$, 'only offline payment modes are accepted');
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-11111111000f', 0, current_date, NULL)$$, 'zero charge rejected');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110001' AND notes='Opening dues: Admission fee' AND status='ISSUED' AND balance_paise=250000 AND allocation_id='11111111-1111-1111-1111-1111111100a1' AND fee_plan_id IS NULL AND billing_period_start IS NULL AND invoice_number LIKE 'INV-%' AND created_by='00000000-0000-0000-0000-000000000013'), 1, 'accountant charge = ISSUED invoice on the open allocation, numbered by trigger');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-11111111000f' AND notes='Opening dues: Back dues' AND status='PARTIALLY_PAID' AND paid_paise=200000 AND balance_paise=300000 AND allocation_id IS NULL), 1, 'admin paid charge recomputes to PARTIALLY_PAID');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.payments WHERE student_id='11111111-1111-1111-1111-11111111000f' AND amount_paise=200000 AND mode='UPI' AND offline_reference='UTR123456' AND status='CAPTURED' AND notes='Recorded with opening dues' AND payment_number LIKE 'PMT-%'), 1, 'offline payment recorded with the charge');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-11111111000f' AND status='APPLICANT'), 1, 'paying opening dues never activates the student');
+ROLLBACK;
+
+-- 4) Opening-dues charge: a paid charge is refused while the first invoice is pending
+--    (record_manual_payment would otherwise activate the allocation); unpaid is fine.
+BEGIN;
+UPDATE public.allocations SET status='PENDING_PAYMENT' WHERE id='11111111-1111-1111-1111-1111111100a2';
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110002', 100000, current_date, NULL, 100000, 'CASH', NULL, NULL)$$, '55000', 'paid charge refused while allocation is PENDING_PAYMENT');
+SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110002', 100000, current_date, NULL);
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a2' AND status='PENDING_PAYMENT'), 1, 'allocation stays PENDING_PAYMENT');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE student_id='11111111-1111-1111-1111-111111110002' AND notes='Opening dues' AND status='ISSUED'), 1, 'unpaid charge still allowed (no note -> plain marker)');
+ROLLBACK;
+
+-- 5) Opening-dues charge: student and cross-tenant admin are refused; nothing is written.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01 (own record)
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110001', 100000, current_date, 'Self charge')$$, '42501', 'student cannot add charges');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100'); -- HOSTEL_ADMIN Tenant B
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110001', 100000, current_date, 'Cross tenant')$$, 'AdminB cannot charge a Tenant A student');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01
+SELECT pg_temp.assert_throws($$SELECT public.fn_add_student_charge('11111111-1111-1111-1111-111111110001', 100000, current_date, 'Parent charge')$$, 'parent cannot add charges');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices WHERE notes LIKE 'Opening dues%' AND student_id='11111111-1111-1111-1111-111111110001'), 0, 'refused charges write no invoice');
+ROLLBACK;
+
+-- 6) Admit: one transaction creates student + guardian + PENDING_AGREEMENT allocation
+--    + SENT agreement + opening-dues invoice on that allocation; bed flipped by trigger.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010');
+SELECT public.fn_admit_student(
+  p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001',
+  p_admission_number => 'ADM-T-0001', p_full_name => 'Admitted Student', p_phone => '+919999000001',
+  p_guardian_name => 'Admitted Parent', p_guardian_phone => '+919999000101', p_guardian_relationship => 'Mother',
+  p_guardian_email => 'admitted.parent@hostylia.test', p_initial_status => 'VERIFIED',
+  p_bed_id => '11111111-1111-1111-1111-11111111e007', p_fee_plan_id => '11111111-1111-1111-1111-11111111fa01',
+  p_opening_dues_paise => 150000, p_dues_note => 'Admission fee');
+SELECT pg_temp.assert_throws($$SELECT public.fn_admit_student(
+  p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001',
+  p_admission_number => 'ADM-T-0002', p_full_name => 'Second Student',
+  p_bed_id => '11111111-1111-1111-1111-11111111e007', p_fee_plan_id => '11111111-1111-1111-1111-11111111fa01')$$, 'an allocated bed cannot be admitted into again');
+SELECT pg_temp.assert_throws($$SELECT public.fn_admit_student(
+  p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001',
+  p_admission_number => 'ADM-T-0001', p_full_name => 'Duplicate Admission')$$, 'admission ID is unique per property');
+SELECT pg_temp.assert_throws($$SELECT public.fn_admit_student(
+  p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001',
+  p_admission_number => 'ADM-T-0003', p_full_name => 'Active Student', p_initial_status => 'ACTIVE')$$, 'a new student cannot start ACTIVE');
+SELECT pg_temp.assert_throws($$SELECT public.fn_admit_student(
+  p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '22222222-2222-2222-2222-22222222a001',
+  p_admission_number => 'ADM-T-0004', p_full_name => 'Wrong Property')$$, 'property must belong to the given tenant');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE admission_number='ADM-T-0001' AND property_id='11111111-1111-1111-1111-11111111a001' AND status='VERIFIED'), 1, 'admitted student created as VERIFIED');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.student_guardians sg JOIN public.students s ON s.id=sg.student_id JOIN public.guardians g ON g.id=sg.guardian_id WHERE s.admission_number='ADM-T-0001' AND sg.relationship='Mother' AND sg.is_primary AND sg.is_emergency_contact AND g.email='admitted.parent@hostylia.test'), 1, 'primary guardian linked with relationship + email');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations a JOIN public.students s ON s.id=a.student_id JOIN public.agreements ag ON ag.id=a.agreement_id WHERE s.admission_number='ADM-T-0001' AND a.status='PENDING_AGREEMENT' AND a.bed_id='11111111-1111-1111-1111-11111111e007' AND a.rent_snapshot_paise=600000 AND a.deposit_snapshot_paise=1500000 AND ag.status='SENT'), 1, 'PENDING_AGREEMENT allocation + SENT agreement (rent from room, deposit from plan)');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e007' AND status='OCCUPIED'), 1, 'bed flipped by the allocation trigger');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.invoices i JOIN public.students s ON s.id=i.student_id JOIN public.allocations a ON a.id=i.allocation_id AND a.student_id=s.id WHERE s.admission_number='ADM-T-0001' AND i.notes='Opening dues: Admission fee' AND i.status='ISSUED' AND i.total_paise=150000), 1, 'opening dues invoiced on the new allocation');
+ROLLBACK;
+
+-- 7) Admit: student, parent and cross-tenant admin are refused.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_admit_student(p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001', p_admission_number => 'ADM-X-0001', p_full_name => 'Student Added')$$, '42501', 'student cannot admit students');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000040'); -- Parent 01
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_admit_student(p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001', p_admission_number => 'ADM-X-0002', p_full_name => 'Parent Added')$$, '42501', 'parent cannot admit students');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100'); -- HOSTEL_ADMIN Tenant B
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_admit_student(p_tenant_id => '11111111-1111-1111-1111-111111111111', p_property_id => '11111111-1111-1111-1111-11111111a001', p_admission_number => 'ADM-X-0003', p_full_name => 'Cross Tenant')$$, '42501', 'AdminB cannot admit into Tenant A');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE admission_number LIKE 'ADM-X-%'), 0, 'refused admissions write nothing');
+ROLLBACK;
+
+-- 8) Staff notice: same rules as give_notice; wrong-block warden, student and other tenant refused.
+BEGIN;
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01 (own allocation)
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 14, 'Student via staff RPC', NULL)$$, '42501', 'student cannot use the staff notice RPC');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000012'); -- Warden Block B (a1 is Block A)
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 14, 'Wrong block', NULL)$$, '42501', 'Warden of another block cannot record a notice');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000100'); -- HOSTEL_ADMIN Tenant B
+SELECT pg_temp.assert_sqlstate($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 14, 'Cross tenant', NULL)$$, '42501', 'AdminB cannot record a Tenant A notice');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- HOSTEL_ADMIN Tenant A
+SELECT pg_temp.assert_throws($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 14, '  ', NULL)$$, 'staff notice needs a reason');
+SELECT pg_temp.assert_throws($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date - 1, 'Past date', NULL)$$, 'staff notice date cannot be in the past');
+SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 14, 'Told the warden in person', 'Leaving after exams');
+SELECT pg_temp.assert_throws($$SELECT public.fn_staff_give_notice('11111111-1111-1111-1111-1111111100a1', (now() AT TIME ZONE 'Asia/Kolkata')::date + 20, 'Second notice', NULL)$$, 'only one notice per allocation');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.allocations WHERE id='11111111-1111-1111-1111-1111111100a1' AND status='NOTICE_GIVEN' AND notice_reason='Told the warden in person' AND closed_at IS NULL), 1, 'staff notice moves allocation to NOTICE_GIVEN');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-111111110001' AND status='NOTICE_GIVEN'), 1, 'staff notice syncs student status');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.beds WHERE id='11111111-1111-1111-1111-11111111e001' AND status='OCCUPIED'), 1, 'staff notice keeps bed OCCUPIED');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.notifications WHERE event_type='MOVE_OUT_NOTICE_SUBMITTED' AND recipient_user_id='00000000-0000-0000-0000-000000000020'), 1, 'student notified of the recorded notice');
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.audit_logs WHERE action='MOVE_OUT_NOTICE_RECORDED_BY_STAFF' AND entity_id='11111111-1111-1111-1111-1111111100a1' AND actor_user_id='00000000-0000-0000-0000-000000000010'), 1, 'staff notice audited');
+ROLLBACK;
+
+-- =============================================================================
+-- SECTION — Student self-update guard (20261204090100_fix_student_self_update_guard.sql)
+--   A linked student holds a STUDENT role row; that must no longer count as "staff".
+-- =============================================================================
+BEGIN;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.role_assignments WHERE user_id='00000000-0000-0000-0000-000000000020' AND role='STUDENT' AND is_active), 1, 'precondition: Student 01 holds an active STUDENT role');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000020'); -- Student 01 (own record)
+SELECT pg_temp.assert_throws($$UPDATE public.students SET status='VERIFIED' WHERE id='11111111-1111-1111-1111-111111110001'$$, 'linked student cannot change own status');
+SELECT pg_temp.assert_throws($$UPDATE public.students SET admission_number='HACKED-01' WHERE id='11111111-1111-1111-1111-111111110001'$$, 'linked student cannot change own admission number');
+SELECT pg_temp.assert_throws($$UPDATE public.students SET deleted_at=now() WHERE id='11111111-1111-1111-1111-111111110001'$$, 'linked student cannot archive themselves');
+SELECT pg_temp.assert_throws($$UPDATE public.students SET joined_at=current_date WHERE id='11111111-1111-1111-1111-111111110001'$$, 'linked student cannot change joined_at');
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.students SET full_name='Student 01 Renamed' WHERE id='11111111-1111-1111-1111-111111110001'$sql$), 1, 'linked student can still edit own profile fields');
+SELECT pg_temp.assume('00000000-0000-0000-0000-000000000010'); -- staff are not restricted by the guard
+SELECT pg_temp.assert_eq(pg_temp.affected($sql$UPDATE public.students SET admission_number='ADM-0001-B' WHERE id='11111111-1111-1111-1111-111111110001'$sql$), 1, 'Hostel Admin can still change an admission number');
+RESET ROLE;
+SELECT pg_temp.assert_eq((SELECT count(*) FROM public.students WHERE id='11111111-1111-1111-1111-111111110001' AND status='ACTIVE' AND deleted_at IS NULL AND full_name='Student 01 Renamed'), 1, 'only the allowed student edit landed');
 ROLLBACK;
 
 SELECT '=== RLS TESTS COMPLETED ===' AS status;

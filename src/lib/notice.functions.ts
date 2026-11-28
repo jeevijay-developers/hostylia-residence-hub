@@ -2,7 +2,23 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dispatchNotification } from "@/lib/dispatch-notification";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { MAX_CUSTOM_BLOCKS, MAX_CUSTOM_STUDENTS } from "@/lib/notice-audience.constants";
+import { NOTICE_CATEGORIES, withInApp } from "@/lib/notice-defaults";
+
+type Client = SupabaseClient<Database>;
+type NoticeInsert = Database["public"]["Tables"]["notices"]["Insert"];
+type NoticeRecipientInsert = Database["public"]["Tables"]["notice_recipients"]["Insert"];
+
+const NOTICE_AUDIENCES = [
+  "ALL",
+  "STUDENTS",
+  "PARENTS",
+  "WARDENS",
+  "ACCOUNTANTS",
+  "CUSTOM",
+] as const;
 
 const noticeSchema = z.object({
   tenant_id: z.string().uuid(),
@@ -10,10 +26,13 @@ const noticeSchema = z.object({
   title: z.string().trim().min(3).max(200),
   body: z.string().trim().min(3).max(4000),
   priority: z.enum(["NORMAL", "IMPORTANT", "URGENT"]).default("NORMAL"),
-  audience_type: z
-    .enum(["ALL", "STUDENTS", "PARENTS", "WARDENS", "ACCOUNTANTS", "CUSTOM"])
-    .default("ALL"),
-  channels: z.array(z.enum(["IN_APP", "SMS", "WHATSAPP", "EMAIL"])).min(1),
+  category: z.enum(NOTICE_CATEGORIES).default("GENERAL"),
+  audience_type: z.enum(NOTICE_AUDIENCES).default("ALL"),
+  // In-app is always included: the scheduled publisher delivers every notice in-app.
+  channels: z
+    .array(z.enum(["IN_APP", "SMS", "WHATSAPP", "EMAIL"]))
+    .min(1)
+    .transform(withInApp),
   publish_at: z.string().datetime().optional().nullable(),
   // Optional end of life (UTC instant; the composer converts the IST time the admin typed).
   expires_at: z.string().datetime().optional().nullable(),
@@ -55,10 +74,7 @@ function allExternalUnavailable(reason: string): NoticeChannelAvailabilityMap {
  * short reason. If the answer can't be obtained, external channels are reported unavailable - never
  * assumed available.
  */
-async function loadChannelAvailability(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-): Promise<NoticeChannelAvailabilityMap> {
+async function loadChannelAvailability(supabase: Client): Promise<NoticeChannelAvailabilityMap> {
   // Server env only, same secret dispatchNotification() uses.
   const internalSecret = process.env.INTERNAL_FUNCTION_SECRET;
   if (!internalSecret) return allExternalUnavailable("Notification service is not configured");
@@ -92,13 +108,8 @@ async function loadChannelAvailability(
 
 // Notices are written by Hostel Admins and Wardens (and platform admins); the provider status is only
 // shown to them.
-async function assertNoticeStaff(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  userId: string,
-  tenantId: string,
-) {
-  for (const role of ["HOSTEL_ADMIN", "WARDEN"]) {
+async function assertNoticeStaff(supabase: Client, userId: string, tenantId: string) {
+  for (const role of ["HOSTEL_ADMIN", "WARDEN"] as const) {
     const { data, error } = await supabase.rpc("has_tenant_role", {
       _user_id: userId,
       _tenant_id: tenantId,
@@ -109,6 +120,29 @@ async function assertNoticeStaff(
   }
   const { data: isSuper } = await supabase.rpc("is_super_admin", { _user_id: userId });
   if (!isSuper) throw new Error("You do not have permission to manage notices");
+}
+
+/** Refuses (with the reason) any external channel whose provider cannot deliver right now. */
+async function assertChannelsAvailable(
+  supabase: Client,
+  userId: string,
+  tenantId: string,
+  channels: NoticeChannel[],
+) {
+  const external = channels.filter((c) => c !== "IN_APP");
+  if (external.length === 0) return;
+  await assertNoticeStaff(supabase, userId, tenantId);
+  const availability = await loadChannelAvailability(supabase);
+  const blocked = external.filter((c) => !availability[c].available);
+  if (blocked.length > 0) {
+    const list = blocked
+      .map((c) => `${CHANNEL_LABEL[c]} (${availability[c].reason ?? "unavailable"})`)
+      .join(", ");
+    const them = blocked.length > 1 ? "them" : "it";
+    throw new Error(
+      `Cannot send via ${list}. Deselect ${them} or ask your administrator to configure the provider.`,
+    );
+  }
 }
 
 export const getNoticeChannelAvailability = createServerFn({ method: "POST" })
@@ -181,21 +215,7 @@ export const publishNotice = createServerFn({ method: "POST" })
 
     // Never trust the UI: a channel whose provider is not configured is rejected here, before anything
     // is written, with the reason.
-    const external = data.channels.filter((c) => c !== "IN_APP");
-    if (external.length > 0) {
-      await assertNoticeStaff(supabase, userId, data.tenant_id);
-      const availability = await loadChannelAvailability(supabase);
-      const blocked = external.filter((c) => !availability[c].available);
-      if (blocked.length > 0) {
-        const list = blocked
-          .map((c) => `${CHANNEL_LABEL[c]} (${availability[c].reason ?? "unavailable"})`)
-          .join(", ");
-        const them = blocked.length > 1 ? "them" : "it";
-        throw new Error(
-          `Cannot send via ${list}. Deselect ${them} or ask your administrator to configure the provider.`,
-        );
-      }
-    }
+    await assertChannelsAvailable(supabase, userId, data.tenant_id, data.channels);
 
     const publishing = data.publish_now || !data.publish_at;
     const status = publishing ? "PUBLISHED" : "SCHEDULED";
@@ -212,43 +232,39 @@ export const publishNotice = createServerFn({ method: "POST" })
       }
     }
 
-    const { data: notice, error } = await supabase
+    const row: NoticeInsert = {
+      tenant_id: data.tenant_id,
+      property_id: data.property_id,
+      title: data.title,
+      body: data.body,
+      priority: data.priority,
+      category: data.category,
+      audience_type: data.audience_type,
+      channels: data.channels,
+      publish_at: publishing ? nowIso : data.publish_at,
+      expires_at: data.expires_at ?? null,
+      status,
+      created_by: userId,
+      published_by: publishing ? userId : null,
+      published_at: publishing ? nowIso : null,
+    };
+    const { data: notice, error: insertError } = await supabase
       .from("notices")
-      .insert({
-        tenant_id: data.tenant_id,
-        property_id: data.property_id,
-        title: data.title,
-        body: data.body,
-        priority: data.priority,
-        audience_type: data.audience_type,
-        channels: data.channels,
-        publish_at: publishing ? nowIso : data.publish_at,
-        expires_at: data.expires_at ?? null,
-        status,
-        created_by: userId,
-        published_by: publishing ? userId : null,
-        published_at: publishing ? nowIso : null,
-      })
+      .insert(row)
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (insertError) throw new Error(insertError.message);
 
     // Custom audience: persist the resolved student list (also what the scheduled publisher reads).
-    // notice_recipients is not in the generated types yet, so it is written through a narrow signature.
     if (customAudience) {
-      const rows = customAudience.students.map((s) => ({
+      const rows: NoticeRecipientInsert[] = customAudience.students.map((s) => ({
         notice_id: notice.id,
         student_id: s.id,
         tenant_id: data.tenant_id,
         property_id: data.property_id,
       }));
-      const loose = supabase as unknown as {
-        from: (t: string) => {
-          insert: (r: unknown[]) => PromiseLike<{ error: { message: string } | null }>;
-        };
-      };
       for (let i = 0; i < rows.length; i += 500) {
-        const { error: rErr } = await loose
+        const { error: rErr } = await supabase
           .from("notice_recipients")
           .insert(rows.slice(i, i + 500));
         if (rErr) {
@@ -295,24 +311,54 @@ export const publishNotice = createServerFn({ method: "POST" })
       }
     }
 
-    if (["ALL", "STUDENTS"].includes(data.audience_type)) {
-      const { data: students } = await supabaseAdmin
-        .from("students")
-        .select("profile_id, phone, email")
-        .eq("property_id", data.property_id)
-        .is("deleted_at", null);
-      for (const s of students ?? [])
+    // Everything below is scoped to this property (the same rules as fn_publish_scheduled_notices):
+    // current residents only; parents only through a live student_guardians link to one of them; staff
+    // only with an active assignment for this property or a tenant-wide one.
+    const reachesStudents = ["ALL", "STUDENTS"].includes(data.audience_type);
+    const reachesParents = ["ALL", "PARENTS"].includes(data.audience_type);
+    const residents =
+      reachesStudents || reachesParents
+        ? ((
+            await supabaseAdmin
+              .from("students")
+              .select("id, profile_id, phone, email")
+              .eq("tenant_id", data.tenant_id)
+              .eq("property_id", data.property_id)
+              .is("deleted_at", null)
+              .in("status", audience.ELIGIBLE_STUDENT_STATUSES)
+          ).data ?? [])
+        : [];
+    if (reachesStudents) {
+      for (const s of residents)
         if (s.profile_id)
           recipients.push({ user_id: s.profile_id, phone: s.phone, email: s.email });
     }
-    if (["ALL", "PARENTS"].includes(data.audience_type)) {
-      const { data: guardians } = await supabaseAdmin
-        .from("guardians")
-        .select("profile_id, phone, email, tenant_id")
-        .eq("tenant_id", data.tenant_id);
-      for (const g of guardians ?? [])
-        if (g.profile_id)
-          recipients.push({ user_id: g.profile_id, phone: g.phone, email: g.email });
+    if (reachesParents && residents.length > 0) {
+      const residentIds = residents.map((s) => s.id);
+      const guardianIds = new Set<string>();
+      for (let i = 0; i < residentIds.length; i += 150) {
+        const { data: links } = await supabaseAdmin
+          .from("student_guardians")
+          .select("guardian_id")
+          .eq("tenant_id", data.tenant_id)
+          .in("student_id", residentIds.slice(i, i + 150))
+          .is("unlinked_at", null)
+          .eq("portal_access_enabled", true)
+          .eq("can_view_notices", true);
+        for (const l of links ?? []) guardianIds.add(l.guardian_id);
+      }
+      const ids = [...guardianIds];
+      for (let i = 0; i < ids.length; i += 150) {
+        const { data: guardians } = await supabaseAdmin
+          .from("guardians")
+          .select("profile_id, phone, email")
+          .eq("tenant_id", data.tenant_id)
+          .in("id", ids.slice(i, i + 150))
+          .is("deleted_at", null);
+        for (const g of guardians ?? [])
+          if (g.profile_id)
+            recipients.push({ user_id: g.profile_id, phone: g.phone, email: g.email });
+      }
     }
     if (["ALL", "WARDENS", "ACCOUNTANTS"].includes(data.audience_type)) {
       const roles =
@@ -326,7 +372,10 @@ export const publishNotice = createServerFn({ method: "POST" })
         .select("user_id")
         .eq("tenant_id", data.tenant_id)
         .in("role", roles as never[])
-        .is("revoked_at", null);
+        .is("revoked_at", null)
+        .eq("is_active", true)
+        // property_id is a validated uuid (and checked against the tenant above).
+        .or(`property_id.is.null,property_id.eq.${data.property_id}`);
       const userIds = Array.from(
         new Set((ras ?? []).map((r) => r.user_id).filter(Boolean)),
       ) as string[];
@@ -419,24 +468,437 @@ export const publishNotice = createServerFn({ method: "POST" })
     };
   });
 
+// ---------------------------------------------------------------------------------------------------------
+// Editing, archiving, restoring and deleting notices
+//
+// A notice's phase (the Notices tab uses the same rules, src/lib/property-notices.ts):
+//   SCHEDULED - status DRAFT / SCHEDULED and not past its expiry: not sent yet, everything can change.
+//   ACTIVE    - status PUBLISHED and not past its expiry: already sent. Wording, category, priority and
+//               expiry can be corrected; audience, channels and publish time cannot (deliveries that went out
+//               are never recalled or re-sent).
+//   ARCHIVED  - status EXPIRED / CANCELLED, or any notice past its expires_at: wording, category and
+//               priority can still be corrected; it comes back only through Restore.
+// Every write goes through the caller's own client, so the notices RLS policies (author or Hostel Admin
+// may update) stay the boundary; a write that RLS filters out is reported, never silently ignored.
+// ---------------------------------------------------------------------------------------------------------
+
+type NoticeUpdate = Database["public"]["Tables"]["notices"]["Update"];
+type NoticePhase = "SCHEDULED" | "ACTIVE" | "ARCHIVED";
+
+const PENDING_STATUSES = ["DRAFT", "SCHEDULED"];
+
+function msOrNull(v: string | null | undefined): number | null {
+  if (!v) return null;
+  const t = Date.parse(v);
+  return Number.isNaN(t) ? null : t;
+}
+
+function noticePhase(
+  n: { status: string; expires_at: string | null },
+  now: number = Date.now(),
+): NoticePhase {
+  const expiry = msOrNull(n.expires_at);
+  if (expiry !== null && expiry <= now) return "ARCHIVED";
+  if (n.status === "PUBLISHED") return "ACTIVE";
+  if (PENDING_STATUSES.includes(n.status)) return "SCHEDULED";
+  return "ARCHIVED";
+}
+
+interface StoredNotice {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  status: string;
+  audience_type: string;
+  channels: string[];
+  publish_at: string | null;
+  published_at: string | null;
+  expires_at: string | null;
+}
+
+/** Read through RLS: a notice the caller may not see is "not found". */
+async function loadNotice(supabase: Client, id: string): Promise<StoredNotice> {
+  const { data, error } = await supabase
+    .from("notices")
+    .select(
+      "id, tenant_id, property_id, status, audience_type, channels, publish_at, published_at, expires_at",
+    )
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Notice not found");
+  return data;
+}
+
+/**
+ * Applies `patch` through the caller's client. `onlyStatuses` guards against a concurrent change (e.g. the
+ * scheduler publishing the notice meanwhile). A write that RLS (or the guard) filters out is an error.
+ */
+async function updateNotice(
+  supabase: Client,
+  id: string,
+  patch: NoticeUpdate,
+  onlyStatuses?: string[],
+): Promise<void> {
+  let q = supabase.from("notices").update(patch).eq("id", id).is("deleted_at", null);
+  if (onlyStatuses) q = q.in("status", onlyStatuses);
+  const { data, error } = await q.select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      "This notice could not be updated. It may have changed in the meantime, or you may not have permission to edit it.",
+    );
+  }
+}
+
+async function listRecipientIds(client: Client, noticeId: string): Promise<string[]> {
+  const ids: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client
+      .from("notice_recipients")
+      .select("student_id")
+      .eq("notice_id", noticeId)
+      .range(from, from + 999);
+    if (error) throw new Error("Could not read the notice's recipient list. Please try again.");
+    const rows = data ?? [];
+    for (const r of rows) ids.push(r.student_id);
+    if (rows.length < 1000) return ids;
+  }
+}
+
+/**
+ * Makes a CUSTOM notice's recipient list exactly `studentIds` (already validated + de-duplicated by
+ * resolveCustomAudience). New rows go in first, then stale ones are removed, so a failure never leaves the
+ * notice with fewer recipients than before. notice_recipients is append-only for end users, hence the
+ * service client, used only after the caller's permission was checked and the notice row was updated
+ * through their own client.
+ */
+async function replaceRecipients(admin: Client, notice: StoredNotice, studentIds: string[]) {
+  const keep = new Set(studentIds);
+  const rows: NoticeRecipientInsert[] = studentIds.map((sid) => ({
+    notice_id: notice.id,
+    student_id: sid,
+    tenant_id: notice.tenant_id,
+    property_id: notice.property_id,
+  }));
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await admin.from("notice_recipients").upsert(rows.slice(i, i + 500), {
+      onConflict: "notice_id,student_id",
+      ignoreDuplicates: true,
+    });
+    if (error) throw new Error("Could not save the new recipient list. Please try again.");
+  }
+  const stale = (await listRecipientIds(admin, notice.id)).filter((sid) => !keep.has(sid));
+  for (let i = 0; i < stale.length; i += 200) {
+    const { error } = await admin
+      .from("notice_recipients")
+      .delete()
+      .eq("notice_id", notice.id)
+      .in("student_id", stale.slice(i, i + 200));
+    if (error) throw new Error("Could not update the recipient list. Please try again.");
+  }
+}
+
+const sameChannels = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((c) => b.includes(c));
+
 const editNoticeSchema = z.object({
   notice_id: z.string().uuid(),
   title: z.string().trim().min(3).max(200),
   body: z.string().trim().min(3).max(4000),
   priority: z.enum(["NORMAL", "IMPORTANT", "URGENT"]),
+  // Everything below is optional, so callers that only correct title/body/priority keep working.
+  category: z.enum(NOTICE_CATEGORIES).optional(),
+  audience_type: z.enum(NOTICE_AUDIENCES).optional(),
+  // CUSTOM only: replaces the stored recipient list. Omitted with CUSTOM = keep the stored list.
+  custom_recipients: z
+    .object({
+      student_ids: z.array(z.string().uuid()).max(MAX_CUSTOM_STUDENTS).default([]),
+      block_ids: z.array(z.string().uuid()).max(MAX_CUSTOM_BLOCKS).default([]),
+    })
+    .optional(),
+  // In-app is always included (see noticeSchema).
+  channels: z
+    .array(z.enum(["IN_APP", "SMS", "WHATSAPP", "EMAIL"]))
+    .min(1)
+    .transform(withInApp)
+    .optional(),
+  // Not-yet-sent notices only. publish_now: goes out on the scheduler's next run (every 5 minutes).
+  publish_now: z.boolean().optional(),
+  publish_at: z.string().datetime().nullable().optional(),
+  // undefined = unchanged, null = no expiry.
+  expires_at: z.string().datetime().nullable().optional(),
 });
 
-/** Corrects title/body/priority on an existing notice. Does not re-dispatch —
- * already-sent SMS/WhatsApp/email/in-app notifications are not recalled. */
+export type EditNoticeInput = z.input<typeof editNoticeSchema>;
+
+/**
+ * Edits a notice within the rules of its phase (see above). Does not re-dispatch: notifications that were
+ * already sent are not recalled. For a notice that has not been sent yet, audience / channels / timing can
+ * change; "publish now" hands it to the scheduled publisher, the same single delivery path every scheduled
+ * notice uses.
+ */
 export const editNotice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => editNoticeSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("notices")
-      .update({ title: data.title, body: data.body, priority: data.priority })
-      .eq("id", data.notice_id);
-    if (error) throw new Error(error.message);
+    const { supabase, userId } = context;
+    const cur = await loadNotice(supabase, data.notice_id);
+    const now = Date.now();
+    const phase = noticePhase(cur, now);
+
+    const audienceChange =
+      data.audience_type !== undefined &&
+      (data.audience_type !== cur.audience_type ||
+        (data.audience_type === "CUSTOM" && data.custom_recipients !== undefined));
+    const channelsChange =
+      data.channels !== undefined && !sameChannels(data.channels, cur.channels);
+    const curPublishMs = msOrNull(cur.publish_at);
+    const scheduleChange =
+      data.publish_now === true ||
+      (data.publish_at != null && msOrNull(data.publish_at) !== curPublishMs);
+    const curExpiryMs = msOrNull(cur.expires_at);
+    const expiryChange = data.expires_at !== undefined && msOrNull(data.expires_at) !== curExpiryMs;
+
+    if ((audienceChange || channelsChange || scheduleChange) && phase !== "SCHEDULED") {
+      throw new Error(
+        phase === "ACTIVE"
+          ? "This notice has already been sent, so its audience, channels and publish time can no longer change."
+          : "This notice is archived. Restore it before changing how it is sent.",
+      );
+    }
+    if (expiryChange && phase === "ARCHIVED") {
+      throw new Error("This notice is archived. Use Restore to give it a new expiry.");
+    }
+
+    const patch: NoticeUpdate = { title: data.title, body: data.body, priority: data.priority };
+    if (data.category !== undefined) patch.category = data.category;
+
+    // Timing. An expiry must be in the future and after the moment the notice goes out.
+    let publishMs =
+      phase === "SCHEDULED" ? curPublishMs : (msOrNull(cur.published_at) ?? curPublishMs);
+    if (scheduleChange) {
+      if (data.publish_now) {
+        publishMs = now;
+      } else {
+        const t = msOrNull(data.publish_at);
+        if (t === null || t <= now) throw new Error("The schedule time must be in the future");
+        publishMs = t;
+      }
+      patch.publish_at = new Date(publishMs).toISOString();
+      patch.status = "SCHEDULED";
+    }
+    const expiryMs = expiryChange ? msOrNull(data.expires_at) : curExpiryMs;
+    if (expiryChange) {
+      if (expiryMs !== null && expiryMs <= now) {
+        throw new Error("The expiry time must be in the future");
+      }
+      patch.expires_at = data.expires_at ?? null;
+    }
+    if (
+      (expiryChange || scheduleChange) &&
+      expiryMs !== null &&
+      publishMs !== null &&
+      expiryMs <= publishMs
+    ) {
+      throw new Error("The expiry time must be after the publish time");
+    }
+
+    if (channelsChange && data.channels) {
+      await assertChannelsAvailable(supabase, userId, cur.tenant_id, data.channels);
+      patch.channels = data.channels;
+    }
+
+    // Audience. A custom selection is validated exactly as publishNotice validates it.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let newRecipients: string[] | null = null;
+    if (audienceChange && data.audience_type) {
+      const audience = await import("@/lib/notice-audience.server");
+      if (data.audience_type === "CUSTOM") {
+        const sel = data.custom_recipients;
+        if (!sel || (sel.student_ids.length === 0 && sel.block_ids.length === 0)) {
+          throw new Error("Choose the residents or blocks this notice is for");
+        }
+        await audience.assertNoticeAudienceAccess(
+          supabase,
+          supabaseAdmin,
+          userId,
+          cur.tenant_id,
+          cur.property_id,
+        );
+        const resolved = await audience.resolveCustomAudience(supabaseAdmin, {
+          tenantId: cur.tenant_id,
+          propertyId: cur.property_id,
+          studentIds: [...new Set(sel.student_ids)],
+          blockIds: [...new Set(sel.block_ids)],
+        });
+        if (resolved.students.length === 0) {
+          throw new Error("The selected audience has no eligible recipients");
+        }
+        newRecipients = resolved.students.map((s) => s.id);
+      } else if (
+        data.custom_recipients &&
+        (data.custom_recipients.student_ids.length > 0 ||
+          data.custom_recipients.block_ids.length > 0)
+      ) {
+        throw new Error("Recipients can only be selected for a custom audience");
+      }
+      patch.audience_type = data.audience_type;
+    }
+
+    // While the recipient list changes, the publish time is written last, so the scheduler can never pick
+    // the notice up with a half-written list.
+    const schedulePatch: NoticeUpdate = {};
+    if (newRecipients && patch.publish_at !== undefined) {
+      schedulePatch.publish_at = patch.publish_at;
+      schedulePatch.status = patch.status;
+      delete patch.publish_at;
+      delete patch.status;
+    }
+
+    const guard =
+      phase === "SCHEDULED" ? PENDING_STATUSES : phase === "ACTIVE" ? ["PUBLISHED"] : undefined;
+    await updateNotice(supabase, cur.id, patch, guard);
+
+    if (newRecipients) {
+      try {
+        await replaceRecipients(supabaseAdmin, cur, newRecipients);
+      } catch (e) {
+        if (cur.audience_type !== "CUSTOM") {
+          // Never leave a custom notice without its list: put the previous audience back.
+          await supabase
+            .from("notices")
+            .update({ audience_type: cur.audience_type })
+            .eq("id", cur.id);
+        }
+        throw e;
+      }
+      if (schedulePatch.publish_at !== undefined) {
+        await updateNotice(supabase, cur.id, schedulePatch, PENDING_STATUSES);
+      }
+    } else if (audienceChange && cur.audience_type === "CUSTOM") {
+      // No longer a custom notice: its old list is unused (only CUSTOM notices read it). Best effort.
+      await supabaseAdmin.from("notice_recipients").delete().eq("notice_id", cur.id);
+    }
+
+    return {
+      ok: true as const,
+      recipient_count: newRecipients ? newRecipients.length : null,
+      queued_for_next_run: scheduleChange && data.publish_now === true,
+    };
+  });
+
+/**
+ * Archive: a notice that has not been sent yet is cancelled (it will never go out); a live notice expires
+ * now (it drops out of every feed; nothing that was delivered is recalled).
+ */
+export const archiveNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const cur = await loadNotice(supabase, data.notice_id);
+    const phase = noticePhase(cur);
+    if (phase === "SCHEDULED") {
+      await updateNotice(supabase, cur.id, { status: "CANCELLED" }, PENDING_STATUSES);
+      return { ok: true as const, archived_as: "CANCELLED" as const };
+    }
+    if (phase === "ACTIVE") {
+      await updateNotice(
+        supabase,
+        cur.id,
+        { status: "EXPIRED", expires_at: new Date().toISOString() },
+        ["PUBLISHED"],
+      );
+      return { ok: true as const, archived_as: "EXPIRED" as const };
+    }
+    throw new Error("This notice is already archived");
+  });
+
+/**
+ * Restore an archived notice.
+ *  - One that was published and then expired goes back to PUBLISHED with the new expiry (or none). Nothing
+ *    is re-sent; it is simply visible in feeds again (fn_notices_guard_expiry allows exactly this).
+ *  - One that was cancelled (or expired) before it went out goes back to SCHEDULED for a future time.
+ */
+export const restoreNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) =>
+    z
+      .object({
+        notice_id: z.string().uuid(),
+        expires_at: z.string().datetime().nullable().default(null),
+        publish_at: z.string().datetime().nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const cur = await loadNotice(supabase, data.notice_id);
+    const now = Date.now();
+    if (noticePhase(cur, now) !== "ARCHIVED") throw new Error("This notice is not archived");
+    const expiryMs = msOrNull(data.expires_at);
+    if (expiryMs !== null && expiryMs <= now) {
+      throw new Error("The new expiry time must be in the future");
+    }
+
+    const wasPublished =
+      cur.status === "PUBLISHED" || (cur.status === "EXPIRED" && cur.published_at !== null);
+    if (wasPublished) {
+      await updateNotice(supabase, cur.id, { status: "PUBLISHED", expires_at: data.expires_at }, [
+        cur.status,
+      ]);
+      return { ok: true as const, restored_to: "PUBLISHED" as const };
+    }
+    if (cur.status === "EXPIRED") {
+      throw new Error(
+        "This notice expired before it was ever sent, so it can't be restored. Create a new notice instead.",
+      );
+    }
+
+    const publishMs = data.publish_at ? msOrNull(data.publish_at) : msOrNull(cur.publish_at);
+    if (publishMs === null || publishMs <= now) {
+      throw new Error("Choose a future time to send this notice");
+    }
+    if (expiryMs !== null && expiryMs <= publishMs) {
+      throw new Error("The expiry time must be after the publish time");
+    }
+    if (cur.audience_type === "CUSTOM") {
+      const ids = await listRecipientIds(supabase, cur.id);
+      if (ids.length === 0) {
+        throw new Error(
+          "This custom notice has no saved recipients, so it can't be restored. Create a new notice instead.",
+        );
+      }
+    }
+    await updateNotice(
+      supabase,
+      cur.id,
+      {
+        status: "SCHEDULED",
+        publish_at: new Date(publishMs).toISOString(),
+        expires_at: data.expires_at,
+      },
+      [cur.status],
+    );
+    return { ok: true as const, restored_to: "SCHEDULED" as const };
+  });
+
+/**
+ * Soft delete (deleted_at). The notice disappears from every list and feed; a notice that has not been sent
+ * yet is also cancelled so it can never go out. Allowed to the notice's author and Hostel Admins (RLS).
+ */
+export const deleteNotice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const cur = await loadNotice(supabase, data.notice_id);
+    const pending = noticePhase(cur) === "SCHEDULED";
+    const patch: NoticeUpdate = { deleted_at: new Date().toISOString() };
+    if (pending) patch.status = "CANCELLED";
+    await updateNotice(supabase, cur.id, patch, pending ? PENDING_STATUSES : undefined);
     return { ok: true as const };
   });
 
@@ -444,11 +906,18 @@ export const cancelNotice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d) => z.object({ notice_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: rows, error } = await context.supabase
       .from("notices")
       .update({ status: "CANCELLED" })
       .eq("id", data.notice_id)
-      .in("status", ["DRAFT", "SCHEDULED"]);
+      .in("status", ["DRAFT", "SCHEDULED"])
+      .select("id");
     if (error) throw new Error(error.message);
+    // RLS (author or Hostel Admin) or a concurrent publish filters the update out: say so.
+    if (!rows || rows.length === 0) {
+      throw new Error(
+        "This notice could not be cancelled. It may have been sent in the meantime, or you may not have permission to change it.",
+      );
+    }
     return { ok: true as const };
   });

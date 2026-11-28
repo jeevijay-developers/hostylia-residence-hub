@@ -64,10 +64,12 @@ function AdminDashboardPage() {
     enabled: !!tenantId,
     queryFn: async () => {
       if (!tenantId) return 0;
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("properties")
         .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null);
+      if (error) throw error;
       return count ?? 0;
     },
     staleTime: 60_000,

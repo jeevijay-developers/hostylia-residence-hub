@@ -87,7 +87,7 @@ export function DesktopShell({
           >
             <div
               className={cn(
-                "mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8",
+                "mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 sm:py-8 2xl:px-8",
                 mobileBottomNav && "pb-24 sm:pb-24 lg:pb-8",
               )}
             >

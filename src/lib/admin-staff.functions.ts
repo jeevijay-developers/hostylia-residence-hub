@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { emailSchema, normalizeIndianPhone } from "@/schemas/auth";
+import { propertyFormSchema } from "@/schemas/hostel";
+import type { Json } from "@/integrations/supabase/types";
 import { dispatchNotification } from "@/lib/dispatch-notification";
 
 // The independently-RLS'd finance resources an Accountant has by default and
@@ -894,9 +896,18 @@ export const activateMyInvites = createServerFn({ method: "POST" })
   });
 
 // ---------- Settings ----------
+// Timezone is the `properties.timezone` COLUMN (read by attendance dates,
+// curfew/gate-pass checks, mess menus, the dashboard) — validated with the
+// same rule as the property form. Curfew stays in `settings.curfew_time`
+// (read by the gate-pass RPC as `::time`, so only a valid HH:MM is accepted).
 const propSettingsSchema = z.object({
   property_id: z.string().uuid(),
-  settings: z.record(z.any()),
+  timezone: propertyFormSchema.shape.timezone.optional(),
+  curfew_time: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Enter a valid curfew time (HH:MM)")
+    .optional(),
 });
 
 export const updatePropertySettings = createServerFn({ method: "POST" })
@@ -904,23 +915,32 @@ export const updatePropertySettings = createServerFn({ method: "POST" })
   .validator((d) => propSettingsSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: prop } = await supabase
+    const { data: prop, error: readError } = await supabase
       .from("properties")
       .select("tenant_id,settings")
       .eq("id", data.property_id)
-      .single();
+      .maybeSingle();
+    if (readError) throw readError;
     if (!prop) throw new Error("property not found");
     await assertAdmin(supabase, userId, prop.tenant_id);
-    const existing = (
-      typeof prop.settings === "object" && prop.settings !== null ? prop.settings : {}
-    ) as Record<string, any>;
-    const merged = { ...existing, ...data.settings };
+    const existing: { [key: string]: Json | undefined } =
+      typeof prop.settings === "object" && prop.settings !== null && !Array.isArray(prop.settings)
+        ? { ...prop.settings }
+        : {};
+    // An older version of this form shadowed the column into the JSON, where
+    // nothing reads it — drop that stale copy so there is one source of truth.
+    delete existing.timezone;
+    if (data.curfew_time !== undefined) existing.curfew_time = data.curfew_time;
+    const settings: Json = existing;
+    const patch: { settings: Json; timezone?: string } = { settings };
+    if (data.timezone !== undefined) patch.timezone = data.timezone;
     const { error } = await supabase
       .from("properties")
-      .update({ settings: merged })
-      .eq("id", data.property_id);
+      .update(patch)
+      .eq("id", data.property_id)
+      .eq("tenant_id", prop.tenant_id);
     if (error) throw error;
-    return { ok: true, settings: merged };
+    return { ok: true, settings, timezone: data.timezone ?? null };
   });
 
 const orgSchema = z.object({

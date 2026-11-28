@@ -42,7 +42,7 @@ export function StudentRefundRequestForm({ studentId }: { studentId: string }) {
         .select("id, payment_number, amount_paise")
         .eq("student_id", studentId)
         .eq("status", "CAPTURED")
-        .neq("provider", "simulated")
+        .or("provider.is.null,provider.neq.simulated")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw new Error(error.message);

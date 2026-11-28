@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Keeps the student list / detail queries fresh when a students row changes
- * (e.g. an applicant's account gets linked after signup). Used by both the Admin
+ * Keeps the student list / detail queries and the property Students tab fresh
+ * when a students row changes (e.g. an applicant's account gets linked after signup). Used by both the Admin
  * and Warden views, which share the same query keys, so they stay in step.
  * RLS filters what each subscriber receives, so this widens no access.
  */
@@ -24,6 +24,7 @@ export function useStudentsRealtime(propertyId: string | null | undefined) {
         { event: "*", schema: "public", table: "students", filter: `property_id=eq.${propertyId}` },
         (payload) => {
           qc.invalidateQueries({ queryKey: ["students-list"] });
+          qc.invalidateQueries({ queryKey: ["students-tab", propertyId] });
           const id = (payload.new as { id?: string }).id;
           qc.invalidateQueries({ queryKey: id ? ["student", id] : ["student"] });
         },

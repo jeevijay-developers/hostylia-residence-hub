@@ -36,7 +36,7 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
         .select("id, payment_number, amount_paise, students(full_name)")
         .eq("property_id", propertyId)
         .eq("status", "CAPTURED")
-        .neq("provider", "simulated")
+        .or("provider.is.null,provider.neq.simulated")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw new Error(error.message);
@@ -74,7 +74,9 @@ export function RefundRequestForm({ propertyId }: { propertyId: string }) {
           <h2 className="font-display text-lg font-semibold text-foreground sm:text-xl">
             Process Refund
           </h2>
-          <p className="text-sm text-muted-foreground">Fill the details below to submit a refund request</p>
+          <p className="text-sm text-muted-foreground">
+            Fill the details below to submit a refund request
+          </p>
         </div>
       </div>
 

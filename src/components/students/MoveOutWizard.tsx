@@ -113,6 +113,8 @@ export function MoveOutWizard({ studentId, area, canInitiateRefund }: MoveOutWiz
         ["student", studentId],
         ["student-allocations", studentId],
         ["students-list"],
+        // The property Students tab (directory, KPIs, activity).
+        ["students-tab"],
         ["move-out-notices"],
         ["deposit-ledger"],
         // The bed is freed: refresh bed lists / status counts on Allocations and Structure.

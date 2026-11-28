@@ -88,7 +88,13 @@ function sectionCrumbs(pathname: string, navItems: NavItem[], propertyName?: str
           (
             {
               rooms: "Rooms & beds",
+              students: "Students",
               residents: "Residents",
+              finance: "Finance",
+              attendance: "Attendance",
+              complaints: "Complaints",
+              notices: "Notices",
+              staff: "Staff",
               structure: "Setup",
               edit: "Edit",
             } as Record<string, string>

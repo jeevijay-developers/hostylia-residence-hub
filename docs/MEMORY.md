@@ -824,3 +824,81 @@ _End of Memory.md_
   - The collapsed list is absolutely positioned, so it fills the height the grid row gives it without making the row taller. It shows only the items that fit completely, never fewer than 4. Its minimum height is measured from what the first 4 items really need, so wrapped text on phones doesn't clip.
   - RoomActivityCard now uses it: beside a Beds card with one row of beds it shows 4; with two rows, more (5 in testing).
 - Verified: tsc unchanged (18), eslint/prettier clean on changed files. Headless Chrome on a temporary seeded route (deleted) at 1700, 1300 and 390 px. Activity count 5 with two rows of beds; all 4 items visible on mobile. No runtime errors.
+
+## Finance, Attendance, Complaints, Notices, Staff tabs + release audit fixes (2026-11-27)
+- All eight PropertyTabs are now property pages under /admin/properties/$slug/{(index),rooms,residents,finance,attendance,complaints,notices,staff}. The structure page (/structure) has no tabs. Built by parallel agents, each tab reviewed and fixed, then audited again with each finding re-checked by a skeptic.
+- **Finance** (src/components/hostel/finance, src/lib/property-finance.ts):
+  - KPIs: Collections MTD with delta; Pending dues; Due this week; Refunds MTD.
+  - Cards: Payment trend; Collection breakdown by fee plan; Quick actions; Recent transactions; Outstanding dues.
+  - Quick actions: Record payment and Refund request open the existing forms in dialogs. Create invoice → /admin/finance/invoices?create=true (new `create` search param). "Add expense" became "Finance overview" (there is no expenses table). There is no dues "reminder bell": no clean per-student notify path exists.
+  - Open invoices = ISSUED, PARTIALLY_PAID, OVERDUE and PARTIALLY_REFUNDED with balance > 0. record_manual_payment still refuses PARTIALLY_REFUNDED (DB rule).
+- **Simulated-payment filter bug fixed app-wide:** `.neq("provider","simulated")` dropped manual payments, whose provider is NULL. It is now `.or("provider.is.null,provider.neq.simulated")` (admin-dashboard, PaymentHistoryPanel, RefundRequestForm, StudentRefundRequestForm, student.functions, accountant.dashboard).
+- **Attendance** (src/components/hostel/attendance, src/lib/property-attendance*.ts):
+  - Today uses the property-local date. Rate = (P+L)/(P+L+A).
+  - Roster of every active resident: Not marked, Out-pass, and check-in from marked_at. Check-out comes from gate_events.
+  - "Bulk upload" became "Export today (CSV)". Leave review and the report open as dialogs.
+  - admin.attendance and WardenAttendancePage now use the property-local "today" instead of UTC.
+- **Complaints** (src/components/hostel/complaints, src/lib/property-complaints.ts):
+  - New and Edit dialogs cover every column: student, room/bed, title, description, category (created inline), priority, status (workflow rules), warden, raised at, SLA due.
+  - List/Kanban views, Assign warden, CSV export, insights, priority queue and activity.
+  - Migration 20261203094700_complaint_reopened_at.sql.
+- **Notices** (src/components/hostel/notices, src/lib/property-notices.ts, notice-defaults.ts):
+  - Create and Edit cover every column: category, audience, schedule, expiry, channels, priority. Archive, Restore and Delete are available.
+  - Broadcast channels = property default channels in properties.settings.notice_default_channels.
+  - "Everyone"/parents/staff audiences are now property-scoped (they used to reach the whole tenant).
+  - Migration 20261203094500_notice_category_and_restore.sql adds notices.category, restore support, and a property-scoped fn_publish_scheduled_notices.
+- **Staff** (src/components/hostel/staff, src/lib/property-staff.ts):
+  - New property staff roster with job designations: WARDEN, ACCOUNTANT, CARETAKER, SECURITY, HOUSEKEEPING, MESS_MANAGER, MAINTENANCE, OTHER. These are NOT app roles (the six-role lock stays, per PRD 4.3). It also stores shifts, block or work area, staff attendance and leave.
+  - Wardens and Accountants with logins can be linked (inviteStaff).
+  - Migration 20261203090000_property_staff_roster.sql: RLS forced, audit triggers, guard triggers, RLS tests in supabase/tests/rls_tests.sql.
+  - Uses a local typed client (StaffDb) until types.ts is regenerated.
+- **Release-audit fixes (yesterday's work):**
+  - Allocate dialog: no hard-coded rent/deposit; it seeds from the fee plan or room. Wardens are no longer sent to /admin links.
+  - Settings: Timezone now saves to the properties.timezone column. The dead "default notification channel" setting was removed. Billing shows the trial end date.
+  - The plan-expiry countdown is calendar-correct.
+  - CSV import resets between uses and shows its errors. The structure board pages past 1000 rows.
+  - Room photo gallery with remove. Stale cache invalidations fixed.
+  - The dashboard property count excludes deleted properties. The switcher and sign-out clear stale property ids.
+  - deleteProperty also blocks on pending allocations.
+  - /verify-otp without a phone redirects to /login (was a 500).
+- **Other:**
+  - DesktopShell content max width is now 1760px (was 1440).
+  - csv-export.ts csvCell guards against spreadsheet formula injection.
+- **Migrations NOT yet applied to the live project:** 20261202090000 (room photos), 20261203090000 (staff roster), 20261203094500 (notices), 20261203094700 (complaints reopened_at). Every tab degrades gracefully until they are applied. Afterwards: regenerate types.ts, then drop the StaffDb shim and the missing-column fallbacks.
+- **Verified:**
+  - tsc = the 18 pre-existing errors. eslint shows no new errors on the changed files.
+  - vite build passes.
+  - Headless crawl of 24 public pages and 18 admin/property routes: no hydration or console errors. The only noise is Cloudflare Turnstile on form pages in headless Chrome.
+- **Not verified:** the new tabs have not been viewed signed in with real data. No admin test login is available to the agent, and the live DB is not migrated yet.
+
+## Migrations applied, fallbacks removed, Complaints/Notices/Staff browser-tested (2026-11-28)
+- **Applied to live project umznrrdqduynifpatslb** (by the user via `npx supabase db query --remote -f <file>`; plain `db query` targets LOCAL, and `db push` doesn't work here because local and remote migration history differ):
+  - 20261202090000 room photos (now with try_uuid() safe casts in the storage policies);
+  - 20261203090000 staff roster;
+  - 20261203094500 notices;
+  - 20261203094700 complaints reopened_at.
+  - Verified via MCP: tables, RLS enabled + forced, policies, triggers, columns.
+- **Production bug fixed:** fn_publish_scheduled_notices compared `ra.role = ANY(text[])` (app_role vs text), so every 5-min cron run failed and rolled back whenever a scheduled ALL/WARDENS/ACCOUNTANTS notice was due. That blocked ALL scheduled notices. The notices migration now uses `ra.role::text = ANY(v_roles)`. Cron run 2026-11-27 09:25 succeeded, and 5 stuck (test) notices were published.
+- types.ts regenerated from the live DB (MCP generate_typescript_types). tsc still shows the 18 pre-existing errors.
+- **Removed all "migration not applied" fallbacks** (now dead code):
+  - notices category checks and retries (notice-defaults, property-notices, notice.functions, NoticeFormDialog, NoticeComposer);
+  - complaints reopened_at fallback;
+  - staff StaffDb shim, missing-table mode and banner (now uses generated types and the normal client);
+  - complaint.ts loose RPC cast (now typed supabase.rpc).
+- **UI:**
+  - Complaints list has a header row and a shared fixed column grid; pills truncate.
+  - Priority queue is a fixed-column table.
+  - Property hero has no ⋯ menu (Edit property only); PropertyActionsMenu lost its hero-only onDeleted/className props.
+  - Staff Quick actions sit above Staff by role.
+  - CustomAudiencePicker shows names on their own line and has no `tenantId!`.
+  - KpiTile value may be null and shows "—" (Staff uses it when its summary fails).
+- **Browser-tested** with headless Chrome. Supabase REST, auth and server-function calls were intercepted with realistic fixtures and exact request payloads asserted; there was no sign-in and no live writes.
+  - Complaints: 72/72.
+  - Notices: 98/101; the 3 misses were a dialog-animation timing flake that passed 3/3 when re-run.
+  - Staff: 131/131 functional, 16/16 state, 33/33 layout.
+  - Testers also fixed mobile dialog overflow, form-field alignment, validation ordering, error states that showed fake 0s, and select-trigger icon wrapping.
+- **Final checks:** tsc 18 (pre-existing), eslint clean on changed files apart from pre-existing items, vite build passes, crawl of 24 public and 18 admin pages shows no hydration or console errors (only Turnstile noise). Temporary zztest-* routes deleted.
+- **Open / not ours:**
+  - src/lib/student-admit.server.ts (new) and src/schemas/student.ts (modified) changed 2026-11-28 ~13:00 outside this work and were left untouched.
+  - Supabase advisors: leaked-password protection is off. The other warnings predate this work, except is_valid_room_media_path being callable by authenticated users, which is intended for the storage policy.
+  - Not yet verified signed in against real data.

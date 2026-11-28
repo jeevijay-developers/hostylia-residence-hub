@@ -176,7 +176,7 @@ async function fetchCapturedPayments(propertyId: string, from: Date, to: Date) {
       .select("id, amount_paise, paid_at")
       .eq("property_id", propertyId)
       .eq("status", "CAPTURED")
-      .neq("provider", "simulated")
+      .or("provider.is.null,provider.neq.simulated")
       .gte("paid_at", from.toISOString())
       .lt("paid_at", to.toISOString())
       .order("paid_at", { ascending: true })
@@ -378,7 +378,9 @@ export interface PlanExpiry {
 /**
  * The tenant's latest subscription, reduced to the shared "ending soon"
  * signal (subscription-expiry.ts — same threshold Super Admin Billing uses).
- * Null when nothing needs flagging. Separate key from Settings → Billing's
+ * Null when nothing needs flagging. `days` counts IST calendar days (0 = ends
+ * later today) and the indicator is ENDED as soon as the end instant has
+ * passed — see daysRemaining(). Separate key from Settings → Billing's
  * ["my-subscription", …] because it selects a different shape.
  */
 export function usePlanExpiry(tenantId: string | null) {

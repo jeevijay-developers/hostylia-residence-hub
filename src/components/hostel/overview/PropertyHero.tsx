@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BedDouble,
   Bell,
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 import propertyBanner from "@/assets/illustrations/property-banner.webp";
-import { PropertyActionsMenu } from "@/components/hostel/PropertyActionsMenu";
 import { PropertyStatusBadge } from "@/components/hostel/PropertyCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,13 +49,12 @@ export function PropertyHero({
   residents,
   isLoadingCounts,
 }: PropertyHeroProps) {
-  const nav = useNavigate();
   const status = property.status.toUpperCase();
   const place = [cleanPlace(property.city), cleanPlace(property.state)].filter(Boolean).join(", ");
   const facts: { icon: LucideIcon; text: string }[] = [
     { icon: Building2, text: plural(blocks ?? 0, "Block") },
     { icon: BedDouble, text: plural(beds ?? 0, "Bed") },
-    { icon: Users, text: plural(residents ?? 0, "Resident") },
+    { icon: Users, text: plural(residents ?? 0, "Student") },
   ];
 
   return (
@@ -100,17 +98,12 @@ export function PropertyHero({
             </ul>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center">
           <Button asChild variant="outline" className="h-9 rounded-xl bg-card/90 backdrop-blur">
             <Link to="/admin/properties/$slug/edit" params={{ slug: property.slug }}>
               <Pencil className="h-4 w-4" /> Edit property
             </Link>
           </Button>
-          <PropertyActionsMenu
-            property={{ ...property, status }}
-            className="h-9 w-9 rounded-xl border border-border bg-card/90 backdrop-blur"
-            onDeleted={() => nav({ to: "/admin/properties", replace: true })}
-          />
         </div>
       </div>
     </section>
@@ -122,18 +115,10 @@ const tabClass =
   "flex flex-auto shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const activeTabClass = "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary";
 
-const SHARED_TABS: { label: string; icon: LucideIcon; to: string }[] = [
-  { label: "Finance", icon: IndianRupee, to: "/admin/finance" },
-  { label: "Attendance", icon: CalendarCheck, to: "/admin/attendance" },
-  { label: "Complaints", icon: TriangleAlert, to: "/admin/complaints" },
-  { label: "Notices", icon: Bell, to: "/admin/notices" },
-  { label: "Staff", icon: UserCog, to: "/admin/staff" },
-];
-
 /**
- * Property section tabs. Overview, Rooms & Beds and Residents are this property's own
- * pages; the rest open the shared admin pages, which follow the active
- * property (the property pages make this one active when they open).
+ * Property section tabs — every tab is one of this property's own pages
+ * (Overview, Rooms & Beds, Students, Finance, Attendance, Complaints,
+ * Notices, Staff). The pages make this property the active one when they open.
  */
 export function PropertyTabs({ slug, className }: { slug: string; className?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -165,18 +150,53 @@ export function PropertyTabs({ slug, className }: { slug: string; className?: st
         <BedDouble className="h-4 w-4" aria-hidden="true" /> Rooms &amp; Beds
       </Link>
       <Link
-        to="/admin/properties/$slug/residents"
+        to="/admin/properties/$slug/students"
         params={{ slug }}
         className={tabClass}
         activeProps={{ className: activeTabClass, "aria-current": "page" }}
       >
-        <Users className="h-4 w-4" aria-hidden="true" /> Residents
+        <Users className="h-4 w-4" aria-hidden="true" /> Students
       </Link>
-      {SHARED_TABS.map(({ label, icon: Icon, to }) => (
-        <Link key={to} to={to} className={tabClass}>
-          <Icon className="h-4 w-4" aria-hidden="true" /> {label}
-        </Link>
-      ))}
+      <Link
+        to="/admin/properties/$slug/finance"
+        params={{ slug }}
+        className={tabClass}
+        activeProps={{ className: activeTabClass, "aria-current": "page" }}
+      >
+        <IndianRupee className="h-4 w-4" aria-hidden="true" /> Finance
+      </Link>
+      <Link
+        to="/admin/properties/$slug/attendance"
+        params={{ slug }}
+        className={tabClass}
+        activeProps={{ className: activeTabClass, "aria-current": "page" }}
+      >
+        <CalendarCheck className="h-4 w-4" aria-hidden="true" /> Attendance
+      </Link>
+      <Link
+        to="/admin/properties/$slug/complaints"
+        params={{ slug }}
+        className={tabClass}
+        activeProps={{ className: activeTabClass, "aria-current": "page" }}
+      >
+        <TriangleAlert className="h-4 w-4" aria-hidden="true" /> Complaints
+      </Link>
+      <Link
+        to="/admin/properties/$slug/notices"
+        params={{ slug }}
+        className={tabClass}
+        activeProps={{ className: activeTabClass, "aria-current": "page" }}
+      >
+        <Bell className="h-4 w-4" aria-hidden="true" /> Notices
+      </Link>
+      <Link
+        to="/admin/properties/$slug/staff"
+        params={{ slug }}
+        className={tabClass}
+        activeProps={{ className: activeTabClass, "aria-current": "page" }}
+      >
+        <UserCog className="h-4 w-4" aria-hidden="true" /> Staff
+      </Link>{" "}
     </nav>
   );
 }

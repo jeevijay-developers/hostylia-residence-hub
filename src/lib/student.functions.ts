@@ -5,7 +5,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeIndianPhone } from "@/schemas/auth";
-import { classifyStudentRows, collectIdentityValues } from "@/lib/student-import";
+import {
+  classifyStudentRows,
+  collectImportLookups,
+  importBedKey,
+  type ExistingStudentKeys,
+  type ImportBed,
+  type StudentImportRow,
+} from "@/lib/student-import";
 import {
   giveNoticeSchema,
   moveOutSettlementSchema,
@@ -17,14 +24,15 @@ import { dispatchNotification } from "@/lib/dispatch-notification";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import {
   publicAdmissionSchema,
-  studentBulkRowSchema,
   manualStudentRowSchema,
   allocationCreateSchema,
   swapAllocationBedSchema,
   clickConsentSchema,
   studentSelfProfileSchema,
   studentStaffProfileEditSchema,
+  type AdmitStudentInput,
 } from "@/schemas/student";
+import type { AdmitResult, StudentAuditRow } from "@/lib/student-admit.server";
 
 // Matches uidx_allocations_active_student — the statuses that count as a
 // student's current (not yet closed/cancelled) stay.
@@ -42,26 +50,6 @@ function adminClient() {
   });
 }
 
-type RpcResult = { data: unknown; error: { message: string; code?: string } | null };
-
-// fn_register_student & co. are not in the generated types until it is regenerated
-// from the migrated schema; drop the cast then.
-async function callRpc(
-  supabase: object,
-  fn: string,
-  args: Record<string, unknown>,
-): Promise<RpcResult> {
-  const client = supabase as {
-    rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<RpcResult>;
-  };
-  return await client.rpc(fn, args);
-}
-
-/** The student guard trigger (23505) says exactly which identifier is taken. */
-function isDuplicateStudentError(e: { message: string; code?: string } | null): boolean {
-  return !!e && e.code === "23505" && /already registered/i.test(e.message);
-}
-
 function getClientIp(): string {
   try {
     const req = getRequest();
@@ -72,12 +60,6 @@ function getClientIp(): string {
   } catch {
     return "unknown";
   }
-}
-
-function nextAdmissionNumber(): string {
-  const y = new Date().getFullYear().toString().slice(-2);
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `A${y}-${rand}`;
 }
 
 /** Resolves the property a public admission targets (unchanged rules, now shared with the duplicate pre-check). */
@@ -110,6 +92,7 @@ export const submitPublicAdmission = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ip = getClientIp();
     const admin = adminClient();
+    const { callRpc, nextAdmissionNumber } = await import("@/lib/student-admit.server");
 
     const { data: allowed, error: rlErr } = await admin.rpc("check_rate_limit", {
       p_bucket_key: `admission:${ip}`,
@@ -184,6 +167,7 @@ export const checkStudentAdmissionDuplicate = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const ip = getClientIp();
     const admin = adminClient();
+    const { callRpc } = await import("@/lib/student-admit.server");
     const { data: allowed, error: rlErr } = await admin.rpc("check_rate_limit", {
       p_bucket_key: `admission-check:${ip}`,
       p_limit: 30,
@@ -223,97 +207,188 @@ export const checkStudentAdmissionDuplicate = createServerFn({ method: "POST" })
 const bulkImportSchema = z.object({
   tenant_id: z.string().uuid(),
   property_id: z.string().uuid(),
+  // Applied to every row that assigns a bed (room_number + bed_code).
+  fee_plan_id: z.string().uuid().optional(),
   // Each row is validated individually in the handler so one bad row
   // doesn't reject the whole batch — this must stay loose here.
   rows: z.array(z.record(z.string(), z.string())).min(1).max(1000),
 });
+type BulkImportInput = z.infer<typeof bulkImportSchema>;
 
-async function insertStudentRow(
-  supabase: ReturnType<typeof adminClient>,
-  tenantId: string,
+const LOOKUP_CHUNK = 150;
+
+function chunked<T>(values: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < values.length; i += LOOKUP_CHUNK) out.push(values.slice(i, i + LOOKUP_CHUNK));
+  return out;
+}
+
+/** The batch's fee plan must be ACTIVE in this property; its RENT / DEPOSIT component totals. */
+async function loadImportFeePlan(
+  supabase: SupabaseClient<Database>,
   propertyId: string,
-  r: z.infer<typeof studentBulkRowSchema>,
-) {
-  const dob =
-    r.date_of_birth && /^\d{4}-\d{2}-\d{2}$/.test(r.date_of_birth) ? r.date_of_birth : null;
-  // Student + guardian + link in one database transaction, with the duplicate
-  // phone/email guard enforced by the database: a row that fails leaves nothing behind.
-  const { data, error } = await callRpc(supabase, "fn_register_student", {
-    p_tenant_id: tenantId,
-    p_property_id: propertyId,
-    p_admission_number: nextAdmissionNumber(),
-    p_full_name: r.full_name,
-    p_phone: r.phone || null,
-    p_email: r.email || null,
-    p_date_of_birth: dob,
-    p_gender: r.gender || null,
-    p_academic_institute: r.academic_institute || null,
-    p_course_name: r.course_name || null,
-    p_academic_year: null,
-    p_is_minor: dob ? new Date().getFullYear() - new Date(dob).getFullYear() < 18 : false,
-    p_metadata: {},
-    p_guardian_name: r.guardian_name || null,
-    p_guardian_phone: r.guardian_phone ? normalizeIndianPhone(r.guardian_phone) : null,
-    p_guardian_relationship: "GUARDIAN",
-    p_guardian_is_emergency: false,
-  });
-  if (error) {
-    throw Object.assign(new Error(error.message), { code: error.code });
+  feePlanId: string,
+): Promise<{ id: string; rentPaise: number | null; depositPaise: number | null }> {
+  const { data: plan, error } = await supabase
+    .from("fee_plans")
+    .select("id, status")
+    .eq("id", feePlanId)
+    .eq("property_id", propertyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!plan || plan.status !== "ACTIVE") {
+    throw new Error("The chosen fee plan is not active in this property");
   }
-  return data as { id: string; admission_number: string };
+  const { data: comps, error: cErr } = await supabase
+    .from("fee_plan_components")
+    .select("component_type, amount_paise")
+    .eq("fee_plan_id", feePlanId)
+    .eq("is_active", true)
+    .in("component_type", ["RENT", "DEPOSIT"]);
+  if (cErr) throw new Error(cErr.message);
+  const sum = (type: string) => {
+    const rows = (comps ?? []).filter((c) => c.component_type === type);
+    return rows.length ? rows.reduce((t, c) => t + c.amount_paise, 0) : null;
+  };
+  return { id: plan.id, rentPaise: sum("RENT"), depositPaise: sum("DEPOSIT") };
 }
 
 /**
- * Which of the uploaded rows' phones / emails already belong to a live student of
- * the tenant (tenant-wide, not just this property — the database guard is too).
- * Existence only; nothing about the matching student is returned.
+ * Everything the classifier compares against, in a handful of batched reads: phones / emails
+ * already registered in the tenant (the database guard is tenant-wide too), admission IDs in use
+ * in this property (the unique index is per property), and the named rooms' beds.
  */
-async function loadExistingStudentKeys(
-  supabase: object,
-  tenantId: string,
-  propertyId: string,
-  rawRows: unknown[],
-) {
-  const { phones, emails } = collectIdentityValues(rawRows);
-  const existing = { phones: new Set<string>(), emails: new Set<string>() };
-  if (phones.length === 0 && emails.length === 0) return existing;
-  const { data, error } = await callRpc(supabase, "fn_existing_student_identity_keys", {
-    p_tenant_id: tenantId,
-    p_property_id: propertyId,
-    p_phones: phones,
-    p_emails: emails,
-  });
-  if (error) throw new Error(error.message);
-  const out = data as { phones: string[]; emails: string[] };
-  for (const k of out.phones) existing.phones.add(k);
-  for (const k of out.emails) existing.emails.add(k.trim().toLowerCase());
-  return existing;
+async function loadImportContext(
+  supabase: SupabaseClient<Database>,
+  data: BulkImportInput,
+): Promise<{
+  existing: ExistingStudentKeys;
+  feePlan: { id: string; rentPaise: number | null; depositPaise: number | null } | null;
+  today: string;
+}> {
+  const admit = await import("@/lib/student-admit.server");
+  const { timezone } = await admit.assertPropertyInTenant(
+    supabase,
+    data.tenant_id,
+    data.property_id,
+  );
+  const lookups = collectImportLookups(data.rows);
+  const existing: ExistingStudentKeys = {
+    phones: new Set(),
+    emails: new Set(),
+    admissionNumbers: new Set(),
+    beds: new Map(),
+  };
+
+  const identity = async () => {
+    if (lookups.phones.length === 0 && lookups.emails.length === 0) return;
+    const { data: keys, error } = await admit.callRpc(
+      supabase,
+      "fn_existing_student_identity_keys",
+      {
+        p_tenant_id: data.tenant_id,
+        p_property_id: data.property_id,
+        p_phones: lookups.phones,
+        p_emails: lookups.emails,
+      },
+    );
+    if (error) throw new Error(error.message);
+    const out = keys as { phones: string[]; emails: string[] };
+    for (const k of out.phones) existing.phones.add(k);
+    for (const k of out.emails) existing.emails.add(k.trim().toLowerCase());
+  };
+
+  const admissions = async () => {
+    for (const part of chunked(lookups.admissionNumbers)) {
+      const { data: rows, error } = await supabase
+        .from("students")
+        .select("admission_number")
+        .eq("property_id", data.property_id)
+        .is("deleted_at", null)
+        .in("admission_number", part);
+      if (error) throw new Error(error.message);
+      for (const r of rows ?? []) existing.admissionNumbers.add(r.admission_number.toUpperCase());
+    }
+  };
+
+  const beds = async () => {
+    const rooms = new Map<
+      string,
+      { roomNumber: string; status: string; baseRentPaise: number | null }
+    >();
+    for (const part of chunked(lookups.roomNumbers)) {
+      const { data: rows, error } = await supabase
+        .from("rooms")
+        .select("id, room_number, status, base_rent_paise")
+        .eq("property_id", data.property_id)
+        .is("deleted_at", null)
+        .in("room_number", part);
+      if (error) throw new Error(error.message);
+      for (const r of rows ?? []) {
+        rooms.set(r.id, {
+          roomNumber: r.room_number,
+          status: r.status,
+          baseRentPaise: r.base_rent_paise,
+        });
+      }
+    }
+    for (const part of chunked([...rooms.keys()])) {
+      const { data: rows, error } = await supabase
+        .from("beds")
+        .select("id, room_id, code, status, rent_override_paise")
+        .in("room_id", part)
+        .is("deleted_at", null);
+      if (error) throw new Error(error.message);
+      for (const b of rows ?? []) {
+        const room = rooms.get(b.room_id);
+        if (!room) continue;
+        const bed: ImportBed = {
+          bedId: b.id,
+          roomNumber: room.roomNumber,
+          code: b.code,
+          status: b.status,
+          roomStatus: room.status,
+          rentPaise: b.rent_override_paise ?? room.baseRentPaise,
+        };
+        existing.beds.set(importBedKey(room.roomNumber, b.code), bed);
+      }
+    }
+  };
+
+  const [feePlan] = await Promise.all([
+    data.fee_plan_id
+      ? loadImportFeePlan(supabase, data.property_id, data.fee_plan_id)
+      : Promise.resolve(null),
+    identity(),
+    admissions(),
+    beds(),
+  ]);
+  return { existing, feePlan, today: admit.todayInTimezone(timezone) };
 }
 
 export type StudentImportErrorKind = "DUPLICATE" | "FAILED";
+type StudentImportError = { row: number; error: string; kind: StudentImportErrorKind };
+
+function skippedRowError(c: StudentImportRow): StudentImportError | null {
+  if (c.status === "INVALID") return { row: c.row, error: c.error, kind: "FAILED" };
+  if (c.status === "DUPLICATE") return { row: c.row, error: c.error, kind: "DUPLICATE" };
+  return null;
+}
 
 /** Read-only dry run for the Bulk import dialog: what would be imported, skipped as duplicate, or rejected. */
 export const previewStudentImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => bulkImportSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const existing = await loadExistingStudentKeys(
-      context.supabase,
-      data.tenant_id,
-      data.property_id,
-      data.rows,
-    );
-    const classified = classifyStudentRows(data.rows, existing);
-    const errors: { row: number; error: string; kind: StudentImportErrorKind }[] = [];
+    const { existing, feePlan } = await loadImportContext(context.supabase, data);
+    const classified = classifyStudentRows(data.rows, existing, { hasFeePlan: feePlan !== null });
+    const errors: StudentImportError[] = [];
     let ok = 0;
     for (const c of classified) {
-      if (c.status === "OK") ok += 1;
-      else
-        errors.push({
-          row: c.row,
-          error: c.error,
-          kind: c.status === "DUPLICATE" ? "DUPLICATE" : "FAILED",
-        });
+      const err = skippedRowError(c);
+      if (err) errors.push(err);
+      else ok += 1;
     }
     return {
       ok,
@@ -323,47 +398,110 @@ export const previewStudentImport = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Imports the file row by row. Each importable row is admitted in its own database transaction
+ * (student + guardian + optional bed + optional opening dues and offline payment), so a failing
+ * row leaves nothing behind and never blocks the rows after it.
+ */
 export const bulkImportStudents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => bulkImportSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const errors: { row: number; error: string; kind: StudentImportErrorKind }[] = [];
-    let inserted = 0;
+    const { supabase, userId } = context;
+    const admit = await import("@/lib/student-admit.server");
+    const { existing, feePlan, today } = await loadImportContext(supabase, data);
+    const classified = classifyStudentRows(data.rows, existing, { hasFeePlan: feePlan !== null });
 
-    const existing = await loadExistingStudentKeys(
-      supabase,
-      data.tenant_id,
-      data.property_id,
-      data.rows,
-    );
-    const classified = classifyStudentRows(data.rows, existing);
+    const errors: StudentImportError[] = [];
+    const auditSink: StudentAuditRow[] = [];
+    let inserted = 0;
+    let allocated = 0;
+    let invoiced = 0;
 
     for (const c of classified) {
-      if (c.status === "INVALID") {
-        errors.push({ row: c.row, error: c.error, kind: "FAILED" });
+      if (c.status !== "OK") {
+        const err = skippedRowError(c);
+        if (err) errors.push(err);
         continue;
       }
-      if (c.status === "DUPLICATE") {
-        errors.push({ row: c.row, error: c.error, kind: "DUPLICATE" });
-        continue;
-      }
+      const d = c.data;
+      const n = c.normalized;
+      const hasGuardian = Boolean(d.guardian_name && d.guardian_phone);
+      const input: AdmitStudentInput = {
+        tenant_id: data.tenant_id,
+        property_id: data.property_id,
+        full_name: d.full_name,
+        admission_number: n.admissionNumber,
+        phone: d.phone ?? "",
+        email: d.email ?? "",
+        date_of_birth: d.date_of_birth ?? "",
+        gender: n.gender,
+        academic_institute: d.academic_institute ?? "",
+        course_name: d.course_name ?? "",
+        academic_year: d.academic_year ?? "",
+        guardian_name: d.guardian_name ?? "",
+        guardian_phone: d.guardian_phone ?? "",
+        guardian_relationship: hasGuardian ? d.guardian_relationship || "Guardian" : "",
+        guardian_email: d.guardian_email ?? "",
+        initial_status: n.initialStatus,
+        placement:
+          n.bed && feePlan
+            ? {
+                bed_id: n.bed.bedId,
+                fee_plan_id: feePlan.id,
+                start_date: d.start_date || today,
+                rent_snapshot_paise: n.bed.rentPaise ?? feePlan.rentPaise ?? 0,
+                deposit_snapshot_paise: feePlan.depositPaise ?? 0,
+              }
+            : undefined,
+        charge:
+          n.duesPaise > 0
+            ? {
+                amount_paise: n.duesPaise,
+                due_date: today,
+                note: "Imported from CSV",
+                payment: n.payment
+                  ? {
+                      amount_paise: n.payment.amountPaise,
+                      mode: n.payment.mode,
+                      reference: n.payment.reference,
+                      cheque_date: "",
+                    }
+                  : undefined,
+              }
+            : undefined,
+      };
       try {
-        await insertStudentRow(supabase, data.tenant_id, data.property_id, c.data);
+        const result = await admit.admitStudentRow(supabase, userId, input, {
+          source: "BULK_IMPORT",
+          auditSink,
+          today,
+        });
         inserted += 1;
+        if (result.allocation_id) allocated += 1;
+        if (result.invoice_id) invoiced += 1;
       } catch (e) {
-        const err = e as { message?: string; code?: string };
-        // Lost a race with another writer of the same phone/email: still a duplicate,
-        // and the database transaction left nothing behind.
-        if (isDuplicateStudentError({ message: err.message ?? "", code: err.code })) {
-          errors.push({ row: c.row, error: err.message ?? "Duplicate student", kind: "DUPLICATE" });
+        if (e instanceof admit.StudentAdmitError) {
+          // Lost a race with another writer of the same phone/email/admission ID: still a
+          // duplicate, and the row's transaction left nothing behind.
+          const isDuplicate = e.kind === "DUPLICATE_IDENTITY" || e.kind === "DUPLICATE_ADMISSION";
+          errors.push({ row: c.row, error: e.message, kind: isDuplicate ? "DUPLICATE" : "FAILED" });
         } else {
-          errors.push({ row: c.row, error: err.message ?? "unknown", kind: "FAILED" });
+          errors.push({
+            row: c.row,
+            error: e instanceof Error ? e.message : "Could not import this row",
+            kind: "FAILED",
+          });
         }
       }
     }
+
+    await admit.writeStudentAudit(auditSink);
+
     return {
       inserted,
+      allocated,
+      invoiced,
       duplicates: errors.filter((e) => e.kind === "DUPLICATE").length,
       failed: errors.filter((e) => e.kind === "FAILED").length,
       errors,
@@ -391,8 +529,8 @@ const manualCreateSchema = manualStudentRowSchema.extend({
  * reason is returned so the caller can still surface it to the admin (the
  * student record is fine either way, only the portal invite didn't go out).
  */
-async function provisionStudentPortalAccount(
-  supabase: ReturnType<typeof adminClient>,
+export async function provisionStudentPortalAccount(
+  supabase: SupabaseClient<Database>,
   granterId: string,
   student: { id: string; tenant_id: string; property_id: string; full_name: string; email: string },
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -479,17 +617,54 @@ async function provisionStudentPortalAccount(
   }
 }
 
-/** Single-student manual add for Admin/Warden — same insert path as bulk import, one row at a time. */
+/**
+ * Single-student manual add for Admin/Warden (legacy dialog shape). Same transactional admit path
+ * as the Students tab and the bulk import, without a bed or opening dues.
+ */
 export const createStudentManual = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => manualCreateSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const student = await insertStudentRow(supabase, data.tenant_id, data.property_id, data);
+    const admit = await import("@/lib/student-admit.server");
+    const { timezone } = await admit.assertPropertyInTenant(
+      supabase,
+      data.tenant_id,
+      data.property_id,
+    );
+    const gender = (data.gender ?? "").trim().toUpperCase();
+    let student: AdmitResult;
+    try {
+      student = await admit.admitStudentRow(
+        supabase,
+        userId,
+        {
+          tenant_id: data.tenant_id,
+          property_id: data.property_id,
+          full_name: data.full_name,
+          admission_number: "",
+          phone: data.phone ?? "",
+          email: data.email ?? "",
+          date_of_birth: data.date_of_birth ?? "",
+          gender: gender === "MALE" || gender === "FEMALE" || gender === "OTHER" ? gender : "",
+          academic_institute: data.academic_institute ?? "",
+          course_name: data.course_name ?? "",
+          academic_year: "",
+          guardian_name: data.guardian_name,
+          guardian_phone: data.guardian_phone,
+          guardian_relationship: "Guardian",
+          guardian_email: "",
+          initial_status: "APPLICANT",
+        },
+        { today: admit.todayInTimezone(timezone) },
+      );
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : "Could not add the student");
+    }
     let portalWarning: string | undefined;
     if (data.email && data.email.trim()) {
       const result = await provisionStudentPortalAccount(supabase, userId, {
-        id: student.id,
+        id: student.student_id,
         tenant_id: data.tenant_id,
         property_id: data.property_id,
         full_name: data.full_name,
@@ -497,7 +672,7 @@ export const createStudentManual = createServerFn({ method: "POST" })
       });
       if (!result.ok) portalWarning = result.reason;
     }
-    return { id: student.id, admission_number: student.admission_number, portalWarning };
+    return { id: student.student_id, admission_number: student.admission_number, portalWarning };
   });
 
 const confirmAdmissionSchema = z.object({
@@ -1085,7 +1260,7 @@ export const previewMoveOut = createServerFn({ method: "POST" })
         .select("id, payment_number, amount_paise, paid_at, invoice:invoices!inner(allocation_id)")
         .eq("invoice.allocation_id", data.allocation_id)
         .eq("status", "CAPTURED")
-        .neq("provider", "simulated")
+        .or("provider.is.null,provider.neq.simulated")
         .order("paid_at", { ascending: true });
       const ids = (pays ?? []).map((p) => p.id);
       const { data: existing } = ids.length

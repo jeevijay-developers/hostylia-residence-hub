@@ -249,7 +249,14 @@ export const deleteProperty = createServerFn({ method: "POST" })
         .select("id", { count: "exact", head: true })
         .eq("property_id", property.id)
         .is("deleted_at", null)
-        .in("status", ["ACTIVE", "NOTICE_GIVEN", "MOVE_OUT_INSPECTION"]),
+        // Pending stays hold a bed for an incoming resident, so they block too.
+        .in("status", [
+          "PENDING_AGREEMENT",
+          "PENDING_PAYMENT",
+          "ACTIVE",
+          "NOTICE_GIVEN",
+          "MOVE_OUT_INSPECTION",
+        ]),
     ]);
     if (residents.error || stays.error) {
       throw new Error("We couldn't check this property's residents. Please try again.");
@@ -257,7 +264,7 @@ export const deleteProperty = createServerFn({ method: "POST" })
     const living = Math.max(residents.count ?? 0, stays.count ?? 0);
     if (living > 0) {
       throw new Error(
-        `This property still has ${living} resident${living === 1 ? "" : "s"}. Move ${living === 1 ? "them" : "everyone"} out before deleting it.`,
+        `This property still has ${living} resident${living === 1 ? "" : "s"} or pending bed allocation${living === 1 ? "" : "s"}. Move residents out and cancel pending allocations before deleting it.`,
       );
     }
 

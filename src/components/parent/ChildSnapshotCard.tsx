@@ -30,7 +30,7 @@ export function ChildSnapshotCard({ child }: { child: ParentChild }) {
         .from("invoices")
         .select("balance_paise")
         .eq("student_id", child.student_id)
-        .in("status", ["ISSUED", "PARTIALLY_PAID", "OVERDUE"])
+        .in("status", ["ISSUED", "PARTIALLY_PAID", "OVERDUE", "PARTIALLY_REFUNDED"])
         .is("deleted_at", null);
       if (error) throw new Error(error.message);
       return (data ?? []).reduce((s, i) => s + (i.balance_paise ?? 0), 0);

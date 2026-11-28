@@ -113,7 +113,19 @@ function AdminInvoicesPage() {
   const rows = (q.data?.rows ?? []) as InvoiceRow[];
   const total = q.data?.total ?? 0;
 
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(!!search.create);
+  // Closing a dialog opened from a ?create=true link drops the flag, so a
+  // refresh or Back doesn't reopen it.
+  const onCreateOpenChange = (open: boolean) => {
+    setCreateOpen(open);
+    if (!open && search.create) {
+      navigate({
+        to: "/admin/finance/invoices",
+        search: { ...search, create: undefined },
+        replace: true,
+      });
+    }
+  };
   const [detailRow, setDetailRow] = useState<InvoiceRow | null>(null);
 
   // CSV export needs every matching invoice, not just the visible page — a
@@ -263,7 +275,7 @@ function AdminInvoicesPage() {
       {isHostelAdmin && (
         <CreateInvoiceDialog
           open={createOpen}
-          onOpenChange={setCreateOpen}
+          onOpenChange={onCreateOpenChange}
           propertyId={propertyId}
           onCreated={() => qc.invalidateQueries({ queryKey: ["invoices", propertyId] })}
         />

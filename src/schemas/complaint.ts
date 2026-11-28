@@ -115,3 +115,56 @@ export const UNSUPPORTED_COMPLAINT_STATUSES = ["WAITING_FOR_STUDENT", "CANCELLED
 
 /** Manual status targets a Warden may pick from the details dialog (assign/reopen/close have their own paths). */
 export const wardenStatusOptions = ["IN_PROGRESS", "RESOLVED"] as const;
+
+/** Statuses an Admin may pick when raising a complaint on a student's behalf. */
+export const adminCreatableStatuses = ["OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED"] as const;
+
+const isoDateTime = z
+  .string()
+  .refine((v) => !Number.isNaN(new Date(v).getTime()), "Enter a valid date and time");
+
+/**
+ * Every field an Admin can set on a complaint (property Complaints tab, New / Edit complaint).
+ * Title / description / category rules come from `complaintFormSchema` (one schema per entity).
+ * Shared by the dialog and the `saveAdminComplaint` server function; the database triggers
+ * (status transitions, resolution summary, assignee scope) remain the authority.
+ */
+export const adminComplaintFieldsSchema = complaintFormSchema
+  .pick({ category_id: true, title: true, description: true })
+  .extend({
+    student_id: z.string().uuid("Choose a student"),
+    room_id: z.string().uuid().nullable(),
+    bed_id: z.string().uuid().nullable(),
+    priority: complaintPriorityEnum,
+    status: complaintStatusEnum,
+    resolution_summary: z.string().trim().max(RESOLUTION_SUMMARY_MAX_LENGTH).nullable(),
+    assigned_to: z.string().uuid().nullable(),
+    created_at: isoDateTime,
+    sla_due_at: isoDateTime,
+  });
+
+export const adminComplaintCreateSchema = adminComplaintFieldsSchema.extend({
+  mode: z.literal("create"),
+  property_id: z.string().uuid(),
+});
+
+export const adminComplaintUpdateSchema = adminComplaintFieldsSchema.partial().extend({
+  mode: z.literal("update"),
+  complaint_id: z.string().uuid(),
+});
+
+export const adminComplaintSaveSchema = z.discriminatedUnion("mode", [
+  adminComplaintCreateSchema,
+  adminComplaintUpdateSchema,
+]);
+
+/** Inline "New category" on the property Complaints tab. SLA is entered in hours, stored in minutes. */
+export const complaintCategoryCreateSchema = z.object({
+  property_id: z.string().uuid(),
+  name: z.string().trim().min(2, "Enter at least 2 characters").max(60),
+  sla_hours: z
+    .number({ invalid_type_error: "Enter the SLA in hours" })
+    .min(0.25, "The SLA must be at least 15 minutes")
+    .max(720, "The SLA can be at most 720 hours (30 days)"),
+  default_priority: complaintPriorityEnum,
+});
